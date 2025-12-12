@@ -12,6 +12,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -1806,6 +1807,23 @@ namespace KPLN_Tools.Forms
             finally { }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         private void BtnReplacePreview_Click(object sender, RoutedEventArgs e)
         {
             if (_currentElement == null)
@@ -1833,10 +1851,8 @@ namespace KPLN_Tools.Forms
                         {
                             if (r.Read())
                             {
-                                if (!r.IsDBNull(0))
-                                    rvtPath = r.GetString(0);
-                                if (!r.IsDBNull(1))
-                                    propJson = r.GetString(1);
+                                if (!r.IsDBNull(0)) rvtPath = r.GetString(0);
+                                if (!r.IsDBNull(1)) propJson = r.GetString(1);
                             }
                         }
                     }
@@ -1845,13 +1861,15 @@ namespace KPLN_Tools.Forms
 
                 if (string.IsNullOrWhiteSpace(rvtPath))
                 {
-                    TaskDialog.Show("KPLN. Менеджер узлов", "Для выбранного узла в базе не заполнен путь к модели (RVT_PATH).\nОбновите БД, чтобы заполнить это поле.");
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "Для выбранного узла в базе не заполнен путь к модели (RVT_PATH).\nОбновите БД, чтобы заполнить это поле.");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(propJson))
                 {
-                    TaskDialog.Show("KPLN. Менеджер узлов", "Для выбранного узла в базе отсутствует PROP.\nбновите БД, чтобы заполнить это поле.");
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "Для выбранного узла в базе отсутствует PROP.\nОбновите БД, чтобы заполнить это поле.");
                     return;
                 }
 
@@ -1861,71 +1879,72 @@ namespace KPLN_Tools.Forms
                     var jo = JObject.Parse(propJson);
                     viewName = jo["ИМЯ ВИДА"]?.ToString();
                 }
-                catch
-                {
-                }
+                catch { }
 
                 if (string.IsNullOrWhiteSpace(viewName))
                 {
-                    TaskDialog.Show("KPLN. Менеджер узлов", "В PROP для выбранного узла не найден ключ \"ИМЯ ВИДА\".\nОбновите БД, чтобы корректно заполнить параметры вида.");
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "В PROP для выбранного узла не найден ключ \"ИМЯ ВИДА\".\nОбновите БД, чтобы корректно заполнить параметры вида.");
                     return;
                 }
 
-                var app = _uiapp.Application;
-                Document targetDoc = null;
+                // --------------------------------------------------------------------
+                // 1) Нормализуем путь из БД (обычный file path). Для RevitServer/Cloud
+                // --------------------------------------------------------------------
                 string targetFull;
+                try { targetFull = Path.GetFullPath(rvtPath); }
+                catch { targetFull = rvtPath; }
 
-                try
-                {
-                    targetFull = Path.GetFullPath(rvtPath);
-                }
-                catch
-                {
-                    targetFull = rvtPath;
-                }
+                bool looksLikeFilePath = targetFull.Contains(":\\") || targetFull.StartsWith(@"\\");
+                var app = _uiapp.Application;
 
                 Document localDoc = null;
                 Document centralDoc = null;
 
+                // --------------------------------------------------------------------
+                // 2) Ищем среди УЖЕ открытых документов:
+                //    - если документ workshared: сравниваем его CENTRAL path с targetFull (из БД)
+                //    - при совпадении: если текущий документ != central -> это local (предпочитаем его)
+                // --------------------------------------------------------------------
                 foreach (Document d in app.Documents)
                 {
                     try
                     {
+                        if (d == null) continue;
+
                         if (d.IsWorkshared)
                         {
-                            ModelPath centralPathMp = d.GetWorksharingCentralModelPath();
-                            if (centralPathMp == null)
-                                continue;
+                            var mp = d.GetWorksharingCentralModelPath();
+                            if (mp == null) continue;
 
-                            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(centralPathMp);
+                            string centralPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(mp);
 
                             string centralFull;
                             try { centralFull = Path.GetFullPath(centralPath); }
                             catch { centralFull = centralPath; }
 
-                            if (string.IsNullOrEmpty(centralFull) ||
-                                !string.Equals(centralFull, targetFull, StringComparison.InvariantCultureIgnoreCase))
-                            {
+                            if (string.IsNullOrEmpty(centralFull)) continue;
+
+                            if (!string.Equals(centralFull, targetFull, StringComparison.InvariantCultureIgnoreCase))
                                 continue;
-                            }
 
                             string docFull;
                             try { docFull = Path.GetFullPath(d.PathName); }
                             catch { docFull = d.PathName; }
 
-                            if (string.Equals(docFull, centralFull, StringComparison.InvariantCultureIgnoreCase))
+                            if (!string.IsNullOrEmpty(docFull) &&
+                                string.Equals(docFull, centralFull, StringComparison.InvariantCultureIgnoreCase))
                             {
-                                centralDoc = d;
+                                centralDoc = d; 
                             }
                             else
                             {
-                                localDoc = d;
+                                localDoc = d; 
                             }
                         }
                         else
                         {
-                            if (string.IsNullOrEmpty(d.PathName))
-                                continue;
+                            if (string.IsNullOrEmpty(d.PathName)) continue;
 
                             string dFull;
                             try { dFull = Path.GetFullPath(d.PathName); }
@@ -1938,78 +1957,135 @@ namespace KPLN_Tools.Forms
                             }
                         }
                     }
-                    catch
-                    {
-                    }
+                    catch { }
                 }
 
-                targetDoc = localDoc ?? centralDoc;
-                if (targetDoc != null)
+                Document targetDoc = localDoc ?? centralDoc;
+
+                // --------------------------------------------------------------------
+                // 3) Если документ НЕ открыт - открываем.
+                //    Если файл похож на обычный путь и это workshared central - пробуем создать local и открыть local.
+                // --------------------------------------------------------------------
+                if (targetDoc == null)
                 {
-                    targetFull = targetDoc.PathName;
+                    if (looksLikeFilePath && !File.Exists(targetFull))
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "Файл модели, указанный в RVT_PATH, не найден:\n" + targetFull);
+                        return;
+                    }
+
+                    bool opened = false;
+
+                    if (looksLikeFilePath)
+                    {
+                        try
+                        {
+                            ModelPath centralMp = ModelPathUtils.ConvertUserVisiblePathToModelPath(targetFull);
+
+                            string safeUser = (_userName ?? Environment.UserName ?? "user").Trim();
+                            foreach (char c in Path.GetInvalidFileNameChars())
+                                safeUser = safeUser.Replace(c, '_');
+
+                            string localDir = Path.Combine(Path.GetTempPath(), "KPLN_NodeManager_Local");
+                            Directory.CreateDirectory(localDir);
+
+                            string baseName = Path.GetFileNameWithoutExtension(targetFull);
+                            string localPath = Path.Combine(localDir, $"{baseName}_{safeUser}_{DateTime.Now:yyyyMMdd_HHmmss}.rvt");
+
+                            ModelPath localMp = ModelPathUtils.ConvertUserVisiblePathToModelPath(localPath);
+
+                            WorksharingUtils.CreateNewLocal(centralMp, localMp);
+
+                            UIDocument uiDocLocal = _uiapp.OpenAndActivateDocument(localPath);
+                            targetDoc = uiDocLocal.Document;
+                            opened = (targetDoc != null);
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    if (!opened)
+                    {
+                        try
+                        {
+                            UIDocument uiDoc = _uiapp.OpenAndActivateDocument(targetFull);
+                            targetDoc = uiDoc.Document;
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось открыть файл модели:\n" + targetFull + "\n\n" + ex.Message);
+                            return;
+                        }
+                    }
                 }
 
                 if (targetDoc == null)
                 {
-                    if (!File.Exists(targetFull))
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "Файл модели, указанный в RVT_PATH, не найден:\n" +
-                            targetFull);
-                        return;
-                    }
-
-                    try
-                    {
-                        UIDocument uiDoc = _uiapp.OpenAndActivateDocument(targetFull);
-                        targetDoc = uiDoc.Document;
-                    }
-                    catch (Exception ex)
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось открыть файл модели:\n" + targetFull + "\n\n" + ex.Message);
-                        return;
-                    }
-                }
-
-                UIDocument udoc = _uiapp.ActiveUIDocument;
-                if (udoc == null || udoc.Document != targetDoc)
-                {
-                    try
-                    {
-                        udoc = _uiapp.OpenAndActivateDocument(targetFull);
-                    }
-                    catch { }
-                }
-
-                try
-                {
-                    targetView = new FilteredElementCollector(targetDoc).OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, viewName, StringComparison.InvariantCultureIgnoreCase));
-                }
-                catch
-                {
-                }
-
-                if (targetView == null)
-                {
-                    TaskDialog.Show("KPLN. Менеджер узлов", "В документе\n" + (targetDoc.PathName ?? targetDoc.Title) + "\nне найден вид с именем:\n\"" + viewName + "\".\nВозможно, он был удалён или переименован.");
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить целевой документ.");
                     return;
                 }
 
+                // --------------------------------------------------------------------
+                // 4) Активируем документ
+                // --------------------------------------------------------------------
+                UIDocument udoc = _uiapp.ActiveUIDocument;
+                try
+                {
+                    if (udoc == null || udoc.Document != targetDoc)
+                    {
+                        string activatePath = targetDoc.PathName;
+                        if (!string.IsNullOrEmpty(activatePath))
+                            udoc = _uiapp.OpenAndActivateDocument(activatePath);
+                    }
+                }
+                catch { }
+
+                // --------------------------------------------------------------------
+                // 5) Ищем вид в targetDoc
+                // --------------------------------------------------------------------
+                try
+                {
+                    targetView = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(View))
+                        .Cast<View>()
+                        .FirstOrDefault(v => !v.IsTemplate &&
+                                             string.Equals(v.Name, viewName, StringComparison.InvariantCultureIgnoreCase));
+                }
+                catch { }
+
+                if (targetView == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "В документе\n" + (targetDoc.PathName ?? targetDoc.Title) +
+                        "\nне найден вид с именем:\n\"" + viewName + "\".\nВозможно, он был удалён или переименован.");
+                    return;
+                }
+
+                // --------------------------------------------------------------------
+                // 6) Проверяем, открыт ли вид (не переоткрывая централь!)
+                // --------------------------------------------------------------------
                 bool viewIsOpen = false;
 
                 try
                 {
                     if (udoc == null || udoc.Document != targetDoc)
                     {
-                        udoc = _uiapp.OpenAndActivateDocument(targetFull);
+                        // ещё раз пытаемся активировать именно targetDoc
+                        if (!string.IsNullOrEmpty(targetDoc.PathName))
+                            udoc = _uiapp.OpenAndActivateDocument(targetDoc.PathName);
                     }
 
-                    var uiViews = udoc.GetOpenUIViews();
-                    foreach (var uv in uiViews)
+                    if (udoc != null)
                     {
-                        if (uv.ViewId == targetView.Id)
+                        foreach (var uv in udoc.GetOpenUIViews())
                         {
-                            viewIsOpen = true;
-                            break;
+                            if (uv.ViewId == targetView.Id)
+                            {
+                                viewIsOpen = true;
+                                break;
+                            }
                         }
                     }
                 }
@@ -2018,18 +2094,25 @@ namespace KPLN_Tools.Forms
                     viewIsOpen = false;
                 }
 
+                // --------------------------------------------------------------------
+                // 7) Если вид не открыт - открываем (активируем)
+                // --------------------------------------------------------------------
                 if (!viewIsOpen)
                 {
                     try
                     {
-                        udoc.ActiveView = targetView;
-                        openedTargetViewHere = true;
+                        if (udoc != null)
+                        {
+                            udoc.ActiveView = targetView;
+                            openedTargetViewHere = true;
+                        }
                     }
-                    catch
-                    {
-                    }
+                    catch { }
                 }
 
+                // --------------------------------------------------------------------
+                // 8) Захват изображения и запись в БД
+                // --------------------------------------------------------------------
                 var captureWindow = new ScreenCaptureWindow(1000, 800);
                 captureWindow.Owner = this;
 
@@ -2041,12 +2124,6 @@ namespace KPLN_Tools.Forms
                 }
 
                 byte[] previewBytes = captureWindow.CapturedBytes;
-
-                if (previewBytes == null || previewBytes.Length == 0)
-                {
-                    TaskDialog.Show("KPLN. Менеджер узлов", "В буфере обмена не найдено изображение.\nУбедитесь, что вы сделали скриншот ножницами и попробуйте ещё раз.");
-                    return;
-                }
 
                 try
                 {
@@ -2103,7 +2180,6 @@ namespace KPLN_Tools.Forms
                     ReloadCurrentElement(savedId);
                 }
             }
-
             finally
             {
                 try
@@ -2121,11 +2197,37 @@ namespace KPLN_Tools.Forms
                 }
                 catch { }
 
-                this.Topmost = true;
                 this.Show();
+                this.Topmost = true;              
                 this.Topmost = false;
             }
         }
+
+
+
+
+
+
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private void ReloadCurrentElement(long elementId)
         {
@@ -2748,9 +2850,12 @@ namespace KPLN_Tools.Forms
             }
 
             var activeView = uidoc.ActiveView;
-            if (!(activeView is ViewSheet) && !(activeView is ViewDrafting))
+
+            bool isLegend = activeView.ViewType == ViewType.Legend;
+
+            if (!(activeView is ViewSheet) && !(activeView is ViewDrafting) && !isLegend)
             {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист или чертёжный вид.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист, чертёжный вид или легенда.");
                 return;
             }
 
@@ -3305,9 +3410,10 @@ namespace KPLN_Tools.Forms
                 return;
 
             var av = uidoc.ActiveView;
-            if (!(av is ViewSheet) && !(av is ViewDrafting))
+            bool isLegend = av.ViewType == ViewType.Legend;
+            if (!(av is ViewSheet) && !(av is ViewDrafting) && !isLegend)
             {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист или чертёжный вид.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист, чертёжный вид или легенда.");
                 return;
             }
             if (string.IsNullOrWhiteSpace(_sourceRvtPath) || string.IsNullOrWhiteSpace(_sourceViewName))
@@ -3324,9 +3430,15 @@ namespace KPLN_Tools.Forms
             {
                 HandleDraftingCase(app, uidoc, doc, draftingView);
             }
+            else if (av.ViewType == ViewType.Legend)
+            {
+                _ownerWindow.Topmost = false;
+                HandleLegendCase(app, uidoc, doc, av);
+            }
 
             _ownerWindow.Topmost = true;
             _ownerWindow.Topmost = false;
+
         }
 
         /// <summary>
@@ -4152,7 +4264,326 @@ namespace KPLN_Tools.Forms
                 t3.Commit();
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        private void HandleLegendCase(UIApplication app, UIDocument uidoc, Document targetDoc, View targetLegendView)
+        {
+            Document donorDoc = null;
+            bool donorOpenedHere = false;
+
+            try
+            {
+                if (targetLegendView == null || targetLegendView.ViewType != ViewType.Legend)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Целевой вид не является легендой.");
+                    return;
+                }
+
+                donorDoc = app.Application.Documents.Cast<Document>()
+                    .FirstOrDefault(d => !string.IsNullOrEmpty(d.PathName) &&
+                                         string.Equals(d.PathName, _sourceRvtPath, StringComparison.InvariantCultureIgnoreCase));
+
+                if (donorDoc == null)
+                {
+                    var modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(_sourceRvtPath);
+                    var openOpts = new OpenOptions { DetachFromCentralOption = DetachFromCentralOption.DoNotDetach };
+                    donorDoc = app.Application.OpenDocumentFile(modelPath, openOpts);
+                    donorOpenedHere = true;
+                }
+
+                if (donorDoc == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось открыть модель-донора.");
+                    return;
+                }
+
+                var donorView = new FilteredElementCollector(donorDoc)
+                    .OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
+                    .FirstOrDefault(v => !v.IsTemplate &&
+                                         string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (donorView == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        $"В файле-донора\n{_sourceRvtPath}\nне найден чертёжный вид:\n\"{_sourceViewName}\".");
+                    return;
+                }
+
+                bool hasDwg = ViewContainsDwg(donorDoc, donorView);
+
+                uidoc.ActiveView = targetLegendView;
+
+                XYZ pickPoint;
+                try
+                {
+                    TaskDialog.Show("Менеджер узлов", "Выберите точку для размещения узла");
+                    pickPoint = uidoc.Selection.PickPoint("Выберите точку для размещения узла на легенде");
+                }
+                catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                {
+                    return;
+                }
+
+                if (hasDwg)
+                {
+                    HandleDwgOnLegend(donorDoc, donorView, targetDoc, targetLegendView, pickPoint);
+                    return;
+                }
+
+                var allInView = new FilteredElementCollector(donorDoc, donorView.Id)
+                    .WhereElementIsNotElementType()
+                    .ToList();
+
+                var elementsToCopy = allInView
+                    .Where(e => e.ViewSpecific && !(e is ImportInstance) && !(e is View) && !(e is Group) && e.Category != null)
+                    .Select(e => e.Id)
+                    .ToList();
+
+                if (elementsToCopy.Count == 0)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"На донорском виде \"{donorView.Name}\" нет элементов для копирования.");
+                    return;
+                }
+
+                XYZ donorCenter = GetElementsCenter(donorDoc, donorView, elementsToCopy);
+                if (donorCenter == null)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить границы узла на донорском виде.");
+                    return;
+                }
+
+                var options = new CopyPasteOptions();
+                options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                using (var t = new Transaction(targetDoc, "KPLN. Вставка узла на легенду"))
+                {
+                    t.Start();
+
+                    var delta = pickPoint - donorCenter;
+                    var tr = Autodesk.Revit.DB.Transform.CreateTranslation(delta);
+
+                    ElementTransformUtils.CopyElements(donorView, elementsToCopy, targetLegendView, tr, options);
+
+                    t.Commit();
+                }
+
+                TaskDialog.Show("KPLN. Менеджер узлов", $"Узел \"{_sourceViewName}\" вставлен на легенду.");
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при вставке на легенду:\n" + ex.Message);
+            }
+            finally
+            {
+                if (donorOpenedHere && donorDoc != null && donorDoc.IsValidObject)
+                {
+                    try { donorDoc.Close(false); } catch { }
+                }
+            }
+        }
+
+        private void HandleDwgOnLegend(Document donorDoc, ViewDrafting donorView, Document targetDoc, View targetLegendView, XYZ pickPoint)
+        {
+            string baseModelPath = GetTargetModelPath(targetDoc);
+
+            if (string.IsNullOrWhiteSpace(baseModelPath) || !File.Exists(baseModelPath))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов",
+                    "Не удалось определить путь к файлу целевой модели для папки \"DWG_Менеджер узлов\".\n" +
+                    "Сохраните модель на диск и повторите попытку.");
+                return;
+            }
+
+            string modelDir = Path.GetDirectoryName(baseModelPath);
+            if (string.IsNullOrWhiteSpace(modelDir))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить директорию целевой модели.");
+                return;
+            }
+
+            string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
+            if (!Directory.Exists(dwgFolder))
+                Directory.CreateDirectory(dwgFolder);
+
+            string dwgFilePath = Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+            bool dwgExists = File.Exists(dwgFilePath);
+
+            DwgChoice choice;
+
+            if (dwgExists)
+            {
+                var td = new TaskDialog("KPLN. Менеджер узлов");
+                td.MainInstruction = $"Найден DWG \"{_sourceViewName}.dwg\" в папке:\n{dwgFolder}";
+                td.MainContent = "Выберите источник DWG:";
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1, "Перезаписать DWG текущим и использовать его");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2, "Использовать существующий DWG из папки");
+                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3, "Отмена");
+                td.CommonButtons = TaskDialogCommonButtons.Close;
+
+                var res = td.Show();
+                switch (res)
+                {
+                    case TaskDialogResult.CommandLink1: choice = DwgChoice.ExportOverwriteAndUse; break;
+                    case TaskDialogResult.CommandLink2: choice = DwgChoice.UseExisting; break;
+                    default: choice = DwgChoice.Cancel; break;
+                }
+            }
+            else
+            {
+                choice = DwgChoice.ExportOverwriteAndUse;
+            }
+
+            if (choice == DwgChoice.Cancel)
+                return;
+
+            if (choice == DwgChoice.ExportOverwriteAndUse)
+            {
+                if (File.Exists(dwgFilePath))
+                {
+                    try { File.Delete(dwgFilePath); } catch { }
+                }
+
+                var dwgExportOptions = new DWGExportOptions();
+                var viewIds = new List<ElementId> { donorView.Id };
+
+                bool exported = donorDoc.Export(dwgFolder, _sourceViewName, viewIds, dwgExportOptions);
+                if (!exported || !File.Exists(dwgFilePath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось экспортировать DWG из вида-донора.");
+                    return;
+                }
+            }
+            else
+            {
+                if (!File.Exists(dwgFilePath))
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Файл DWG из папки не найден. Операция прервана.");
+                    return;
+                }
+            }
+
+            using (var t = new Transaction(targetDoc, "KPLN. Обновление DWG на легенде"))
+            {
+                t.Start();
+
+                var oldImports = new FilteredElementCollector(targetDoc, targetLegendView.Id)
+                    .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
+
+                foreach (var imp in oldImports)
+                {
+                    try { targetDoc.Delete(imp.Id); } catch { }
+                }
+
+                var dwgImportOptions = new DWGImportOptions
+                {
+                    ThisViewOnly = true,
+                    Placement = ImportPlacement.Origin
+                };
+
+                ElementId importedId;
+                bool imported = targetDoc.Import(dwgFilePath, dwgImportOptions, targetLegendView, out importedId);
+                if (!imported)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось импортировать/залинковать DWG на легенду.");
+                    t.RollBack();
+                    return;
+                }
+
+                var dwgInstance = targetDoc.GetElement(importedId) as ImportInstance;
+                if (dwgInstance != null)
+                {
+                    if (dwgInstance.Pinned) dwgInstance.Pinned = false;
+
+                    var bb = dwgInstance.get_BoundingBox(targetLegendView);
+                    if (bb != null)
+                    {
+                        XYZ center = (bb.Min + bb.Max) * 0.5;
+                        XYZ delta = pickPoint - center;
+                        ElementTransformUtils.MoveElement(targetDoc, importedId, delta);
+                    }
+                }
+
+                t.Commit();
+            }
+
+            TaskDialog.Show("KPLN. Менеджер узлов", $"DWG с вида \"{_sourceViewName}\" импортирован на легенду.");
+        }
+
+        private static string GetTargetModelPath(Document targetDoc)
+        {
+            try
+            {
+                if (targetDoc.IsWorkshared)
+                {
+                    var centralMp = targetDoc.GetWorksharingCentralModelPath();
+                    if (centralMp != null)
+                        return ModelPathUtils.ConvertModelPathToUserVisiblePath(centralMp);
+                }
+            }
+            catch { }
+
+            return targetDoc.PathName;
+        }
+
+        private static XYZ GetElementsCenter(Document doc, View view, IList<ElementId> ids)
+        {
+            BoundingBoxXYZ bb = null;
+
+            foreach (var id in ids)
+            {
+                var el = doc.GetElement(id);
+                if (el == null) continue;
+
+                var elBb = el.get_BoundingBox(view);
+                if (elBb == null) continue;
+
+                if (bb == null) bb = new BoundingBoxXYZ { Min = elBb.Min, Max = elBb.Max };
+                else
+                {
+                    bb.Min = new XYZ(
+                        Math.Min(bb.Min.X, elBb.Min.X),
+                        Math.Min(bb.Min.Y, elBb.Min.Y),
+                        Math.Min(bb.Min.Z, elBb.Min.Z));
+                    bb.Max = new XYZ(
+                        Math.Max(bb.Max.X, elBb.Max.X),
+                        Math.Max(bb.Max.Y, elBb.Max.Y),
+                        Math.Max(bb.Max.Z, elBb.Max.Z));
+                }
+            }
+
+            return bb == null ? null : (bb.Min + bb.Max) * 0.5;
+        }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // НОЖНИЦЫ
     public class ScreenCaptureWindow : Window
