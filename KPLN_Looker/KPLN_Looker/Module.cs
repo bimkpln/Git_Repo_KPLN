@@ -42,6 +42,29 @@ namespace KPLN_Looker
         private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 10, 0);
 
         /// <summary>
+        /// Вариативность аббр. имён разбивочного файла
+        /// </summary>
+        private readonly string[] _rfFileNames = new string[]
+        {
+            "_рф",
+            "рф_",
+            "-рф",
+            "рф-",
+            "_разб.файл",
+            "разб.файл_",
+            "-разб.файл",
+            "разб.файл-",
+            "_разбфайл",
+            "разбфайл_",
+            "-разбфайл",
+            "разбфайл-",
+            "_разбив",
+            "разбив_",
+            "-разбив",
+            "разбив-",
+        };
+
+        /// <summary>
         /// Метка закрытого для пользователя проекта
         /// </summary>
         private bool _isProjectCloseToUser;
@@ -1057,8 +1080,13 @@ namespace KPLN_Looker
             #region Автопроверки (лучше в конец, чтобы всё остальное отработало корректно)
             if (RunAutoChecks)
             {
-                UIApplication uiApp = new UIApplication(doc.Application);
-                CheckBatchRunner.RunAll(uiApp, doc.Title);
+                // Модели РФ не проверяем вообще (там нет мониторинга, нет линков. Естьо РН есть, но они не критичны)
+                bool containsRf = _rfFileNames.Any(m => doc.PathName.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (!containsRf)
+                {
+                    UIApplication uiApp = new UIApplication(doc.Application);
+                    CheckBatchRunner.RunAll(uiApp, doc.Title);
+                }
             }
             #endregion
         }
