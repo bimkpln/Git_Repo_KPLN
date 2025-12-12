@@ -206,8 +206,8 @@
             <Border Grid.Row="1" Margin="10,0,0,10" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FFFFFF">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                     <Button x:Name="BtnCopyInView" Content="Копировать вид с узлом в документ   📝"  Width="270" MinHeight="26" Margin="4" IsEnabled="False" Click="BtnCopyInView_Click"/>
-                    <Button x:Name="BtnCopyElements"   Content="Копировать узел на открытый вид/лист   📋"  Width="270" MinHeight="26"  Margin="4" IsEnabled="False" Click="BtnCopyElements_Click"/>
-                    <Button x:Name="BtnSettings" IsEnabled="False" Content="Настройки  ⚙️"  Width="120" MinHeight="26" Margin="245, 4, 4, 4" Click="BtnSettings_Click"/>
+                    <Button x:Name="BtnCopyElements"   Content="Копировать узел на открытый вид/лист/легенду   📋"  Width="320" MinHeight="26"  Margin="4" IsEnabled="False" Click="BtnCopyElements_Click"/>
+                    <Button x:Name="BtnSettings" IsEnabled="False" Content="Настройки  ⚙️"  Width="120" MinHeight="26" Margin="200, 4, 4, 4" Click="BtnSettings_Click"/>
                 </StackPanel>
             </Border>
 
