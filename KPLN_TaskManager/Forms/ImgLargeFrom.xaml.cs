@@ -28,6 +28,7 @@ namespace KPLN_TaskManager.Forms
 
             InitializeComponent();
 
+            Owner = tiView;
             DataContext = this;
             ILF_DeleteBtn.IsEnabled = _tiView.IsCreatorEditable;
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);

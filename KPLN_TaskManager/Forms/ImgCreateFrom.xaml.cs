@@ -14,10 +14,11 @@ namespace KPLN_TaskManager.Forms
     /// </summary>
     public partial class ImgCreateFrom : Window
     {
-        public ImgCreateFrom()
+        public ImgCreateFrom(Window owner)
         {
             InitializeComponent();
             inkCanvas.EditingMode = InkCanvasEditingMode.None;
+            Owner = owner;
 
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
@@ -33,7 +34,7 @@ namespace KPLN_TaskManager.Forms
         {
             this.Hide();
 
-            ImgSelectionFrom imgSelectionFrom = new ImgSelectionFrom();
+            ImgSelectionFrom imgSelectionFrom = new ImgSelectionFrom(this);
             bool? formResult = imgSelectionFrom.ShowDialog();
 
             if ((bool)formResult)

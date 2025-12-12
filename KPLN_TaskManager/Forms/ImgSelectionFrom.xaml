@@ -9,8 +9,7 @@
     WindowStyle="None"
     WindowState="Maximized"
     Background="#01FFFFFF"
-    AllowsTransparency="True"
-    Topmost="True">
+    AllowsTransparency="True">
 
     <Canvas 
         Name="SelectionCanvas" 

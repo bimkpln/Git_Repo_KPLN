@@ -11,7 +11,6 @@
     Height="Auto"
     MaxHeight="1050"
     SizeToContent="Height"
-    Topmost="True"
     ResizeMode="CanResizeWithGrip"
     Background="White">
 

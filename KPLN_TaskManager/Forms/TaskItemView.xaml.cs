@@ -475,9 +475,7 @@ namespace KPLN_TaskManager.Forms
             ImgLargeFrom imgLargeFrom = new ImgLargeFrom(this, CurrentTaskItemEntity);
             WindowHandleSearch.MainWindowHandle.SetAsOwner(imgLargeFrom);
 
-            this.Hide();
-            imgLargeFrom.ShowDialog();
-            this.Show();
+            imgLargeFrom.Show();
         }
 
         [Obsolete("!!!НУЖНО ПРОТЕСТИРОВАТЬ!!!")]

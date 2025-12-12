@@ -15,9 +15,11 @@ namespace KPLN_TaskManager.Forms
         private System.Windows.Point endPoint;
         private bool isSelecting = false;
 
-        public ImgSelectionFrom()
+        public ImgSelectionFrom(Window owner)
         {
             InitializeComponent();
+
+            Owner = owner;
             this.PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
