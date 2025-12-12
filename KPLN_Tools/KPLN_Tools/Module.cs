@@ -14,6 +14,7 @@ namespace KPLN_Tools
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Close()
         {
@@ -24,7 +25,7 @@ namespace KPLN_Tools
         {
             ModuleData.MainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
-            
+
             Command_SETLinkChanger.SetStaticEnvironment(application);
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);
@@ -42,8 +43,7 @@ namespace KPLN_Tools
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName),
-                PngImageSource("KPLN_Tools.Imagens.toolBoxSmall.png"),
-                PngImageSource("KPLN_Tools.Imagens.toolBoxBig.png"),
+                "toolBox",
                 panel,
                 false);
 
@@ -188,7 +188,7 @@ namespace KPLN_Tools
                     "http://moodle");
 
 
-            
+
 
 
 #if Revit2020 || Debug2020
@@ -209,7 +209,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(set_ChangeRSLinks);
 #endif
 
-            
+
 
             sharedPullDownBtn.AddPushButton(autonumber);
             sharedPullDownBtn.AddPushButton(searchUser);
@@ -218,8 +218,8 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(changeLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(ws_Links);
-            
-#endregion
+
+            #endregion
 
             #region Инструменты АР
             if (DBWorkerService.CurrentDBUserSubDepartment.Id == 2 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
@@ -233,8 +233,7 @@ namespace KPLN_Tools
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.arMainSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.arMainBig.png"),
+                    "arMain",
                     panel,
                     false);
 
@@ -304,8 +303,7 @@ namespace KPLN_Tools
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.krMainSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.krMainBig.png"),
+                    "krMain",
                     panel,
                     false);
 
@@ -362,8 +360,7 @@ namespace KPLN_Tools
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.hvacSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.hvacBig.png"),
+                    "ovvkMain",
                     panel,
                 false);
 
@@ -488,8 +485,7 @@ namespace KPLN_Tools
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.ssMainSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.ssMainBig.png"),
+                    "ssMain",
                     panel,
                     false);
 
@@ -542,8 +538,7 @@ namespace KPLN_Tools
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.eomMainSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.eomMainBig.png"),
+                    "eomMain",
                     panel,
                     false);
 
@@ -583,8 +578,7 @@ namespace KPLN_Tools
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName),
-                    PngImageSource("KPLN_Tools.Imagens.holesSmall.png"),
-                    PngImageSource("KPLN_Tools.Imagens.holesBig.png"),
+                    "holes",
                     panel,
                     false);
 
@@ -708,31 +702,34 @@ namespace KPLN_Tools
         /// <param name="text">Имя, видимое пользователю</param>
         /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
-        /// <param name="imgSmall">Картинка маленькая</param>
-        /// <param name="imgBig">Картинка большая</param>
+        /// <param name="imageName">Имя картинки</param>
         private PulldownButton CreatePulldownButtonInRibbon(
             string name,
             string text,
             string shortDescription,
             string longDescription,
-            ImageSource imgSmall,
-            ImageSource imgBig,
+            string imageName,
             RibbonPanel panel,
             bool showName)
         {
-            RibbonItem pullDownRI = panel.AddItem(new PulldownButtonData(name, text)
+            PulldownButton pullDownRI = panel.AddItem(new PulldownButtonData(name, text)
             {
                 ToolTip = shortDescription,
                 LongDescription = longDescription,
-                Image = imgSmall,
-                LargeImage = imgBig,
-            });
+                Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16),
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32),
+            }) as PulldownButton;
 
             // Тонкая настройка видимости RibbonItem
             var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(pullDownRI.GetId());
             revitRibbonItem.ShowText = showName;
 
-            return pullDownRI as PulldownButton;
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((pullDownRI, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
+
+            return pullDownRI;
         }
     }
 }

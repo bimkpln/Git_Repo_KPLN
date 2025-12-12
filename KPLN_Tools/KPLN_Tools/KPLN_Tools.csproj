@@ -16,91 +16,65 @@
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2020\</OutputPath>
-    <DefineConstants>Revit2020</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <Optimize>true</Optimize>
-    <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
-    <ErrorReport>none</ErrorReport>
-    <WarningLevel>3</WarningLevel>
+  <!-- Анализ Configuration для получения версии-->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020'">
+    <RevitVer>2020</RevitVer>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2023\</OutputPath>
-    <DefineConstants>Revit2023</DefineConstants>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Revit2023'">
+    <RevitVer>2023</RevitVer>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\2024\</OutputPath>
-    <DefineConstants>Revit2024</DefineConstants>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024'">
+    <RevitVer>2024</RevitVer>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+  <!-- DEBUG CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Debug$(RevitVer)|x64' ">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
-    <DefineConstants>DEBUG;Debug2020</DefineConstants>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\$(RevitVer)\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug$(RevitVer)</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <!-- RELEASE CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)|x64' ">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\$(RevitVer)\</OutputPath>
+    <DefineConstants>Revit$(RevitVer)</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
     <PlatformTarget>x64</PlatformTarget>
     <LangVersion>7.3</LangVersion>
-    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <!-- PROJECT REFERENCES -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <DebugSymbols>true</DebugSymbols>
     <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2023\</OutputPath>
-    <DefineConstants>DEBUG;Debug2023</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
-    <DebugSymbols>true</DebugSymbols>
     <OutputPath>C:\KPLN_Debug\KPLN_Tools\Debug\2024\</OutputPath>
-    <DefineConstants>DEBUG;Debug2024</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
       <HintPath>C:\Program Files\Autodesk\Revit 2020\AdWindows.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLNDataBase">
-      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader\Libraries\KPLN_DataBase\KPLNDataBase.dll</HintPath>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_Bitrix24Worker">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\obj\Revit2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_ExtensibleStorage">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\2023\KPLN_Library_ExtensibleStorage.dll</HintPath>
+    <Reference Include="UIFramework">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
       <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_Forms">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-    </Reference>
-    <Reference Include="KPLN_Library_PluginActivityWorker, Version=1.1.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
-    </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_ModelChecker_Lib">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
@@ -143,215 +117,100 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+  <!-- CONFIG REFERENCES -->
   <Choose>
-    <When Condition=" '$(Configuration)'=='Debug2020' ">
+    <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_PluginActivityWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2020\KPLN_Library_ConfigWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+        <Reference Include="KPLN_Library_ExtensibleStorage">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Debug\$(RevitVer)\KPLN_Library_ExtensibleStorage.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\UIFramework.dll</HintPath>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_PluginActivityWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition=" '$(Configuration)'=='Debug2023' ">
+    <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2023\KPLN_Library_ConfigWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\UIFramework.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Debug2024' ">
-      <ItemGroup>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2024\KPLN_Library_Forms.dll</HintPath>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\2024\KPLN_Library_PluginActivityWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\2024\KPLN_Library_ConfigWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+        <Reference Include="KPLN_Library_Bitrix24Worker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+        <Reference Include="KPLN_Library_ExtensibleStorage">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\$(RevitVer)\KPLN_Library_ExtensibleStorage.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\UIFramework.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2020' ">
-      <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2020\KPLN_Library_Forms.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2020\KPLN_Library_ConfigWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\UIFramework.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2023' ">
-      <ItemGroup>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2023\KPLN_Library_ConfigWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\UIFramework.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2024' ">
-      <ItemGroup>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2024\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2024\KPLN_Library_PluginActivityWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\2024\KPLN_Library_ConfigWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="UIFramework">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\UIFramework.dll</HintPath>
+        <Reference Include="KPLN_ModelChecker_Lib">
+          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -539,32 +398,20 @@
     <EmbeddedResource Include="Imagens\autonumberSmall.png" />
     <EmbeddedResource Include="Imagens\dimHeplerSmall.png" />
     <EmbeddedResource Include="Imagens\wipeSmall.png" />
-    <EmbeddedResource Include="Imagens\toolBoxBig.png" />
-    <EmbeddedResource Include="Imagens\toolBoxSmall.png" />
-    <EmbeddedResource Include="Imagens\holesBig.png" />
-    <EmbeddedResource Include="Imagens\holesSmall.png" />
     <EmbeddedResource Include="Imagens\holesManagerBig.png" />
     <EmbeddedResource Include="Imagens\holesManagerSmall.png" />
     <EmbeddedResource Include="Imagens\checkHolesFlippingBig.png" />
     <EmbeddedResource Include="Imagens\checkHolesFlippingSmall.png" />
     <EmbeddedResource Include="Imagens\searchUserBig.png" />
     <EmbeddedResource Include="Imagens\searchUserSmall.png" />
-    <EmbeddedResource Include="Imagens\krMainBig.png" />
-    <EmbeddedResource Include="Imagens\krMainSmall.png" />
     <EmbeddedResource Include="Imagens\monitorMainBig.png" />
     <EmbeddedResource Include="Imagens\monitorMainSmall.png" />
-    <EmbeddedResource Include="Imagens\ssMainBig.png" />
-    <EmbeddedResource Include="Imagens\ssMainSmall.png" />
     <EmbeddedResource Include="Imagens\ssSystemsSmall.png" />
-    <EmbeddedResource Include="Imagens\hvacBig.png" />
-    <EmbeddedResource Include="Imagens\hvacSmall.png" />
     <EmbeddedResource Include="Imagens\pipeThicknessBig.png" />
     <EmbeddedResource Include="Imagens\pipeThicknessSmall.png" />
     <EmbeddedResource Include="Imagens\changeLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeLevelSmall.png" />
     <EmbeddedResource Include="Imagens\smlt_Small.png" />
-    <EmbeddedResource Include="Imagens\arMainBig.png" />
-    <EmbeddedResource Include="Imagens\arMainSmall.png" />
     <EmbeddedResource Include="Imagens\ductThicknessBig.png" />
     <EmbeddedResource Include="Imagens\ductThicknessSmall.png" />
     <EmbeddedResource Include="Imagens\ozkDuctAccessoryBig.png" />
@@ -577,8 +424,6 @@
     <EmbeddedResource Include="Imagens\sendMsgSmall.png" />
     <EmbeddedResource Include="Imagens\systemMangerBig.png" />
     <EmbeddedResource Include="Imagens\systemMangerSmall.png" />
-    <EmbeddedResource Include="Imagens\eomMainBig.png" />
-    <EmbeddedResource Include="Imagens\eomMainSmall.png" />
     <EmbeddedResource Include="Imagens\gnsAreaBig.png" />
     <EmbeddedResource Include="Imagens\gnsAreaSmall.png" />
     <EmbeddedResource Include="Imagens\TEPDesignBig.png" />
@@ -593,6 +438,34 @@
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Resource Include="Imagens\toolBox16.png" />
+    <Resource Include="Imagens\toolBox16_dark.png" />
+    <Resource Include="Imagens\toolBox32.png" />
+    <Resource Include="Imagens\toolBox32_dark.png" />
+    <Resource Include="Imagens\arMain16.png" />
+    <Resource Include="Imagens\arMain16_dark.png" />
+    <Resource Include="Imagens\arMain32.png" />
+    <Resource Include="Imagens\arMain32_dark.png" />
+    <Resource Include="Imagens\eomMain16.png" />
+    <Resource Include="Imagens\eomMain16_dark.png" />
+    <Resource Include="Imagens\eomMain32.png" />
+    <Resource Include="Imagens\eomMain32_dark.png" />
+    <Resource Include="Imagens\krMain16.png" />
+    <Resource Include="Imagens\krMain32.png" />
+    <Resource Include="Imagens\ovvkMain16.png" />
+    <Resource Include="Imagens\ovvkMain16_dark.png" />
+    <Resource Include="Imagens\ovvkMain32.png" />
+    <Resource Include="Imagens\ovvkMain32_dark.png" />
+    <Resource Include="Imagens\ssMain16.png" />
+    <Resource Include="Imagens\ssMain16_dark.png" />
+    <Resource Include="Imagens\ssMain32.png" />
+    <Resource Include="Imagens\ssMain32_dark.png" />
+    <Resource Include="Imagens\krMain16_dark.png" />
+    <Resource Include="Imagens\krMain32_dark.png" />
+    <Resource Include="Imagens\holes16.png" />
+    <Resource Include="Imagens\holes16_dark.png" />
+    <Resource Include="Imagens\holes32.png" />
+    <Resource Include="Imagens\holes32_dark.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

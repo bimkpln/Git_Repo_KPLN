@@ -19,7 +19,7 @@ namespace KPLN_Tools.Properties {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "18.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     internal class Resources {
@@ -57,26 +57,6 @@ namespace KPLN_Tools.Properties {
             }
             set {
                 resourceCulture = value;
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap arMainBig {
-            get {
-                object obj = ResourceManager.GetObject("arMainBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap arMainSmall {
-            get {
-                object obj = ResourceManager.GetObject("arMainSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
@@ -183,26 +163,6 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap eomMainBig {
-            get {
-                object obj = ResourceManager.GetObject("eomMainBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap eomMainSmall {
-            get {
-                object obj = ResourceManager.GetObject("eomMainSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap gnsAreaBig {
             get {
                 object obj = ResourceManager.GetObject("gnsAreaBig", resourceCulture);
@@ -223,16 +183,6 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap holesBig {
-            get {
-                object obj = ResourceManager.GetObject("holesBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap holesManagerBig {
             get {
                 object obj = ResourceManager.GetObject("holesManagerBig", resourceCulture);
@@ -246,56 +196,6 @@ namespace KPLN_Tools.Properties {
         internal static System.Drawing.Bitmap holesManagerSmall {
             get {
                 object obj = ResourceManager.GetObject("holesManagerSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap holesSmall {
-            get {
-                object obj = ResourceManager.GetObject("holesSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap hvacBig {
-            get {
-                object obj = ResourceManager.GetObject("hvacBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap hvacSmall {
-            get {
-                object obj = ResourceManager.GetObject("hvacSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap krMainBig {
-            get {
-                object obj = ResourceManager.GetObject("krMainBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap krMainSmall {
-            get {
-                object obj = ResourceManager.GetObject("krMainSmall", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -433,26 +333,6 @@ namespace KPLN_Tools.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap ssMainBig {
-            get {
-                object obj = ResourceManager.GetObject("ssMainBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap ssMainSmall {
-            get {
-                object obj = ResourceManager.GetObject("ssMainSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap ssSystemsSmall {
             get {
                 object obj = ResourceManager.GetObject("ssSystemsSmall", resourceCulture);
@@ -476,26 +356,6 @@ namespace KPLN_Tools.Properties {
         internal static System.Drawing.Bitmap systemMangerSmall {
             get {
                 object obj = ResourceManager.GetObject("systemMangerSmall", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap toolBoxBig {
-            get {
-                object obj = ResourceManager.GetObject("toolBoxBig", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap toolBoxSmall {
-            get {
-                object obj = ResourceManager.GetObject("toolBoxSmall", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
