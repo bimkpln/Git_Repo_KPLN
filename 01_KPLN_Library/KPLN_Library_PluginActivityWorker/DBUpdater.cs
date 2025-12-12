@@ -62,6 +62,7 @@ namespace KPLN_Library_PluginActivityWorker
             }
 
             currentPluginActivity.UsageCount++;
+            currentPluginActivity.LastActivityDate = currentDate;
 
             _pluginActivityDbService.UpdatePluginActivity_ByPluginActivityAndSubDep(currentPluginActivity, _dBUser.SubDepartmentId);
         }
