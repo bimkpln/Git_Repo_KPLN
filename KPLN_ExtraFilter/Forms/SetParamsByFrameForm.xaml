@@ -65,7 +65,8 @@
                                         Grid.Row="0" 
                                         Style="{StaticResource RCTG}">
                                         <StackPanel
-                                            Orientation="Vertical">
+                                            Orientation="Vertical"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
 
                                             <TextBlock
                                                 Style="{StaticResource TXT}"
@@ -108,10 +109,10 @@
                                             <StackPanel.ContextMenu>
                                                 <ContextMenu>
                                                     <MenuItem 
-                                                        Header="Удалить" 
+                                                        Header="Удалить"
                                                         Command="{Binding 
-                                                            CurrentSetParamsByFrameVM.RemoveParamCmd,
-                                                            RelativeSource={RelativeSource AncestorType=Window}}"
+                                                            PlacementTarget.Tag.RemoveParamCmd,
+                                                            RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                         CommandParameter="{Binding}"/>
                                                 </ContextMenu>
                                             </StackPanel.ContextMenu>
@@ -145,7 +146,7 @@
                     Width="150" 
                     Height="30"
                     ToolTip="Добавить новый параметр в список"
-                    IsEnabled="{Binding CurrentSetParamsByFrameM.CanRun, UpdateSourceTrigger=PropertyChanged}"
+                    IsEnabled="{Binding CurrentSetParamsByFrameM.CanAddParam, UpdateSourceTrigger=PropertyChanged}"
                     Command="{Binding AddNewParamCmd}">
                     <Button.Content>
                         <TextBlock

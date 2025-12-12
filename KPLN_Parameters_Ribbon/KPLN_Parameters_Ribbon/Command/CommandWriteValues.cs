@@ -249,7 +249,7 @@ namespace KPLN_Parameters_Ribbon.Command
                                 if (intParamDef.VariesAcrossGroups)
                                     SetElemParamByRule(sourceParameter, targetParameter, pb);
                                 // Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами, НО они не в группе
-                                else if (element.GroupId.IntegerValue == -1)
+                                else if (element.GroupId.Equals(ElementId.InvalidElementId))
                                     SetElemParamByRule(sourceParameter, targetParameter, pb);
                             }
                             else

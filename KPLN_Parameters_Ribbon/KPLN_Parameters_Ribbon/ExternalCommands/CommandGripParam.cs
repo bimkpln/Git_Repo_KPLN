@@ -22,7 +22,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             Document doc = uiapp.ActiveUIDocument.Document;
 
             AbstrGripBuilder gripBuilder = null;
-            int userDepartment = Module.CurrentDBUser.SubDepartmentId;
+            int userDepartment = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser.SubDepartmentId;
             try
             {
                 string docPath = doc.Title.ToUpper();

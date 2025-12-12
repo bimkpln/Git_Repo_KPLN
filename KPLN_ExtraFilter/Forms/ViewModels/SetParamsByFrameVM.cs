@@ -5,6 +5,7 @@ using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
 using KPLN_Library_ConfigWorker;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 
@@ -18,7 +19,7 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         {
             _mainWindow = mainWindow;
             CurrentSetParamsByFrameM = new SetParamsByFrameM(doc, userSelElems);
-            CurrentSetParamsByFrameM.RunButtonContext();
+            CurrentSetParamsByFrameM.UpdateScriptANDCanRunANDUserHelp();
 
             // Чтение конфигурации последнего запуска
             object lastRunConfigObj = ConfigService.ReadConfigFile<SetParamsByFrameM_ParamM>(ModuleData.RevitVersion, doc, ConfigType.Memory);
@@ -26,6 +27,9 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             {
                 foreach (SetParamsByFrameM_ParamM paramM in paramMs)
                 {
+                    if (paramM.ParamM_DocParameters == null || paramM.ParamM_SelectedParameter == null)
+                        continue;
+                    
                     var newParamM = new SetParamsByFrameM_ParamM(CurrentSetParamsByFrameM)
                     {
                         SearchParamText = paramM.SearchParamText,
@@ -81,16 +85,14 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             SetParamsByFrameM_ParamM defaultMI = new SetParamsByFrameM_ParamM(CurrentSetParamsByFrameM);
             CurrentSetParamsByFrameM.ParamItems.Add(defaultMI);
 
-            CurrentSetParamsByFrameM.UpdateCanRunANDUserHelp();
-            CurrentSetParamsByFrameM.RunButtonContext();
+            CurrentSetParamsByFrameM.UpdateScriptANDCanRunANDUserHelp();
         }
 
         public void ClearingParam()
         {
             CurrentSetParamsByFrameM.ParamItems.Clear();
 
-            CurrentSetParamsByFrameM.UpdateCanRunANDUserHelp();
-            CurrentSetParamsByFrameM.RunButtonContext();
+            CurrentSetParamsByFrameM.UpdateScriptANDCanRunANDUserHelp();
         }
 
         public void RemoveParam(SetParamsByFrameM_ParamM item)
@@ -102,8 +104,7 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             {
                 CurrentSetParamsByFrameM.ParamItems.Remove(item);
 
-                CurrentSetParamsByFrameM.UpdateCanRunANDUserHelp();
-                CurrentSetParamsByFrameM.RunButtonContext();
+                CurrentSetParamsByFrameM.UpdateScriptANDCanRunANDUserHelp();
             }
         }
 

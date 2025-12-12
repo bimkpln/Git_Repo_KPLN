@@ -96,7 +96,11 @@ namespace KPLN_Parameters_Ribbon.Forms
                         param,
                         param.Definition.Name,
                         string.Format("{0} : <{1}>",
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                         LabelUtils.GetLabelFor(param.Definition.ParameterGroup),
+#else
+                        LabelUtils.GetLabelForGroup(param.Definition.GetGroupTypeId()),
+#endif
                         param.StorageType.ToString("G"))));
                 }
 

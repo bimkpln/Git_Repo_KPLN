@@ -31,7 +31,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
             set
             {
                 // запомним имя предыдущего выбора (если был)
-                int prevParamId = _paramM_SelectedParameter == null ? -1 : _paramM_SelectedParameter.RevitParamIntId;
+                long prevParamId = _paramM_SelectedParameter == null ? -1 : _paramM_SelectedParameter.RevitParamIntId;
 
                 _paramM_UserSelElems = value;
                 NotifyPropertyChanged();
@@ -98,7 +98,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// Восстанавливает выбранный параметр, если в текущем View есть параметр с тем же id.
         /// </summary>
-        public void RestoreSelectedParamById(int prevParamId)
+        public void RestoreSelectedParamById(long prevParamId)
         {
             // если нет предыдущего выбора или View — просто ничего не делаем
             if (prevParamId == -1 || ParamM_ParamFilter?.View == null)

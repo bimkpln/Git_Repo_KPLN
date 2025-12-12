@@ -11,6 +11,26 @@ using System.Runtime.CompilerServices;
 
 namespace KPLN_ExtraFilter.Forms.Entities
 {
+    /// <summary>
+    /// Сценарий запуска
+    /// </summary>
+    public enum SetParamsByFrameScript
+    {
+        /// <summary>
+        /// Выделить элементы, включая вложенности
+        /// </summary>
+        SelectDependentElements,
+        /// <summary>
+        /// Запуск рамки выбора
+        /// </summary>
+        SelectElementsByFrame,
+        /// <summary>
+        /// Заполнить параметры, включая вложенности
+        /// </summary>
+        SetElementsParameters,
+    }
+
+
     public class SetParamsByFrameM : INotifyPropertyChanged, IJsonSerializable
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -20,26 +40,27 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private string _userInputParamValue;
         private string _runButtonName;
         private string _runButtonTooltip;
+        private bool _canAddParam = false;
         private bool _canRun = false;
         private string _userHelp;
 
         [JsonConstructor]
         public SetParamsByFrameM()
         {
-            RunButtonContext();
+            SetScriptAndRunButtonContext();
         }
 
         public SetParamsByFrameM(Document doc)
         {
             Doc = doc;
-            UpdateCanRunANDUserHelp();
+            UpdateScriptANDCanRunANDUserHelp();
         }
 
         public SetParamsByFrameM(Document doc, IEnumerable<Element> userSelElems)
         {
             Doc = doc;
             UserSelElems = userSelElems;
-            UpdateCanRunANDUserHelp();
+            UpdateScriptANDCanRunANDUserHelp();
         }
 
 
@@ -58,6 +79,11 @@ namespace KPLN_ExtraFilter.Forms.Entities
         }
 
         /// <summary>
+        /// Тип текущего сценария
+        /// </summary>
+        public SetParamsByFrameScript CurrentScript { get; private set; } = SetParamsByFrameScript.SelectElementsByFrame;
+
+        /// <summary>
         /// Пользовательский выбор из модели
         /// </summary>
         public IEnumerable<Element> UserSelElems
@@ -71,7 +97,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                     if (ParamItems.Count > 0)
                         ReloadParams();
 
-                    UpdateCanRunANDUserHelp();
+                    UpdateScriptANDCanRunANDUserHelp();
                 }
             }
         }
@@ -121,6 +147,19 @@ namespace KPLN_ExtraFilter.Forms.Entities
         }
 
         /// <summary>
+        /// Маркер возможности добавления параметра
+        /// </summary>
+        public bool CanAddParam
+        {
+            get => _canAddParam;
+            set
+            {
+                _canAddParam = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// Маркер возможности запуска
         /// </summary>
         public bool CanRun
@@ -152,32 +191,18 @@ namespace KPLN_ExtraFilter.Forms.Entities
         };
 
         /// <summary>
-        /// Установить данные по кнопке
-        /// </summary>
-        public void RunButtonContext()
-        {
-            if (ParamItems.Count > 0)
-            {
-                RunButtonName = "Заполнить!";
-                RunButtonTooltip = "Заполнить указанные параметры указанными значениями для выделенных элементов, включая вложенные";
-            }
-            else
-            {
-                RunButtonName = "Выделить!";
-                RunButtonTooltip = "К выделенным в модели элементам - добавятся вложенные элементы";
-            }
-        }
-
-        /// <summary>
         /// Обновить статус возможности запуска и текстовых подсказок
         /// </summary>
-        public void UpdateCanRunANDUserHelp()
+        public void UpdateScriptANDCanRunANDUserHelp()
         {
+            SetScriptAndRunButtonContext();
+
             // Не выделен элемент
             if (UserSelElems == null || UserSelElems.Count() == 0)
             {
                 UserHelp = "Выбери элементы для анализа";
-                CanRun = false;
+                CanAddParam = false;
+                CanRun = true;
                 return;
             }
 
@@ -185,7 +210,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
             bool isParamItem = ParamItems.Any(paramM => paramM.ParamM_SelectedParameter == null);
             if (isParamItem)
             {
-                UserHelp = "Выбери параметр для заполнения";
+                UserHelp = "Выбери параметр для заполнения, или удали (кнопака Очистить, или через ПКМ по параметру)";
+                CanAddParam = false;
                 CanRun = false;
                 return;
             }
@@ -193,13 +219,49 @@ namespace KPLN_ExtraFilter.Forms.Entities
             // Не указано значение в параметре
             if (!isParamItem && ParamItems.Any(paramM => paramM.ParamM_InputValue == null))
             {
-                UserHelp = "Укажи значение параметра для заполнения";
+                UserHelp = "Укажи значение параметра для заполнения, или удали (кнопака Очистить, или через ПКМ по параметру)";
+                CanAddParam = false;
                 CanRun = false;
                 return;
             }
 
             UserHelp = string.Empty;
+            CanAddParam = true;
             CanRun = true;
+        }
+
+        /// <summary>
+        /// Определиться со сценарием запуска и установить данные по кнопке
+        /// </summary>
+        private void SetScriptAndRunButtonContext()
+        {
+            // Обновляю сценарий
+            if (ParamItems.Count > 0 && UserSelElems.Count() != 0)
+                CurrentScript = SetParamsByFrameScript.SetElementsParameters;
+            else if (ParamItems.Count > 0 && UserSelElems.Count() == 0)
+                CurrentScript = SetParamsByFrameScript.SelectElementsByFrame;
+            else if (UserSelElems.Count() == 0)
+                CurrentScript = SetParamsByFrameScript.SelectElementsByFrame;
+            else
+                CurrentScript = SetParamsByFrameScript.SelectDependentElements;
+
+
+            // Устанавливаю кнопки
+            switch (CurrentScript)
+            {
+                case SetParamsByFrameScript.SetElementsParameters:
+                    RunButtonName = "Заполнить!";
+                    RunButtonTooltip = "Заполнить указанные параметры указанными значениями для выделенных элементов, включая вложенные";
+                    break;
+                case SetParamsByFrameScript.SelectElementsByFrame:
+                    RunButtonName = "Выделить рамкой!";
+                    RunButtonTooltip = "Включается режим рамки, которая может выбирать элементы не реагируя на вложенность в группу";
+                    break;
+                case SetParamsByFrameScript.SelectDependentElements:
+                    RunButtonName = "Выделить!";
+                    RunButtonTooltip = "К выделенным в модели элементам - добавятся вложенные элементы";
+                    break;
+            }
         }
 
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>

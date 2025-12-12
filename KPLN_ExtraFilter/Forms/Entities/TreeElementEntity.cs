@@ -154,31 +154,23 @@ namespace KPLN_ExtraFilter.Forms.Entities
                             string typeName = null;
 
                             if (el is ElementType elType)
-                            {
                                 typeName = elType.Name;
-                            }
                             else if (el is FamilyInstance fi)
-                            {
                                 typeName = fi.Symbol?.Name;
-                            }
                             else
                             {
                                 // Пробуем взять имя типа параметрами
-                                Parameter typeParam =
-                                    el.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM) ??
-                                    el.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM);
+                                string typeParamVal =
+                                    el.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM)?.AsValueString() ??
+                                    el.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM)?.AsValueString();
 
-                                if (typeParam != null)
+                                if (!string.IsNullOrEmpty(typeParamVal))
                                 {
-                                    string val = typeParam.AsValueString();
-                                    if (!string.IsNullOrEmpty(val))
-                                    {
-                                        // Для "Семейство : Тип" откусываем часть после двоеточия
-                                        int idx = val.IndexOf(':');
-                                        typeName = idx >= 0 && idx < val.Length - 1
-                                            ? val.Substring(idx + 1).Trim()
-                                            : val;
-                                    }
+                                    // Для "Семейство : Тип" откусываем часть после двоеточия
+                                    int idx = typeParamVal.IndexOf(':');
+                                    typeName = idx >= 0 && idx < typeParamVal.Length - 1
+                                        ? typeParamVal.Substring(idx + 1).Trim()
+                                        : typeParamVal;
                                 }
                             }
 

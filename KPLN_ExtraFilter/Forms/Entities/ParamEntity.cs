@@ -14,7 +14,11 @@ namespace KPLN_ExtraFilter.Forms.Entities
         public ParamEntity(Parameter param)
         {
             RevitParamName = param.Definition.Name;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
             RevitParamIntId = param.Id.IntegerValue;
+#else
+            RevitParamIntId = param.Id.Value;
+#endif
         }
 
         public ParamEntity(Parameter param, string tooltip) : this (param)
@@ -30,7 +34,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// ID параметра
         /// </summary>
-        public int RevitParamIntId { get; set; }
+        public long RevitParamIntId { get; set; }
 
         /// <summary>
         /// Дополнительное описание пар-ра для wpf

@@ -37,8 +37,12 @@ namespace KPLN_ExtraFilter.Common
             
             foreach (Category c in selectedCategories)
             {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 if (c.Id.IntegerValue != (int)BuiltInCategory.OST_Views)
-                    return true;
+#else
+                if (c.BuiltInCategory != BuiltInCategory.OST_Views)
+#endif
+                return true;
             }
 
             return false;

@@ -100,7 +100,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                 // Исключаю элементы в группах
                 if (_entity.Belong_Group)
                     _resultColl
-                        .AddRange(mainFIC.WherePasses(combinedFilter).Where(el => el.GroupId.IntegerValue == -1)
+                        .AddRange(mainFIC.WherePasses(combinedFilter).Where(el => el.GroupId.Equals(ElementId.InvalidElementId))
                         .Select(el => el.Id));
                 else
                     _resultColl.AddRange(mainFIC.WherePasses(combinedFilter).ToElementIds());

@@ -95,7 +95,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
                 .Where(x =>
-                    ElemsUnderLevel.Any(ent => ent.IEDElem.Id.IntegerValue != x.Id.IntegerValue))
+                    ElemsUnderLevel.Any(ent => !ent.IEDElem.Id.Equals(x.Id)))
                 .Select(e => new InstanceGeomData(e)));
 
             // Категория "Перекрытия" над уровнем
@@ -103,7 +103,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
                 .Where(x =>
-                    ElemsUnderLevel.Any(ent => ent.IEDElem.Id.IntegerValue != x.Id.IntegerValue))
+                    ElemsUnderLevel.Any(ent => !ent.IEDElem.Id.Equals(x.Id)))
                 .Select(e => new InstanceGeomData(e)));
 
             // Семейства "Обобщенные модели" над уровнем
@@ -111,7 +111,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .OfClass(typeof(FamilyInstance))
                 .OfCategory(BuiltInCategory.OST_GenericModel)
                 .Cast<FamilyInstance>()
-                .Where(i => ElemsUnderLevel.Any(ent => ent.IEDElem.Id.IntegerValue != i.Id.IntegerValue))
+                .Where(x => 
+                    ElemsUnderLevel.Any(ent => !ent.IEDElem.Id.Equals(x.Id)))
                 .Select(e => new InstanceGeomData(e)));
 
             // Семейства "Окна" над уровнем

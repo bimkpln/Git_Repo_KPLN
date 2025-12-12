@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
+using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
@@ -41,6 +42,14 @@ namespace KPLN_ExtraFilter.ExecutableCommand
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SetParamsByFrameExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             try
             {
+                // Запуск рамки самодостаточен и по итогу - завершается 
+                if (_entity.CurrentScript == SetParamsByFrameScript.SelectElementsByFrame)
+                {
+                    _entity.UserSelElems = SelectionSearchFilter.UserSelectedFilters(uidoc);
+                    return Result.Succeeded;
+                }
+                
+                
                 // Получаю коллекцию экстравыбора
                 IEnumerable<Element> extraSel = ExtraSelection(_entity.Doc, _entity.UserSelElems);
 
@@ -138,11 +147,16 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                 foreach (ElementId id in depElems)
                 {
                     Element currentElem = doc.GetElement(id);
-                    if (currentElem.Id.IntegerValue == elem.Id.IntegerValue)
+                    if (currentElem.Id.Equals(elem.Id))
                         continue;
 
                     // Игнорирую балясины (отдельно в спеки не идут)
-                    if (currentElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StairsRailingBaluster)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    BuiltInCategory bic = (BuiltInCategory)currentElem.Category.Id.IntegerValue;
+#else
+                    BuiltInCategory bic = currentElem.Category.BuiltInCategory;
+#endif
+                    if (bic == BuiltInCategory.OST_StairsRailingBaluster)
                         continue;
 
                     // Предварительно фильтрую общие вложенные семейства

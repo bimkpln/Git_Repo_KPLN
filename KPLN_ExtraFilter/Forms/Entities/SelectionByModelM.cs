@@ -491,8 +491,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
             // Исключаю группы
             if (Belong_Group)
             {
-                elemsNoCat = elemsNoCat.Where(el => el.GroupId.IntegerValue == -1).ToList();
-                elemsWithCat = elemsWithCat.Where(el => el.GroupId.IntegerValue == -1);
+                elemsNoCat = elemsNoCat.Where(el => el.GroupId.Equals(ElementId.InvalidElementId)).ToList();
+                elemsWithCat = elemsWithCat.Where(el => el.GroupId.Equals(ElementId.InvalidElementId));
             }
 
 
@@ -529,10 +529,16 @@ namespace KPLN_ExtraFilter.Forms.Entities
             if (a.Length != b.Length)
                 return false;
 
-            // параўнанне па ElementId
+            // Сравнение по ElementId
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
             return a.Select(e => e.Id.IntegerValue)
                     .OrderBy(id => id)
                     .SequenceEqual(b.Select(e => e.Id.IntegerValue).OrderBy(id => id));
+#else
+            return a.Select(e => e.Id.Value)
+                    .OrderBy(id => id)
+                    .SequenceEqual(b.Select(e => e.Id.Value).OrderBy(id => id));
+#endif
         }
 
         /// <summary>

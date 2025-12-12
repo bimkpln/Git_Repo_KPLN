@@ -42,7 +42,7 @@ namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
             set
             {
                 // запомним имя предыдущего выбора (если был)
-                int prevParamId = _paramM_SelectedParameter == null ? -1 : _paramM_SelectedParameter.RevitParamIntId;
+                long prevParamId = _paramM_SelectedParameter == null ? -1 : _paramM_SelectedParameter.RevitParamIntId;
 
                 _paramM_UserSelElems = value;
                 NotifyPropertyChanged();
@@ -86,9 +86,15 @@ namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
                 foreach (Parameter param in elemsParams)
                 {
                     string toolTip = string.Empty;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    int paramId = param.Id.IntegerValue;                    
+#else
+                    long paramId = param.Id.Value;
+#endif
+                    
                     if (param.IsShared)
                         toolTip = $"Id: {param.Id}, GUID: {param.GUID}";
-                    else if (param.Id.IntegerValue < 0)
+                    else if (paramId < 0)
                         toolTip = $"Id: {param.Id}, это СИСТЕМНЫЙ параметр проекта";
                     else
                         toolTip = $"Id: {param.Id}, это ПОЛЬЗОВАТЕЛЬСКИЙ параметр проекта";
@@ -112,8 +118,7 @@ namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
                 _paramM_SelectedParameter = value;
                 NotifyPropertyChanged();
 
-                _modelM.UpdateCanRunANDUserHelp();
-                _modelM.RunButtonContext();
+                _modelM.UpdateScriptANDCanRunANDUserHelp();
             }
         }
 
@@ -128,7 +133,7 @@ namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
                 _paramM_InputValue = value;
                 NotifyPropertyChanged();
 
-                _modelM.UpdateCanRunANDUserHelp();
+                _modelM.UpdateScriptANDCanRunANDUserHelp();
             }
         }
 
@@ -143,7 +148,7 @@ namespace KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame
         /// <summary>
         /// Восстанавливает выбранный параметр, если в текущем View есть параметр с тем же id.
         /// </summary>
-        public void RestoreSelectedParamById(int prevParamId)
+        public void RestoreSelectedParamById(long prevParamId)
         {
             // если нет предыдущего выбора или View — просто ничего не делаем
             if (prevParamId == -1 || ParamM_ParamFilter?.View == null)

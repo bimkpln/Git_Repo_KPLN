@@ -1,31 +1,13 @@
 using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
-using System.IO;
 using System.Reflection;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace KPLN_Parameters_Ribbon
 {
     public class Module : IExternalModule
     {
-        private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        private static DBUser _currentDBUser;
-
-        internal static DBUser CurrentDBUser
-        {
-            get
-            {
-                if (_currentDBUser == null)
-                {
-                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-                    _currentDBUser = userDbService.GetCurrentDBUser();
-                }
-                return _currentDBUser;
-            }
-        }
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Close()
         {
@@ -50,7 +32,7 @@ namespace KPLN_Parameters_Ribbon
                     ModuleData.ModuleName),
                 typeof(ExternalCommands.CommandCopyProjectParams).FullName,
                 panel,
-                "KPLN_Parameters_Ribbon.Imagens.copyProjectParams.png",
+                "copyProjectParams",
                 "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90%22-,%D0%9F%D0%A3%D0%A2%D0%AC,-%D0%9F%D0%B0%D0%BD%D0%B5%D0%BB%D1%8C%20%E2%80%9C%D0%9F%D0%B0%D1%80%D0%B0%D0%BC%D0%B5%D1%82%D1%80%D1%8B%E2%80%9D");
 
             AddPushButtonDataInPanel(
@@ -64,7 +46,7 @@ namespace KPLN_Parameters_Ribbon
                     ModuleData.ModuleName),
                 typeof(ExternalCommands.CommandCopyElemParamData).FullName,
                 panel,
-                "KPLN_Parameters_Ribbon.Imagens.paramSetter.png",
+                "paramSetter",
                 "http://moodle/mod/book/view.php?id=502&chapterid=992");
 
             AddPushButtonDataInPanel(
@@ -78,7 +60,7 @@ namespace KPLN_Parameters_Ribbon
                 ModuleData.ModuleName),
             typeof(ExternalCommands.CommandGripParam).FullName,
             panel,
-            "KPLN_Parameters_Ribbon.Imagens.gripParams.png",
+            "gripParams",
             "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%9E%D0%94%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%22-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%97%D0%90%D0%A5%D0%92%D0%90%D0%A2%D0%9E%D0%9A%22,-%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90");
 
             return Result.Succeeded;
@@ -97,26 +79,19 @@ namespace KPLN_Parameters_Ribbon
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = panel.AddItem(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-        }
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="embeddedPathname">Имя иконки с раширением</param>
-        private ImageSource PngImageSource(string embeddedPathname)
-        {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }
