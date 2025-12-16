@@ -133,7 +133,7 @@
                    TextWrapping="Wrap" 
                    DockPanel.Dock="Top"
                    MouseLeftButtonDown="Instruction_MouseLeftButtonDown"
-                   ToolTip="Если текст подчеркнут - значит есть ссылка на web-ресурс. Нажми ЛМК, чтобы пройти по ссылке :)"/>
+                   ToolTip="Если текст подчеркнут - значит есть ссылка на web-ресурс. Нажми ЛКМ, чтобы пройти по ссылке :)"/>
 
         <Grid 
             Grid.Row="5"
