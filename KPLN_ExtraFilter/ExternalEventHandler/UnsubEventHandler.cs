@@ -4,9 +4,9 @@ using System;
 
 namespace KPLN_ExtraFilter.ExternalEventHandler
 {
-    public sealed class UnsubSelChHandler : IExternalEventHandler
+    public sealed class UnsubEventHandler : IExternalEventHandler
     {
-        public string GetName() => "UnsubSelChHandler";
+        public string GetName() => "UnsubEventHandler";
 
 #if Debug2020 || Revit2020
         public void Execute(UIApplication app) => throw new NotImplementedException();

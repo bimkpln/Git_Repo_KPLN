@@ -65,6 +65,7 @@
     <Style x:Key="TXB" TargetType="TextBox">
         <Setter Property="Foreground" Value="#EDEDED" />
         <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="TextWrapping" Value="Wrap" />
         <Setter Property="Margin" Value="5" />
         <Setter Property="FontSize" Value="14" />
@@ -90,6 +91,14 @@
         <Setter Property="Margin" Value="5" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="DG_TC" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="Black" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+        <Setter Property="Margin" Value="5" />
+        <Setter Property="FontSize" Value="14" />
     </Style>
 
 </ResourceDictionary>

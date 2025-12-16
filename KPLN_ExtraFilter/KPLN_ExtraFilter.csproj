@@ -138,19 +138,23 @@
   <ItemGroup>
     <Compile Include="Common\ButtonAvailable.cs" />
     <Compile Include="Common\DocWorker.cs" />
+    <Compile Include="ExecutableCommand\SelectByIdExсCmd.cs" />
     <Compile Include="ExecutableCommand\SelectionByModelExcCmd.cs" />
     <Compile Include="ExecutableCommand\SelectionByClickExcCmd.cs" />
+    <Compile Include="ExternalCommands\SearchByIdExtCmd.cs" />
     <Compile Include="ExternalCommands\SelectionByModelExtCmd.cs" />
     <Compile Include="ExternalEventHandler\UnsubViewActHandler.cs" />
     <Compile Include="ExternalEventHandler\ViewActivatedHandler.cs" />
     <Compile Include="ExternalEventHandler\SelectionChangedHandler.cs" />
-    <Compile Include="ExternalEventHandler\UnsubSelChHandler.cs" />
+    <Compile Include="ExternalEventHandler\UnsubEventHandler.cs" />
     <Compile Include="Forms\Commands\RelayCommand.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
     <Compile Include="ExecutableCommand\SetParamsByFrameExcCmd.cs" />
     <Compile Include="ExternalCommands\SetParamsByFrameExtCmd.cs" />
     <Compile Include="ExternalCommands\SelectionByClickExtCmd.cs" />
     <Compile Include="Forms\Entities\CategoryEntity.cs" />
+    <Compile Include="Forms\Entities\SearchById\SearchByIdDocEntity.cs" />
+    <Compile Include="Forms\Entities\SearchById\SearchByIdEntity.cs" />
     <Compile Include="Forms\Entities\SelectionByModelM.cs" />
     <Compile Include="Forms\Entities\SelectionByModel\SelectionByModelM_ParamM.cs" />
     <Compile Include="Forms\Entities\SelectionByModel\SelectionByModelM_CategoryM.cs" />
@@ -164,12 +168,16 @@
     <Compile Include="Forms\SelectionByModel.xaml.cs">
       <DependentUpon>SelectionByModel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\SearchByIdForm.xaml.cs">
+      <DependentUpon>SearchByIdForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SetParamsByFrameForm.xaml.cs">
       <DependentUpon>SetParamsByFrameForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SelectionByClickForm.xaml.cs">
       <DependentUpon>SelectionByClickForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ViewModels\SearchByIdVM.cs" />
     <Compile Include="Forms\ViewModels\SelectionByModelVM.cs" />
     <Compile Include="Forms\ViewModels\SelectionByClickVM.cs" />
     <Compile Include="Forms\Entities\SelectionByClickM.cs" />
@@ -194,6 +202,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\SearchByIdForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\SetParamsByFrameForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -211,7 +223,12 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Resource Include="Imagens\idSearch16.png" />
+    <Resource Include="Imagens\idSearch16_dark.png" />
+    <Resource Include="Imagens\idSearch32.png" />
+    <Resource Include="Imagens\idSearch32_dark.png" />
+  </ItemGroup>
   <ItemGroup>
     <Resource Include="Imagens\click16.png" />
     <Resource Include="Imagens\click16_dark.png" />

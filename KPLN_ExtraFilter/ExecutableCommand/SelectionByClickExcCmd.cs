@@ -12,7 +12,7 @@ using System.Linq;
 
 namespace KPLN_ExtraFilter.ExecutableCommand
 {
-    internal class SelectionByClickExcCmd : IExecutableCommand
+    internal sealed class SelectionByClickExcCmd : IExecutableCommand
     {
         private readonly SelectionByClickM _entity;
 

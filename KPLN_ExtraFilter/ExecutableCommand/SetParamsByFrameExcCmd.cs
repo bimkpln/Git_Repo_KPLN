@@ -17,7 +17,7 @@ using System.Linq;
 
 namespace KPLN_ExtraFilter.ExecutableCommand
 {
-    internal class SetParamsByFrameExcCmd : IExecutableCommand
+    internal sealed class SetParamsByFrameExcCmd : IExecutableCommand
     {
         private readonly SetParamsByFrameM _entity;
         private readonly Dictionary<string, List<ElementId>> _warningsElementColl = new Dictionary<string, List<ElementId>>();

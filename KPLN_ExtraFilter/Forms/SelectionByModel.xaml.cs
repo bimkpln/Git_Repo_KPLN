@@ -42,10 +42,13 @@ namespace KPLN_ExtraFilter.Forms
         public void SetExternalEvent(ExternalEvent viewExtEv, ViewActivatedHandler viewHandler, ExternalEvent selExtEv, SelectionChangedHandler selHandler)
         {
             _viewExtEv = viewExtEv;
+            
             _viewHandler = viewHandler;
             _viewHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
 
+
             _selExtEv = selExtEv;
+            
             _selHandler = selHandler;
             _selHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
         }

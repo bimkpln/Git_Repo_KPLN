@@ -43,7 +43,7 @@ namespace KPLN_ExtraFilter
             // Кнопки в стэк
             // Коллекция изображений, чтобы сделать замену при смене фона ревит.
             // ВАЖЕН ПОРЯДОК - он должен совпадать с порядком добавления кнопок с стэк
-            string[] stackItemImgs = new string[] { "click", "frame" };
+            string[] stackItemImgs = new string[] { "click", "frame", "idSearch" };
 
             PushButtonData btnSelectByClick = new PushButtonData(
                 SelectionByClickExtCmd.PluginName,
@@ -86,8 +86,25 @@ namespace KPLN_ExtraFilter
             };
             btnSetPramsByFrame.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle/mod/book/view.php?id=502&chapterid=1341"));
 
+            PushButtonData btnSearchById = new PushButtonData(
+                SearchByIdExtCmd.PluginName,
+                SearchByIdExtCmd.PluginName,
+                _assemblyPath,
+                typeof(SearchByIdExtCmd).FullName)
+            {
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, stackItemImgs[2], 32),
+                Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, stackItemImgs[2], 16),
+                ToolTip = "Находит элементы из связи по ID и создаёт 3D-вид с подрезкой",
+                LongDescription = string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+            };
+            btnSearchById.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, "http://moodle/"));
 
-            IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame);
+
+            IList<RibbonItem> stackedGroup = panel.AddStackedItems(btnSelectByClick, btnSetPramsByFrame, btnSearchById);
             // Скрываю текстовое название кнопок
             for (int i = 0; i < stackedGroup.Count; i++)
             {

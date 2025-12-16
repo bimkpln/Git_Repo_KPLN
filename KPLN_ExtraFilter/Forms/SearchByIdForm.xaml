@@ -1,0 +1,132 @@
+﻿<Window x:Class="KPLN_ExtraFilter.Forms.SearchByIdForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        mc:Ignorable="d" 
+        WindowStyle="ToolWindow" 
+        WindowStartupLocation="CenterOwner" 
+        ResizeMode="NoResize" 
+        SizeToContent="Height"
+        Width="900"
+        Height="230"
+        MaxHeight="650"
+        FontFamily="Monaco, Consolas, 'DejaVu Sans Mono', monospace"
+        Title="KPLN: Поиск по ID" 
+        Background="#2B2F38">
+
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Enter"
+            Command="{Binding SearchByIdCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Панель поиска -->
+        <Border 
+            Grid.Row="1"
+            Style="{StaticResource RCTG}">
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="120"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox 
+                    x:Name="tbUserInput"
+                    Grid.Column="0"
+                    Style="{StaticResource TXB}"
+                    Height="34"
+                    Foreground="Black"
+                    Text="{Binding SearchId, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip="Введите ID элемента. Можно вводить несколько значений, через запятую, например: 123456, 789101"/>
+
+                <Button 
+                    Grid.Column="1"
+                    Style="{StaticResource BTN}"
+                    Content="Найти"
+                    Command="{Binding SearchByIdCmd}"/>
+            </Grid>
+        </Border>
+
+        <!-- Таблица -->
+        <Border
+            Grid.Row="2"
+            Style="{StaticResource RCTG}">
+            <DataGrid 
+                ItemsSource="{Binding SearchByIdResults}"
+                AutoGenerateColumns="False"
+                IsReadOnly="True"
+                CanUserAddRows="False"
+                HeadersVisibility="Column"
+                GridLinesVisibility="Horizontal"
+                Background="White">
+
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn 
+                        Width="40" 
+                        IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button
+                                    Style="{StaticResource BTN}"
+                                    Content="➜"
+                                    ToolTip="Выбрать элемент"
+                                    Command="{Binding DataContext.SelectByIdCmd,
+                                        RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn 
+                        Header="Id"
+                        Binding="{Binding Id}"
+                        ElementStyle="{StaticResource DG_TC}"
+                        Width="100"/>
+
+                    <DataGridTextColumn 
+                        Header="Категория"
+                        Binding="{Binding CatName}"
+                        ElementStyle="{StaticResource DG_TC}"
+                        Width="*"/>
+
+                    <DataGridTextColumn 
+                        Header="Имя элемента"
+                        Binding="{Binding ElemName}"
+                        ElementStyle="{StaticResource DG_TC}"
+                        Width="2*"/>
+
+                    <DataGridTextColumn 
+                        Header="Имя модели"
+                        Binding="{Binding ElemDocEntity.SDE_ModelName}"
+                        ElementStyle="{StaticResource DG_TC}"
+                        Width="2*"/>
+
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+    </Grid>
+</Window>

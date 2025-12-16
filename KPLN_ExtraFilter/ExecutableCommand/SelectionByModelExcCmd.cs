@@ -10,7 +10,7 @@ using System.Linq;
 
 namespace KPLN_ExtraFilter.ExecutableCommand
 {
-    internal class SelectionByModelExcCmd : IExecutableCommand
+    internal sealed class SelectionByModelExcCmd : IExecutableCommand
     {
         private readonly SelectionByModelM _entity;
 

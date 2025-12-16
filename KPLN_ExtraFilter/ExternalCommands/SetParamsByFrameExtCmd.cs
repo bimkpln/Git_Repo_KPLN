@@ -53,7 +53,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 ExternalEvent selExtEv = ExternalEvent.Create(selHandler);
 
                 // Создание ExternalEvent для отписки от выбора эл-в (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
-                UnsubSelChHandler unsubSelHandler = new UnsubSelChHandler() { Handler = OnSelectionChanged };
+                UnsubEventHandler unsubSelHandler = new UnsubEventHandler() { Handler = OnSelectionChanged };
                 ExternalEvent unsubSelExtEv = ExternalEvent.Create(unsubSelHandler);
 
                 // Доп настройки окна

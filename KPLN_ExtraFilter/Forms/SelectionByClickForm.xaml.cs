@@ -28,6 +28,7 @@ namespace KPLN_ExtraFilter.Forms
         public void SetExternalEvent(ExternalEvent externalEvent, SelectionChangedHandler handler)
         {
             _externalEvent = externalEvent;
+            
             _handler = handler;
             _handler.CurrentSelByClickVM = CurrentSelectionByClickVM;
         }
