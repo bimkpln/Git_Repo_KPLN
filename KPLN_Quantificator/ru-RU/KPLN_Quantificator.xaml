@@ -54,6 +54,22 @@
                             ShowText="True"
                             Text="Сгруппировать&#x0a;коллизии"
                             Orientation="Vertical"/>
+
+				<local:NWRibbonButton x:Uid="Button_E0" Id="ID_Button_E0"
+                            Size="Large"
+                            KeyTip="T1"
+                            ShowText="True"
+                            Text="Сгруппировать&#x0a;по комментарию"
+                            Orientation="Vertical"/>
+
+				<local:NWRibbonButton x:Uid="Button_E1" Id="ID_Button_E1"
+                            Size="Large"
+                            KeyTip="T1"
+                            ShowText="True"
+                            Text="Смена статуса&#x0a;коллизий"
+                            Orientation="Vertical"/>	
+				
+				
 				<local:NWRibbonButton x:Uid="Button_E2" Id="ID_Button_E2"
                             Size="Large"
                             KeyTip="T1"
