@@ -2792,9 +2792,20 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
+
+
+
+
+
+
+
         // Интерфейс универсального отдела
         private IEnumerable<FamilyManagerRecord> GetUniversalFiltered(string depUi)
         {
+            const int FILTER_ALL = -1;
+            const int FILTER_UNIVERSAL = -2;
+            const int PROJECT_UNIVERSAL_ID = 1;
+
             var depDb = DepForDb(depUi);
             IEnumerable<FamilyManagerRecord> all = _records ?? Enumerable.Empty<FamilyManagerRecord>();
 
@@ -2805,24 +2816,31 @@ namespace KPLN_FamilyManager.Forms
 
             string q = (_isWatermarkActive ? null : _tbSearch?.Text)?.Trim();
             if (!string.IsNullOrEmpty(q))
-            {
                 filtered = filtered.Where(r => MatchesSearchByIndex(r, q));
-            }
 
-            if (string.Equals(depUi?.Trim(), "АР", StringComparison.OrdinalIgnoreCase)
-                && _cbStage != null
-                && _cbStage.SelectedValue is int stageId && stageId > 0)
+            if (_cbProject != null && _cbProject.SelectedValue is int projectId)
             {
-                filtered = filtered.Where(r => r.Stage == stageId);
-            }
-
-            if (_cbProject != null && _cbProject.SelectedValue is int projectId && projectId > 0)
-            {
-                filtered = filtered.Where(r => r.Project == projectId);
+                if (projectId == FILTER_UNIVERSAL)
+                {
+                    filtered = filtered.Where(r => r.Project == PROJECT_UNIVERSAL_ID);
+                }
+                else if (projectId > 0)
+                {
+                    filtered = filtered.Where(r => r.Project == projectId);
+                }
+ 
             }
 
             return filtered.OrderBy(r => SafeFileName(r.FullPath), StringComparer.OrdinalIgnoreCase);
         }
+
+
+
+
+
+
+
+
 
         // Интерфейс универсального отдела. Фильтр по статусу
         private static bool HasStatusNewOrOk(string status)
@@ -3061,17 +3079,30 @@ namespace KPLN_FamilyManager.Forms
             cb.SelectedValue = -1;
         }
 
+
+
+
+
+
+
+
+
+
+
         // Интерфейс универсального отдела. Биндер для ComboBox - Проект
         private void BindProjectCombo_DefaultId1(ComboBox cb)
         {
+            const int FILTER_ALL = -1;        // Без фильтра
+            const int FILTER_UNIVERSAL = -2;  // Универсальные (PROJECT == 1)
+
             var items = new List<KeyValuePair<int, string>>
     {
-        new KeyValuePair<int, string>(-1, "Универсальные (без фильтра)")
+        new KeyValuePair<int, string>(FILTER_ALL, "Без фильтра"),
+        new KeyValuePair<int, string>(FILTER_UNIVERSAL, "Универсальные")
     };
 
             items.AddRange(
                 _projectsById
-                    .Where(kv => !string.Equals(kv.Value, "Универсальные", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(kv => kv.Value, StringComparer.OrdinalIgnoreCase)
                     .Select(kv => new KeyValuePair<int, string>(kv.Key, kv.Value))
             );
@@ -3079,8 +3110,20 @@ namespace KPLN_FamilyManager.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = -1;
+            cb.SelectedValue = FILTER_ALL;
         }
+
+
+
+
+
+
+
+
+
+
+
+
 
         // Интерфейс универсального отдела. Строковое представление
         private FrameworkElement CreateUniversalRow(FamilyManagerRecord rec)
@@ -3146,7 +3189,6 @@ namespace KPLN_FamilyManager.Forms
                 if (r == null) return;
                 GetOrCreateSelectionSet(GetDeptKey()).Add(r.ID);
                 UpdateSelectionButtonsState();
-                RefreshScenario();
                 e.Handled = true;
             };
             cb.Unchecked += (s, e) =>
@@ -3155,7 +3197,6 @@ namespace KPLN_FamilyManager.Forms
                 if (r == null) return;
                 GetOrCreateSelectionSet(GetDeptKey()).Remove(r.ID);
                 UpdateSelectionButtonsState();
-                RefreshScenario();
                 e.Handled = true;
             };
 
@@ -3330,14 +3371,12 @@ namespace KPLN_FamilyManager.Forms
         private System.Windows.Controls.Panel BuildRowsPanel(IEnumerable<FamilyManagerRecord> recs)
         {
             var sp = new StackPanel { Margin = new Thickness(8, 4, 0, 6) };
-            var set = GetOrCreateSelectionSet(GetDeptKey());
 
-            foreach (var r in recs
-                     .OrderByDescending(x => set.Contains(x.ID))
-                     .ThenBy(x => SafeFileName(x.FullPath), StringComparer.OrdinalIgnoreCase))
+            foreach (var r in recs.OrderBy(x => SafeFileName(x.FullPath), StringComparer.OrdinalIgnoreCase))
             {
                 sp.Children.Add(CreateUniversalRow(r));
             }
+
             return sp;
         }
 
