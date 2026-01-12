@@ -94,12 +94,16 @@
     <Compile Include="Commands.cs" />
     <Compile Include="Common\Collections.cs" />
     <Compile Include="Common\CustomClashTest.cs" />
+    <Compile Include="Common\GroupClashesByComment.cs" />
     <Compile Include="DBTools.cs" />
     <Compile Include="Forms\RenameViewForm.xaml.cs">
       <DependentUpon>RenameViewForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SortAllClashesForm.xaml.cs">
       <DependentUpon>SortAllClashesForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\StatusChangeClash.xaml.cs">
+      <DependentUpon>StatusChangeClash.xaml</DependentUpon>
     </Compile>
     <Compile Include="GlobalPreferences.cs" />
     <Compile Include="GroupingFunctions.cs" />
@@ -166,8 +170,18 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\StatusChangeClash.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Source\comGroup_big.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\comGroup_small.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Source\comment_big.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -214,6 +228,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\sort_small.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\status_big.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\status_small.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\update_q_big.png">

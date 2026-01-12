@@ -19,6 +19,10 @@ namespace KPLN_Quantificator
     [Command("ID_Button_C", DisplayName = "Добавить объекты", Icon = "Source\\create_items_small.png", LargeIcon = "Source\\create_items_big.png", ToolTip = "Наполнение каталогов Quantification объектами модели из выбранных поисковых наборов", CanToggle = true)]
     [Command("ID_Button_D", DisplayName = "Добавить ресурсы", Icon = "Source\\match_resources_small.png", LargeIcon = "Source\\match_resources_big.png", ToolTip = "Сопоставление ресурсов с элементами по выбранному параметру RBS", CanToggle = true)]
     [Command("ID_Button_E", DisplayName = "Сгруппировать коллизии", Icon = "Source\\group_c_small.png", LargeIcon = "Source\\group_c_big.png", ToolTip = "Группировка коллизий по выбранным параметрам. Сделано на основе «Group Clashes». Горячие клавиши - Enter", CanToggle = true)]
+
+    [Command("ID_Button_E0", DisplayName = "Сгруппировать по комментарию", Icon = "Source\\comGroup_small.png", LargeIcon = "Source\\comGroup_big.png", ToolTip = "Плагин меняющий группирует коллизии по комментарию", CanToggle = true)]
+    [Command("ID_Button_E1", DisplayName = "Смена статуса коллизий", Icon = "Source\\status_small.png", LargeIcon = "Source\\status_big.png", ToolTip = "Плагин меняющий статусы у коллизий, по принципу коллизии одного статуса меняются на другой", CanToggle = true)]
+
     [Command("ID_Button_E2", DisplayName = "Сортировать коллизии", Icon = "Source\\sort_small.png", LargeIcon = "Source\\sort_big.png", ToolTip = "Сортировка коллизий по выбранным параметрам в «Clash Detective»", CanToggle = true)]
     [Command("ID_Button_F", DisplayName = "Подсчет коллизий", Icon = "Source\\counter_small.png", LargeIcon = "Source\\counter_big.png", ToolTip = "Подсчет количества коллизий по разделам (раздел выделяется из имени)", CanToggle = true)]
     [Command("ID_Button_G", DisplayName = "Автоматический комментарий", Icon = "Source\\comment_small.png", LargeIcon = "Source\\comment_big.png", ToolTip = "Создание текстового комментария. Для создания комментария в автоматическом режиме необходимо выделить элемент/элементы и нажать клавишу E", CanToggle = true)]
@@ -99,6 +103,40 @@ namespace KPLN_Quantificator
                                 break;
                             }
 
+
+
+
+
+
+
+
+
+
+
+                        case "ID_Button_E0":
+                            {
+                                KPLN_Quantificator.Common.GroupClashesByObjectCommentInClashDetective.RunWithConfirm();
+
+                                GlobalPreferences.state = 0;
+                                break;
+                            }
+
+
+
+
+
+
+
+
+                        case "ID_Button_E1":
+                            {
+                                var statusChangeClash = new StatusChangeClash();
+                                statusChangeClash.ShowDialog();
+
+                                GlobalPreferences.state = 0;
+                                break;
+                            }
+
                         case "ID_Button_E2":
                             {
                                 var clashGroupsSort = new SortAllClashesForm();
@@ -107,6 +145,7 @@ namespace KPLN_Quantificator
                                 GlobalPreferences.state = 0;
                                 break;
                             }
+
                         case "ID_Button_F":
                             {
                                 ClashesCounter.Prepare();
