@@ -221,14 +221,15 @@ namespace KPLN_Loader.Services
         /// <param name="currentUser">Пользователь для проверки из БД</param>
         internal void SetRevitUserName(string userName, User currentUser)
         {
-            _logger.Info("БД: Обновление имени Revit-пользователя");
-
             if (currentUser.RevitUserName == null || !currentUser.RevitUserName.Equals(userName))
             {
-                // Меняю объект
-                currentUser.RevitUserName = userName;
                 try
                 {
+                    _logger.Info($"БД: Обновление имени Revit-пользователя с {currentUser.RevitUserName} на {userName}");
+                    
+                    // Меняю объект
+                    currentUser.RevitUserName = userName;
+                
                     // Записываю в таблицу
                     ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
                         $"SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
