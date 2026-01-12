@@ -25,17 +25,17 @@ namespace KPLN_Classificator
         /// <summary>
         /// Флаг доступности документа. Значение false показывает, что плагин был запущен без активного объекта Document
         /// </summary>
-        public static bool isDocumentAvailable { get; set; } = true;
+        public static bool IsDocumentAvailable { get; set; } = true;
 
         /// <summary>
         /// Реализация системы вывода плагина
         /// </summary>
-        public static Output output;
+        public static Output CurrentOutput { get; set; }
 
         /// <summary>
         /// Реализация очереди для запуска команд Revit (событие OnIdling запускает команду внутри текущего UIControlledApplication)
         /// </summary>
-        public static CommandEnvironment commandEnvironment;
+        public static CommandEnvironment CurrentCmdEnv { get; set; }
 
         public static IntPtr MainWindowHandle { get; set; } //Главное окно Revit (WPF: Для определения свойства .Owner)
 

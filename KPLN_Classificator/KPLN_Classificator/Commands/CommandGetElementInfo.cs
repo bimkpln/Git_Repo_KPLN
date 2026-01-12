@@ -67,7 +67,11 @@ namespace KPLN_Classificator
 
                 typeName = elem.Name;
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 builtInCategory = (BuiltInCategory)(elem.Category).Id.IntegerValue;
+#else
+                builtInCategory = elem.Category.BuiltInCategory;
+#endif
 
                 foreach (string paramName in paramNames)
                 {

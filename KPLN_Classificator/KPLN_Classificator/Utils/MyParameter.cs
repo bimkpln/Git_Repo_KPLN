@@ -45,7 +45,7 @@ namespace KPLN_Classificator.Utils
                 case StorageType.String:
                     return this.AsString() == other.AsString();
                 case StorageType.ElementId:
-                    return this.AsElementId().IntegerValue == other.AsElementId().IntegerValue;
+                    return this.AsElementId().Equals(other.AsElementId());
                 default:
                     return false;
             }
@@ -229,7 +229,7 @@ namespace KPLN_Classificator.Utils
                 case StorageType.String:
                     return stringValue;
                 case StorageType.ElementId:
-                    return elemIdValue.IntegerValue.ToString();
+                    return elemIdValue.ToString();
                 default:
                     return "";
             }
@@ -253,8 +253,13 @@ namespace KPLN_Classificator.Utils
                     param.Set(value);
                     break;
                 case StorageType.ElementId:
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                     int intval = int.Parse(value);
                     ElementId newId = new ElementId(intval);
+#else
+                    long dval = long.Parse(value);
+                    ElementId newId = new ElementId(dval);
+#endif
                     param.Set(newId);
                     break;
                 default:
@@ -277,8 +282,7 @@ namespace KPLN_Classificator.Utils
                 case StorageType.String:
                     return param.AsString();
                 case StorageType.ElementId:
-                    int intval = param.AsElementId().IntegerValue;
-                    return intval.ToString();
+                    return param.AsElementId().ToString();
                 default:
                     return "";
             }

@@ -91,7 +91,7 @@ namespace KPLN_Classificator.Data
         {
             if (instance == null || !document.Equals(newDoc))
             {
-                output.PrintInfo(string.Format("Изменён активный документ с {0} на {1}", document.Title, newDoc.Title), Output.OutputMessageType.Warning);
+                CurrentOutput.PrintInfo(string.Format("Изменён активный документ с {0} на {1}", document.Title, newDoc.Title), Output.OutputMessageType.Warning);
                 document = newDoc;
                 return instance = new LastRunInfo();
             }

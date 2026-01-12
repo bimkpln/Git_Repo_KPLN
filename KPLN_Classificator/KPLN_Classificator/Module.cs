@@ -3,6 +3,7 @@ using KPLN_Classificator.ExecutableCommand;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Media.Imaging;
 using static KPLN_Classificator.ApplicationConfig;
 
@@ -11,18 +12,20 @@ namespace KPLN_Classificator
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     public class Module : IExternalModule
     {
-        public static string assemblyPath = "";
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Module()
         {
             //Конфигурирование приложения для работы в среде KPLN_Loader
-            output = new KplnOutput();
-            commandEnvironment = new KplnCommandEnvironment();
+            CurrentOutput = new KplnOutput();
+            CurrentCmdEnv = new KplnCommandEnvironment();
         }
+
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
             try { application.CreateRibbonTab(tabName); } catch { }
 
             string panelName = "Параметры";
@@ -33,40 +36,52 @@ namespace KPLN_Classificator
             else
                 panel = tryPanels.First();
 
-            PushButtonData btnHostMark = new PushButtonData(
+            AddPushButtonDataInPanel(
                 "ClassificatorCompleteCommand",
                 "Заполнить\nпараметры",
-                assemblyPath,
-                typeof(CommandOpenClassificatorForm).FullName)
-            {
-                LargeImage = PngImageSource("KPLN_Classificator.Resources.Classificator_large.PNG"),
-                Image = PngImageSource("KPLN_Classificator.Resources.Classificator.PNG"),
-                ToolTip = "Параметризация элементов согласно заданным правилам.",
-                LongDescription = "Возможности:\n" +
-                "\t1. Задание правил для параметризации элементов;\n" +
-                "\t2. Маппинг параметров (передача значений между параметрами элемента);\n" +
-                "\t3. Сохранение конфигурационного файла с возможностью повторного использования.\n" +
-                $"\nДата сборки: {Date}\nНомер сборки: {Version}\nИмя модуля: {ModuleName}",
-                AvailabilityClassName = typeof(Availability.StaticAvailable).FullName
-            };
+                "Параметризация элементов согласно заданным правилам.",
+                "Возможности:\n" +
+                    "1. Задание правил для параметризации элементов;\n" +
+                    "2. Маппинг параметров (передача значений между параметрами элемента);\n" +
+                    "3. Сохранение конфигурационного файла с возможностью повторного использования.\n" +
+                    $"\nДата сборки: {Date}\nНомер сборки: {Version}\nИмя модуля: {ModuleName}",
+                typeof(CommandOpenClassificatorForm).FullName,
+                panel,
+                "classificator",
+                "http://moodle.stinproject.local"
+            );
 
-            panel.AddItem(btnHostMark);
 
             return Result.Succeeded;
         }
 
-        private System.Windows.Media.ImageSource PngImageSource(string embeddedPathname)
+        /// <summary>
+        /// Метод для добавления отдельной кнопки в панель
+        /// </summary>
+        /// <param name="name">Внутреннее имя кнопки</param>
+        /// <param name="text">Имя, видимое пользователю</param>
+        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
+        /// <param name="className">Имя класса, содержащего реализацию команды</param>
+        /// <param name="panel">Панель, в которую добавляем кнопку</param>
+        /// <param name="imageName">Имя иконки, как ресурса</param>
+        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
+        private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
         {
-            System.IO.Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
+            PushButton button = panel.AddItem(data) as PushButton;
+            button.ToolTip = shortDescription;
+            button.LongDescription = longDescription;
+            button.ItemText = text;
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
+            button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
+            button.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
-            PngBitmapDecoder decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
-        }
-
-        public Result Close()
-        {
-            return Result.Succeeded;
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }

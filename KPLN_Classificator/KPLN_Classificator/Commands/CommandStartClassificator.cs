@@ -33,7 +33,7 @@ namespace KPLN_Classificator
             InfosStorage storage = form.storage;
             if (storage == null)
             {
-                output.PrintInfo("Не удалось обработать конфигурационный файл!", Output.OutputMessageType.Error);
+                CurrentOutput.PrintInfo("Не удалось обработать конфигурационный файл!", Output.OutputMessageType.Error);
                 return Result.Cancelled;
             }
 
@@ -71,7 +71,7 @@ namespace KPLN_Classificator
                     if (!utilsForType.startClassification(constrsTypes, storage, doc))
                         return Result.Cancelled;
                     
-                    output.PrintInfo(string.Format("Успешно обработано элементов: {0}. Обработано с ошибками: {1}.",
+                    CurrentOutput.PrintInfo(string.Format("Успешно обработано элементов: {0}. Обработано с ошибками: {1}.",
                         utilsForType.fullSuccessElems.Count, utilsForType.notFullSuccessElems.Count), Output.OutputMessageType.Success);
                 }
 
@@ -151,12 +151,12 @@ namespace KPLN_Classificator
                             catch { }
                         }
                     }
-                    output.PrintInfo(string.Format("Успешно обработано элементов: {0}. Обработано с ошибками: {1}.",
+                    CurrentOutput.PrintInfo(string.Format("Успешно обработано элементов: {0}. Обработано с ошибками: {1}.",
                         utilsForInstanse.fullSuccessElems.Count, utilsForInstanse.notFullSuccessElems.Count), Output.OutputMessageType.Success);
                 }
                 else
                 {
-                    output.PrintInfo("Выбрана некорректная операция! Проверьте конфигурационный файл.", Output.OutputMessageType.Error);
+                    CurrentOutput.PrintInfo("Выбрана некорректная операция! Проверьте конфигурационный файл.", Output.OutputMessageType.Error);
                     return Result.Cancelled;
                 }
 
@@ -166,7 +166,7 @@ namespace KPLN_Classificator
                 }
                 catch (Exception e)
                 {
-                    output.PrintErr(e, "Произошла ошибка в процессе сохранения информации о запуске плагина!");
+                    CurrentOutput.PrintErr(e, "Произошла ошибка в процессе сохранения информации о запуске плагина!");
                 }
 
                 t.Commit();
@@ -178,15 +178,15 @@ namespace KPLN_Classificator
                 try
                 {
                     streamWriter.WriteLine(string.Format("Классификация файла: {0}", doc.Title));
-                    streamWriter.WriteLine(output.getLog());
-                    output.PrintInfo(string.Format("Отчёт о работе плагина сохранён в файле: {0}", fileName), Output.OutputMessageType.Regular);
+                    streamWriter.WriteLine(CurrentOutput.getLog());
+                    CurrentOutput.PrintInfo(string.Format("Отчёт о работе плагина сохранён в файле: {0}", fileName), Output.OutputMessageType.Regular);
                 }
                 catch (Exception e)
                 {
-                    output.PrintErr(e, "Не удалось выполнить запись ЛОГ файла!");
+                    CurrentOutput.PrintErr(e, "Не удалось выполнить запись ЛОГ файла!");
                 }
             }
-            output.clearLog();
+            CurrentOutput.clearLog();
             return Result.Succeeded;
         }
     }

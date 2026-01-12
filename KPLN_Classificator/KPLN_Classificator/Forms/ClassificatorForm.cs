@@ -26,10 +26,9 @@ namespace KPLN_Classificator.Forms
 
         public ClassificatorForm(StorageUtils utils, List<MyParameter> mparams)
         {
-            if (isDocumentAvailable)
-            {
+            if (IsDocumentAvailable)
                 this.lastRunInfo = LastRunInfo.getInstance();
-            }
+            
             initForm(utils, mparams);
         }
 
@@ -46,30 +45,26 @@ namespace KPLN_Classificator.Forms
             buttonOpenConfiguration.Enabled = false;
             buttonSaveFile.Enabled = false;
             this.mparams = mparams;
-            if (isDocumentAvailable && lastRunInfo != null)
-            {
+            
+            if (IsDocumentAvailable && lastRunInfo != null)
                 getInfoAboutFileClassification();
-            }
-            if (System.IO.File.Exists(lastRunInfo.getFileName()))
-            {
+            
+            if (lastRunInfo != null && System.IO.File.Exists(lastRunInfo.getFileName()))
                 buttonChooseLastFile.Enabled = true;
-            }
             else
-            {
                 buttonChooseLastFile.Enabled = false;
-            }
         }
 
         private void btnRun_Click(object sender, EventArgs e)
         {
-            if (ApplicationConfig.isDocumentAvailable)
+            if (ApplicationConfig.IsDocumentAvailable)
             {
                 foreach (var checkedItem in checkedListBox1.CheckedItems)
                 {
                     BuiltInCategory cat = (BuiltInCategory)checkedItem;
                     checkedCats.Add(cat);
                 }
-                commandEnvironment.toEnqueue(new CommandStartClassificator(this));
+                CurrentCmdEnv.toEnqueue(new CommandStartClassificator(this));
             }
             else
             {
@@ -138,7 +133,7 @@ namespace KPLN_Classificator.Forms
                 string info = storage.instanceOrType == 1 ? "ЭКЗЕМПЛЯРУ" : storage.instanceOrType == 2 ? "ТИПУ" : "НЕКОРРЕКТНАЯ НАСТРОЙКА КОНФИГУРАЦИОННОГО ФАЙЛА!";
                 textBoxFileInfo.Text += string.Format("Файл содержит {0} правил(о/а) для заполнения классификатора по {1}.", storage.classificator.Count.ToString(), info);
                 textBoxFileInfo.Text += Environment.NewLine;
-                if (ApplicationConfig.isDocumentAvailable && lastRunInfo != null)
+                if (ApplicationConfig.IsDocumentAvailable && lastRunInfo != null)
                 {
                     getInfoAboutFileClassification();
                 }

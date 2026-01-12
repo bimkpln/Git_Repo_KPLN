@@ -85,9 +85,9 @@ namespace KPLN_Classificator.Forms
             }
             findDoubledRules();
             refreshNumbersOfRules(ruleItems);
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
-                commandEnvironment.toEnqueue(new CommandFindAllElementsInModel(ruleItems));
+                CurrentCmdEnv.toEnqueue(new CommandFindAllElementsInModel(ruleItems));
             }
         }
 
@@ -133,20 +133,20 @@ namespace KPLN_Classificator.Forms
                 }
                 ruleItems.Insert(ruleItems.IndexOf(ruleItem) + 1, newRuleItem);
                 refreshNumbersOfRules(ruleItems);
-                if (isDocumentAvailable)
+                if (IsDocumentAvailable)
                 {
-                    commandEnvironment.toEnqueue(new CommandFindAllElementsInModel(new ObservableCollection<RuleItem>() { newRuleItem }));
+                    CurrentCmdEnv.toEnqueue(new CommandFindAllElementsInModel(new ObservableCollection<RuleItem>() { newRuleItem }));
                 }
             }
         }
 
         private void FindElementsByRule_Click(object sender, RoutedEventArgs e)
         {
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
                 Button bt = (Button)sender;
                 RuleItem ruleItem = bt.DataContext as RuleItem;
-                commandEnvironment.toEnqueue(new CommandFindElementsInModel(new List<RuleItem>() { ruleItem }));
+                CurrentCmdEnv.toEnqueue(new CommandFindElementsInModel(new List<RuleItem>() { ruleItem }));
             }
             else
             {
@@ -156,11 +156,11 @@ namespace KPLN_Classificator.Forms
 
         private void FindAllElementsByRule_Click(object sender, RoutedEventArgs e)
         {
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
                 Button bt = (Button)sender;
                 RuleItem ruleItem = bt.DataContext as RuleItem;
-                commandEnvironment.toEnqueue(new CommandFindElementsInModel(ruleItems.ToList()));
+                CurrentCmdEnv.toEnqueue(new CommandFindElementsInModel(ruleItems.ToList()));
             }
             else
             {
@@ -178,9 +178,9 @@ namespace KPLN_Classificator.Forms
 
         private void Get_Rule_Click(object sender, RoutedEventArgs e)
         {
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
-                commandEnvironment.toEnqueue(new CommandGetElementInfo(this));
+                CurrentCmdEnv.toEnqueue(new CommandGetElementInfo(this));
             }
             else
             {
@@ -248,7 +248,7 @@ namespace KPLN_Classificator.Forms
 
         private void Choose_TargetParamName_Click(object sender, RoutedEventArgs e)
         {
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
                 Button bt = (Button)sender;
                 if (bt.DataContext is ParamNameItem paramNameItem)
@@ -263,7 +263,7 @@ namespace KPLN_Classificator.Forms
 
         private void Choose_FilterParamName_Click(object sender, RoutedEventArgs e)
         {
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
                 Button bt = (Button)sender;
                 if (bt.DataContext is RuleItem ruleItem)
@@ -278,7 +278,7 @@ namespace KPLN_Classificator.Forms
 
         private void Insert_ParamName_Click(object sender, RoutedEventArgs e)
         {
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
                 Button bt = (Button)sender;
                 if (bt.DataContext is ParamValueItem paramValueItem)
@@ -355,9 +355,9 @@ namespace KPLN_Classificator.Forms
             this.Collection.ItemsSource = ruleItems;
             refreshNumbersOfRules(ruleItems);
             findDoubledRules();
-            if (isDocumentAvailable)
+            if (IsDocumentAvailable)
             {
-                commandEnvironment.toEnqueue(new CommandFindAllElementsInModel(ruleItems));
+                CurrentCmdEnv.toEnqueue(new CommandFindAllElementsInModel(ruleItems));
             }
         }
 

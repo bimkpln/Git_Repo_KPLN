@@ -44,7 +44,7 @@ namespace KPLN_Classificator
             }
             if (fillPattern == null)
             {
-                output.PrintInfo("Заливка \"Сплошная заливка\" не найдена", Output.OutputMessageType.Error);
+                CurrentOutput.PrintInfo("Заливка \"Сплошная заливка\" не найдена", Output.OutputMessageType.Error);
                 return null;
             }
 
@@ -141,7 +141,13 @@ namespace KPLN_Classificator
             {
                 Category cat = elem.Category;
                 if (cat == null) continue;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 if (cat.Id.IntegerValue == -2000500) continue;
+#else
+                if (cat.BuiltInCategory == BuiltInCategory.OST_Cameras) continue;
+#endif
+
+                
                 catsIds.Add(cat.Id);
             }
             return catsIds;
@@ -150,17 +156,22 @@ namespace KPLN_Classificator
         public static string GetParamName(Document doc, ElementId paramId)
         {
             string paramName = "error";
-            if (paramId.IntegerValue < 0)
-            {
-                paramName = LabelUtils.GetLabelFor((BuiltInParameter)paramId.IntegerValue);
-            }
+
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            int idValue = paramId.IntegerValue;
+#else
+            long idValue = paramId.Value;
+#endif
+
+
+            if (idValue < 0)
+                paramName = LabelUtils.GetLabelFor((BuiltInParameter)idValue);
             else
-            {
                 paramName = doc.GetElement(paramId).Name;
-            }
+            
             if (paramName != "error") return paramName;
 
-            throw new Exception("Id не является идентификатором параметра: " + paramId.IntegerValue.ToString());
+            throw new Exception("Id не является идентификатором параметра: " + idValue.ToString());
         }
 
     }

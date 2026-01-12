@@ -15,13 +15,13 @@ namespace KPLN_Classificator
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            ApplicationConfig.isDocumentAvailable = true;
+            ApplicationConfig.IsDocumentAvailable = true;
             StorageUtils utils = new StorageUtils(commandData.Application.Application.VersionNumber);
             ClassificatorForm form;
 
             if (commandData.Application.ActiveUIDocument == null)
             {
-                ApplicationConfig.isDocumentAvailable = false;
+                ApplicationConfig.IsDocumentAvailable = false;
 
                 form = new ClassificatorForm(utils, new List<MyParameter>() { });
                 form.Show();
@@ -32,22 +32,20 @@ namespace KPLN_Classificator
             Document doc = commandData.Application.ActiveUIDocument.Document;
             LastRunInfo.createInstance(doc);
 
-            List<int> filteredCategorys = new List<int>()
+            List<BuiltInCategory> filteredCategorys = new List<BuiltInCategory>()
             {
-                //-2000500, 
-                //-2003100, 
-                //-2000280, 
-                -2003101
+                BuiltInCategory.OST_ProjectInformation
             };
 
             List<Element> elems = new FilteredElementCollector(doc)
-             .WhereElementIsNotElementType()
-             .ToElements()
-             .Where(e => e != null)
-             .Where(e => e.IsValidObject)
-             .Where(e => e.Category != null)
-             .Where(e => !filteredCategorys.Contains(e.Category.Id.IntegerValue))
-             .ToList();
+                .WhereElementIsNotElementType()
+                .ToElements()
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                .Where(e => e != null && e.IsValidObject && e.Category != null && !filteredCategorys.Contains((BuiltInCategory)e.Category.Id.IntegerValue))
+#else
+                .Where(e => e != null && e.IsValidObject && e.Category != null && !filteredCategorys.Contains(e.Category.BuiltInCategory))
+#endif
+                .ToList();
 
             List<MyParameter> mparams = ViewUtils.GetAllFilterableParameters(doc, elems);
 

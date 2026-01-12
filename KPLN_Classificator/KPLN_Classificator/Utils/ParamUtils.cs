@@ -26,7 +26,7 @@ namespace KPLN_Classificator
             Parameter parameter = elem.LookupParameter(parameterName) ?? elem.Document.GetElement(elem.GetTypeId()).LookupParameter(parameterName);
             if (parameter == null)
             {
-                output.PrintDebug(string.Format("В элементе: \"{0}\" с id: {1} не найден параметр: \"{2}\".", elem.Name, elem.Id, parameterName), Output.OutputMessageType.Warning, debug);
+                CurrentOutput.PrintDebug(string.Format("В элементе: \"{0}\" с id: {1} не найден параметр: \"{2}\".", elem.Name, elem.Id, parameterName), Output.OutputMessageType.Warning, debug);
                 return false;
             }
 
@@ -43,7 +43,7 @@ namespace KPLN_Classificator
                     elemParamValue = GetStringValue(parameter);
                     break;
                 default:
-                    output.PrintDebug("Не удалось определить тип параметра: " + parameter, Output.OutputMessageType.Error, debug);
+                    CurrentOutput.PrintDebug("Не удалось определить тип параметра: " + parameter, Output.OutputMessageType.Error, debug);
                     break;
             }
 
@@ -133,7 +133,7 @@ namespace KPLN_Classificator
             Parameter targetParam = elem.LookupParameter(targetParamName);
             if (targetParam == null)
             {
-                output.PrintDebug(string.Format("В элементе: \"{0}\" с id: {1} не найден параметр: \"{2}\".", elem.Name, elem.Id, targetParamName), Output.OutputMessageType.Warning, debug);
+                CurrentOutput.PrintDebug(string.Format("В элементе: \"{0}\" с id: {1} не найден параметр: \"{2}\".", elem.Name, elem.Id, targetParamName), Output.OutputMessageType.Warning, debug);
                 return rsl;
             }
 
@@ -163,7 +163,7 @@ namespace KPLN_Classificator
                                     }
                                     catch (Exception)
                                     {
-                                        output.PrintDebug(string.Format("Значение параметра: \"{0}\" в классификаторе содержит операцию умножения (*), которое не было выполнено. Проверьте корректность заполнения конфигурационного файла. Значение не вписано в параметр: \"{1}\".",
+                                        CurrentOutput.PrintDebug(string.Format("Значение параметра: \"{0}\" в классификаторе содержит операцию умножения (*), которое не было выполнено. Проверьте корректность заполнения конфигурационного файла. Значение не вписано в параметр: \"{1}\".",
                                             foundParamName, targetParamName), Output.OutputMessageType.Warning, debug);
                                         return rsl;
                                     }
@@ -187,7 +187,7 @@ namespace KPLN_Classificator
                     string itemValue = foundParamsAndTheirValues[item];
                     if (itemValue == null || itemValue.Length == 0)
                     {
-                        output.PrintDebug(
+                        CurrentOutput.PrintDebug(
                             $"Не заполнено значение параметра: \"{item}\" у элемента: {elem.Name} с id: {elem.Id}. Значение не вписано в параметр: \"{targetParamName}\".",
                             Output.OutputMessageType.Warning, debug);
                         return rsl;
@@ -215,7 +215,7 @@ namespace KPLN_Classificator
             }
             catch (Exception)
             {
-                output.PrintDebug(string.Format("Не удалось присвоить значение \"{0}\" параметру: \"{1}\" с типом данных: {2}. Элемент: {3} с id: {4}",
+                CurrentOutput.PrintDebug(string.Format("Не удалось присвоить значение \"{0}\" параметру: \"{1}\" с типом данных: {2}. Элемент: {3} с id: {4}",
                     newValue, targetParamName, targetParam.StorageType.ToString(), elem.Name, elem.Id), Output.OutputMessageType.Warning, debug);
             }
             return rsl;
@@ -228,7 +228,7 @@ namespace KPLN_Classificator
 
             if (classificator.paramsValues.Count > storage.instanseParams.Count)
             {
-                output.PrintDebug(string.Format("Значение параметра: \"{0}\" в элементе: \"{1}\" за пределами диапазона возможных значений. Присвоение данного параметра не будет выполнено."
+                CurrentOutput.PrintDebug(string.Format("Значение параметра: \"{0}\" в элементе: \"{1}\" за пределами диапазона возможных значений. Присвоение данного параметра не будет выполнено."
                     , classificator.paramsValues[classificator.paramsValues.Count - 1]
                     , classificator.FamilyName)
                     , Output.OutputMessageType.Warning, debug);
@@ -250,7 +250,7 @@ namespace KPLN_Classificator
             {
                 notFullSuccessElems.Add(elem);
             }
-            output.PrintDebug(string.Format("Были присвоены значения: {0}", string.Join("; ", assignedValues)), Output.OutputMessageType.System_OK, debug);
+            CurrentOutput.PrintDebug(string.Format("Были присвоены значения: {0}", string.Join("; ", assignedValues)), Output.OutputMessageType.System_OK, debug);
         }
 
         /// <summary>
@@ -272,7 +272,7 @@ namespace KPLN_Classificator
             
             if (sourceParam == null)
             {
-                output.PrintDebug(string.Format("В элементе: \"{0}\" c id: {1} не найден параметр: \"{2}\"", elem.Name, elem.Id, sourceParamName), Output.OutputMessageType.Warning, debug);
+                CurrentOutput.PrintDebug(string.Format("В элементе: \"{0}\" c id: {1} не найден параметр: \"{2}\"", elem.Name, elem.Id, sourceParamName), Output.OutputMessageType.Warning, debug);
                 return paramValue;
             }
 
@@ -288,7 +288,7 @@ namespace KPLN_Classificator
                     paramValue = GetStringValue(sourceParam);
                     break;
                 default:
-                    output.PrintDebug("Не удалось определить тип параметра: " + sourceParamName, Output.OutputMessageType.Error, debug);
+                    CurrentOutput.PrintDebug("Не удалось определить тип параметра: " + sourceParamName, Output.OutputMessageType.Error, debug);
                     break;
             }
 
@@ -299,36 +299,36 @@ namespace KPLN_Classificator
         {
             if (constrs == null || constrs.Count == 0)
             {
-                output.PrintInfo("Не удалось получить элементы для заполнения классификатора! " +
+                CurrentOutput.PrintInfo("Не удалось получить элементы для заполнения классификатора! " +
                     "Проверь выборку (можно выбирать только моделируемые элементы), либо запусти на весь проект!", Output.OutputMessageType.Error);
                 return false;
             }
             foreach (Classificator classificator in storage.classificator)
             {
-                output.PrintDebug(string.Format("{0} - {1}", classificator.FamilyName, classificator.TypeName), Output.OutputMessageType.Code, debug);
+                CurrentOutput.PrintDebug(string.Format("{0} - {1}", classificator.FamilyName, classificator.TypeName), Output.OutputMessageType.Code, debug);
             }
-            output.PrintDebug(string.Format("Заполнение классификатора по {0} ↑", storage.instanceOrType == 1 ? "экземпляру" : "типу"), Output.OutputMessageType.Header, debug);
+            CurrentOutput.PrintDebug(string.Format("Заполнение классификатора по {0} ↑", storage.instanceOrType == 1 ? "экземпляру" : "типу"), Output.OutputMessageType.Header, debug);
 
             foreach (Element elem in constrs)
             {
                 if (elem == null)
                 {
-                    output.PrintInfo("Не удалось получить элементы для заполнения классификатора! " +
+                    CurrentOutput.PrintInfo("Не удалось получить элементы для заполнения классификатора! " +
                         "Проверь выборку (можно выбирать только моделируемые элементы), либо запусти на весь проект!", Output.OutputMessageType.Error);
                     return false;
                 }
 
                 string familyName = getElemFamilyName(elem);
 
-                output.PrintDebug(string.Format("{0} : {1} : {2}", elem.Name, familyName, elem.Id.IntegerValue), Output.OutputMessageType.Regular, debug);
+                CurrentOutput.PrintDebug(string.Format("{0} : {1} : {2}", elem.Name, familyName, elem.Id), Output.OutputMessageType.Regular, debug);
                 foreach (Classificator classificator in storage.classificator)
                 {
                     bool categoryCatch = false;
                     Category category = Category.GetCategory(doc, classificator.BuiltInName);
                     if (category != null)
-                        categoryCatch = category.Id.IntegerValue == elem.Category.Id.IntegerValue;
+                        categoryCatch = category.Id.Equals(elem.Category.Id);
                     else
-                        output.PrintDebug(string.Format("Не удалось определить категорию из файла классификатора: {0}. Возможно, она введена неверно.", classificator.BuiltInName), Output.OutputMessageType.Error, debug);
+                        CurrentOutput.PrintDebug(string.Format("Не удалось определить категорию из файла классификатора: {0}. Возможно, она введена неверно.", classificator.BuiltInName), Output.OutputMessageType.Error, debug);
                     if (!categoryCatch) continue;
 
                     bool familyNameCatch = nameChecker(classificator.FamilyName, familyName);
