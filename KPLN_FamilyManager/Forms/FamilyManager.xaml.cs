@@ -2195,6 +2195,7 @@ namespace KPLN_FamilyManager.Forms
                     if (optDlg.ShowDialog() == true)
                     {
                         bool doDepartment = optDlg.DoDepartment;
+                        bool doProject = optDlg.DoProject;
                         bool doImport = optDlg.DoImportParams;
                         bool doImage = optDlg.DoFamilyImage;
 
@@ -2222,6 +2223,11 @@ namespace KPLN_FamilyManager.Forms
                             {
                                 updatedCount = UpdateDepartmentsByPath(DB_PATH);
                                 dubugInfo += $"Обновлено значение «Отдел» в БД: {updatedCount}\n";
+                            }
+                            if (doProject) 
+                            {
+                                updatedCount = UpdateProjectsByAbr(DB_PATH);
+                                dubugInfo += $"Обновлено значение «Проект» в БД: {updatedCount}\n";
                             }
                             if (doImage)
                             {
@@ -2301,7 +2307,7 @@ namespace KPLN_FamilyManager.Forms
                                 ExternalEventsHost.BulkPagedUpdateEvent.Raise();
                                 return;
                             }
-                            if (doDepartment || doImage)
+                            if (doDepartment || doProject || doImage )
                             {
                                 dubugInfo += $"Опперация выполнена успешно.";
                                 TaskDialog.Show("Обновлены данные в БД", $"{dubugInfo}");
@@ -2581,6 +2587,118 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// --- Обновление PROJECT в FamilyManager по ABR из Projects
+        private static int UpdateProjectsByAbr(string dbPath)
+        {
+            var rules = new List<(int ProjectId, string Token)>();
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT ID, ABR FROM Project;";
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            int id = Convert.ToInt32(r["ID"]);
+
+                            string abr = r["ABR"] == DBNull.Value ? null : Convert.ToString(r["ABR"]);
+                            if (string.IsNullOrWhiteSpace(abr)) continue; 
+
+                            var tokens = abr
+                                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(t => (t ?? "").Trim())
+                                .Where(t => !string.IsNullOrWhiteSpace(t));
+
+                            foreach (var t in tokens)
+                                rules.Add((id, t));
+                        }
+                    }
+                }
+
+                if (rules.Count == 0)
+                    return 0;
+
+                rules = rules
+                    .Distinct()
+                    .OrderByDescending(x => x.Token.Length)
+                    .ThenBy(x => x.ProjectId)
+                    .ToList();
+
+                using (var tx = conn.BeginTransaction())
+                using (var update = conn.CreateCommand())
+                {
+                    update.Transaction = tx;
+                    update.CommandText = @"
+                        UPDATE FamilyManager
+                        SET PROJECT = @projectId
+                        WHERE STATUS = 'OK'
+                          AND PROJECT = 1
+                          AND FULLPATH IS NOT NULL
+                          AND instr(FULLPATH COLLATE BINARY, @token) > 0;";
+
+                    update.Parameters.Add(new SQLiteParameter("@projectId"));
+                    update.Parameters.Add(new SQLiteParameter("@token"));
+
+                    int affectedTotal = 0;
+
+                    foreach (var rule in rules)
+                    {
+                        update.Parameters["@projectId"].Value = rule.ProjectId;
+                        update.Parameters["@token"].Value = rule.Token;
+
+                        affectedTotal += update.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                    return affectedTotal;
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         /// --- Обновлеие IMAGE в FamilyManager
         // Запись данных в БД (FamilyManager). STATUS, IMAGE
         private static int UpdateImagesByPath(string dbPath, Action<string> log = null, int maxSide = 200, int maxRecords = 4000)
@@ -2833,14 +2951,6 @@ namespace KPLN_FamilyManager.Forms
 
             return filtered.OrderBy(r => SafeFileName(r.FullPath), StringComparer.OrdinalIgnoreCase);
         }
-
-
-
-
-
-
-
-
 
         // Интерфейс универсального отдела. Фильтр по статусу
         private static bool HasStatusNewOrOk(string status)

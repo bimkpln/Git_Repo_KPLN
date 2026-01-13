@@ -9,7 +9,7 @@
         <StackPanel Orientation="Vertical" Margin="5 0 5 5" MinWidth="320">
             <TextBlock Text="Выберите параметры, которые будут обновлены в БД:" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <CheckBox x:Name="cbDepartment" Checked="AnyOther_Checked" Content="Отдел" ToolTip="В зависимости от расположения семейств в директориях формируется принадлежность семейств к отделам в БД.&#x0a;Общие семейства не обрабатываются." Margin="0,0,0,6" FontSize="11"/>
-
+            <CheckBox x:Name="cbProject" Checked="AnyOther_Checked" Content="Проект" ToolTip="Обновление принадлежности семейств к проекту в БД." Margin="0,0,0,6" FontSize="11"/>
             <CheckBox x:Name="cbFamilyImage" Checked="AnyOther_Checked" Content="Изображение семейства (только для актуальной версии Revit)" ToolTip="Формирование миниатюр изображений из файлов семейств." Margin="0,0,0,6" Foreground="#FFB30707"/>
             <CheckBox x:Name="cbImportParams" Checked="CbImportParams_Checked" Content="Набор параметров семейства" Margin="0,0,0,12" Foreground="#FFB30707"/>
 
