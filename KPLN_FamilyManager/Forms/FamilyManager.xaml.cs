@@ -2195,6 +2195,7 @@ namespace KPLN_FamilyManager.Forms
                     if (optDlg.ShowDialog() == true)
                     {
                         bool doDepartment = optDlg.DoDepartment;
+                        bool doProject = optDlg.DoProject;
                         bool doImport = optDlg.DoImportParams;
                         bool doImage = optDlg.DoFamilyImage;
 
@@ -2222,6 +2223,11 @@ namespace KPLN_FamilyManager.Forms
                             {
                                 updatedCount = UpdateDepartmentsByPath(DB_PATH);
                                 dubugInfo += $"Обновлено значение «Отдел» в БД: {updatedCount}\n";
+                            }
+                            if (doProject) 
+                            {
+                                updatedCount = UpdateProjectsByAbr(DB_PATH);
+                                dubugInfo += $"Обновлено значение «Проект» в БД: {updatedCount}\n";
                             }
                             if (doImage)
                             {
@@ -2301,7 +2307,7 @@ namespace KPLN_FamilyManager.Forms
                                 ExternalEventsHost.BulkPagedUpdateEvent.Raise();
                                 return;
                             }
-                            if (doDepartment || doImage)
+                            if (doDepartment || doProject || doImage )
                             {
                                 dubugInfo += $"Опперация выполнена успешно.";
                                 TaskDialog.Show("Обновлены данные в БД", $"{dubugInfo}");
@@ -2581,6 +2587,118 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// --- Обновление PROJECT в FamilyManager по ABR из Projects
+        private static int UpdateProjectsByAbr(string dbPath)
+        {
+            var rules = new List<(int ProjectId, string Token)>();
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT ID, ABR FROM Project;";
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            int id = Convert.ToInt32(r["ID"]);
+
+                            string abr = r["ABR"] == DBNull.Value ? null : Convert.ToString(r["ABR"]);
+                            if (string.IsNullOrWhiteSpace(abr)) continue; 
+
+                            var tokens = abr
+                                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(t => (t ?? "").Trim())
+                                .Where(t => !string.IsNullOrWhiteSpace(t));
+
+                            foreach (var t in tokens)
+                                rules.Add((id, t));
+                        }
+                    }
+                }
+
+                if (rules.Count == 0)
+                    return 0;
+
+                rules = rules
+                    .Distinct()
+                    .OrderByDescending(x => x.Token.Length)
+                    .ThenBy(x => x.ProjectId)
+                    .ToList();
+
+                using (var tx = conn.BeginTransaction())
+                using (var update = conn.CreateCommand())
+                {
+                    update.Transaction = tx;
+                    update.CommandText = @"
+                        UPDATE FamilyManager
+                        SET PROJECT = @projectId
+                        WHERE STATUS = 'OK'
+                          AND PROJECT = 1
+                          AND FULLPATH IS NOT NULL
+                          AND instr(FULLPATH COLLATE BINARY, @token) > 0;";
+
+                    update.Parameters.Add(new SQLiteParameter("@projectId"));
+                    update.Parameters.Add(new SQLiteParameter("@token"));
+
+                    int affectedTotal = 0;
+
+                    foreach (var rule in rules)
+                    {
+                        update.Parameters["@projectId"].Value = rule.ProjectId;
+                        update.Parameters["@token"].Value = rule.Token;
+
+                        affectedTotal += update.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                    return affectedTotal;
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         /// --- Обновлеие IMAGE в FamilyManager
         // Запись данных в БД (FamilyManager). STATUS, IMAGE
         private static int UpdateImagesByPath(string dbPath, Action<string> log = null, int maxSide = 200, int maxRecords = 4000)
@@ -2792,9 +2910,20 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
+
+
+
+
+
+
+
         // Интерфейс универсального отдела
         private IEnumerable<FamilyManagerRecord> GetUniversalFiltered(string depUi)
         {
+            const int FILTER_ALL = -1;
+            const int FILTER_UNIVERSAL = -2;
+            const int PROJECT_UNIVERSAL_ID = 1;
+
             var depDb = DepForDb(depUi);
             IEnumerable<FamilyManagerRecord> all = _records ?? Enumerable.Empty<FamilyManagerRecord>();
 
@@ -2805,20 +2934,19 @@ namespace KPLN_FamilyManager.Forms
 
             string q = (_isWatermarkActive ? null : _tbSearch?.Text)?.Trim();
             if (!string.IsNullOrEmpty(q))
-            {
                 filtered = filtered.Where(r => MatchesSearchByIndex(r, q));
-            }
 
-            if (string.Equals(depUi?.Trim(), "АР", StringComparison.OrdinalIgnoreCase)
-                && _cbStage != null
-                && _cbStage.SelectedValue is int stageId && stageId > 0)
+            if (_cbProject != null && _cbProject.SelectedValue is int projectId)
             {
-                filtered = filtered.Where(r => r.Stage == stageId);
-            }
-
-            if (_cbProject != null && _cbProject.SelectedValue is int projectId && projectId > 0)
-            {
-                filtered = filtered.Where(r => r.Project == projectId);
+                if (projectId == FILTER_UNIVERSAL)
+                {
+                    filtered = filtered.Where(r => r.Project == PROJECT_UNIVERSAL_ID);
+                }
+                else if (projectId > 0)
+                {
+                    filtered = filtered.Where(r => r.Project == projectId);
+                }
+ 
             }
 
             return filtered.OrderBy(r => SafeFileName(r.FullPath), StringComparer.OrdinalIgnoreCase);
@@ -3061,17 +3189,30 @@ namespace KPLN_FamilyManager.Forms
             cb.SelectedValue = -1;
         }
 
+
+
+
+
+
+
+
+
+
+
         // Интерфейс универсального отдела. Биндер для ComboBox - Проект
         private void BindProjectCombo_DefaultId1(ComboBox cb)
         {
+            const int FILTER_ALL = -1;        // Без фильтра
+            const int FILTER_UNIVERSAL = -2;  // Универсальные (PROJECT == 1)
+
             var items = new List<KeyValuePair<int, string>>
     {
-        new KeyValuePair<int, string>(-1, "Универсальные (без фильтра)")
+        new KeyValuePair<int, string>(FILTER_ALL, "Без фильтра"),
+        new KeyValuePair<int, string>(FILTER_UNIVERSAL, "Универсальные")
     };
 
             items.AddRange(
                 _projectsById
-                    .Where(kv => !string.Equals(kv.Value, "Универсальные", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(kv => kv.Value, StringComparer.OrdinalIgnoreCase)
                     .Select(kv => new KeyValuePair<int, string>(kv.Key, kv.Value))
             );
@@ -3079,8 +3220,20 @@ namespace KPLN_FamilyManager.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = -1;
+            cb.SelectedValue = FILTER_ALL;
         }
+
+
+
+
+
+
+
+
+
+
+
+
 
         // Интерфейс универсального отдела. Строковое представление
         private FrameworkElement CreateUniversalRow(FamilyManagerRecord rec)
@@ -3146,7 +3299,6 @@ namespace KPLN_FamilyManager.Forms
                 if (r == null) return;
                 GetOrCreateSelectionSet(GetDeptKey()).Add(r.ID);
                 UpdateSelectionButtonsState();
-                RefreshScenario();
                 e.Handled = true;
             };
             cb.Unchecked += (s, e) =>
@@ -3155,7 +3307,6 @@ namespace KPLN_FamilyManager.Forms
                 if (r == null) return;
                 GetOrCreateSelectionSet(GetDeptKey()).Remove(r.ID);
                 UpdateSelectionButtonsState();
-                RefreshScenario();
                 e.Handled = true;
             };
 
@@ -3330,14 +3481,12 @@ namespace KPLN_FamilyManager.Forms
         private System.Windows.Controls.Panel BuildRowsPanel(IEnumerable<FamilyManagerRecord> recs)
         {
             var sp = new StackPanel { Margin = new Thickness(8, 4, 0, 6) };
-            var set = GetOrCreateSelectionSet(GetDeptKey());
 
-            foreach (var r in recs
-                     .OrderByDescending(x => set.Contains(x.ID))
-                     .ThenBy(x => SafeFileName(x.FullPath), StringComparer.OrdinalIgnoreCase))
+            foreach (var r in recs.OrderBy(x => SafeFileName(x.FullPath), StringComparer.OrdinalIgnoreCase))
             {
                 sp.Children.Add(CreateUniversalRow(r));
             }
+
             return sp;
         }
 
