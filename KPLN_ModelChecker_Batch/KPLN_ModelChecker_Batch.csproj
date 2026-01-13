@@ -14,63 +14,37 @@
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
+  <!-- Анализ Configuration для получения версии-->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020'">
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Revit2023'">
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024'">
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <!-- DEBUG CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Debug$(RevitVer)|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>C:\KPLN_Debug\KPLN_ModelChecker_Batch\Debug\2020\</OutputPath>
-    <DefineConstants>Debug2020</DefineConstants>
-    <ErrorReport>none</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <OutputPath>C:\KPLN_Debug\KPLN_ModelChecker_Batch\Debug\$(RevitVer)\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug$(RevitVer)</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>C:\KPLN_Debug\KPLN_ModelChecker_Batch\Debug\2023\</OutputPath>
-    <DefineConstants>Debug2023</DefineConstants>
-    <ErrorReport>none</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
-    <XamlDebuggingInformation>True</XamlDebuggingInformation>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|x64' ">
+  <!-- RELEASE CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)|x64' ">
     <DebugType>none</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_Batch\2020\</OutputPath>
-    <DefineConstants>TRACE;Revit2020</DefineConstants>
-    <ErrorReport>none</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_Batch\$(RevitVer)\</OutputPath>
+    <DefineConstants>Revit$(RevitVer)</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_Batch\2023\</OutputPath>
-    <DefineConstants>TRACE;Revit2023</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>none</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-  </PropertyGroup>
+  <!-- STATIC REFERENCES -->
   <ItemGroup>
-    <Reference Include="KPLN_Library_Bitrix24Worker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_PluginActivityWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2023\KPLN_Library_PluginActivityWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <HintPath>packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
@@ -100,136 +74,49 @@
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
-  <Choose>
-    <When Condition=" '$(Configuration)'=='Debug2020' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Loader">
-          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_User">
-          <HintPath>C:\KPLN_Debug\KPLN_ModelChecker_User\Debug\2020\KPLN_ModelChecker_User.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_OpenDocHandler">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\2020\KPLN_Library_OpenDocHandler.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2020\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Debug2023' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Loader">
-          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_User">
-          <HintPath>C:\KPLN_Debug\KPLN_ModelChecker_User\Debug\2023\KPLN_ModelChecker_User.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_OpenDocHandler">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\2023\KPLN_Library_OpenDocHandler.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\2023\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2020' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Loader">
-          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2020\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_User">
-          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2020\KPLN_ModelChecker_User.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_OpenDocHandler">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\2020\KPLN_Library_OpenDocHandler.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2020\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2023' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Loader">
-          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2023\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_User">
-          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\2023\KPLN_ModelChecker_User.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_OpenDocHandler">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\2023\KPLN_Library_OpenDocHandler.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
+  <!-- CONFIG REFERENCES -->
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_Bitrix24Worker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_PluginActivityWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Loader">
+      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_ModelChecker_User">
+      <HintPath>C:\KPLN_Debug\KPLN_ModelChecker_User\Debug\$(RevitVer)\KPLN_ModelChecker_User.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_OpenDocHandler">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_OpenDocHandler\bin\Debug\$(RevitVer)\KPLN_Library_OpenDocHandler.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="Availability\StaticAvailable.cs" />
     <Compile Include="Common\ExportToExcel.cs" />

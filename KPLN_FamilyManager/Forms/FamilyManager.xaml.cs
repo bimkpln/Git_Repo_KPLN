@@ -2003,7 +2003,11 @@ namespace KPLN_FamilyManager.Forms
                             ElementId eid = type.AsElementId(fp);
                             if (eid == null || eid == ElementId.InvalidElementId)
                                 return null;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                             return eid.IntegerValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+#else
+                            return eid.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+#endif
                         }
 
                     default:
@@ -2920,7 +2924,7 @@ namespace KPLN_FamilyManager.Forms
         // Интерфейс универсального отдела
         private IEnumerable<FamilyManagerRecord> GetUniversalFiltered(string depUi)
         {
-            const int FILTER_ALL = -1;
+            //const int FILTER_ALL = -1;
             const int FILTER_UNIVERSAL = -2;
             const int PROJECT_UNIVERSAL_ID = 1;
 
