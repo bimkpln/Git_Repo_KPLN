@@ -28,8 +28,13 @@ namespace KPLN_Loader.Core.Entities
         internal int SubDepartmentId { get; set; }
 
         /// <summary>
-        /// Счётчик "лайков", для чистки мёртвых подсказок
+        /// Счётчик "лайков"
         /// </summary>
         internal int ApprovalRate { get; set; }
+
+        /// <summary>
+        /// Счётчик "дизлайков"
+        /// </summary>
+        internal int DisapprovalRate { get; set; }
     }
 }

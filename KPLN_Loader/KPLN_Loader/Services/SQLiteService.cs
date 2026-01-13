@@ -201,16 +201,25 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// БД: Записать значение уровня одобрения от пользователя
         /// </summary>
-        internal void SetLoaderDescriptionUserRank(int rate, LoaderDescription loaderDescription)
+        internal void SetLoaderDescriptionUserRank(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription)
         {
             _logger.Info("БД: Записать значение уровня одобрения от пользователя");
 
             if (loaderDescription != null)
             {
-                int currentRate = loaderDescription.ApprovalRate;
-                int newRate = currentRate + rate;
-                ExecuteNonQuery($"UPDATE {MainDB_Tables.LoaderDescriptions} " +
-                    $"SET {nameof(LoaderDescription.ApprovalRate)}='{newRate}' WHERE {nameof(LoaderDescription.Id)}='{loaderDescription.Id}';");
+                switch (rateType)
+                {
+                    case MainDB_LoaderDescriptions_RateType.Approval:
+                        int apprRate = loaderDescription.ApprovalRate;
+                        ExecuteNonQuery($"UPDATE {MainDB_Tables.LoaderDescriptions} " +
+                            $"SET {nameof(LoaderDescription.ApprovalRate)}='{++apprRate}' WHERE {nameof(LoaderDescription.Id)}='{loaderDescription.Id}';");
+                        break;
+                    case MainDB_LoaderDescriptions_RateType.Disapproval:
+                        int disapprRate = loaderDescription.DisapprovalRate;
+                        ExecuteNonQuery($"UPDATE {MainDB_Tables.LoaderDescriptions} " +
+                            $"SET {nameof(LoaderDescription.DisapprovalRate)}='{--disapprRate}' WHERE {nameof(LoaderDescription.Id)}='{loaderDescription.Id}';");
+                        break;
+                }
             }
         }
 

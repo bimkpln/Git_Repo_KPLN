@@ -13,4 +13,13 @@
         SubDepartments,
         Users
     }
+
+    /// <summary>
+    /// Варианты реакций на сообщения
+    /// </summary>
+    public enum MainDB_LoaderDescriptions_RateType
+    {
+        Approval,
+        Disapproval,
+    }
 }

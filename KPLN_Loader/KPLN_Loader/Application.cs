@@ -376,7 +376,7 @@ namespace KPLN_Loader
         /// <summary>
         /// Обработчик события RiseLikeEvant
         /// </summary>
-        private void LoaderStatusForm_RiseLikeEvant(int rate, LoaderDescription loaderDescription) => _dbService.SetLoaderDescriptionUserRank(rate, loaderDescription);
+        private void LoaderStatusForm_RiseLikeEvant(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription) => _dbService.SetLoaderDescriptionUserRank(rateType, loaderDescription);
 
         /// <summary>
         /// Проверка имени dll-модуля на возможность корректной подгрузки

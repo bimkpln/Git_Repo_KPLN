@@ -1,5 +1,6 @@
 ﻿using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms.Common;
+using KPLN_Loader.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,7 +18,7 @@ namespace KPLN_Loader.Forms
     public partial class LoaderStatusForm : Window
     {
 
-        internal delegate void RiseLikeEvant(int rate, LoaderDescription loaderDescription);
+        internal delegate void RiseLikeEvant(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription);
         /// <summary>
         /// Событие, которое посылает сигналы из формы, в случае активности пользователя
         /// </summary>
@@ -159,13 +160,13 @@ namespace KPLN_Loader.Forms
         private void BtnLike_Click(object sender, RoutedEventArgs e)
         {
             SetUnclickableRateBtns();
-            LikeStatus?.Invoke(1, _loaderDescription);
+            LikeStatus?.Invoke(MainDB_LoaderDescriptions_RateType.Approval, _loaderDescription);
         }
 
         private void BtnDislike_Click(object sender, RoutedEventArgs e)
         {
             SetUnclickableRateBtns();
-            LikeStatus?.Invoke(-1, _loaderDescription);
+            LikeStatus?.Invoke(MainDB_LoaderDescriptions_RateType.Disapproval, _loaderDescription);
         }
 
         /// <summary>
