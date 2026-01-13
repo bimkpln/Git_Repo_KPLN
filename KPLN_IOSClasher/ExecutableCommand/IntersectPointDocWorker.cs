@@ -56,7 +56,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 {
                     // Удаляю не актуальные (если можно их удалить). Проблема с занятами клэшпоинтами приводит к ложным клэшам. В пределах погрешности ок, ведь когда 
                     // юзер зайдет в модель - он свои клэши почистит (для него эти эл-ты уже не заняты)
-                    List<Element> oldElemsToDel = GetOldToDelete_ByOldPointsAndChackedElems(doc, oldPointElems, _checkedElems.Where(el => el.IsValidObject).Select(el => el.Id.IntegerValue));
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    List<Element> oldElemsToDel = GetOldToDelete_ByOldPointsAndChackedElems(doc, oldPointElems, _checkedElems.Where(el => el.IsValidObject).Select(el => (long)el.Id.IntegerValue));
+#else
+                    List<Element> oldElemsToDel = GetOldToDelete_ByOldPointsAndChackedElems(doc, oldPointElems, _checkedElems.Where(el => el.IsValidObject).Select(el => el.Id.Value));
+#endif
                     ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, oldElemsToDel.Select(el => el.Id).ToArray());
                     doc.Delete(availableWSElemsId);
 
@@ -92,19 +96,19 @@ namespace KPLN_IOSClasher.ExecutableCommand
         /// <summary>
         /// Подготовка коллекции на удаление из размещенных ранее клэшпоинтов
         /// </summary>
-        private static List<Element> GetOldToDelete_ByOldPointsAndChackedElems(Document doc, IEnumerable<Element> pointElemsInModel, IEnumerable<int> checkedElemIds)
+        private static List<Element> GetOldToDelete_ByOldPointsAndChackedElems(Document doc, IEnumerable<Element> pointElemsInModel, IEnumerable<long> checkedElemIds)
         {
             List<Element> resultToDel = new List<Element>();
 
             foreach (Element pointElem in pointElemsInModel)
             {
                 // Получаю данные об элементах
-                int addedElemIdInModel = -1;
-                int oldElemIdInModel = -1;
+                long addedElemIdInModel = -1;
+                long oldElemIdInModel = -1;
                 try
                 {
-                    addedElemIdInModel = int.Parse(pointElem.get_Parameter(AddedElementId_Param).AsString());
-                    oldElemIdInModel = int.Parse(pointElem.get_Parameter(OldElementId_Param).AsString());
+                    addedElemIdInModel = long.Parse(pointElem.get_Parameter(AddedElementId_Param).AsString());
+                    oldElemIdInModel = long.Parse(pointElem.get_Parameter(OldElementId_Param).AsString());
                 }
                 catch
                 {
@@ -116,7 +120,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 {
                     // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).
                     // Если эл-та нет - удаляем
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    Element addedElemInModel = doc.GetElement(new ElementId((int)addedElemIdInModel));
+#else
                     Element addedElemInModel = doc.GetElement(new ElementId(addedElemIdInModel));
+#endif
                     if (addedElemInModel == null)
                     {
                         resultToDel.Add(addedElemInModel);
@@ -132,15 +140,23 @@ namespace KPLN_IOSClasher.ExecutableCommand
                     Transform linkTrans = null;
                     if (!string.IsNullOrEmpty(linkInstInModel) && linkInstInModel != "-1")
                     {
-                        if (int.TryParse(linkInstInModel, out int linkId))
+                        if (long.TryParse(linkInstInModel, out long linkId))
                         {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                            linkInst = doc.GetElement(new ElementId((int)linkId)) as RevitLinkInstance;
+#else
                             linkInst = doc.GetElement(new ElementId(linkId)) as RevitLinkInstance;
+#endif
                             if (linkInst == null)
                                 throw new FormatException($"Отправь разработчику: Не удалось конвертировать id-связь в RevitLinkInstance для эл-та с id:{pointElem.Id}");
                             else
                             {
                                 Document linkDoc = linkInst.GetLinkDocument();
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                                oldElemInModel = linkDoc.GetElement(new ElementId((int)oldElemIdInModel));
+#else
                                 oldElemInModel = linkDoc.GetElement(new ElementId(oldElemIdInModel));
+#endif
                                 linkTrans = IntersectCheckEntity.GetLinkTransform(linkInst);
                             }
 
@@ -149,7 +165,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                             throw new FormatException($"Отправь разработчику: Не удалось конвертировать данные из id-связи для эл-та с id:{pointElem.Id}");
                     }
                     else
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                        oldElemInModel = doc.GetElement(new ElementId((int)oldElemIdInModel));
+#else
                         oldElemInModel = doc.GetElement(new ElementId(oldElemIdInModel));
+#endif
 
                     if (oldElemInModel == null)
                     {

@@ -14,74 +14,60 @@
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
+  <!-- Анализ Configuration для получения версии-->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020'">
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Revit2023'">
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024'">
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <!-- DEBUG CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Debug$(RevitVer)|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\$(RevitVer)\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug$(RevitVer)</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <!-- RELEASE CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)|x64' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\IOSClasher\$(RevitVer)\</OutputPath>
+    <DefineConstants>Revit$(RevitVer)</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <!-- STATIC REFERENCES -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
     <OutputPath>C:\KPLN_Debug\KPLN_IOSClasher\Debug\2020\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\IOSClasher\2020\</OutputPath>
-    <DefineConstants>Revit2020</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>none</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\IOSClasher\2023\</OutputPath>
-    <DefineConstants>Revit2023</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>none</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>none</ErrorReport>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <DefineConstants>TRACE;DEBUG;Debug;Debug2020</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <DebugSymbols>true</DebugSymbols>
     <OutputPath>C:\KPLN_Debug\KPLN_IOSClasher\Debug\2023\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
+    <DefineConstants>TRACE;DEBUG;Debug;Debug2023</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_IOSClasher\Debug\2024\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug;Debug2024</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
+    <DefineConstants>Revit;Revit2024</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
+    <DefineConstants>Revit;Revit2023</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
+    <DefineConstants>Revit;Revit2020</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Loader">
-      <HintPath>..\KPLN_Loader\KPLN_Loader\bin\Revit2023\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Looker">
-      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2020\KPLN_Looker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -93,6 +79,33 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <!-- CONFIG REFERENCES -->
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Loader">
+      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Looker">
+      <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\$(RevitVer)\KPLN_Looker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\ElementComparerById.cs" />
@@ -113,7 +126,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Services\DocController.cs" />
-    <Compile Include="Services\DBWorkerService.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
@@ -124,26 +136,19 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Source\RevitData\2020\ClashPoint_Small.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="Source\RevitData\2023\ClashPoint_Small.rfa">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    <None Include="Source\RevitData\2020\ClashPoint_Small.rfa" />
+    <None Include="Source\RevitData\2023\ClashPoint_Small.rfa" />
+    <None Include="Source\RevitData\2024\ClashPoint_Small.rfa" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>IF "$(ConfigurationName)" == "Debug2020" (
-    xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint_Small.rfa" "$(TargetDir)Source\RevitData\2023\"
-)
-IF "$(ConfigurationName)" == "Debug2023" (
-    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint_Small.rfa" "$(TargetDir)Source\RevitData\2023\"
-)
-IF "$(ConfigurationName)" == "Revit2020" (
-    xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint_Small.rfa" "$(TargetDir)Source\RevitData\2020\"
-)
-IF "$(ConfigurationName)" == "Revit2023" (
-    xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint_Small.rfa" "$(TargetDir)Source\RevitData\2023\"
-)</PreBuildEvent>
+    <PreBuildEvent>
+      IF NOT "$(RevitVer)"=="" (
+        IF NOT EXIST "$(TargetDir)Source\RevitData\$(RevitVer)\" (
+          MKDIR "$(TargetDir)Source\RevitData\$(RevitVer)\"
+        )
+        XCOPY /Y /E /I "$(ProjectDir)Source\RevitData\$(RevitVer)\ClashPoint_Small.rfa" "$(TargetDir)Source\RevitData\$(RevitVer)\"
+      )
+    </PreBuildEvent>
   </PropertyGroup>
 </Project>

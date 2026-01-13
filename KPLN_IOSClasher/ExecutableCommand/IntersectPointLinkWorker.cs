@@ -3,6 +3,7 @@ using Autodesk.Revit.UI;
 using KPLN_IOSClasher.Core;
 using KPLN_IOSClasher.Services;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -97,11 +98,16 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 // Получаю данные по элементу №2 (из линка)
                 if (int.TryParse(linkParamData, out int linkId))
                 {
-                    Element linkElemInst = doc.GetElement(new ElementId(linkId));
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    int linkIdValue = linkId;
+#else
+                    long linkIdValue = (long)linkId;
+#endif
+                    Element linkElemInst = doc.GetElement(new ElementId(linkIdValue));
                     if (linkElemInst is RevitLinkInstance linkInst)
                     {
                         XYZ oldPoint = ParseStringToXYZ(pointElem.get_Parameter(PointCoord_Param).AsString());
-                        result.Add(pointElem.Id, new IntersectPointEntity(oldPoint, firstElemId, secondElemId, linkId, Module.ModuleDBWorkerService.CurrentDBUser));
+                        result.Add(pointElem.Id, new IntersectPointEntity(oldPoint, firstElemId, secondElemId, linkId, DBMainService.CurrentDBUser));
                     }
                     else
                         throw new FormatException($"Отправь разработчику: Не удалось конвертировать id-связь в RevitLinkInstance для эл-та с id:{pointElem.Id}");
@@ -124,37 +130,40 @@ namespace KPLN_IOSClasher.ExecutableCommand
             {
                 Element oldPntElem = doc.GetElement(kvp.Key);
                 IntersectPointEntity oldPntEntity = kvp.Value;
-                
+
 
                 // Проверка файла на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).
                 // Если эл-та нет - удаляем
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                Element addedElemInModel = doc.GetElement(new ElementId((int)oldPntEntity.AddedElement_Id));
+#else
                 Element addedElemInModel = doc.GetElement(new ElementId(oldPntEntity.AddedElement_Id));
+#endif
                 if (addedElemInModel == null)
                 {
                     resultToDel.Add(kvp.Key);
                     continue;
                 }
 
-                
+
                 // Проверка линка на наличие элемента (должны чиститься, но вполне могут Redo/Undo не до конца прокликать).
                 // Если эл-та нет - удаляем
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                RevitLinkInstance linkInst = doc.GetElement(new ElementId((int)oldPntEntity.LinkInstance_Id)) as RevitLinkInstance;
+#else
                 RevitLinkInstance linkInst = doc.GetElement(new ElementId(oldPntEntity.LinkInstance_Id)) as RevitLinkInstance;
+#endif
                 Document linkDoc = linkInst.GetLinkDocument();
 
                 // Если док не подгружен - linkDoc не взять. Просто игнор, до момента подгрузки
                 if (linkDoc == null) continue;
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                Element oldElemInMode = linkDoc.GetElement(new ElementId((int)oldPntEntity.OldElement_Id));
+#else
                 Element oldElemInMode = linkDoc.GetElement(new ElementId(oldPntEntity.OldElement_Id));
+#endif
                 if (oldElemInMode == null)
-                {
-                    resultToDel.Add(kvp.Key);
-                    continue;
-                }
-
-
-                // Проверка на соответствие полученного по id элемента - линейному эл-ту
-                // (лёгкая компенсация промаха по id, если эл-т уалили, а потом новый создали с тем же id)
-                if (IntersectCheckEntity.BuiltInCategories.Count(bic => (int)bic == addedElemInModel.Category.Id.IntegerValue) == 0)
                 {
                     resultToDel.Add(kvp.Key);
                     continue;

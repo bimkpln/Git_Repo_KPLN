@@ -12,9 +12,9 @@ namespace KPLN_IOSClasher.Core
     {
         public IntersectPointEntity(
             XYZ pnt,
-            int addedElement_Id,
-            int oldElement_Id,
-            int linkId,
+            long addedElement_Id,
+            long oldElement_Id,
+            long linkId,
             DBUser user)
         {
             IntersectPoint = pnt;
@@ -29,11 +29,11 @@ namespace KPLN_IOSClasher.Core
 
         public IntersectPointEntity(
             XYZ pnt,
-            int addedElement_Id,
-            int oldElement_Id,
-            int linkId,
+            long addedElement_Id,
+            long oldElement_Id,
+            long linkId,
             DBUser user,
-            Solid intSolid) : this(pnt, addedElement_Id,oldElement_Id, linkId, user)
+            Solid intSolid) : this(pnt, addedElement_Id, oldElement_Id, linkId, user)
         {
             IntersectSolid = intSolid;
         }
@@ -43,7 +43,7 @@ namespace KPLN_IOSClasher.Core
         /// Точка пересечения
         /// </summary>
         public XYZ IntersectPoint { get; }
-        
+
         /// <summary>
         /// Тело пересечения
         /// </summary>
@@ -52,18 +52,18 @@ namespace KPLN_IOSClasher.Core
         /// <summary>
         /// Id нового/измененного элемента
         /// </summary>
-        public int AddedElement_Id { get; }
+        public long AddedElement_Id { get; }
 
         /// <summary>
         /// Id уже присутсвующего элемента
         /// </summary>
-        public int OldElement_Id { get; }
+        public long OldElement_Id { get; }
 
 
         /// <summary>
         /// Ссылка на id элемента связи (если линка нет, то "-1")
         /// </summary>
-        public int LinkInstance_Id { get; }
+        public long LinkInstance_Id { get; }
 
         /// <summary>
         /// Данные по текущему пользователю

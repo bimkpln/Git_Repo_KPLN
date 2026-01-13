@@ -49,7 +49,11 @@ namespace KPLN_IOSClasher.ExecutableCommand
                 trans.Start();
 
                 // Удаляю существующте по удаленным элементам
-                List<Element> deleteElemToDel = GetIntersectionPointsEntitiesToDelete(doc, oldPointElems, _deletedElemIds.Select(id => id.IntegerValue));
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                List<Element> deleteElemToDel = GetIntersectionPointsEntitiesToDelete(doc, oldPointElems, _deletedElemIds.Select(id => (long)id.IntegerValue));
+#else
+                List<Element> deleteElemToDel = GetIntersectionPointsEntitiesToDelete(doc, oldPointElems, _deletedElemIds.Select(id => id.Value));
+#endif
                 if (deleteElemToDel != null)
                     doc.Delete(deleteElemToDel.Select(el => el.Id).ToArray());
 
@@ -62,7 +66,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
         /// <summary>
         /// Получить коллекцию сущностей точек пересечения в проекте для удаленных элементов ДЛЯ УДАЛЕНИЯ
         /// </summary>
-        private static List<Element> GetIntersectionPointsEntitiesToDelete(Document doc, IEnumerable<Element> pointElemsInModel, IEnumerable<int> deletedElemIds)
+        private static List<Element> GetIntersectionPointsEntitiesToDelete(Document doc, IEnumerable<Element> pointElemsInModel, IEnumerable<long> deletedElemIds)
         {
             List<Element> resultToDel = new List<Element>();
 
@@ -70,12 +74,12 @@ namespace KPLN_IOSClasher.ExecutableCommand
             foreach (Element pointElem in pointElemsInModel)
             {
                 // Получаю данные об элементах
-                int addedElemIdInModel = -1;
-                int oldElemIdInModel = -1;
+                long addedElemIdInModel = -1;
+                long oldElemIdInModel = -1;
                 try
                 {
-                    addedElemIdInModel = int.Parse(pointElem.get_Parameter(AddedElementId_Param).AsString());
-                    oldElemIdInModel = int.Parse(pointElem.get_Parameter(OldElementId_Param).AsString());
+                    addedElemIdInModel = long.Parse(pointElem.get_Parameter(AddedElementId_Param).AsString());
+                    oldElemIdInModel = long.Parse(pointElem.get_Parameter(OldElementId_Param).AsString());
                 }
                 catch
                 {

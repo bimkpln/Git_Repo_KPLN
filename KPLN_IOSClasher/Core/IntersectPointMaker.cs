@@ -119,7 +119,7 @@ namespace KPLN_IOSClasher.Core
         /// </summary>
         private static FamilySymbol GetIntersectFamilySymbol(Document doc)
         {
-#if Debug2020 || Debug2023
+#if Debug
             _clashPointFamilySymbol = null;
 #endif
 

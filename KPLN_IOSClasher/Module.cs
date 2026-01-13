@@ -5,6 +5,7 @@ using Autodesk.Revit.UI.Events;
 using KPLN_IOSClasher.Core;
 using KPLN_IOSClasher.ExecutableCommand;
 using KPLN_IOSClasher.Services;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -14,31 +15,21 @@ namespace KPLN_IOSClasher
 {
     public class Module : IExternalModule
     {
-        public static string RevitVersion {  get; private set; }
+        public static int RevitVersion { get; private set; }
 
-        public Module()
-        {
-            ModuleDBWorkerService = new DBWorkerService();
-        }
-
-        public static DBWorkerService ModuleDBWorkerService { get; private set; }
-
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-#if Revit2020 || Revit2023
+#if Revit
             //Фильтрация по разделам
-            if (ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("АР")
-                || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("КР")
-                || ModuleDBWorkerService.CurrentDBUserSubDepartment.Code.ToUpper().Contains("BIM"))
+            if (DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("АР")
+                || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("КР")
+                || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM"))
                 return Result.Succeeded;
 #endif
-            RevitVersion = application.ControlledApplication.VersionNumber;
-            
+            RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+
             //Подписка на события
             application.ViewActivated += OnViewActivated;
             application.ControlledApplication.DocumentChanged += OnDocumentChanged;
@@ -60,7 +51,7 @@ namespace KPLN_IOSClasher
             if (doc.IsFamilyDocument)
                 return;
 
-#if Revit2020 || Revit2023
+#if Revit
             // Игнор НЕ мониторинговых моделей
             if (KPLN_Looker.Module.MonitoredDocFilePath(doc) == null)
                 return;
@@ -89,7 +80,7 @@ namespace KPLN_IOSClasher
             if (doc.IsFamilyDocument)
                 return;
 
-#if Revit2020 || Revit2023
+#if Revit
             // Игнор НЕ мониторинговых моделей
             if (KPLN_Looker.Module.MonitoredDocFilePath(doc) == null)
                 return;
@@ -113,7 +104,7 @@ namespace KPLN_IOSClasher
 
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
-#endregion
+            #endregion
         }
 
         /// <summary>
@@ -125,19 +116,21 @@ namespace KPLN_IOSClasher
             if (doc.IsFamilyDocument)
                 return;
 
+#if Revit
             // Игнор НЕ мониторинговых моделей
             if (!DocController.IsDocumentAnalyzing)
                 return;
+#endif
 
             string transName = args.GetTransactionNames().FirstOrDefault();
-            
+
             // При синхроне - уходит в анализ. Это приводит к росту отклика и потенциальной перезаписи коллизии на другого пользователя
             if (transName.Equals("Обновление рабочих наборов до последней версии из хранилища"))
                 return;
-            
+
             UIDocument uidoc = new UIDocument(doc);
             View activeView = uidoc.ActiveView ?? throw new Exception("Отправь разработчику - не удалось определить класс View");
-            
+
             // Обновляю по линкам, если были транзакции
             if (// Рунчая загрузка связи
                 transName.Equals("Связать с проектом Revit")
@@ -163,11 +156,11 @@ namespace KPLN_IOSClasher
                 DocController.UpdateIntCheckEntities_Link(doc, activeView);
             }
 
-             Element[] addedLinearElems = args
-                .GetAddedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
-                .Select(id => doc.GetElement(id))
-                .Where(IntersectCheckEntity.ElemExtraFilterFunc)
-                .ToArray();
+            Element[] addedLinearElems = args
+               .GetAddedElementIds(IntersectCheckEntity.ElemCatLogicalOrFilter)
+               .Select(id => doc.GetElement(id))
+               .Where(IntersectCheckEntity.ElemExtraFilterFunc)
+               .ToArray();
 
             Element[] modifyedLinearElems = null;
             // Если пользователь удаляет элементы, то модифицированные не смотрим (если удаляется при редактировании - транзакция носит другое имя)

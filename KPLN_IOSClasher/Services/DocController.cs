@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_IOSClasher.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Concurrent;
@@ -46,19 +47,17 @@ namespace KPLN_IOSClasher.Services
         /// </summary>
         public static void CurrentDocumentUpdateData(Document doc)
         {
-#if Revit2020 || Revit2023
-//#if Debug2020 || Debug2023
+#if Revit
+//#if Debug
             // Есть вопрос к тому, как всё же её включать. Скорее всего - нужно только в ПАР, и только после 2го этапа проверок. Думаю стоит заменить подход от исключений, на
             // список моделей на проверку
             IsDocumentAnalyzing = false;
             if (doc != null)
             {
-                string fileName = doc.IsWorkshared
-                    ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                    : doc.PathName;
+                string fileName = KPLN_Looker.Module.GetFileFullName(doc);
 
                 // Глобальный игнор стадии АФК, ПД, АН. Они никогда не проверяются (стадии П+ под вопросом, но чаще всего там только магистрали, пока оставлю так)
-                DBProject currentDBPrj = Module.ModuleDBWorkerService.Get_DBProject(fileName);
+                DBProject currentDBPrj = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileName, Module.RevitVersion);
                 if (currentDBPrj == null
                     || currentDBPrj.Stage.Equals("АФК") 
                     || currentDBPrj.Stage.Equals("ПД") 
@@ -68,34 +67,42 @@ namespace KPLN_IOSClasher.Services
                     return;
                 }
                 
-                DBProjectsIOSClashMatrix[] prjMatrix = Module.ModuleDBWorkerService.Get_DBProjectsIOSClashMatrix(currentDBPrj).ToArray();
+                DBProjectsIOSClashMatrix[] prjMatrix = DBMainService.PrjIOSClashMatrixDbService.GetDBProjectMatrix_ByProject(currentDBPrj).ToArray();
                 // Это - затычка. Когда перейдём на схему контроля по всем проектам, эту часть нужно заменить, т.к. все объекты, кроме
                 // тех, на которые есть исключения - игнорируются, а этого быть не должно
                 if (prjMatrix.Count() == 0)
                     return;
                 else
                 {
-                    int dbDocId = Module.ModuleDBWorkerService.Get_DBDocument(fileName).Id;
+                    int dbDocId = DBMainService.DocDbService.GetDBDocuments_ByFileFullPath(fileName).Id;
 
                     // Игнор по ID модели
                     if (prjMatrix.Any(prj => prj.ExceptionDocumentId == dbDocId))
                         return;
                     // Игнор по всему отделу
-                    else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == Module.ModuleDBWorkerService.CurrentDBUser.SubDepartmentId))
+                    else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == DBMainService.CurrentDBUser.SubDepartmentId))
                         return;
                     // Игнор по отдельным пользователям
                     else
-                        IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == Module.ModuleDBWorkerService.CurrentDBUser.Id);
+                        IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == DBMainService.CurrentDBUser.Id);
                     
                 }
 
                 if (IsDocumentAnalyzing)
-                    CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc.Title);
+                {
+                    DBSubDepartment openDocPrjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileName);
+                    int openDocPrjDBSubDepartmentId = openDocPrjDBSubDepartment == null ? -1 : openDocPrjDBSubDepartment.Id;
+                    
+                    CheckDocDBSubDepartmentId = openDocPrjDBSubDepartmentId;
+                }
             }
 #endif
-#if Debug2020 || Debug2023
-            CheckDocDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(doc.Title);
-            IsDocumentAnalyzing = false;
+#if Debug
+            string fileNameDebug = KPLN_Looker.Module.GetFileFullName(doc);
+            DBSubDepartment openDocPrjDBSubDepartmentDebug = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileNameDebug);
+            int openDocPrjDBSubDepartmentIdDebug = openDocPrjDBSubDepartmentDebug == null ? -1 : openDocPrjDBSubDepartmentDebug.Id;
+            CheckDocDBSubDepartmentId = openDocPrjDBSubDepartmentIdDebug;
+            IsDocumentAnalyzing = true;
 #endif
         }
 
@@ -148,8 +155,11 @@ namespace KPLN_IOSClasher.Services
                 {
                     if (openDoc.IsLinked || openDoc.Title != doc.Title)
                     {
+                        string fileFullName = KPLN_Looker.Module.GetFileFullName(doc);
+
                         // Анализирую модели ИОС разделов на пересечение с создаваемыми
-                        int openDocPrjDBSubDepartmentId = Module.ModuleDBWorkerService.Get_DBDocumentSubDepartmentId(openDoc.Title);
+                        DBSubDepartment openDocPrjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
+                        int openDocPrjDBSubDepartmentId = openDocPrjDBSubDepartment == null ? -1 : openDocPrjDBSubDepartment.Id;
                         switch (openDocPrjDBSubDepartmentId)
                         {
                             case 4:
@@ -183,7 +193,7 @@ namespace KPLN_IOSClasher.Services
             {
                 Print($"Ошибка: {ex.Message}", MessageType.Error);
             }
-            
+
             IntersectCheckEntity_Link.AddRange(resultBag);
         }
 
@@ -229,21 +239,29 @@ namespace KPLN_IOSClasher.Services
                 // Анализирую элементы в линках
                 Outline addedElemOutline = CreateFilterOutline(addedElemBB, 1);
                 ConcurrentBag<IntersectPointEntity> resultBag = new ConcurrentBag<IntersectPointEntity>();
-                Parallel.ForEach(IntersectCheckEntity_Link, checkEnt =>
+                try
                 {
-                    Element[] potentialIntersectElems = checkEnt.GetPotentioalIntersectedElems_ForLink(addedElemOutline);
-
-                    foreach (Element elemToCheck in potentialIntersectElems)
+                    Parallel.ForEach(IntersectCheckEntity_Link, checkEnt =>
                     {
-                        IntersectPointEntity newEntity = GetPntEntityFromElems(addedElem, addedElemSolid, elemToCheck, checkEnt);
-                        if (newEntity == null) continue;
+                        Element[] potentialIntersectElems = checkEnt.GetPotentioalIntersectedElems_ForLink(addedElemOutline);
 
-                        resultBag.Add(newEntity);
+                        foreach (Element elemToCheck in potentialIntersectElems)
+                        {
+                            IntersectPointEntity newEntity = GetPntEntityFromElems(addedElem, addedElemSolid, elemToCheck, checkEnt);
+                            if (newEntity == null) continue;
+
+                            resultBag.Add(newEntity);
+                        }
+                    });
+
+                    foreach (IntersectPointEntity ent in resultBag)
+                    {
+                        intersectedPoints.Add(ent);
                     }
-                });
-                foreach (IntersectPointEntity ent in resultBag)
+                }
+                catch 
                 {
-                    intersectedPoints.Add(ent);
+                    HtmlOutput.Print($"Не удалось определить точки пересечения со связями. Отправь ошибку разработчику.", MessageType.Error);
                 }
             }
 
@@ -343,12 +361,15 @@ namespace KPLN_IOSClasher.Services
 
         public static IntersectPointEntity GetPntEntityFromElems(Element addedElem, Solid addedElemSolid, Element elemToCheck, IntersectCheckEntity intEnt)
         {
-            if (elemToCheck.Id.IntegerValue == addedElem.Id.IntegerValue)
+            if (elemToCheck.Id.Equals(addedElem.Id))
                 return null;
 
-            int linkInstanceId = -1;
-            if (intEnt.CheckLinkInst != null)
-                linkInstanceId = intEnt.CheckLinkInst.Id.IntegerValue;
+            long linkInstanceId = -1;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            if (intEnt.CheckLinkInst != null) linkInstanceId = intEnt.CheckLinkInst.Id.IntegerValue;
+#else
+            if (intEnt.CheckLinkInst != null) linkInstanceId = intEnt.CheckLinkInst.Id.Value;
+#endif
 
             Solid solidToCheck = GetElemSolid(elemToCheck, intEnt.LinkTransfrom);
             try
@@ -359,17 +380,26 @@ namespace KPLN_IOSClasher.Services
                     XYZ intersectCentroid = intersectionSolid.ComputeCentroid();
                     XYZ intersectCorrectedByELevation = new XYZ(intersectCentroid.X, intersectCentroid.Y, intersectCentroid.Z - intEnt.CheckDocBPElevation);
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                     return new IntersectPointEntity(
                         intersectCorrectedByELevation,
                         addedElem.Id.IntegerValue,
                         elemToCheck.Id.IntegerValue,
                         linkInstanceId,
-                        Module.ModuleDBWorkerService.CurrentDBUser,
+                        DBMainService.CurrentDBUser,
                         intersectionSolid);
-
+#else
+                    return new IntersectPointEntity(
+                        intersectCorrectedByELevation,
+                        addedElem.Id.Value,
+                        elemToCheck.Id.Value,
+                        linkInstanceId,
+                        DBMainService.CurrentDBUser,
+                        intersectionSolid);
+#endif
                 }
             }
-            catch (Autodesk.Revit.Exceptions.InvalidOperationException) 
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException)
             {
                 if (intEnt.CheckLinkInst == null)
                     HtmlOutput.Print($"При поиске коллизии попался сложный элемент. Это элемент твоей модели либо с id: {addedElem.Id}, " +
