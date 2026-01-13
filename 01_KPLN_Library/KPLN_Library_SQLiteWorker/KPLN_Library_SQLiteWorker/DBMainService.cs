@@ -16,6 +16,7 @@ namespace KPLN_Library_SQLiteWorker
         private static DocumentDbService _docDbService;
         private static SubDepartmentDbService _subDepartmentDbService;
         private static ProjectsAccessMatrixDbService _projectAccessMatrixDbService;
+        private static ProjectsIOSClashMatrixDbService _projectsIOSClashMatrixDbService;
         private static RevitDialogDbService _revitDialogDbService;
         private static ModuleAutostartDbService _moduleAutostartDbService;
         private static RevitDocExchangesDbService _revitDocExchangesDbService;
@@ -80,6 +81,17 @@ namespace KPLN_Library_SQLiteWorker
                     _projectAccessMatrixDbService = (ProjectsAccessMatrixDbService)new CreatorProjectAccessMatrixDbService().CreateService();
 
                 return _projectAccessMatrixDbService;
+            }
+        }
+
+        public static ProjectsIOSClashMatrixDbService PrjIOSClashMatrixDbService
+        {
+            get
+            {
+                if (_projectsIOSClashMatrixDbService == null)
+                    _projectsIOSClashMatrixDbService = (ProjectsIOSClashMatrixDbService)new CreatorProjectIOSClashMatrixDbService().CreateService();
+
+                return _projectsIOSClashMatrixDbService;
             }
         }
 
