@@ -3012,6 +3012,13 @@ namespace KPLN_Tools.Forms
                     // ============================================================
                     if (hasNonDwgStuff)
                     {
+
+
+                        TaskDialog.Show("Менеджер узлов","Вы пытаетесь добавить узел, который состоит одновремено из DWG и встроенной графики. " +
+                            "Добавление таких узлов запрещено: обратитесь к разработчику узла для того, чтобы он поправил данный узел.");
+                        return;
+
+
                         string baseModelPath = GetTargetBaseModelPath(targetDoc);
                         string baseSafeName = MakeSafeFileName(sourceViewName);
 
@@ -3151,7 +3158,7 @@ namespace KPLN_Tools.Forms
                             }
 
                             // Если хочешь показать пользователю — оставь, иначе можно убрать
-                            TaskDialog.Show("KPLN. Менеджер узлов", "DWG сохранён:\n" + dwgFolder);
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder);
                         }
 
                         else
@@ -3329,8 +3336,7 @@ namespace KPLN_Tools.Forms
 
                         uidoc.ActiveView = targetView;
 
-                        TaskDialog.Show("KPLN. Менеджер узлов",
-                            $"Вид экспортирован в DWG (слепок) и залинкован.\n\nПапка:\n\"{dwgFolder}\"\nФайл:\n\"{snapshotNameNoExt}.dwg\"");
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Готово");
                         return;
                     }
 
@@ -3504,7 +3510,7 @@ namespace KPLN_Tools.Forms
                             return;
                         }
 
-                        TaskDialog.Show("KPLN. Менеджер узлов", "DWG сохранён:\n" + dwgFolder2);                  
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder2);                  
                 }
                     else
                     {
@@ -3896,6 +3902,41 @@ namespace KPLN_Tools.Forms
             catch { }
         }
 
+        private static bool HasNonDwgViewSpecificStuff(Document donorDoc, View donorView)
+        {
+            try
+            {
+                return new FilteredElementCollector(donorDoc, donorView.Id)
+                    .WhereElementIsNotElementType()
+                    .Any(e =>
+                        e != null &&
+                        e.ViewSpecific &&
+                        !(e is ImportInstance) &&
+                        !(e is View) &&
+                        !(e is Group) &&
+                        e.Category != null);
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static void AbortIfDwgMixedWithGraphics(Document donorDoc, ViewDrafting donorView, bool hasDwg)
+        {
+            if (!hasDwg)
+                return;
+
+            bool hasNonDwgStuff = HasNonDwgViewSpecificStuff(donorDoc, donorView);
+            if (!hasNonDwgStuff)
+                return;
+
+            TaskDialog.Show("Менеджер узлов",
+                "Вы пытаетесь добавить узел, который состоит одновременно из DWG и встроенной графики.\n" +
+                "Добавление таких узлов запрещено: обратитесь к разработчику узла для того, чтобы он поправил данный узел.");
+            throw new OperationCanceledException("DWG + встроенная графика на донорском виде");
+        }
+
         private static bool TargetCentralIsNotLocalFile(Document doc, out string centralUserVisible)
         {
             centralUserVisible = null;
@@ -3960,7 +4001,11 @@ namespace KPLN_Tools.Forms
         {
             if (TargetCentralIsNotLocalFile(targetDoc, out var centralStr))
             {
-                return AskUserForDwgPath(_ownerWindow, centralStr, _sourceViewName + ".dwg");
+                string dwgFolderFromDb = ResolveDwgFolderFromMainDb(centralStr);
+                if (string.IsNullOrWhiteSpace(dwgFolderFromDb))
+                    return null;
+
+                return Path.Combine(dwgFolderFromDb, _sourceViewName + ".dwg");
             }
 
             string baseModelPath = GetTargetModelPath(targetDoc);
@@ -4042,6 +4087,192 @@ namespace KPLN_Tools.Forms
             return false;
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        private static string ResolveDwgFolderFromMainDb(string centralPath)
+        {
+            // centralPath должен быть именно CentralPath (например RSN://...)
+            if (string.IsNullOrWhiteSpace(centralPath))
+                return null;
+
+            string mainDb = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
+
+            string foundMainPath = null;
+            int? foundSubDepId = null;
+            string foundSubDepCode = null;
+
+            try
+            {
+                using (var conn = new System.Data.SQLite.SQLiteConnection(
+                    "Data Source=" + mainDb + ";Version=3;FailIfMissing=True;"))
+                {
+                    conn.Open();
+
+                    // 1) Projects -> MainPath по префиксу RevitServerPath*
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
+                    FROM Projects
+                    WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
+                       OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
+                       OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
+                       OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
+
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            while (r.Read())
+                            {
+                                string mp = r.IsDBNull(0) ? null : r.GetString(0);
+
+                                string p1 = r.IsDBNull(1) ? null : r.GetString(1);
+                                string p2 = r.IsDBNull(2) ? null : r.GetString(2);
+                                string p3 = r.IsDBNull(3) ? null : r.GetString(3);
+                                string p4 = r.IsDBNull(4) ? null : r.GetString(4);
+
+                                bool match =
+                                    (!string.IsNullOrWhiteSpace(p1) && centralPath.StartsWith(p1.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                    (!string.IsNullOrWhiteSpace(p2) && centralPath.StartsWith(p2.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                    (!string.IsNullOrWhiteSpace(p3) && centralPath.StartsWith(p3.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                    (!string.IsNullOrWhiteSpace(p4) && centralPath.StartsWith(p4.Trim(), StringComparison.InvariantCultureIgnoreCase));
+
+                                if (match)
+                                {
+                                    foundMainPath = mp;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(foundMainPath))
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "В MainDB в таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
+                            "Текущий CentralPath:\n" + centralPath + "\n" +
+                            "Для решения проблемы - обратитесь в BIM-отдел");
+                        return null;
+                    }
+
+                    // 2) Documents -> SubDepartmentId по CentralPath
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT SubDepartmentId
+                    FROM Documents
+                    WHERE CentralPath = @p
+                    LIMIT 1;";
+                        cmd.Parameters.AddWithValue("@p", centralPath);
+
+                        var obj = cmd.ExecuteScalar();
+                        if (obj != null && obj != DBNull.Value && int.TryParse(obj.ToString(), out int dep))
+                            foundSubDepId = dep;
+                    }
+
+                    if (!foundSubDepId.HasValue)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "Файл с данным CentralPath не зарегистрирован в БД (таблица Documents).\n" +
+                            "Текущий CentralPath:\n" + centralPath + "\n" +
+                            "Для решения проблемы - обратитесь в BIM-отдел");
+                        return null;
+                    }
+
+                    // 3) SubDepartments -> Code по Id
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT Code
+                    FROM SubDepartments
+                    WHERE Id = @id
+                    LIMIT 1;";
+                        cmd.Parameters.AddWithValue("@id", foundSubDepId.Value);
+
+                        var obj = cmd.ExecuteScalar();
+                        foundSubDepCode = (obj == null || obj == DBNull.Value) ? null : obj.ToString();
+                        if (!string.IsNullOrWhiteSpace(foundSubDepCode))
+                            foundSubDepCode = foundSubDepCode.Trim();
+                    }
+
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка чтения MainDB:\n" + ex.Message);
+                return null;
+            }
+
+            // приводим путь проекта к Y:\
+            string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
+
+            // отдел
+            string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
+                ? foundSubDepCode
+                : foundSubDepId.Value.ToString(CultureInfo.InvariantCulture);
+
+            // чистим имя папки
+            foreach (char ch in Path.GetInvalidFileNameChars())
+                depDisplay = depDisplay.Replace(ch.ToString(), "_");
+
+            // BIM\8.Менеджер узлов\<dep>
+            string baseBim = Path.Combine(mainPathDisplay, "BIM");
+            string managerDir = Path.Combine(baseBim, "8.Менеджер узлов");
+            string dwgFolder = Path.Combine(managerDir, depDisplay);
+
+            try
+            {
+                Directory.CreateDirectory(dwgFolder);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов",
+                    "Не удалось создать директорию для DWG:\n" + dwgFolder + "\n\n" + ex.Message);
+                return null;
+            }
+
+            return dwgFolder;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         /// <summary>
         /// ЛИСТ
         /// </summary>
@@ -4083,6 +4314,15 @@ namespace KPLN_Tools.Forms
 
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
 
+
+                try
+                {
+                    AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
 
                 // DWG
                 if (hasDwg)
@@ -4515,6 +4755,15 @@ namespace KPLN_Tools.Forms
 
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
 
+                try
+                {
+                    AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
                 // DWG
                 if (hasDwg)
                 {
@@ -4906,6 +5155,15 @@ namespace KPLN_Tools.Forms
                 }
 
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
+
+                try
+                {
+                    AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
 
                 uidoc.ActiveView = targetLegendView;
 
