@@ -32,7 +32,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                 if (uidoc != null)
                 {
                     Document doc = uidoc.Document;
-                    string fileFullName = KPLN_Looker.Module.GetFileFullName(doc);
+                    string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
                     dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, ModuleData.RevitVersion);
                 }
 

@@ -54,7 +54,7 @@ namespace KPLN_IOSClasher.Services
             IsDocumentAnalyzing = false;
             if (doc != null)
             {
-                string fileName = KPLN_Looker.Module.GetFileFullName(doc);
+                string fileName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
 
                 // Глобальный игнор стадии АФК, ПД, АН. Они никогда не проверяются (стадии П+ под вопросом, но чаще всего там только магистрали, пока оставлю так)
                 DBProject currentDBPrj = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileName, Module.RevitVersion);
@@ -98,7 +98,7 @@ namespace KPLN_IOSClasher.Services
             }
 #endif
 #if Debug
-            string fileNameDebug = KPLN_Looker.Module.GetFileFullName(doc);
+            string fileNameDebug = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
             DBSubDepartment openDocPrjDBSubDepartmentDebug = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileNameDebug);
             int openDocPrjDBSubDepartmentIdDebug = openDocPrjDBSubDepartmentDebug == null ? -1 : openDocPrjDBSubDepartmentDebug.Id;
             CheckDocDBSubDepartmentId = openDocPrjDBSubDepartmentIdDebug;
@@ -155,7 +155,7 @@ namespace KPLN_IOSClasher.Services
                 {
                     if (openDoc.IsLinked || openDoc.Title != doc.Title)
                     {
-                        string fileFullName = KPLN_Looker.Module.GetFileFullName(doc);
+                        string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
 
                         // Анализирую модели ИОС разделов на пересечение с создаваемыми
                         DBSubDepartment openDocPrjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);

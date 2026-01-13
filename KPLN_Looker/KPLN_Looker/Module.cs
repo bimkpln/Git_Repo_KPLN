@@ -137,16 +137,6 @@ namespace KPLN_Looker
         }
 
         /// <summary>
-        /// Получить полное имя открытого файла
-        /// </summary>
-        /// <param name="doc">Документ Ревит для анализа</param>
-        /// <returns></returns>
-        public static string GetFileFullName(Document doc) =>
-            doc.IsWorkshared && !doc.IsDetached
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
-                : doc.PathName;
-
-        /// <summary>
         /// Выдача имени файла с проверкой на необходимость в контроле действий. 
         /// Исключения: модели НЕ с основных серверов КПЛН (диск Y:\\ и любые RS-ы); НЕ шаблоны проектов; не офис КПЛН; НЕ концепции АР
         /// </summary>
@@ -180,7 +170,7 @@ namespace KPLN_Looker
             if (doc == null)
                 return null;
 
-            string fileFullName = GetFileFullName(doc);
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
 
             if (!doc.IsFamilyDocument
 #if DEBUG
@@ -534,7 +524,7 @@ namespace KPLN_Looker
 #endif
             return;
 
-            string fileFullName = GetFileFullName(doc);
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
             DBProject docDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             if (docDBProject == null)
                 return;
@@ -557,7 +547,7 @@ namespace KPLN_Looker
                     continue;
 
                 // Если проекты из БД отличаются - блокирую
-                string openDocFileFullName = GetFileFullName(openDoc);
+                string openDocFileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(openDoc);
                 DBProject openDocDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(openDocFileFullName, RevitVersion);
                 if (openDocDBProject != null && docDBProject.Id == openDocDBProject.Id)
                     continue;
@@ -678,7 +668,7 @@ namespace KPLN_Looker
                 return;
 
             // Получаю проект из БД КПЛН
-            string fileFullName = GetFileFullName(doc);
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
 
             DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
@@ -775,7 +765,7 @@ namespace KPLN_Looker
             }
             #endregion
 
-            string fileFullName = GetFileFullName(doc);
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
 
             #region Обработка работы в архивных копиях
             if (fileFullName.ToLower().Contains("архив"))
@@ -959,7 +949,7 @@ namespace KPLN_Looker
             }
             #endregion
 
-            string fileFullName = GetFileFullName(doc);
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
 
             #region Обработка работы в архивных копиях
             if (fileFullName.ToLower().Contains("архив"))
@@ -1054,7 +1044,7 @@ namespace KPLN_Looker
                 bool isMTRS = doc.PathName.Contains("МТРС_");
                 if (isMTRS)
                 {
-                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(GetFileFullName(doc));
+                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc));
                     if (mPath.ServerPath)
                     {
                         if (doc.PathName.Contains("_КР_"))
