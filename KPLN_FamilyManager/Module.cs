@@ -31,8 +31,8 @@ namespace KPLN_FamilyManager
 
             FamilyManagerDock.Register(application);
 
-            //Ищу или создаю панель инструменты
-            string panelName = "Инструменты";
+            //Ищу или создаю панель
+            string panelName = "Менеджеры";
             RibbonPanel panel = null;
             IEnumerable<RibbonPanel> tryPanels = _uiContrApp.GetRibbonPanels(tabName).Where(i => i.Name == panelName);
             if (tryPanels.Any())

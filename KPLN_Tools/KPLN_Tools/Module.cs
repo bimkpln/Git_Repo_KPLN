@@ -4,7 +4,9 @@ using KPLN_Tools.Common;
 using KPLN_Tools.Common.LinkManager;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.ExternalCommands;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -30,8 +32,18 @@ namespace KPLN_Tools
             LoadRLI_Service.SetStaticEnvironment(application);
             CommandLinkChanger_Start.SetStaticEnvironment(application);
 
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
+
+            //Ищу или создаю панель
+            string panelName = "Менеджеры";
+            RibbonPanel mPanel = null;
+            IEnumerable<RibbonPanel> tryMPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName);
+            if (tryMPanels.Any())
+                mPanel = tryMPanels.FirstOrDefault();
+            else
+                mPanel = application.CreateRibbonPanel(tabName, panelName);
 
             //Добавляю выпадающий список pullDown
             #region Общие инструменты
@@ -621,6 +633,9 @@ namespace KPLN_Tools
                 "http://moodle");
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
 
+            panel.AddItem(sendMsgToBitrix);
+
+
             PushButtonData nodeManager = CreateBtnData(
                     CommandNodeManager.PluginName,
                     CommandNodeManager.PluginName,
@@ -638,8 +653,7 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.nodeManagerBig.png",
                     "http://moodle");
 
-            panel.AddItem(sendMsgToBitrix);
-            panel.AddItem(nodeManager);
+            mPanel.AddItem(nodeManager);
             #endregion
 
             return Result.Succeeded;

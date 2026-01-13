@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace KPLN_Clashes_Ribbon
@@ -18,8 +20,14 @@ namespace KPLN_Clashes_Ribbon
         {
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
-            //Добавляю панель
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Менеджеры");
+            //Ищу или создаю панель
+            string panelName = "Менеджеры";
+            RibbonPanel panel = null;
+            IEnumerable<RibbonPanel> tryMPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName);
+            if (tryMPanels.Any())
+                panel = tryMPanels.FirstOrDefault();
+            else
+                panel = application.CreateRibbonPanel(tabName, panelName);
 
             //Добавляю кнопку в панель (тут приведен пример поиска панели, вместо этого - панель можно создать)
             AddPushButtonDataInPanel(
