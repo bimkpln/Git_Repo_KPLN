@@ -173,9 +173,9 @@ namespace KPLN_OpeningHoleManager.Services
             for (int i = 0; i < ARKRElemsWorker.ARKRHostNames_StartWith.Count(); i++)
             {
 #if Debug2020 || Revit2020
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRHostNames_StartWith[i], false);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRHostNames_StartWith[i], false);
 #else
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId((int)BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRHostNames_StartWith[i]);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.SYMBOL_NAME_PARAM), ARKRElemsWorker.ARKRHostNames_StartWith[i]);
 #endif
                 ElementParameterFilter elementParameterFilter = new ElementParameterFilter(fRule);
                 efColl.Add(elementParameterFilter);
@@ -190,7 +190,7 @@ namespace KPLN_OpeningHoleManager.Services
                 viewFilterId = oldEqualFRule.Id;
             else
             {
-                List<ElementId> catId = new List<ElementId>() { new ElementId((int)BuiltInCategory.OST_Walls) };
+                List<ElementId> catId = new List<ElementId>() { new ElementId(BuiltInCategory.OST_Walls) };
                 ParameterFilterElement newViewFilter = ParameterFilterElement.Create(doc, filterName, catId, finalFRule);
                 viewFilterId = newViewFilter.Id;
             }
@@ -264,7 +264,7 @@ namespace KPLN_OpeningHoleManager.Services
                 IList<UIView> views = uidoc.GetOpenUIViews();
                 foreach (UIView uvView in views)
                 {
-                    if (uvView.ViewId.IntegerValue == viewToZoom.Id.IntegerValue)
+                    if (uvView.ViewId.Equals(viewToZoom.Id))
                     {
                         uvView.ZoomAndCenterRectangle(box.Min, box.Max);
                     }

@@ -54,7 +54,11 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     }
                 }
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 BuiltInCategory bic = (BuiltInCategory)_arEntity.IEDElem.Category.Id.IntegerValue;
+#else
+                BuiltInCategory bic = _arEntity.IEDElem.Category.BuiltInCategory;
+#endif
                 BindingMap bindingMap = doc.ParameterBindings;
                 using (Transaction t = new Transaction(doc, "KPLN: Добавить параметры"))
                 {
@@ -66,30 +70,17 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     foreach (Definition def in defsToAdd)
                     {
                         var newBind = app.Create.NewInstanceBinding(catSet);
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                         if (!(bindingMap.Insert(def, newBind, BuiltInParameterGroup.PG_TEXT)))
                             bindingMap.ReInsert(def, newBind, BuiltInParameterGroup.PG_TEXT);
+#else
+                        if (!(bindingMap.Insert(def, newBind, GroupTypeId.Text)))
+                            bindingMap.ReInsert(def, newBind, GroupTypeId.Text);
+#endif
                     }
 
                     t.Commit();
                 }
-
-
-                //bindingMap = doc.ParameterBindings;
-                //using (Transaction t = new Transaction(doc, "KPLN: Установить параметры"))
-                //{
-                //    t.Start();
-
-                //    var it = bindingMap.ForwardIterator();
-                //    it.Reset();
-
-                //    while (it.MoveNext())
-                //    {
-                //        if (it.Key is InternalDefinition intDef && (intDef.Name == AROpeningHoleEntity.AR_OHE_ParamNameCancelOverwrite))
-                //            intDef.SetAllowVaryBetweenGroups(doc, true);
-                //    }
-
-                //    t.Commit();
-                //}
             }
             catch (CheckerException ex)
             {

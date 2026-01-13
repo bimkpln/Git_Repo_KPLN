@@ -113,14 +113,19 @@ namespace KPLN_OpeningHoleManager.Core
             List<AROpeningHoleEntity> resultColl = new List<AROpeningHoleEntity>();
 
             // Анализирую на наличие нескольких основ у выборки отверстий
-            IEnumerable<int> arOHEHostId = arOHEColl.Select(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue).Distinct();
-            foreach (int hostIntId in arOHEHostId)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            IEnumerable<long> arOHEHostId = arOHEColl.Select(ohe => (long)ohe.AR_OHE_HostElement.Id.IntegerValue).Distinct();
+#else
+            IEnumerable<long> arOHEHostId = arOHEColl.Select(ohe => ohe.AR_OHE_HostElement.Id.Value).Distinct();
+#endif
+            foreach (long hostIntId in arOHEHostId)
             {
-                // Получаю основу
-                Element hostElem = doc.GetElement(new ElementId(hostIntId));
-
                 // Фильтрую коллекцию по основе (объединяю вокруг основы)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 AROpeningHoleEntity[] arOHECollByHost = arOHEColl.Where(ohe => ohe.AR_OHE_HostElement.Id.IntegerValue == hostIntId).ToArray();
+#else
+                AROpeningHoleEntity[] arOHECollByHost = arOHEColl.Where(ohe => ohe.AR_OHE_HostElement.Id.Value == hostIntId).ToArray();
+#endif
 
                 // Подбираю результирующий тип для семейства
                 string resultSubDep = string.Empty;
@@ -152,6 +157,14 @@ namespace KPLN_OpeningHoleManager.Core
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException) { continue; }
                     catch (Exception ex) { throw ex; }
                 }
+
+                // Получаю основу
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                Element hostElem = doc.GetElement(new ElementId((int)hostIntId));
+#else
+                Element hostElem = doc.GetElement(new ElementId(hostIntId));
+#endif
+
 
                 // Анализирую вектор основы
                 XYZ hostDir = GeometryCurrentWorker.GetHostDirection(hostElem);
@@ -204,7 +217,7 @@ namespace KPLN_OpeningHoleManager.Core
                     .WhereElementIsNotElementType()
                     .Where(el => el is FamilyInstance fi
                         && (fi.Symbol.FamilyName.Contains(unionOHEEnt.OHE_FamilyName_Rectangle) || fi.Symbol.FamilyName.Contains(unionOHEEnt.OHE_FamilyName_Circle))
-                        && fi.Host.Id.IntegerValue == unionOHEEnt.AR_OHE_HostElement.Id.IntegerValue)
+                        && fi.Host.Id.Equals(unionOHEEnt.AR_OHE_HostElement.Id))
                     .Select(el => new AROpeningHoleEntity(el))
                     .ToArray();
 
@@ -216,7 +229,7 @@ namespace KPLN_OpeningHoleManager.Core
 
 
                     if ((unionOHEEnt.IEDElem != null && AROHEEnt.IEDElem != null)
-                        && (unionOHEEnt.IEDElem.Id.IntegerValue == AROHEEnt.IEDElem.Id.IntegerValue))
+                        && (unionOHEEnt.IEDElem.Id.Equals(AROHEEnt.IEDElem.Id)))
                         continue;
 
                     //var centr1 = unionOHEEnt.OHE_Solid.ComputeCentroid();
@@ -233,7 +246,7 @@ namespace KPLN_OpeningHoleManager.Core
                     Solid intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(hostOHESolid, unionOHEEnt.IGDSolid, BooleanOperationsType.Intersect);
                     if (intersectSolid != null
                         && intersectSolid.Volume > 0
-                        && !elemToClearColl.Any(ohe => ohe.IEDElem.Id.IntegerValue == AROHEEnt.IEDElem.Id.IntegerValue))
+                        && !elemToClearColl.Any(ohe => ohe.IEDElem.Id.Equals(AROHEEnt.IEDElem.Id)))
                         elemToClearColl.Add(AROHEEnt);
                 }
             }
@@ -253,11 +266,11 @@ namespace KPLN_OpeningHoleManager.Core
 
             foreach (AROpeningHoleEntity arEntity in arEntities)
             {
-                int[] joinedHostElemIds = JoinGeometryUtils.GetJoinedElements(doc, arEntity.AR_OHE_HostElement).Select(elId => elId.IntegerValue).ToArray();
+                ElementId[] joinedHostElemIds = JoinGeometryUtils.GetJoinedElements(doc, arEntity.AR_OHE_HostElement).ToArray();
                 if (joinedHostElemIds.Any())
                 {
                     AROpeningHoleEntity[] arEntitiesWithJoinedHost = arEntities
-                        .Where(ent => joinedHostElemIds.Contains(ent.AR_OHE_HostElement.Id.IntegerValue))
+                        .Where(ent => joinedHostElemIds.Contains(ent.AR_OHE_HostElement.Id))
                         .ToArray();
 
                     if (arEntitiesWithJoinedHost.Any())

@@ -147,8 +147,12 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         /// <returns></returns>
         private double GetSillHeight(AROpeningHoleEntity arEnt)
         {
-            if (arEnt.IEDElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows 
-                && arEnt.OHE_Shape == Core.MainEntity.OpenigHoleShape.Rectangular)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            bool isWindCat = arEnt.IEDElem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Windows;
+#else
+            bool isWindCat = arEnt.IEDElem.Category.BuiltInCategory == BuiltInCategory.OST_Windows;
+#endif
+            if (isWindCat && arEnt.OHE_Shape == Core.MainEntity.OpenigHoleShape.Rectangular)
                 return arEnt.IEDElem.LookupParameter("АР_Высота Проема")?.AsDouble() ?? 0;
 
             return 0;

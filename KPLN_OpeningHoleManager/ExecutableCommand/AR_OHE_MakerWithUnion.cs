@@ -91,7 +91,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     // При автообъединении - делаю проверку на возможность объединения с послед. удалением лишних 
                     else
                     {
-                        Dictionary<int, List<AROpeningHoleEntity>> arEntitiesForUnionByGroups = GetAROpenings_UnionByParams(_arEntities);
+                        Dictionary<ElementId, List<AROpeningHoleEntity>> arEntitiesForUnionByGroups = GetAROpenings_UnionByParams(_arEntities);
                         if (arEntitiesForUnionByGroups.Any())
                         {
                             List<AROpeningHoleEntity> arEntitiesForDelete = new List<AROpeningHoleEntity>();
@@ -113,7 +113,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
 
                                 // Если словарь состоит из самого себя - игнор, зачем пересоздавать тот же самый эл-т
-                                if (kvp.Value.Count() == 1 && kvp.Key == kvp.Value.FirstOrDefault().IEDElem.Id.IntegerValue)
+                                if (kvp.Value.Count() == 1 && kvp.Key.Equals(kvp.Value.FirstOrDefault().IEDElem.Id))
                                 {
                                     // Проверка одиночных на размер - если меньше допуска - удаляю
                                     AROpeningHoleEntity checkSizeEnt = kvp.Value.FirstOrDefault();
@@ -244,13 +244,14 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
         /// <summary>
         /// Получить коллекцию отверстий АР, которые могут быть объеденены по нужным параметрам. 
-        /// где: int - id любого отверстия группы, вокруг которого будет вестись объединение, List<AROpeningHoleEntity> - коллекция для объединения
+        /// где: long - id любого отверстия группы, вокруг которого будет вестись объединение, List<AROpeningHoleEntity> - коллекция для объединения
         /// </summary>
         /// <returns></returns>
-        private Dictionary<int, List<AROpeningHoleEntity>> GetAROpenings_UnionByParams(AROpeningHoleEntity[] arEntities)
+        private Dictionary<ElementId, List<AROpeningHoleEntity>> GetAROpenings_UnionByParams(AROpeningHoleEntity[] arEntities)
         {
-            var adjacency = new Dictionary<int, List<int>>();
-            var idToEntity = arEntities.ToDictionary(e => e.IEDElem.Id.IntegerValue, e => e);
+            var adjacency = new Dictionary<ElementId, List<ElementId>>();
+            Dictionary<ElementId, AROpeningHoleEntity> idToEntity = arEntities.ToDictionary(e => e.IEDElem.Id, e => e);
+
 #if Debug2020 || Revit2020
             double ar_minDistance = UnitUtils.ConvertToInternalUnits(_viewModel.AR_OpenHoleMinDistanceValue, DisplayUnitType.DUT_MILLIMETERS);
             double kr_minDistance = UnitUtils.ConvertToInternalUnits(_viewModel.KR_OpenHoleMinDistanceValue, DisplayUnitType.DUT_MILLIMETERS);
@@ -262,13 +263,13 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             // Ствараем граф
             foreach (var ent1 in arEntities)
             {
-                int id1 = ent1.IEDElem.Id.IntegerValue;
+                ElementId id1 = ent1.IEDElem.Id;
                 double minDistance = ent1.AR_OHE_IsHostElementKR ? kr_minDistance : ar_minDistance;
 
                 foreach (var ent2 in arEntities)
                 {
-                    int id2 = ent2.IEDElem.Id.IntegerValue;
-                    if (id1 == id2) continue;
+                    ElementId id2 = ent2.IEDElem.Id;
+                    if (id1.Equals(id2)) continue;
 
                     //bool isConnected = false;
                     //try
@@ -285,24 +286,24 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                     if (isConnected)
                     {
-                        if (!adjacency.ContainsKey(id1)) adjacency[id1] = new List<int>();
+                        if (!adjacency.ContainsKey(id1)) adjacency[id1] = new List<ElementId>();
                         if (!adjacency[id1].Contains(id2)) adjacency[id1].Add(id2);
 
-                        if (!adjacency.ContainsKey(id2)) adjacency[id2] = new List<int>();
+                        if (!adjacency.ContainsKey(id2)) adjacency[id2] = new List<ElementId>();
                         if (!adjacency[id2].Contains(id1)) adjacency[id2].Add(id1);
                     }
                 }
             }
 
             // Знаходзім усе групы праз BFS
-            var visited = new HashSet<int>();
-            var result = new Dictionary<int, List<AROpeningHoleEntity>>();
+            var visited = new HashSet<ElementId>();
+            var result = new Dictionary<ElementId, List<AROpeningHoleEntity>>();
 
-            foreach (int startId in idToEntity.Keys)
+            foreach (ElementId startId in idToEntity.Keys)
             {
                 if (visited.Contains(startId)) continue;
 
-                var queue = new Queue<int>();
+                var queue = new Queue<ElementId>();
                 var group = new List<AROpeningHoleEntity>();
 
                 queue.Enqueue(startId);
@@ -310,12 +311,12 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                 while (queue.Count > 0)
                 {
-                    int currentId = queue.Dequeue();
+                    ElementId currentId = queue.Dequeue();
                     group.Add(idToEntity[currentId]);
 
                     if (!adjacency.ContainsKey(currentId)) continue;
 
-                    foreach (int neighborId in adjacency[currentId])
+                    foreach (ElementId neighborId in adjacency[currentId])
                     {
                         if (!visited.Contains(neighborId))
                         {
@@ -326,7 +327,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 }
 
                 // Выкарыстоўваем першы ID у групе як ключ
-                result[group[0].IEDElem.Id.IntegerValue] = group;
+                result[group[0].IEDElem.Id] = group;
             }
 
             return result;
