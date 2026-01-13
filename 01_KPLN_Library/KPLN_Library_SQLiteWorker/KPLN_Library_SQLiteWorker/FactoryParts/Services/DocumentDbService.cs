@@ -1,4 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using Autodesk.Revit.DB;
+using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,16 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
         internal DocumentDbService(string connectionString, DB_Enumerator dbEnumerator) : base(connectionString, dbEnumerator)
         {
         }
+
+        /// <summary>
+        /// Получить полное имя открытого файла
+        /// </summary>
+        /// <param name="doc">Документ Ревит для анализа</param>
+        /// <returns></returns>
+        public static string GetFileFullName(Document doc) =>
+            doc.IsWorkshared && !doc.IsDetached
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(doc.GetWorksharingCentralModelPath())
+                : doc.PathName;
 
         #region Create
         /// <summary>
@@ -48,6 +59,20 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
                 $"SELECT * FROM {_dbTableName} " +
                 $"WHERE {nameof(DBDocument.ProjectId)}='{projectId}'" +
                 $"AND {nameof(DBDocument.SubDepartmentId)}='{subDepartmentId}';");
+
+        /// <summary>
+        /// Получить документы по документу
+        /// </summary>
+        public DBDocument GetDBDocument_ByDocument(Document doc)
+        {
+            if (doc.IsFamilyDocument) return null;
+
+            string fileFullPath = GetFileFullName(doc);
+            return ExecuteQuery<DBDocument>(
+                    $"SELECT * FROM {_dbTableName} " +
+                    $"WHERE {nameof(DBDocument.CentralPath)}='{fileFullPath}';")
+                .FirstOrDefault();
+        } 
 
         /// <summary>
         /// Получить документы по пути к файлу
