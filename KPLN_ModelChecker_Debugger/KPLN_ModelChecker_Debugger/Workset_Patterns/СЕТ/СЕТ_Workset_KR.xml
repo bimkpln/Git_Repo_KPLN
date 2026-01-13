@@ -160,19 +160,6 @@
 		<WorksetByCurrentParameter>
 			<WorksetName>Лестницы</WorksetName>
 			<BuiltInCategories />
-			<FamilyNames>
-				<string>лестн</string>
-				<string>205_</string>
-			</FamilyNames>
-			<TypeNames />
-			<SelectedParameters />
-		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
-
-		<!--Блок правил: Начало-->
-		<WorksetByCurrentParameter>
-			<WorksetName>Лестницы</WorksetName>
-			<BuiltInCategories />
 			<FamilyNames />
 			<TypeNames>
 				<string>площадка</string>
