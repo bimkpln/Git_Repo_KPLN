@@ -51,10 +51,7 @@ namespace KPLN_Loader.Forms
             }
         }
 
-        private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            UpdateRunBtnEnabled();
-        }
+        private void TextBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateRunBtnEnabled();
 
         private void TextBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
@@ -69,10 +66,7 @@ namespace KPLN_Loader.Forms
             }
         }
 
-        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            UpdateRunBtnEnabled();
-        }
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateRunBtnEnabled();
 
         /// <summary>
         /// Проверка символов ввода
