@@ -17,9 +17,9 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil.Common
         public string DWGLinksName { get; set; }
 
         /// <summary>
-        /// Нужно ли использовать отдельные рабочие наборы для копируемых с мониторингом элементам?
+        /// Нужно показывать РН ГЛОБАЛЬНО для линков?
         /// </summary>
-        public bool UseMonitoredElements { get; set; }
+        public bool GlobalVisibleForLinks { get; set; }
 
         /// <summary>
         /// Список параметров, для фильтрации

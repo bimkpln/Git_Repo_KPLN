@@ -32,9 +32,9 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil.Common
         public List<SelectedParameter> SelectedParameters = new List<SelectedParameter>();
 
         /// <summary>
-        /// Получение рабочего набора из проекта
+        /// Получение/создание рабочего набора из проекта
         /// </summary>
-        public Workset GetWorkset(Document doc)
+        public Workset CreateIfNewWorkset(Document doc)
         {
             IList<Workset> userWorksets = new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset).ToWorksets();
             bool isUniqueWSet = WorksetTable.IsWorksetNameUnique(doc, WorksetName);

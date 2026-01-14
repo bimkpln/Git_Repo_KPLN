@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.WorksetUtil.Common;
 using System;
@@ -107,7 +108,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 // Общие поля класса WorksetDTO
                 string linkedFilesPrefix = dto.LinkedFilesPrefix;
                 string dwgLinksName = dto.DWGLinksName;
-                bool useMonitoredElems = dto.UseMonitoredElements;
+                bool globalVisibleForLinks = dto.GlobalVisibleForLinks;
 
                 //Назначение рабочих наборов для связанных файлов
                 foreach (RevitLinkInstance linkInstance in rvtLinks)
@@ -119,7 +120,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                         string linkWorksetName1 = linkInstance.Name.Split(':')[0];
                         string linkWorksetName2 = linkWorksetName1.Substring(0, linkWorksetName1.Length - 5);
                         string linkWorksetName = linkedFilesPrefix + linkWorksetName2;
-                        Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
+                        Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName, globalVisibleForLinks);
 
                         WorksetByCurrentParameter.SetWorkset(linkInstance, linkWorkset);
                         WorksetByCurrentParameter.SetWorkset(linkFileType, linkWorkset);
@@ -130,18 +131,18 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 foreach (DirectShape dirShape in dirShapes)
                 {
                     string linkWorksetName = linkedFilesPrefix + "КоордМодель_" + dirShape.Name.Split(new string[] { ".nw" }, StringSplitOptions.None)[0];
-                    Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
+                    Workset dsWorkset = CreateNewWorkset(doc, linkWorksetName, globalVisibleForLinks);
 
-                    WorksetByCurrentParameter.SetWorkset(dirShape, linkWorkset);
+                    WorksetByCurrentParameter.SetWorkset(dirShape, dsWorkset);
                 }
 
                 //Назначение рабочих наборов для облака точек
                 foreach (PointCloudInstance pcInstance in pcInstances)
                 {
                     string linkWorksetName = linkedFilesPrefix + "ОблТочек_" + pcInstance.Name.Split(new string[] { ".rcs" }, StringSplitOptions.None)[0];
-                    Workset linkWorkset = CreateNewWorkset(doc, linkWorksetName);
+                    Workset pcWorkset = CreateNewWorkset(doc, linkWorksetName, globalVisibleForLinks);
 
-                    WorksetByCurrentParameter.SetWorkset(pcInstance, linkWorkset);
+                    WorksetByCurrentParameter.SetWorkset(pcInstance, pcWorkset);
                 }
 
                 //Назначение рабочих наборов для dwg-импорта/связей
@@ -155,7 +156,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
 
                         if (doc.GetElement(importInstance.GetTypeId()) is CADLinkType cadLinkType)
                         {
-                            Workset cadWorkset = CreateNewWorkset(doc, dwgLinksName);
+                            Workset cadWorkset = CreateNewWorkset(doc, dwgLinksName, globalVisibleForLinks);
 
                             WorksetByCurrentParameter.SetWorkset(importInstance, cadWorkset);
                             WorksetByCurrentParameter.SetWorkset(cadLinkType, cadWorkset);
@@ -166,7 +167,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 // Назначение рабочих наборов по WorksetByCurrentParameter
                 foreach (WorksetByCurrentParameter param in dto.WorksetByCurrentParameterList)
                 {
-                    Workset workset = param.GetWorkset(doc);
+                    Workset workset = param.CreateIfNewWorkset(doc);
 
                     //Назначение рабочих наборов по категории
                     if (param.BuiltInCategories.Count != 0 && modelElemWSCreating)
@@ -226,9 +227,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                                     continue;
 
                                 if (elemType.Name.ToLower().Contains(typeName.ToLower()))
-                                {
                                     WorksetByCurrentParameter.SetWorkset(elem, workset);
-                                }
                             }
                         }
                     }
@@ -256,10 +255,9 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                                     {
                                         data = elem.LookupParameter(p.ParameterName).AsValueString();
                                     }
+                                    
                                     if (data.Equals(p.ParameterValue))
-                                    {
                                         WorksetByCurrentParameter.SetWorkset(elem, workset);
-                                    }
                                 }
                                 catch (NullReferenceException) { }
                             }
@@ -297,7 +295,8 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
         private static List<string> GetEmptyWorksets(Document doc)
         {
             List<string> emptyWorksetsNames = new List<string>();
-            if (!doc.IsWorkshared) return null;
+            if (!doc.IsWorkshared) 
+                return null;
 
             List<Workset> wids = new FilteredWorksetCollector(doc)
                 .OfKind(WorksetKind.UserWorkset)
@@ -309,9 +308,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                 ElementWorksetFilter wfilter = new ElementWorksetFilter(w.Id);
                 FilteredElementCollector col = new FilteredElementCollector(doc).WherePasses(wfilter);
                 if (col.GetElementCount() == 0)
-                {
                     emptyWorksetsNames.Add(w.Name);
-                }
             }
 
             return emptyWorksetsNames;
@@ -320,19 +317,26 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
         /// <summary>
         /// Метод для создания рабочего набора
         /// </summary>
-        private static Workset CreateNewWorkset(Document doc, string name)
+        private static Workset CreateNewWorkset(Document doc, string name, bool globalVisibleForLinks)
         {
             bool isUnique = WorksetTable.IsWorksetNameUnique(doc, name);
             if (isUnique)
                 Workset.Create(doc, name);
 
-            Workset linkWorkset = new FilteredWorksetCollector(doc)
+            Workset createdWS = new FilteredWorksetCollector(doc)
                 .OfKind(WorksetKind.UserWorkset)
                 .ToWorksets()
                 .Where(w => w.Name == name)
                 .First();
 
-            return linkWorkset;
+            // Настройка глобальной видимости
+            if (isUnique && doc != null && createdWS != null && doc.IsWorkshared)
+            {
+                WorksetDefaultVisibilitySettings vis = WorksetDefaultVisibilitySettings.GetWorksetDefaultVisibilitySettings(doc);
+                vis.SetWorksetVisibility(createdWS.Id, globalVisibleForLinks);
+            }
+
+            return createdWS;
         }
     }
 }
