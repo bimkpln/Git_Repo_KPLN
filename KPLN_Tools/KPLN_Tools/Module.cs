@@ -651,7 +651,7 @@ namespace KPLN_Tools
                     typeof(CommandNodeManager).FullName,
                     "KPLN_Tools.Imagens.nodeManagerBig.png",
                     "KPLN_Tools.Imagens.nodeManagerBig.png",
-                    "http://moodle");
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1342");
 
             mPanel.AddItem(nodeManager);
             #endregion
