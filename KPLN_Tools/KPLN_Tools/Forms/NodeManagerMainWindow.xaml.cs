@@ -21,6 +21,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Xml.Linq;
+using Transform = Autodesk.Revit.DB.Transform;
 
 
 namespace KPLN_Tools.Forms
@@ -2315,38 +2316,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         public static void HandleAction_UpdateDb(UIApplication uiapp, string rvtPath, string runToken, string userName)
         {
             Document doc = null;
@@ -2450,7 +2419,7 @@ namespace KPLN_Tools.Forms
                             string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                             string uName = userName ?? string.Empty;
 
-                            // 🔹 ключ по имени вида + пути к модели
+                            // ключ по имени вида + пути к модели
                             string key = MakeViewKey(viewName, targetFull);
 
                             if (existing.TryGetValue(key, out long id))
@@ -2514,11 +2483,6 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
-
-
-
-
-
 
         public static void FinalizeUpdateDb(string runToken, List<string> rvtPaths, bool isBimRun)
         {
@@ -2591,13 +2555,7 @@ namespace KPLN_Tools.Forms
                 TaskDialog.Show("UpdateDb", "Ошибка при финализации базы:\n" + ex.Message);
             }
         }
-
-
-
-
-
-
-        
+    
         private static void EnsureSchema(SQLiteConnection conn)
         {
             using (var cmd = conn.CreateCommand())
@@ -2685,13 +2643,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
-
-
-
-
-
-
         private static Dictionary<string, long> LoadExistingByViewAndPath(SQLiteConnection conn)
         {
             var map = new Dictionary<string, long>(StringComparer.InvariantCultureIgnoreCase);
@@ -2732,7 +2683,6 @@ namespace KPLN_Tools.Forms
             return map;
         }
 
-
         private static string MakeViewKey(string viewName, string rvtPath)
         {
             string vn = (viewName ?? string.Empty).Trim();
@@ -2751,18 +2701,6 @@ namespace KPLN_Tools.Forms
 
             return vn + "||" + path;
         }
-
-
-
-
-
-
-
-
-
-
-
-
 
         private void BtnCopyInView_Click(object sender, RoutedEventArgs e)
         {
@@ -2889,6 +2827,11 @@ namespace KPLN_Tools.Forms
 
 
 
+
+
+
+
+
     /////////////////////////////// КОПИРОВАНИЕ ВИДОВ
     internal sealed class UseDestinationTypesHandler : IDuplicateTypeNamesHandler
     {
@@ -2945,6 +2888,41 @@ namespace KPLN_Tools.Forms
                 sb.Append(invalid.Contains(ch) ? '_' : ch);
             }
             return sb.ToString();
+        }
+
+        private static string GetTargetBaseModelPath(Document targetDoc)
+        {
+            try
+            {
+                if (targetDoc.IsWorkshared)
+                {
+                    var centralMp = targetDoc.GetWorksharingCentralModelPath();
+                    if (centralMp != null)
+                        return ModelPathUtils.ConvertModelPathToUserVisiblePath(centralMp);
+                }
+            }
+            catch { }
+            return targetDoc.PathName;
+        }
+
+        private static void Apply2DTransformLikeSource(Document doc, ElementId importInstanceId, Transform srcTr)
+        {
+            if (srcTr == null)
+                return;
+
+            XYZ move = srcTr.Origin ?? XYZ.Zero;
+            if (move != null && !move.IsZeroLength())
+                ElementTransformUtils.MoveElement(doc, importInstanceId, move);
+
+            XYZ bx = srcTr.BasisX ?? XYZ.BasisX;
+            double angle = Math.Atan2(bx.Y, bx.X);
+
+            if (Math.Abs(angle) > 1e-9)
+            {
+                XYZ p = srcTr.Origin ?? XYZ.Zero;
+                var axis = Line.CreateBound(p, p + XYZ.BasisZ);
+                ElementTransformUtils.RotateElement(doc, importInstanceId, axis, angle);
+            }
         }
 
         public void Execute(UIApplication app)
@@ -3025,199 +3003,683 @@ namespace KPLN_Tools.Forms
                 bool hasAnyDwg = allInView.OfType<ImportInstance>().Any();
                 if (hasAnyDwg)
                 {
+                    // Проверяем: есть ли на исходном виде что-то кроме DWG 
+                    bool hasNonDwgStuff = new FilteredElementCollector(sourceDoc, sourceView.Id)
+                        .WhereElementIsNotElementType().Any(e =>
+                            e.ViewSpecific && !(e is ImportInstance) && !(e is View) && !(e is Group) && e.Category != null);
+
+                    // Есть DWG + есть аннотации/прочее
+                    // ============================================================
+                    if (hasNonDwgStuff)
+                    {
+
+
+                        TaskDialog.Show("Менеджер узлов","Вы пытаетесь добавить узел, который состоит одновремено из DWG и встроенной графики. " +
+                            "Добавление таких узлов запрещено: обратитесь к разработчику узла для того, чтобы он поправил данный узел.");
+                        return;
+
+
+                        string baseModelPath = GetTargetBaseModelPath(targetDoc);
+                        string baseSafeName = MakeSafeFileName(sourceViewName);
+
+                        string dwgFolder = null;
+                        bool canUseProjectFolder = !string.IsNullOrWhiteSpace(baseModelPath) && File.Exists(baseModelPath);
+
+                        if (!canUseProjectFolder)
+                        {
+                            string mainDb = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
+
+                            string foundMainPath = null;
+                            int? foundSubDepId = null;
+                            string foundSubDepCode = null;
+
+                            try
+                            {
+                                using (var conn = new System.Data.SQLite.SQLiteConnection(
+                                    "Data Source=" + mainDb + ";Version=3;FailIfMissing=True;"))
+                                {
+                                    conn.Open();
+
+                                    using (var cmd = conn.CreateCommand())
+                                    {
+                                        cmd.CommandText = @"
+                                            SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
+                                            FROM Projects
+                                            WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
+                                               OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
+                                               OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
+                                               OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
+
+                                        using (var r = cmd.ExecuteReader())
+                                        {
+                                            while (r.Read())
+                                            {
+                                                string mp = r.IsDBNull(0) ? null : r.GetString(0);
+
+                                                string p1 = r.IsDBNull(1) ? null : r.GetString(1);
+                                                string p2 = r.IsDBNull(2) ? null : r.GetString(2);
+                                                string p3 = r.IsDBNull(3) ? null : r.GetString(3);
+                                                string p4 = r.IsDBNull(4) ? null : r.GetString(4);
+
+                                                bool match =
+                                                    (!string.IsNullOrWhiteSpace(p1) && baseModelPath.StartsWith(p1.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                                    (!string.IsNullOrWhiteSpace(p2) && baseModelPath.StartsWith(p2.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                                    (!string.IsNullOrWhiteSpace(p3) && baseModelPath.StartsWith(p3.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                                    (!string.IsNullOrWhiteSpace(p4) && baseModelPath.StartsWith(p4.Trim(), StringComparison.InvariantCultureIgnoreCase));
+
+                                                if (match)
+                                                {
+                                                    foundMainPath = mp;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (string.IsNullOrWhiteSpace(foundMainPath))
+                                    {
+                                        TaskDialog.Show("KPLN. Менеджер узлов",
+                                            "В MainDB в таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
+                                            "Путь к файлу на Revit-сервере:\n" + (baseModelPath ?? "<null>") + "\n" +
+                                            "Для решения проблемы - обратитесь в BIM-отдел");
+                                        return;
+                                    }
+
+                                    using (var cmd = conn.CreateCommand())
+                                    {
+                                        cmd.CommandText = @"
+                                            SELECT SubDepartmentId
+                                            FROM Documents
+                                            WHERE CentralPath = @p
+                                            LIMIT 1;";
+                                        cmd.Parameters.AddWithValue("@p", baseModelPath);
+
+                                        var obj = cmd.ExecuteScalar();
+                                        if (obj != null && obj != DBNull.Value && int.TryParse(obj.ToString(), out int dep))
+                                            foundSubDepId = dep;
+                                    }
+
+                                    if (!foundSubDepId.HasValue)
+                                    {
+                                        TaskDialog.Show("KPLN. Менеджер узлов",
+                                            "Файл с данным CentralPath не зарегистрирован в БД (таблица Documents).\n" +
+                                            "Текущий CentralPath:\n" + (baseModelPath ?? "<null>") + "\n" +
+                                            "Для решения проблемы - обратитесь в BIM-отдел");
+                                        return;
+                                    }
+
+                                    using (var cmd = conn.CreateCommand())
+                                    {
+                                        cmd.CommandText = @"
+                                            SELECT Code
+                                            FROM SubDepartments
+                                            WHERE Id = @id
+                                            LIMIT 1;";
+                                        cmd.Parameters.AddWithValue("@id", foundSubDepId.Value);
+
+                                        var obj = cmd.ExecuteScalar();
+                                        foundSubDepCode = (obj == null || obj == DBNull.Value) ? null : obj.ToString();
+                                        if (!string.IsNullOrWhiteSpace(foundSubDepCode))
+                                            foundSubDepCode = foundSubDepCode.Trim();
+                                    }
+
+                                    conn.Close();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка чтения MainDB:\n" + ex.Message);
+                                return;
+                            }
+
+                            string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
+
+                            string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
+                                ? foundSubDepCode
+                                : foundSubDepId.Value.ToString(CultureInfo.InvariantCulture);
+
+                            // Формируем dwgFolder = <mainPathDisplay>\BIM\8.Менеджер узлов\<depDisplay> ---
+                            try
+                            {
+                                foreach (char ch in Path.GetInvalidFileNameChars())
+                                    depDisplay = depDisplay.Replace(ch.ToString(), "_");
+
+                                string baseBim = Path.Combine(mainPathDisplay, "BIM");
+                                string managerDir = Path.Combine(baseBim, "8.Менеджер узлов");
+                                dwgFolder = Path.Combine(managerDir, depDisplay);
+
+                                Directory.CreateDirectory(dwgFolder);
+                            }
+                            catch (Exception ex)
+                            {
+                                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать директорию для DWG:\n" +
+                                    (dwgFolder ?? "<null>") + "\n\n" + ex.Message);
+                                return;
+                            }
+
+                            // Если хочешь показать пользователю — оставь, иначе можно убрать
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder);
+                        }
+
+                        else
+                        {
+                            string modelDir = Path.GetDirectoryName(baseModelPath);
+                            dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
+                            Directory.CreateDirectory(dwgFolder);
+                        }
+
+                        ViewDrafting targetView;
+                        using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и настройка вида узла"))
+                        {
+                            t.Start();
+
+                            targetView = new FilteredElementCollector(targetDoc)
+                                .OfClass(typeof(ViewDrafting))
+                                .Cast<ViewDrafting>()
+                                .FirstOrDefault(v => !v.IsTemplate &&
+                                    string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                            if (targetView == null)
+                            {
+                                var draftingTypeId = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(ViewFamilyType))
+                                    .Cast<ViewFamilyType>()
+                                    .First(vft => vft.ViewFamily == ViewFamily.Drafting)
+                                    .Id;
+
+                                targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
+                                targetView.Name = sourceViewName;
+                            }
+
+                            try { targetView.Scale = sourceView.Scale; } catch { }
+                            try { targetView.Discipline = sourceView.Discipline; } catch { }
+                            try { targetView.DetailLevel = sourceView.DetailLevel; } catch { }
+                            try { targetView.DisplayStyle = sourceView.DisplayStyle; } catch { }
+                            try { targetView.PartsVisibility = sourceView.PartsVisibility; } catch { }
+
+                            try
+                            {
+                                if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
+                                {
+                                    var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
+                                    if (srcTemplate != null)
+                                    {
+                                        string templateName = srcTemplate.Name;
+
+                                        var dstTemplate = new FilteredElementCollector(targetDoc)
+                                            .OfClass(typeof(View))
+                                            .Cast<View>()
+                                            .FirstOrDefault(v => v.IsTemplate &&
+                                                string.Equals(v.Name, templateName, StringComparison.InvariantCultureIgnoreCase));
+
+                                        if (dstTemplate != null)
+                                        {
+                                            targetView.ViewTemplateId = dstTemplate.Id;
+                                        }
+                                        else
+                                        {
+                                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                                $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
+                                                "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
+                                                "Вид будет создан/обновлён без назначения шаблона. Возможно некорректное отображение DWG/аннотаций.");
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Очистка вида узла перед вставкой слепка DWG"))
+                        {
+                            t.Start();
+
+                            var toDelete = new FilteredElementCollector(targetDoc, targetView.Id)
+                                .WhereElementIsNotElementType()
+                                .Where(e =>
+                                    e.ViewSpecific &&
+                                    !(e is View) &&
+                                    !(e is Group) &&
+                                    e.Category != null)
+                                .Select(e => e.Id)
+                                .ToList();
+
+                            if (toDelete.Count > 0)
+                                targetDoc.Delete(toDelete);
+
+                            t.Commit();
+                        }
+
+                        string snapshotNameNoExt = baseSafeName;
+                        string snapshotPath = Path.Combine(dwgFolder, snapshotNameNoExt + ".dwg");
+
+                        if (File.Exists(snapshotPath))
+                        {
+                            var msg =
+                                $"Файл DWG уже существует:\n{snapshotPath}\n\n" +
+                                "Да — перезаписать DWG и перезаписать содержимое вида.\n" +
+                                "Нет — открыть существующий вид.\n" +
+                                "Отмена — ничего не менять.";
+
+                            var result = System.Windows.MessageBox.Show(
+                                msg, "KPLN. Менеджер узлов",
+                                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+                            if (result == MessageBoxResult.Cancel)
+                            {
+                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+                                return;
+                            }
+                            else if (result == MessageBoxResult.No)
+                            {
+                                uidoc.ActiveView = targetView;
+                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+                                return;
+                            }
+                            else
+                            {
+                                try { File.Delete(snapshotPath); } catch { }
+                            }
+                        }
+
+                        bool exportOk = false;
+                        string exportErr = null;
+                        try
+                        {
+                            var viewIds = new List<ElementId> { sourceView.Id };
+                            var opt = new DWGExportOptions();
+
+                            exportOk = sourceDoc.Export(dwgFolder, snapshotNameNoExt, viewIds, opt);
+                        }
+                        catch (Exception ex)
+                        {
+                            exportErr = ex.Message;
+                        }
+
+                        if (!exportOk || !File.Exists(snapshotPath))
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось экспортировать вид в DWG.\n" +
+                                (exportErr != null ? ("\n" + exportErr) : ""));
+
+                            if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+                            return;
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Линковка слепка DWG"))
+                        {
+                            t.Start();
+
+                            var opt = new DWGImportOptions
+                            {
+                                ThisViewOnly = true,
+                                Placement = ImportPlacement.Origin,
+                                OrientToView = true
+                            };
+
+                            ElementId linkedId;
+                            bool ok = targetDoc.Link(snapshotPath, opt, targetView, out linkedId);
+
+                            t.Commit();
+
+                            if (!ok || linkedId == ElementId.InvalidElementId)
+                            {
+                                TaskDialog.Show("KPLN. Менеджер узлов",
+                                    "DWG экспортирован, но не удалось залинковать его в целевой вид.");
+
+                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+                                return;
+                            }
+                        }
+
+                        if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+
+                        uidoc.ActiveView = targetView;
+
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Готово");
+                        return;
+                    }
+
+                    // Чисто DWG 
+                    // ============================================================
+
                     var dwgInstances = allInView.OfType<ImportInstance>().ToList();
-                    var dwgPaths = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
+                    var dwgPlacements = new List<(ImportInstance inst, string fullPath, Autodesk.Revit.DB.Transform tr)>();
 
                     foreach (var inst in dwgInstances)
                     {
                         string path = TryGetDwgPathFromInstance(sourceDoc, inst);
-                        if (string.IsNullOrEmpty(path))
+                        if (string.IsNullOrWhiteSpace(path))
                             continue;
+
+                        try { path = Path.GetFullPath(path); } catch { }
+
+                        if (!File.Exists(path))
+                            continue;
+
+                        Autodesk.Revit.DB.Transform tr = Transform.Identity;
+                        try { tr = inst.GetTransform(); } catch { }
+
+                        dwgPlacements.Add((inst, path, tr));
+                    }
+
+                    if (dwgPlacements.Count == 0)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "На исходном виде обнаружен DWG, но это, вероятно, импорт без живой ссылки. " +
+                            "Перенос такого DWG в другой документ не поддерживается Revit API.");
+
+                        if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+                        return;
+                    }
+
+                    string baseModelPath2 = GetTargetBaseModelPath(targetDoc);
+                    string baseSafeName2 = MakeSafeFileName(sourceViewName);
+
+                    string dwgFolder2 = null;
+                    bool canUseProjectFolder2 = !string.IsNullOrWhiteSpace(baseModelPath2) && File.Exists(baseModelPath2);
+
+                    if (!canUseProjectFolder2)
+                    {
+                        string mainDb = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
+
+                        string foundMainPath = null;
+                        int? foundSubDepId = null;
+                        string foundSubDepCode = null;
 
                         try
                         {
-                            path = Path.GetFullPath(path);
-                        }
-                        catch { }
-
-                        if (File.Exists(path))
-                            dwgPaths.Add(path);
-                    }
-
-                    if (dwgPaths.Count == 0)
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "На исходном виде обнаружен DWG, но это, вероятно, импорт без живой ссылки. Перенос такого DWG в другой документ не поддерживается Revit API.");
-
-                        if (openedSourceHere)
-                        {
-                            try { sourceDoc.Close(false); } catch { }
-                        }
-
-                        return;
-                    }
-
-                    string baseModelPath = null;
-                    try
-                    {
-                        if (targetDoc.IsWorkshared)
-                        {
-                            var centralMp = targetDoc.GetWorksharingCentralModelPath();
-                            if (centralMp != null)
+                            using (var conn = new System.Data.SQLite.SQLiteConnection(
+                                "Data Source=" + mainDb + ";Version=3;FailIfMissing=True;"))
                             {
-                                baseModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(centralMp);
+                                conn.Open();
+
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = @"
+                                            SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
+                                            FROM Projects
+                                            WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
+                                               OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
+                                               OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
+                                               OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
+
+                                    using (var r = cmd.ExecuteReader())
+                                    {
+                                        while (r.Read())
+                                        {
+                                            string mp = r.IsDBNull(0) ? null : r.GetString(0);
+
+                                            string p1 = r.IsDBNull(1) ? null : r.GetString(1);
+                                            string p2 = r.IsDBNull(2) ? null : r.GetString(2);
+                                            string p3 = r.IsDBNull(3) ? null : r.GetString(3);
+                                            string p4 = r.IsDBNull(4) ? null : r.GetString(4);
+
+                                            bool match =
+                                                (!string.IsNullOrWhiteSpace(p1) && baseModelPath2.StartsWith(p1.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                                (!string.IsNullOrWhiteSpace(p2) && baseModelPath2.StartsWith(p2.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                                (!string.IsNullOrWhiteSpace(p3) && baseModelPath2.StartsWith(p3.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                                (!string.IsNullOrWhiteSpace(p4) && baseModelPath2.StartsWith(p4.Trim(), StringComparison.InvariantCultureIgnoreCase));
+
+                                            if (match)
+                                            {
+                                                foundMainPath = mp;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (string.IsNullOrWhiteSpace(foundMainPath))
+                                {
+                                    TaskDialog.Show("KPLN. Менеджер узлов",
+                                        "В MainDB в таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
+                                        "Путь к файлу на Revit-сервере:\n" + (baseModelPath2 ?? "<null>") + "\n" +
+                                        "Для решения проблемы - обратитесь в BIM-отдел");
+                                    return;
+                                }
+
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = @"
+                                            SELECT SubDepartmentId
+                                            FROM Documents
+                                            WHERE CentralPath = @p
+                                            LIMIT 1;";
+                                    cmd.Parameters.AddWithValue("@p", baseModelPath2);
+
+                                    var obj = cmd.ExecuteScalar();
+                                    if (obj != null && obj != DBNull.Value && int.TryParse(obj.ToString(), out int dep))
+                                        foundSubDepId = dep;
+                                }
+
+                                if (!foundSubDepId.HasValue)
+                                {
+                                    TaskDialog.Show("KPLN. Менеджер узлов",
+                                        "Файл с данным CentralPath не зарегистрирован в БД (таблица Documents).\n" +
+                                        "Текущий CentralPath:\n" + (baseModelPath2 ?? "<null>") + "\n" +
+                                        "Для решения проблемы - обратитесь в BIM-отдел");
+                                    return;
+                                }
+
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = @"
+                                            SELECT Code
+                                            FROM SubDepartments
+                                            WHERE Id = @id
+                                            LIMIT 1;";
+                                    cmd.Parameters.AddWithValue("@id", foundSubDepId.Value);
+
+                                    var obj = cmd.ExecuteScalar();
+                                    foundSubDepCode = (obj == null || obj == DBNull.Value) ? null : obj.ToString();
+                                    if (!string.IsNullOrWhiteSpace(foundSubDepCode))
+                                        foundSubDepCode = foundSubDepCode.Trim();
+                                }
+
+                                conn.Close();
                             }
                         }
-
-                        if (string.IsNullOrEmpty(baseModelPath))
+                        catch (Exception ex)
                         {
-                            baseModelPath = targetDoc.PathName;
-                        }
-                    }
-                    catch
-                    {
-                        baseModelPath = targetDoc.PathName;
-                    }
-
-                    if (string.IsNullOrEmpty(baseModelPath) || !File.Exists(baseModelPath))
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь к файлу модели для создания папки \"DWG_Менеджер узлов\".\nСохраните модель на диск и повторите попытку.");
-                        if (openedSourceHere)
-                        {
-                            try { sourceDoc.Close(false); } catch { }
-                        }
-                        return;
-                    }
-
-                    string modelDir = Path.GetDirectoryName(baseModelPath);
-                    string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
-
-                    try
-                    {
-                        if (!Directory.Exists(dwgFolder))
-                        {
-                            Directory.CreateDirectory(dwgFolder);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать папку для DWG:\n" + dwgFolder + "\n\n" + ex.Message);
-                        if (openedSourceHere)
-                        {
-                            try { sourceDoc.Close(false); } catch { }
-                        }
-                        return;
-                    }
-
-                    string baseSafeName = MakeSafeFileName(sourceViewName);
-                    string mainFileName = baseSafeName + ".dwg";
-                    string mainLocalCopyPath = Path.Combine(dwgFolder, mainFileName);
-
-                    if (File.Exists(mainLocalCopyPath))
-                    {
-                        var msg =
-                            $"Файл DWG с именем \"{mainFileName}\" уже существует в папке проекта:\n" +
-                            $"{dwgFolder}\n\n" +
-                            "Да — перезаписать данный файл и перезаписать содержимое соответствующего вида узла.\n" +
-                            "Нет — открыть существующий вид с этим узлом.\n" +
-                            "Отмена — ничего не менять.";
-
-                        var result = System.Windows.MessageBox.Show(msg, "KPLN. Менеджер узлов", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-
-                        if (result == MessageBoxResult.Cancel)
-                        {
-                            if (openedSourceHere)
-                            {
-                                try { sourceDoc.Close(false); } catch { }
-                            }
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка чтения MainDB:\n" + ex.Message);
                             return;
                         }
 
+                        string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
+
+                        string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
+                            ? foundSubDepCode
+                            : foundSubDepId.Value.ToString(CultureInfo.InvariantCulture);
+
+                        try
+                        {
+                            foreach (char ch in Path.GetInvalidFileNameChars())
+                                depDisplay = depDisplay.Replace(ch.ToString(), "_");
+
+                            string baseBim = Path.Combine(mainPathDisplay, "BIM");
+                            string managerDir = Path.Combine(baseBim, "8.Менеджер узлов");
+                            dwgFolder2 = Path.Combine(managerDir, depDisplay);
+
+                            Directory.CreateDirectory(dwgFolder2);
+                        }
+                        catch (Exception ex)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать директорию для DWG:\n" +
+                                (dwgFolder2 ?? "<null>") + "\n\n" + ex.Message);
+                            return;
+                        }
+
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder2);                  
+                }
+                    else
+                    {
+                        string modelDir = Path.GetDirectoryName(baseModelPath2);
+                        dwgFolder2 = Path.Combine(modelDir, "DWG_Менеджер узлов");
+                        Directory.CreateDirectory(dwgFolder2);
+                    }
+
+                    var plannedLocalCopies = new List<(string srcFullPath, string localCopyPath)>();
+                    for (int i = 0; i < dwgPlacements.Count; i++)
+                    {
+                        string fileName = (dwgPlacements.Count == 1)
+                            ? (baseSafeName2 + ".dwg")
+                            : (baseSafeName2 + "_" + (i + 1) + ".dwg");
+
+                        string localCopy = Path.Combine(dwgFolder2, fileName);
+                        plannedLocalCopies.Add((dwgPlacements[i].fullPath, localCopy));
+                    }
+
+                    bool anyExists = plannedLocalCopies.Any(x => File.Exists(x.localCopyPath));
+
+                    if (anyExists)
+                    {
+                        string msg =
+                            $"В папке уже существуют DWG-файлы для узла \"{sourceViewName}\":\n" +
+                            $"{dwgFolder2}\n\n" +
+                            "Да — перезаписать DWG (все) и перезаписать содержимое соответствующего вида узла.\n" +
+                            "Нет — открыть существующий вид с этим узлом.\n" +
+                            "Отмена — ничего не менять.";
+
+                        var result = System.Windows.MessageBox.Show(
+                            msg, "KPLN. Менеджер узлов",
+                            MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+                        if (result == MessageBoxResult.Cancel)
+                        {
+                            if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+                            return;
+                        }
                         else if (result == MessageBoxResult.No)
                         {
-
                             var existingView = new FilteredElementCollector(targetDoc)
                                 .OfClass(typeof(ViewDrafting))
-                                .Cast<ViewDrafting>().FirstOrDefault(v =>
-                                    !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+                                .Cast<ViewDrafting>()
+                                .FirstOrDefault(v => !v.IsTemplate &&
+                                    string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
 
                             if (existingView != null)
                             {
                                 uidoc.ActiveView = existingView;
-
-                                if (openedSourceHere)
-                                {
-                                    try { sourceDoc.Close(false); } catch { }
-                                }
+                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
                                 return;
                             }
                             else
                             {
                                 var ask = System.Windows.MessageBox.Show(
-                                    $"Файл DWG уже существует в папке,\nно вид \"{sourceViewName}\" в документе не найден.\n\n" +
-                                    "Создать новый чертёжный вид с этим именем\nи залинковать на него существующий DWG?",
-                                    "KPLN. Менеджер узлов", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                                    $"DWG уже существует в папке,\nно вид \"{sourceViewName}\" в документе не найден.\n\n" +
+                                    "Создать новый чертёжный вид с этим именем\nи залинковать на него существующие DWG?",
+                                    "KPLN. Менеджер узлов",
+                                    MessageBoxButton.YesNo, MessageBoxImage.Question);
 
                                 if (ask == MessageBoxResult.No)
                                 {
-                                    if (openedSourceHere)
-                                    {
-                                        try { sourceDoc.Close(false); } catch { }
-                                    }
+                                    if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
                                     return;
                                 }
                             }
                         }
-
-                        try
-                        {
-                            File.Copy(dwgPaths.First(), mainLocalCopyPath, true);
-                        }
-                        catch (Exception copyEx)
-                        {
-                            TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось перезаписать DWG:\n" + dwgPaths.First() + "\n→ " + mainLocalCopyPath + "\n\n" + copyEx.Message);
-
-                            if (openedSourceHere)
-                            {
-                                try { sourceDoc.Close(false); } catch { }
-                            }
-                            return;
-                        }
                     }
-                    else
+
+                    for (int i = 0; i < plannedLocalCopies.Count; i++)
                     {
+                        string src = plannedLocalCopies[i].srcFullPath;
+                        string dst = plannedLocalCopies[i].localCopyPath;
+
                         try
                         {
-                            File.Copy(dwgPaths.First(), mainLocalCopyPath, false);
+                            File.Copy(src, dst, true);
                         }
-                        catch (Exception copyEx)
+                        catch (Exception ex)
                         {
-                            TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось скопировать DWG в папку менеджера узлов:\n" + dwgPaths.First() + "\n→ " + mainLocalCopyPath + "\n\n" + copyEx.Message);
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                $"Не удалось скопировать DWG:\n{src}\n→ {dst}\n\n{ex.Message}");
 
-                            if (openedSourceHere)
-                            {
-                                try { sourceDoc.Close(false); } catch { }
-                            }
+                            if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
                             return;
                         }
                     }
 
-                    ViewDrafting targetView;
-                    using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание вида узла (DWG)"))
+                    ViewDrafting targetView2;
+                    using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и настройка вида узла"))
                     {
                         t.Start();
 
-                        targetView = new FilteredElementCollector(targetDoc)
-                            .OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>().FirstOrDefault(v =>
-                                !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+                        targetView2 = new FilteredElementCollector(targetDoc)
+                            .OfClass(typeof(ViewDrafting))
+                            .Cast<ViewDrafting>()
+                            .FirstOrDefault(v => !v.IsTemplate &&
+                                string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
 
-                        if (targetView == null)
+                        if (targetView2 == null)
                         {
                             var draftingTypeId = new FilteredElementCollector(targetDoc)
-                                .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().First(vft => vft.ViewFamily == ViewFamily.Drafting).Id;
+                                .OfClass(typeof(ViewFamilyType))
+                                .Cast<ViewFamilyType>()
+                                .First(vft => vft.ViewFamily == ViewFamily.Drafting)
+                                .Id;
 
-                            targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
-                            targetView.Name = sourceViewName;
+                            targetView2 = ViewDrafting.Create(targetDoc, draftingTypeId);
+                            targetView2.Name = sourceViewName;
                         }
+
+                        try { targetView2.Scale = sourceView.Scale; } catch { }
+                        try { targetView2.Discipline = sourceView.Discipline; } catch { }
+                        try { targetView2.DetailLevel = sourceView.DetailLevel; } catch { }
+                        try { targetView2.DisplayStyle = sourceView.DisplayStyle; } catch { }
+                        try { targetView2.PartsVisibility = sourceView.PartsVisibility; } catch { }
+
+                        try
+                        {
+                            if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
+                            {
+                                var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
+                                if (srcTemplate != null)
+                                {
+                                    string templateName = srcTemplate.Name;
+
+                                    var dstTemplate = new FilteredElementCollector(targetDoc)
+                                        .OfClass(typeof(View))
+                                        .Cast<View>()
+                                        .FirstOrDefault(v => v.IsTemplate &&
+                                            string.Equals(v.Name, templateName, StringComparison.InvariantCultureIgnoreCase));
+
+                                    if (dstTemplate != null)
+                                    {
+                                        targetView2.ViewTemplateId = dstTemplate.Id;
+                                    }
+                                    else
+                                    {
+                                        TaskDialog.Show("KPLN. Менеджер узлов",
+                                            $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
+                                            "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
+                                            "Вид будет создан/обновлён без назначения шаблона. Возможно некорректное отображение DWG.");
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+
+                        t.Commit();
+                    }
+
+                    using (var t = new Transaction(targetDoc, "KPLN. Очистка аннотации на виде узла"))
+                    {
+                        t.Start();
+
+                        var toDelete = new FilteredElementCollector(targetDoc, targetView2.Id)
+                            .WhereElementIsNotElementType()
+                            .Where(e =>
+                                e.ViewSpecific &&
+                                !(e is ImportInstance) &&
+                                !(e is View) &&
+                                !(e is Group) &&
+                                e.Category != null)
+                            .Select(e => e.Id)
+                            .ToList();
+
+                        if (toDelete.Count > 0)
+                            targetDoc.Delete(toDelete);
 
                         t.Commit();
                     }
@@ -3226,42 +3688,38 @@ namespace KPLN_Tools.Forms
                     {
                         t.Start();
 
-                        var oldDwgs = new FilteredElementCollector(targetDoc, targetView.Id)
+                        var oldDwgs = new FilteredElementCollector(targetDoc, targetView2.Id)
                             .OfClass(typeof(ImportInstance))
                             .ToElementIds();
 
                         if (oldDwgs.Count > 0)
-                        {
                             targetDoc.Delete(oldDwgs);
-                        }
 
                         t.Commit();
                     }
 
-                    using (var t = new Transaction(targetDoc, "KPLN. Линковка DWG на вид узла"))
+                    using (var t = new Transaction(targetDoc, "KPLN. Линковка DWG с восстановлением позиции"))
                     {
                         t.Start();
 
-                        try
+                        for (int i = 0; i < dwgPlacements.Count; i++)
                         {
-                            var opts = new DWGImportOptions
+                            var srcPlacement = dwgPlacements[i];
+                            string localCopyPath = plannedLocalCopies[i].localCopyPath;
+
+                            var opt = new DWGImportOptions
                             {
+                                ThisViewOnly = true,
                                 Placement = ImportPlacement.Origin,
-                                OrientToView = true,
-                                ColorMode = ImportColorMode.BlackAndWhite,
-                                VisibleLayersOnly = true,
+                                OrientToView = true
                             };
 
-                            ElementId linkInstanceId;
-                            bool ok = targetDoc.Link(mainLocalCopyPath, opts, targetView, out linkInstanceId);
-                            if (!ok)
-                            {
-                                TaskDialog.Show("KPLN. Менеджер узлов", $"Не удалось залинковать DWG из файла:\n{mainLocalCopyPath}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при линковке DWG:\n" + ex.Message);
+                            ElementId linkedId;
+                            bool ok = targetDoc.Link(localCopyPath, opt, targetView2, out linkedId);
+                            if (!ok || linkedId == ElementId.InvalidElementId)
+                                continue;
+
+                            Apply2DTransformLikeSource(targetDoc, linkedId, srcPlacement.tr);
                         }
 
                         t.Commit();
@@ -3272,9 +3730,10 @@ namespace KPLN_Tools.Forms
                         try { sourceDoc.Close(false); } catch { }
                     }
 
-                    uidoc.ActiveView = targetView;
+                    uidoc.ActiveView = targetView2;
 
-                    TaskDialog.Show("KPLN. Менеджер узлов", $"DWG с вида \"{sourceViewName}\" скопирован(ы) в папку:\n\"{dwgFolder}\"\nи залинкован(ы) на вид в активном документе.");
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        $"DWG с вида \"{sourceViewName}\" скопирован(ы) в папку:\n\"{dwgFolder2}\"\nи залинкован(ы) на вид в активном документе.");
 
                     return;
                 }
@@ -3374,7 +3833,23 @@ namespace KPLN_Tools.Forms
     }
 
 
-    ////////////////////// КОПИРОВАНИЕ НА ВИД
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    ////////////////////// КОПИРОВАНИЕ НА ВИД, ЛИСТ, ЛЕГЕНДУ
     internal sealed class PlaceDraftingViewOnSheetHandler : IExternalEventHandler
     {
         private UIApplication _uiapp;
@@ -3398,6 +3873,154 @@ namespace KPLN_Tools.Forms
         }
 
         public string GetName() => "KPLN. Размещение узла";
+
+        private static readonly string _stateDir = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KPLN", "МУ");
+        private static readonly string _lastDwgDirFile = Path.Combine(_stateDir, "lastDirDWG.txt");
+
+        private static string LoadLastDwgDir()
+        {
+            try
+            {
+                if (!File.Exists(_lastDwgDirFile)) return null;
+                var dir = (File.ReadAllText(_lastDwgDirFile) ?? string.Empty).Trim();
+                return Directory.Exists(dir) ? dir : null;
+            }
+            catch { return null; }
+        }
+
+        private static void SaveLastDwgDir(string dir)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dir)) return;
+                if (!Directory.Exists(dir)) return;
+
+                Directory.CreateDirectory(_stateDir);
+                File.WriteAllText(_lastDwgDirFile, dir);
+            }
+            catch { }
+        }
+
+        private static bool HasNonDwgViewSpecificStuff(Document donorDoc, View donorView)
+        {
+            try
+            {
+                return new FilteredElementCollector(donorDoc, donorView.Id)
+                    .WhereElementIsNotElementType()
+                    .Any(e =>
+                        e != null &&
+                        e.ViewSpecific &&
+                        !(e is ImportInstance) &&
+                        !(e is View) &&
+                        !(e is Group) &&
+                        e.Category != null);
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static void AbortIfDwgMixedWithGraphics(Document donorDoc, ViewDrafting donorView, bool hasDwg)
+        {
+            if (!hasDwg)
+                return;
+
+            bool hasNonDwgStuff = HasNonDwgViewSpecificStuff(donorDoc, donorView);
+            if (!hasNonDwgStuff)
+                return;
+
+            TaskDialog.Show("Менеджер узлов",
+                "Вы пытаетесь добавить узел, который состоит одновременно из DWG и встроенной графики.\n" +
+                "Добавление таких узлов запрещено: обратитесь к разработчику узла для того, чтобы он поправил данный узел.");
+            throw new OperationCanceledException("DWG + встроенная графика на донорском виде");
+        }
+
+        private static bool TargetCentralIsNotLocalFile(Document doc, out string centralUserVisible)
+        {
+            centralUserVisible = null;
+
+            try
+            {
+                if (!doc.IsWorkshared) return false;
+
+                var mp = doc.GetWorksharingCentralModelPath();
+                if (mp == null) return false;
+
+                centralUserVisible = ModelPathUtils.ConvertModelPathToUserVisiblePath(mp) ?? "";
+
+                if (centralUserVisible.StartsWith("RSN://", StringComparison.InvariantCultureIgnoreCase) ||
+                    centralUserVisible.StartsWith("RSN:", StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+
+                if (string.IsNullOrWhiteSpace(centralUserVisible)) return true;
+                if (!File.Exists(centralUserVisible)) return true;
+
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static string AskUserForDwgPath(Window ownerWindow, string centralInfo, string defaultFileName)
+        {
+            var lastDir = LoadLastDwgDir();
+
+            string startDir =
+                (!string.IsNullOrWhiteSpace(lastDir) && Directory.Exists(lastDir)) ? lastDir :
+                Directory.Exists(@"Y:\") ? @"Y:\" :
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+            var dlg = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Необходимо выбрать локальную дирректорию, чтобы сохранить DWG",
+                Filter = "DWG (*.dwg)|*.dwg",
+                DefaultExt = ".dwg",
+                AddExtension = true,
+                OverwritePrompt = false,
+                FileName = defaultFileName,
+                InitialDirectory = startDir,
+                RestoreDirectory = true
+            };
+
+            bool? res = dlg.ShowDialog(ownerWindow);
+            if (res != true || string.IsNullOrWhiteSpace(dlg.FileName))
+                return null;
+
+            var folder = Path.GetDirectoryName(dlg.FileName);
+            if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
+                SaveLastDwgDir(folder);
+
+            return dlg.FileName;
+        }
+
+        private string GetDwgFilePathForTarget(Document targetDoc)
+        {
+            if (TargetCentralIsNotLocalFile(targetDoc, out var centralStr))
+            {
+                string dwgFolderFromDb = ResolveDwgFolderFromMainDb(centralStr);
+                if (string.IsNullOrWhiteSpace(dwgFolderFromDb))
+                    return null;
+
+                return Path.Combine(dwgFolderFromDb, _sourceViewName + ".dwg");
+            }
+
+            string baseModelPath = GetTargetModelPath(targetDoc);
+            if (string.IsNullOrWhiteSpace(baseModelPath) || !File.Exists(baseModelPath))
+                return null;
+
+            string modelDir = Path.GetDirectoryName(baseModelPath);
+            if (string.IsNullOrWhiteSpace(modelDir))
+                return null;
+
+            string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
+            Directory.CreateDirectory(dwgFolder);
+
+            return Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+        }
 
         public void Execute(UIApplication app)
         {
@@ -3424,10 +4047,12 @@ namespace KPLN_Tools.Forms
 
             if (av is ViewSheet sheet)
             {
+                _ownerWindow.Topmost = false;
                 HandleSheetCase(app, uidoc, doc, sheet);
             }
             else if (av is ViewDrafting draftingView)
             {
+                _ownerWindow.Topmost = false;
                 HandleDraftingCase(app, uidoc, doc, draftingView);
             }
             else if (av.ViewType == ViewType.Legend)
@@ -3461,6 +4086,192 @@ namespace KPLN_Tools.Forms
 
             return false;
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        private static string ResolveDwgFolderFromMainDb(string centralPath)
+        {
+            // centralPath должен быть именно CentralPath (например RSN://...)
+            if (string.IsNullOrWhiteSpace(centralPath))
+                return null;
+
+            string mainDb = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
+
+            string foundMainPath = null;
+            int? foundSubDepId = null;
+            string foundSubDepCode = null;
+
+            try
+            {
+                using (var conn = new System.Data.SQLite.SQLiteConnection(
+                    "Data Source=" + mainDb + ";Version=3;FailIfMissing=True;"))
+                {
+                    conn.Open();
+
+                    // 1) Projects -> MainPath по префиксу RevitServerPath*
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
+                    FROM Projects
+                    WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
+                       OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
+                       OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
+                       OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
+
+                        using (var r = cmd.ExecuteReader())
+                        {
+                            while (r.Read())
+                            {
+                                string mp = r.IsDBNull(0) ? null : r.GetString(0);
+
+                                string p1 = r.IsDBNull(1) ? null : r.GetString(1);
+                                string p2 = r.IsDBNull(2) ? null : r.GetString(2);
+                                string p3 = r.IsDBNull(3) ? null : r.GetString(3);
+                                string p4 = r.IsDBNull(4) ? null : r.GetString(4);
+
+                                bool match =
+                                    (!string.IsNullOrWhiteSpace(p1) && centralPath.StartsWith(p1.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                    (!string.IsNullOrWhiteSpace(p2) && centralPath.StartsWith(p2.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                    (!string.IsNullOrWhiteSpace(p3) && centralPath.StartsWith(p3.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
+                                    (!string.IsNullOrWhiteSpace(p4) && centralPath.StartsWith(p4.Trim(), StringComparison.InvariantCultureIgnoreCase));
+
+                                if (match)
+                                {
+                                    foundMainPath = mp;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(foundMainPath))
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "В MainDB в таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
+                            "Текущий CentralPath:\n" + centralPath + "\n" +
+                            "Для решения проблемы - обратитесь в BIM-отдел");
+                        return null;
+                    }
+
+                    // 2) Documents -> SubDepartmentId по CentralPath
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT SubDepartmentId
+                    FROM Documents
+                    WHERE CentralPath = @p
+                    LIMIT 1;";
+                        cmd.Parameters.AddWithValue("@p", centralPath);
+
+                        var obj = cmd.ExecuteScalar();
+                        if (obj != null && obj != DBNull.Value && int.TryParse(obj.ToString(), out int dep))
+                            foundSubDepId = dep;
+                    }
+
+                    if (!foundSubDepId.HasValue)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "Файл с данным CentralPath не зарегистрирован в БД (таблица Documents).\n" +
+                            "Текущий CentralPath:\n" + centralPath + "\n" +
+                            "Для решения проблемы - обратитесь в BIM-отдел");
+                        return null;
+                    }
+
+                    // 3) SubDepartments -> Code по Id
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"
+                    SELECT Code
+                    FROM SubDepartments
+                    WHERE Id = @id
+                    LIMIT 1;";
+                        cmd.Parameters.AddWithValue("@id", foundSubDepId.Value);
+
+                        var obj = cmd.ExecuteScalar();
+                        foundSubDepCode = (obj == null || obj == DBNull.Value) ? null : obj.ToString();
+                        if (!string.IsNullOrWhiteSpace(foundSubDepCode))
+                            foundSubDepCode = foundSubDepCode.Trim();
+                    }
+
+                    conn.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка чтения MainDB:\n" + ex.Message);
+                return null;
+            }
+
+            // приводим путь проекта к Y:\
+            string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
+
+            // отдел
+            string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
+                ? foundSubDepCode
+                : foundSubDepId.Value.ToString(CultureInfo.InvariantCulture);
+
+            // чистим имя папки
+            foreach (char ch in Path.GetInvalidFileNameChars())
+                depDisplay = depDisplay.Replace(ch.ToString(), "_");
+
+            // BIM\8.Менеджер узлов\<dep>
+            string baseBim = Path.Combine(mainPathDisplay, "BIM");
+            string managerDir = Path.Combine(baseBim, "8.Менеджер узлов");
+            string dwgFolder = Path.Combine(managerDir, depDisplay);
+
+            try
+            {
+                Directory.CreateDirectory(dwgFolder);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов",
+                    "Не удалось создать директорию для DWG:\n" + dwgFolder + "\n\n" + ex.Message);
+                return null;
+            }
+
+            return dwgFolder;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// ЛИСТ
@@ -3504,6 +4315,15 @@ namespace KPLN_Tools.Forms
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
 
 
+                try
+                {
+                    AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
                 // DWG
                 if (hasDwg)
                 {
@@ -3534,18 +4354,22 @@ namespace KPLN_Tools.Forms
         /// </summary>
         private void HandleDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
         {
-            var centralDir = Path.GetDirectoryName(_sourceRvtPath);
-            if (string.IsNullOrEmpty(centralDir))
+            string dwgFilePath = GetDwgFilePathForTarget(targetDoc);
+            if (string.IsNullOrWhiteSpace(dwgFilePath))
             {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь к центральной модели для поиска DWG.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь для DWG.");
                 return;
             }
 
-            var dwgFolder = Path.Combine(centralDir, "DWG_Менеджер узлов");
-            if (!Directory.Exists(dwgFolder))
-                Directory.CreateDirectory(dwgFolder);
+            string dwgFolder = Path.GetDirectoryName(dwgFilePath);
+            string dwgNameNoExt = Path.GetFileNameWithoutExtension(dwgFilePath);
 
-            var dwgFilePath = Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+            if (string.IsNullOrWhiteSpace(dwgFolder) || string.IsNullOrWhiteSpace(dwgNameNoExt))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Некорректный путь для DWG.");
+                return;
+            }
+
             bool dwgExists = File.Exists(dwgFilePath);
 
             DwgChoice choice;
@@ -3580,6 +4404,7 @@ namespace KPLN_Tools.Forms
             }
             else
             {
+                TaskDialog.Show("Выбор точки","Укажите точку для размещения узла");
                 choice = DwgChoice.ExportOverwriteAndUse;
             }
 
@@ -3930,12 +4755,22 @@ namespace KPLN_Tools.Forms
 
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
 
+                try
+                {
+                    AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
+
                 // DWG
                 if (hasDwg)
                 {
                     XYZ pickPoint;
                     try
                     {
+                        TaskDialog.Show("Выбор точки", "Укажите точку для размещения узла");
                         pickPoint = uidoc.Selection.PickPoint("Выберите точку для размещения DWG");
                     }
                     catch (Autodesk.Revit.Exceptions.OperationCanceledException)
@@ -3969,18 +4804,15 @@ namespace KPLN_Tools.Forms
         /// </summary>
         private void HandleDwgOnDrafting(Document donorDoc, ViewDrafting donorView, Document targetDoc, ViewDrafting targetDraftingView, XYZ pickPoint)
         {
-            var centralDir = Path.GetDirectoryName(_sourceRvtPath);
-            if (string.IsNullOrEmpty(centralDir))
+            string dwgFilePath = GetDwgFilePathForTarget(targetDoc);
+            if (string.IsNullOrWhiteSpace(dwgFilePath))
             {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь к центральной модели для поиска DWG.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь для DWG.");
                 return;
             }
 
-            var dwgFolder = Path.Combine(centralDir, "DWG_Менеджер узлов");
-            if (!Directory.Exists(dwgFolder))
-                Directory.CreateDirectory(dwgFolder);
-
-            var dwgFilePath = Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+            string dwgFolder = Path.GetDirectoryName(dwgFilePath);
+            string dwgNameNoExt = Path.GetFileNameWithoutExtension(dwgFilePath);
             bool dwgExists = File.Exists(dwgFilePath);
 
             DwgChoice choice;
@@ -4014,7 +4846,7 @@ namespace KPLN_Tools.Forms
                 }
             }
             else
-            {
+            {               
                 choice = DwgChoice.ExportOverwriteAndUse;
             }
 
@@ -4050,13 +4882,6 @@ namespace KPLN_Tools.Forms
             using (var t = new Transaction(targetDoc, "KPLN. Обновление DWG на чертёжном виде"))
             {
                 t.Start();
-
-                var oldImports = new FilteredElementCollector(targetDoc, targetDraftingView.Id).OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
-
-                foreach (var imp in oldImports)
-                {
-                    try { targetDoc.Delete(imp.Id); } catch { }
-                }
 
                 var dwgImportOptions = new DWGImportOptions
                 {
@@ -4281,6 +5106,11 @@ namespace KPLN_Tools.Forms
 
 
 
+
+
+        /// <summary>
+        /// ЛЕГЕНДЫ
+        /// </summary>
         private void HandleLegendCase(UIApplication app, UIDocument uidoc, Document targetDoc, View targetLegendView)
         {
             Document donorDoc = null;
@@ -4325,6 +5155,15 @@ namespace KPLN_Tools.Forms
                 }
 
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
+
+                try
+                {
+                    AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
+                }
+                catch (OperationCanceledException)
+                {
+                    return;
+                }
 
                 uidoc.ActiveView = targetLegendView;
 
@@ -4399,28 +5238,23 @@ namespace KPLN_Tools.Forms
 
         private void HandleDwgOnLegend(Document donorDoc, ViewDrafting donorView, Document targetDoc, View targetLegendView, XYZ pickPoint)
         {
-            string baseModelPath = GetTargetModelPath(targetDoc);
-
-            if (string.IsNullOrWhiteSpace(baseModelPath) || !File.Exists(baseModelPath))
+            string dwgFilePath = GetDwgFilePathForTarget(targetDoc);
+            if (string.IsNullOrWhiteSpace(dwgFilePath))
             {
-                TaskDialog.Show("KPLN. Менеджер узлов",
-                    "Не удалось определить путь к файлу целевой модели для папки \"DWG_Менеджер узлов\".\n" +
-                    "Сохраните модель на диск и повторите попытку.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить путь для DWG.");
                 return;
             }
 
-            string modelDir = Path.GetDirectoryName(baseModelPath);
-            if (string.IsNullOrWhiteSpace(modelDir))
+            string dwgFolder = Path.GetDirectoryName(dwgFilePath);
+            string dwgNameNoExt = Path.GetFileNameWithoutExtension(dwgFilePath);
+            string expectedDwgFileName = Path.GetFileName(dwgFilePath);
+
+            if (string.IsNullOrWhiteSpace(dwgFolder) || string.IsNullOrWhiteSpace(dwgNameNoExt))
             {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось определить директорию целевой модели.");
+                TaskDialog.Show("KPLN. Менеджер узлов", "Некорректный путь для DWG.");
                 return;
             }
 
-            string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
-            if (!Directory.Exists(dwgFolder))
-                Directory.CreateDirectory(dwgFolder);
-
-            string dwgFilePath = Path.Combine(dwgFolder, _sourceViewName + ".dwg");
             bool dwgExists = File.Exists(dwgFilePath);
 
             DwgChoice choice;
@@ -4480,14 +5314,6 @@ namespace KPLN_Tools.Forms
             using (var t = new Transaction(targetDoc, "KPLN. Обновление DWG на легенде"))
             {
                 t.Start();
-
-                var oldImports = new FilteredElementCollector(targetDoc, targetLegendView.Id)
-                    .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
-
-                foreach (var imp in oldImports)
-                {
-                    try { targetDoc.Delete(imp.Id); } catch { }
-                }
 
                 var dwgImportOptions = new DWGImportOptions
                 {
@@ -4569,6 +5395,20 @@ namespace KPLN_Tools.Forms
             return bb == null ? null : (bb.Min + bb.Max) * 0.5;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
