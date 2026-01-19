@@ -10,6 +10,7 @@
 	Отдельный блок для заполнения рабочих наборов по экземпляру для связей-->
 	<LinkedFilesPrefix>#</LinkedFilesPrefix>
 	<DWGLinksName></DWGLinksName>
+	<GlobalVisibleForLinks>true</GlobalVisibleForLinks>
 	<UseMonitoredElements>false</UseMonitoredElements>
 	<MonitoredElementsName>#Скопированные элементы</MonitoredElementsName>
 	<WorksetByCurrentParameterList>
@@ -152,20 +153,6 @@
 				<string>253_</string>
 			</FamilyNames>
 			<TypeNames />
-			<SelectedParameters />
-		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
-
-		<!--Блок правил: Начало-->
-		<WorksetByCurrentParameter>
-			<WorksetName>Лестницы</WorksetName>
-			<BuiltInCategories />
-			<FamilyNames />
-			<TypeNames>
-				<string>площадка</string>
-				<string>марш</string>
-				<string>лестн</string>
-			</TypeNames>
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
 		<!--Блок правил: Конец-->

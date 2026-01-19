@@ -1,22 +1,23 @@
 ?<?xml version="1.0" encoding="utf-16"?>
 <WorksetDTO xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
 
-	<!--Поля класса WorksetDTO. Важно: порядок типов сортировок не влияет на логику плагина. Он назначает параметры следующим образом:
-	1. По категориям
-	2. По именам семейств ("Содержит")
-	3. По именам типов ("Содержит")
-	4. По свзяке: имя параметра - значение параметра ("Эквиавлентно")
-	5. Для всех элементов, кроме осей и сеток, у которых назначен мониторинг
-	Отдельный блок для заполнения рабочих наборов по экземпляру для связей-->
+	<!--РџРѕР»СЏ РєР»Р°СЃСЃР° WorksetDTO. Р’Р°Р¶РЅРѕ: РїРѕСЂСЏРґРѕРє С‚РёРїРѕРІ СЃРѕСЂС‚РёСЂРѕРІРѕРє РЅРµ РІР»РёСЏРµС‚ РЅР° Р»РѕРіРёРєСѓ РїР»Р°РіРёРЅР°. РћРЅ РЅР°Р·РЅР°С‡Р°РµС‚ РїР°СЂР°РјРµС‚СЂС‹ СЃР»РµРґСѓСЋС‰РёРј РѕР±СЂР°Р·РѕРј:
+	1. РџРѕ РєР°С‚РµРіРѕСЂРёСЏРј
+	2. РџРѕ РёРјРµРЅР°Рј СЃРµРјРµР№СЃС‚РІ ("РЎРѕРґРµСЂР¶РёС‚")
+	3. РџРѕ РёРјРµРЅР°Рј С‚РёРїРѕРІ ("РЎРѕРґРµСЂР¶РёС‚")
+	4. РџРѕ СЃРІР·СЏРєРµ: РёРјСЏ РїР°СЂР°РјРµС‚СЂР° - Р·РЅР°С‡РµРЅРёРµ РїР°СЂР°РјРµС‚СЂР° ("Р­РєРІРёР°РІР»РµРЅС‚РЅРѕ")
+	5. Р”Р»СЏ РІСЃРµС… СЌР»РµРјРµРЅС‚РѕРІ, РєСЂРѕРјРµ РѕСЃРµР№ Рё СЃРµС‚РѕРє, Сѓ РєРѕС‚РѕСЂС‹С… РЅР°Р·РЅР°С‡РµРЅ РјРѕРЅРёС‚РѕСЂРёРЅРі
+	РћС‚РґРµР»СЊРЅС‹Р№ Р±Р»РѕРє РґР»СЏ Р·Р°РїРѕР»РЅРµРЅРёСЏ СЂР°Р±РѕС‡РёС… РЅР°Р±РѕСЂРѕРІ РїРѕ СЌРєР·РµРјРїР»СЏСЂСѓ РґР»СЏ СЃРІСЏР·РµР№-->
 	<LinkedFilesPrefix>#</LinkedFilesPrefix>
 	<DWGLinksName></DWGLinksName>
+	<GlobalVisibleForLinks>true</GlobalVisibleForLinks>
 	<UseMonitoredElements>false</UseMonitoredElements>
-	<MonitoredElementsName>#Скопированные элементы</MonitoredElementsName>
+	<MonitoredElementsName>#РЎРєРѕРїРёСЂРѕРІР°РЅРЅС‹Рµ СЌР»РµРјРµРЅС‚С‹</MonitoredElementsName>
 	<WorksetByCurrentParameterList>
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>*Общие уровни и сетки</WorksetName>
+			<WorksetName>*РћР±С‰РёРµ СѓСЂРѕРІРЅРё Рё СЃРµС‚РєРё</WorksetName>
 			<BuiltInCategories>
 				<BuiltInCategory>OST_Grids</BuiltInCategory>
 				<BuiltInCategory>OST_Levels</BuiltInCategory>
@@ -25,11 +26,11 @@
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>*Отверстия АР</WorksetName>
+			<WorksetName>*РћС‚РІРµСЂСЃС‚РёСЏ РђР </WorksetName>
 			<BuiltInCategories />
 			<FamilyNames>
 				<string>501_</string>
@@ -38,121 +39,121 @@
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>*Отверстия КР</WorksetName>
+			<WorksetName>*РћС‚РІРµСЂСЃС‚РёСЏ РљР </WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>100_Электроосвещение</WorksetName>
+			<WorksetName>100_Р­Р»РµРєС‚СЂРѕРѕСЃРІРµС‰РµРЅРёРµ</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>101_Электроосвещение (щиты)</WorksetName>
+			<WorksetName>101_Р­Р»РµРєС‚СЂРѕРѕСЃРІРµС‰РµРЅРёРµ (С‰РёС‚С‹)</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>120_Электроосвещение (ИТП)</WorksetName>
+			<WorksetName>120_Р­Р»РµРєС‚СЂРѕРѕСЃРІРµС‰РµРЅРёРµ (РРўРџ)</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>200_Электрооборудование</WorksetName>
+			<WorksetName>200_Р­Р»РµРєС‚СЂРѕРѕР±РѕСЂСѓРґРѕРІР°РЅРёРµ</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>201_ВРУ</WorksetName>
+			<WorksetName>201_Р’Р РЈ</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>210_Электрооборудование смежных разделов</WorksetName>
+			<WorksetName>210_Р­Р»РµРєС‚СЂРѕРѕР±РѕСЂСѓРґРѕРІР°РЅРёРµ СЃРјРµР¶РЅС‹С… СЂР°Р·РґРµР»РѕРІ</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>211_Электрооборудование СПЗ</WorksetName>
+			<WorksetName>211_Р­Р»РµРєС‚СЂРѕРѕР±РѕСЂСѓРґРѕРІР°РЅРёРµ РЎРџР—</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>220_Электрооборудование (ИТП)</WorksetName>
+			<WorksetName>220_Р­Р»РµРєС‚СЂРѕРѕР±РѕСЂСѓРґРѕРІР°РЅРёРµ (РРўРџ)</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>300_Распределительные сети (ГРЩ)</WorksetName>
+			<WorksetName>300_Р Р°СЃРїСЂРµРґРµР»РёС‚РµР»СЊРЅС‹Рµ СЃРµС‚Рё (Р“Р Р©)</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>301_ГРЩ</WorksetName>
+			<WorksetName>301_Р“Р Р©</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>400_Кабеленесущие системы</WorksetName>
+			<WorksetName>400_РљР°Р±РµР»РµРЅРµСЃСѓС‰РёРµ СЃРёСЃС‚РµРјС‹</WorksetName>
 			<BuiltInCategories>
 				<BuiltInCategory>OST_CableTray</BuiltInCategory>
 				<BuiltInCategory>OST_CableTrayFitting</BuiltInCategory>
@@ -161,11 +162,11 @@
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>401_Крепеж кабеленесущих систем</WorksetName>
+			<WorksetName>401_РљСЂРµРїРµР¶ РєР°Р±РµР»РµРЅРµСЃСѓС‰РёС… СЃРёСЃС‚РµРј</WorksetName>
 			<BuiltInCategories>
 				<BuiltInCategory>OST_CableTray</BuiltInCategory>
 				<BuiltInCategory>OST_CableTrayFitting</BuiltInCategory>
@@ -174,91 +175,91 @@
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>420_Кабеленесущие системы (ИТП)</WorksetName>
+			<WorksetName>420_РљР°Р±РµР»РµРЅРµСЃСѓС‰РёРµ СЃРёСЃС‚РµРјС‹ (РРўРџ)</WorksetName>
 			<BuiltInCategories/>
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>421_Крепеж кабеленесущих систем (ИТП)</WorksetName>
+			<WorksetName>421_РљСЂРµРїРµР¶ РєР°Р±РµР»РµРЅРµСЃСѓС‰РёС… СЃРёСЃС‚РµРј (РРўРџ)</WorksetName>
 			<BuiltInCategories/>
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>500_Молниезащита, заземление</WorksetName>
+			<WorksetName>500_РњРѕР»РЅРёРµР·Р°С‰РёС‚Р°, Р·Р°Р·РµРјР»РµРЅРёРµ</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>520_Молниезащита, заземление (ИТП)</WorksetName>
+			<WorksetName>520_РњРѕР»РЅРёРµР·Р°С‰РёС‚Р°, Р·Р°Р·РµРјР»РµРЅРёРµ (РРўРџ)</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>600_Закладные детали</WorksetName>
+			<WorksetName>600_Р—Р°РєР»Р°РґРЅС‹Рµ РґРµС‚Р°Р»Рё</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>601_Закладные детали ниже 0</WorksetName>
+			<WorksetName>601_Р—Р°РєР»Р°РґРЅС‹Рµ РґРµС‚Р°Р»Рё РЅРёР¶Рµ 0</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>602_Закладные детали выше 0</WorksetName>
+			<WorksetName>602_Р—Р°РєР»Р°РґРЅС‹Рµ РґРµС‚Р°Р»Рё РІС‹С€Рµ 0</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>700_Шинопроводы</WorksetName>
+			<WorksetName>700_РЁРёРЅРѕРїСЂРѕРІРѕРґС‹</WorksetName>
 			<BuiltInCategories />
 			<FamilyNames/>
 			<TypeNames />
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
-		<!--Блок правил: Начало-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РќР°С‡Р°Р»Рѕ-->
 		<WorksetByCurrentParameter>
-			<WorksetName>800_Огнестойкие короба</WorksetName>
+			<WorksetName>800_РћРіРЅРµСЃС‚РѕР№РєРёРµ РєРѕСЂРѕР±Р°</WorksetName>
 			<BuiltInCategories>
 				<BuiltInCategory>OST_DuctCurves</BuiltInCategory>
 				<BuiltInCategory>OST_DuctFitting</BuiltInCategory>
@@ -267,7 +268,7 @@
 			<TypeNames/>
 			<SelectedParameters />
 		</WorksetByCurrentParameter>
-		<!--Блок правил: Конец-->
+		<!--Р‘Р»РѕРє РїСЂР°РІРёР»: РљРѕРЅРµС†-->
 
 	</WorksetByCurrentParameterList>
 </WorksetDTO>
