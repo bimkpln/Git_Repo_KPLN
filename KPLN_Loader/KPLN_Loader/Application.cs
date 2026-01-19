@@ -50,6 +50,11 @@ namespace KPLN_Loader
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
         /// <summary>
+        /// Коллекция зарегестрированных КАСТОМНЫХ кнопок в Autodesk.Windows
+        /// </summary>
+        public static List<(Autodesk.Windows.RibbonButton RButton, string IconBaseName, string KPLNPluginAssembleName)> KPLNWindButtonsForImageReverse = new List<(Autodesk.Windows.RibbonButton, string, string)>();
+
+        /// <summary>
         /// Коллекция зарегестрированных кнопок для смены цвета
         /// </summary>
         public static List<(RibbonButton RButton, string IconBaseName, string KPLNPluginAssembleName)> KPLNButtonsForImageReverse = new List<(RibbonButton, string, string)>();
@@ -626,6 +631,12 @@ namespace KPLN_Loader
             {
                 rItem.Image = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 16);
                 rItem.LargeImage = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 32);
+            }
+
+            foreach (var (rButton, iconBaseName, kplnPluginAssembleName) in KPLNWindButtonsForImageReverse)
+            {
+                rButton.Image = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 16);
+                rButton.LargeImage = GetBtnImage_ByTheme(kplnPluginAssembleName, iconBaseName, 32);
             }
         }
 #endif
