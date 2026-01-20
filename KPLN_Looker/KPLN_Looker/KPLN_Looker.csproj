@@ -315,6 +315,8 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Comparers\ElementIdEqualityComparer.cs" />
+    <Compile Include="Comparers\RoomIdEqualityComparer.cs" />
     <Compile Include="ExecutableCommand\DocCloser.cs" />
     <Compile Include="ExecutableCommand\UndoEvantHandler.cs" />
     <Compile Include="ExecutableCommand\ViewCloser.cs" />

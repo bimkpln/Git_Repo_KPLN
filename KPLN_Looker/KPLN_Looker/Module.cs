@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
@@ -7,6 +8,7 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
+using KPLN_Looker.Comparers;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
 using System;
@@ -21,6 +23,16 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {
+        /// <summary>
+        /// Кэширование текущего пути мониторингового проекта
+        /// </summary>
+        private static string _monitoredDocFilePath_ExceptARKon;
+
+        /// <summary>
+        /// Кэширование текущего проекта KPLN
+        /// </summary>
+        private static DBProject _currentDBProject;
+
         /// <summary>
         /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
         /// </summary>
@@ -42,9 +54,14 @@ namespace KPLN_Looker
         private static readonly TimeSpan _delayAlarm = new TimeSpan(0, 10, 0);
 
         /// <summary>
+        /// Метка закрытого для пользователя проекта
+        /// </summary>
+        private static bool _isProjectCloseToUser;
+
+        /// <summary>
         /// Вариативность аббр. имён разбивочного файла
         /// </summary>
-        private readonly string[] _rfFileNames = new string[]
+        private static readonly string[] _rfFileNames = new string[]
         {
             "_рф",
             "рф_",
@@ -65,9 +82,9 @@ namespace KPLN_Looker
         };
 
         /// <summary>
-        /// Метка закрытого для пользователя проекта
+        /// Счётчик помещений в модели
         /// </summary>
-        private bool _isProjectCloseToUser;
+        private static Room[] _lastDocRooms = null;
 
         public Module()
         {
@@ -206,6 +223,189 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Событие на открытый документ
+        /// </summary>
+        private static void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
+        {
+            Document doc = args.Document;
+
+            #region Утсановка переменных, привязаных к открытому файлу
+            // Имя файла
+            _monitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+
+
+            // Проект КПЛН
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+            _currentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
+
+
+            // Кол-во помещений в модели
+            _lastDocRooms = GetDocRooms(doc);
+            #endregion
+
+
+            // Если проект не мониториться - игнор
+            if (_monitoredDocFilePath_ExceptARKon == null)
+                return;
+
+            #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
+            if (DBMainService.CurrentDBUser.IsUserRestricted)
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Ограничен в работе с реальными проектами " +
+                    $"(IsUserRestricted={DBMainService.CurrentDBUser.IsUserRestricted})\n" +
+                    $"Действие: Открыл файл {doc.Title}.");
+
+                MessageBox.Show(
+                    $"Вы открыли проект с диска Y:\\. Напомню - Ваша работа ограничена тестовыми файлами! " +
+                    $"Данные переданы в BIM-отдел",
+                    "KPLN: Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+            #endregion
+
+
+            #region Обработка работы в архивных копиях
+            if (fileFullName.ToLower().Contains("архив"))
+            {
+                MessageBox.Show(
+                    "Вы открыли АРХИВНЫЙ проект. Работа в нём запрещена, только просмотр!\n" +
+                    "\nИНФО: Если попытаетесь что-то синхронизировать - проект закроется",
+                    "KPLN: Архивный проект",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                #region Извещение в чат bim-отдела
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Сотрудник открыл АРХИВНЫЙ проект\n" +
+                    $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
+                    $"Путь к модели: [b]{fileFullName}[/b].");
+                #endregion
+            }
+            #endregion
+
+            #region Обработка проектов КПЛН
+            if (_currentDBProject != null)
+            {
+                // Ищу документ
+                DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
+                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+                if (dBDocument == null)
+                {
+                    dBDocument = new DBDocument()
+                    {
+                        CentralPath = fileFullName,
+                        ProjectId = _currentDBProject.Id,
+                        SubDepartmentId = prjDBSubDepartment.Id,
+                        LastChangedUserId = DBMainService.CurrentDBUser.Id,
+                        LastChangedData = DBMainService.CurrentTimeForDB(),
+                        IsClosed = false,
+                    };
+
+                    DBMainService.DocDbService.CreateDBDocument(dBDocument);
+                }
+
+                //Обрабатываю документ
+                DBMainService.DocDbService.UpdateDBDocument_IsClosedByProject(_currentDBProject);
+
+                // Вывожу окно, если документ ЗАКРЫТ к редактированию
+                if (_currentDBProject.IsClosed)
+                {
+                    MessageBox.Show(
+                        "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на " +
+                        "внесение изменений в этот проект - обратитесь в BIM-отдел.\n" +
+                        "Чтобы открыть проект для ознакомления - откройте его с ОТСОЕДИНЕНИЕМ" +
+                        "\nИНФО: Сейчас файл закроется",
+                        "KPLN: Закрытый проект",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+
+                    #region Извещение в чат bim-отдела
+                    BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
+                        $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{fileFullName}[/b].");
+                    #endregion
+
+
+                    #region Извещение пользователю как делать правильно
+                    int currentUserBitrixId = DBMainService.CurrentDBUser.BitrixUserID;
+                    if (currentUserBitrixId != -1)
+                    {
+                        string jsonRequestToUser = $@"{{
+                                    ""DIALOG_ID"": ""{currentUserBitrixId}"",
+                                    ""MESSAGE"": ""Проект {doc.Title} закрыт. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
+                                    ""ATTACH"": [
+                                        {{
+                                            ""IMAGE"": {{
+                                                ""NAME"": ""KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""LINK"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""PREVIEW"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
+                                                ""WIDTH"": ""1000"",
+                                                ""HEIGHT"": ""1000""
+                                            }}
+                                        }}
+                                    ]
+                                }}";
+
+                        BitrixMessageSender.SendMsg_ToUser_ByJSONRequest(jsonRequestToUser);
+                    }
+                    #endregion
+
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+
+                    return;
+                }
+
+
+                // Отлов пользователей с ограничением допуска к работе в текущем проекте
+                DBProjectsAccessMatrix[] currentPrjMatrixColl = DBMainService
+                    .PrjAccessMatrixDbService
+                    .GetDBProjectMatrix_ByProject(_currentDBProject)
+                    .ToArray();
+                if (currentPrjMatrixColl.Length > 0
+                    && currentPrjMatrixColl.All(prj => prj.UserId != DBMainService.CurrentDBUser.Id))
+                {
+                    _isProjectCloseToUser = true;
+                    MessageBox.Show(
+                        $"Вы открыли файл проекта {_currentDBProject.Name}. Данный проект идёт с требованиями от заказчика," +
+                        $" и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
+                        "\nИНФО: Сейчас файл закроется",
+                        "KPLN: Ограниченный проект",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+
+                    BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
+                        $"Действие: Открыл проект {doc.Title}.");
+
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+
+                    return;
+                }
+            }
+            else
+            {
+                TaskDialog td = new TaskDialog("ВНИМАНИЕ")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                    MainInstruction = "Вы работаете в незарегистрированном проекте. Скинь скрин в BIM-отдел",
+                    FooterText = $"Специалисту BIM-отдела: файл - {fileFullName}",
+                    CommonButtons = TaskDialogCommonButtons.Ok,
+                };
+                td.Show();
+            }
+            #endregion
+        }
+
+        /// <summary>
         /// Событие на активацию вида
         /// </summary>
         private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
@@ -219,6 +419,16 @@ namespace KPLN_Looker
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 #endif
+            #region Утсановка переменных, привязаных к виду
+            // Имя файла
+            _monitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+
+
+            // Проект КПЛН
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+            _currentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
+            #endregion
+
             #region Закрываю вид, если он для бим-отдела
             if (!(activeView is View3D _)
                 || (!activeView.Title.ToUpper().Contains("BIM360")
@@ -263,37 +473,205 @@ namespace KPLN_Looker
         /// </summary>
         private static void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            Document document = args.GetDocument();
+            Document doc = args.GetDocument();
 
 #if DEBUG
             // Фильтрация по имени проекта
-            string docPath = MonitoredDocFilePath_ExceptARKon(document);
-            if (docPath != null)
+            if (_monitoredDocFilePath_ExceptARKon != null)
             {
-                CheckAndSendError_FamilyInstanceUserHided(args, document.ActiveView);
+                CheckAndSendError_FamilyInstanceUserHided(args, doc.ActiveView);
 
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                    !docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    !_monitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                     // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                    && !docPath.ToLower().Contains("sh1-"))
-                    CheckError_FamilyCopiedFromOtherFile(args);
+                    && !_monitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                    CheckError_FamilyCopiedFromOtherFile(doc, args);
             }
 #else
             // Фильтрация по имени проекта
-            string docPath = MonitoredDocFilePath_ExceptARKon(document);
-            if (docPath != null)
+            if (_monitoredDocFilePath_ExceptARKon != null)
             {
-                CheckAndSendError_FamilyInstanceUserHided(args, document.ActiveView);
+                CheckAndSendError_FamilyInstanceUserHided(args, doc.ActiveView);
 
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                    !docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    !_monitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                     // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                    && !docPath.ToLower().Contains("sh1-"))
-                    CheckError_FamilyCopiedFromOtherFile(args);
+                    && !_monitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                    CheckError_FamilyCopiedFromOtherFile(doc, args);
             }
 #endif
+        }
+
+        /// <summary>
+        /// Событие на синхронизацию файла
+        /// </summary>
+        private static void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
+        {
+            Document doc = args.Document;
+
+            ARKonFileSendMsg(doc);
+
+#if REVIT
+            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
+                return;
+#endif
+
+            CheckAndSendError_RoomDeleted(doc);
+
+
+            #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
+            if (DBMainService.CurrentDBUser.IsUserRestricted)
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={DBMainService.CurrentDBUser.IsUserRestricted})\n" +
+                    $"Действие: Произвел синхронизацию файла {doc.Title}.");
+
+                MessageBox.Show(
+                    $"Вы произвели синхронизацию проекта с диска Y:\\, хотя у вас нет к этому доступа (вы не сдали КЛ BIM-отделу). " +
+                    $"Данные переданы в BIM-отдел и ГИ бюро. Файл будет ЗАКРЫТ.",
+                    "KPLN: Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+            }
+            #endregion
+
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+
+            #region Обработка работы в архивных копиях
+            if (fileFullName.ToLower().Contains("архив"))
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Статус допуска: Сотрудник засинхронизировал АРХИВНЫЙ проект\n" +
+                    $"Действие: Произвел синхронизацию в {doc.Title}.");
+
+                MessageBox.Show(
+                    $"Вы произвели синхронизацию АРХИВНОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
+                    "KPLN: Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+            }
+            #endregion
+
+            #region Работа с проектами КПЛН
+            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
+            if (_currentDBProject != null && prjDBSubDepartment != null)
+            {
+                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+                if (dBDocument != null)
+                {
+                    DBMainService
+                        .DocDbService
+                        .UpdateDBDocument_LastChangedData(dBDocument, DBMainService.CurrentDBUser, DBMainService.CurrentTimeForDB());
+
+                    // Защита закрытого проекта от изменений (файл вообще не должен открываться, но ЕСЛИ это произошло - будет уведомление)
+                    if (dBDocument.IsClosed)
+                    {
+                        BitrixMessageSender.SendMsg_ToBIMChat(
+                            $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                            $"Статус допуска: Сотрудник засинхронизировал ЗАКРЫТЫЙ проект (проект все же НЕ удалось закрыть)\n" +
+                            $"Действие: Произвел синхронизацию в {doc.Title}.");
+
+                        MessageBox.Show(
+                            $"Вы произвели синхронизацию ЗАКРЫТОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
+                            "KPLN: Ошибка",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+                    }
+                    // Отлов пользователей с ограничением допуска к работе в текущем проекте
+                    else if (_isProjectCloseToUser)
+                    {
+                        BitrixMessageSender.SendMsg_ToBIMChat(
+                            $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                            $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
+                            $"Действие: Произвел синхронизацию в {doc.Title}.");
+
+                        MessageBox.Show(
+                            $"Вы открыли файл проекта {_currentDBProject.Name}. " +
+                            $"Данный проект идёт с требованиями от заказчика, и с ними необходимо предварительно ознакомиться. " +
+                            $"Для этого - обратись в BIM-отдел. Файл будет ЗАКРЫТ.",
+                            "KPLN: Ошибка",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
+                    }
+                }
+            }
+            #endregion
+
+            #region Бэкап версий с RS на наш сервак по проектам
+            if (args.Status == RevitAPIEventStatus.Succeeded && _currentDBProject != null && _currentDBProject.RevitServerPath != null)
+            {
+                bool isSET = doc.PathName.Contains("СЕТ_1");
+                // Проект Сетунь
+                if (isSET)
+                {
+                    if (doc.PathName.Contains("_АР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_КР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ЭОМ"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ВК"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ПТ"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ОВ"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
+                    else if (doc.PathName.Contains("_ПБ_") || doc.PathName.Contains("_АК_") || doc.PathName.Contains("_СС_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
+                }
+
+                // Проект Матросская тишина
+                bool isMTRS = doc.PathName.Contains("МТРС_");
+                if (isMTRS)
+                {
+                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc));
+                    if (mPath.ServerPath)
+                    {
+                        if (doc.PathName.Contains("_КР_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
+                        else if (doc.PathName.Contains("_ОВ_ТМ_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                        else if (doc.PathName.Contains("_ОВ_АТМ_"))
+                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
+                    }
+                }
+
+                // Проект Матросская тишина
+                bool isIZML1 = doc.PathName.Contains("ИЗМЛ_");
+                if (isIZML1)
+                {
+                    if (doc.PathName.Contains("_АР_"))
+                        RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
+                }
+            }
+            #endregion
+
+
+            #region Автопроверки (лучше в конец, чтобы всё остальное отработало корректно)
+            if (RunAutoChecks)
+            {
+                // Модели РФ не проверяем вообще (там нет мониторинга, нет линков. РН есть, но они не критичны)
+                bool containsRf = _rfFileNames.Any(m => doc.PathName.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (!containsRf)
+                {
+                    UIApplication uiApp = new UIApplication(doc.Application);
+                    CheckBatchRunner.RunAll(uiApp, doc.Title);
+                }
+            }
+            #endregion
         }
 
         /// <summary>
@@ -311,12 +689,11 @@ namespace KPLN_Looker
             string familyName = args.FamilyName;
             string familyPath = args.FamilyPath;
 
-            string docPath = MonitoredDocFilePath_ExceptARKon(prjDoc);
-            if (docPath == null
+            if (_monitoredDocFilePath_ExceptARKon == null
                 // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                || docPath.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                || _monitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                 // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                || docPath.ToLower().Contains("sh1-"))
+                || _monitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
                 return;
 
             // Игнор семейств от BimStep
@@ -354,6 +731,16 @@ namespace KPLN_Looker
                 TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке семейства отказано!");
                 args.Cancel();
             }
+        }
+
+        /// <summary>
+        /// Событие на сохранение файла (НЕ работает при синзронизации, даже если указать о сохранении локалки)
+        /// </summary>
+        private static void OnDocumentSaved(object sender, DocumentSavedEventArgs args)
+        {
+            Document doc = args.Document;
+
+            ARKonFileSendMsg(doc);
         }
 
         /// <summary>
@@ -446,13 +833,93 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Если проверка факта удаления помещения. При наличии - отправка в BIM в битрикс
+        /// </summary>
+        private static void CheckAndSendError_RoomDeleted(Document doc)
+        {
+
+            // Проверка, что это проект КПЛН стадии РД
+            if (_currentDBProject == null || _currentDBProject.Stage != "РД") return;
+
+
+            Room[] updatedRoomColl = GetDocRooms(doc);
+
+
+            // Находим разницу в коллекциях
+            HashSet<ElementId> prevRoomIds = new HashSet<ElementId>(_lastDocRooms.Select(r =>
+                {
+                    if (r != null && r.IsValidObject)
+                        return r.Id;
+
+                    return new ElementId(-1);
+                }), ElementIdEqualityComparer.Instance);
+            HashSet<ElementId> currRoomIds = new HashSet<ElementId>(updatedRoomColl.Select(r => r.Id), ElementIdEqualityComparer.Instance);
+
+            // Добавлены новые
+            IEnumerable<ElementId> addedIds = currRoomIds.Where(id => !prevRoomIds.Contains(id));
+            var addedRooms = updatedRoomColl.Where(r => addedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
+
+            // Удаленные
+            IEnumerable<ElementId> removedIds = prevRoomIds.Where(id => !currRoomIds.Contains(id));
+            var removedRooms = _lastDocRooms.Where(r => removedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
+
+
+            // Общее число изменений. Если его нет - игнор
+            var changedRooms = addedRooms.Concat(removedRooms).ToArray();
+            if (changedRooms.Length == 0) return;
+
+
+            // Обновляем коллекцию кол-ва помещений
+            _lastDocRooms = updatedRoomColl;
+
+
+            // Проверка, что это модель АР
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+            if (dBDocument == null || dBDocument.SubDepartmentId != 2) return;
+
+
+            // Отправка сообещния в битрикс
+            if (DBMainService.CurrentDBUser != null)
+            {
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                    $"Действие: Произвёл синхронизацию проекта с [b]созданными/удаленными помещениями[/b] в модели {doc.Title}.\n" +
+                    $"Инфо: Пересоздание помещений влияет на работу смежных разделов, а также на проверку соответствия ТЭПов между стадией П и Р.\n" +
+                    $"Список id помещений: {string.Join(",", changedRooms.Select(el => el.Id))}.");
+            }
+        }
+
+        /// <summary>
+        /// Подсчёт помещений в модели
+        /// </summary>
+        /// <param name="doc"></param>
+        /// <returns></returns>
+        private static Room[] GetDocRooms(Document doc)
+        {
+            return new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Rooms)
+                .Where(el =>
+                {
+                    if (el is Room room)
+                        return room.Area > 0.001;
+
+                    return false;
+                })
+                .Cast<Room>()
+                .ToArray();
+        }
+
+        /// <summary>
         /// Поиск ошибки скрытия элементов запрещенными действиями. При наличии - отправка пользователю в битрикс
         /// </summary>
         private static void CheckAndSendError_FamilyInstanceUserHided(DocumentChangedEventArgs args, Autodesk.Revit.DB.View activeView)
         {
             string transName = args.GetTransactionNames().FirstOrDefault();
-            if (transName == null 
-                || activeView == null 
+            if (transName == null
+                || activeView == null
                 // Игнор чертёжных видов
                 || activeView.ViewType == ViewType.DraftingView)
                 return;
@@ -488,7 +955,7 @@ namespace KPLN_Looker
         /// <summary>
         /// Поиск ошибки при попытке скопировать семейство (FamilyInstance) из другого проекта через буфер обмена
         /// </summary>
-        private static void CheckError_FamilyCopiedFromOtherFile(DocumentChangedEventArgs args)
+        private static void CheckError_FamilyCopiedFromOtherFile(Document doc, DocumentChangedEventArgs args)
         {
             string transName = args.GetTransactionNames().FirstOrDefault();
             if (transName == null)
@@ -497,8 +964,6 @@ namespace KPLN_Looker
             string lowerTransName = transName.ToLower();
             if (!lowerTransName.Contains("встав") && !lowerTransName.Contains("paste"))
                 return;
-
-            Document doc = args.GetDocument();
 
             // Коллекция добавленых анализируемых FamilyInstance
             SetResultFamInstFilterForAddedElems();
@@ -522,11 +987,9 @@ namespace KPLN_Looker
 #else
             if (monitoredFamInsts.All(fi => fi.Category.Id.Value == (int)BuiltInCategory.OST_TitleBlocks))
 #endif
-            return;
+                return;
 
-            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            DBProject docDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
-            if (docDBProject == null)
+            if (_currentDBProject == null)
                 return;
 
             string docTitle = doc.Title;
@@ -549,7 +1012,7 @@ namespace KPLN_Looker
                 // Если проекты из БД отличаются - блокирую
                 string openDocFileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(openDoc);
                 DBProject openDocDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(openDocFileFullName, RevitVersion);
-                if (openDocDBProject != null && docDBProject.Id == openDocDBProject.Id)
+                if (openDocDBProject != null && _currentDBProject.Id == openDocDBProject.Id)
                     continue;
 
                 countDifferenceProjects++;
@@ -667,12 +1130,9 @@ namespace KPLN_Looker
                 || MonitoredDocFilePath_ExceptARKon(doc) != null)
                 return;
 
-            // Получаю проект из БД КПЛН
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-
-            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
-            if (dBProject == null)
+            if (_currentDBProject == null)
             {
                 string centralPathForUser = fileFullName.Replace("\\\\stinproject.local\\project", "Y:");
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
@@ -692,7 +1152,7 @@ namespace KPLN_Looker
 
             // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
             if (dBDocument == null)
             {
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
@@ -701,7 +1161,7 @@ namespace KPLN_Looker
                         dbUser,
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{dBProject.Name}_{dBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
+                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{_currentDBProject.Name}_{_currentDBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
                         $"Путь к модели: [b]{fileFullName}[/b].",
                         "Y");
@@ -711,7 +1171,7 @@ namespace KPLN_Looker
                 dBDocument = new DBDocument()
                 {
                     CentralPath = fileFullName,
-                    ProjectId = dBProject.Id,
+                    ProjectId = _currentDBProject.Id,
                     SubDepartmentId = prjDBSubDepartment.Id,
                     LastChangedUserId = DBMainService.CurrentDBUser.Id,
                     LastChangedData = DBMainService.CurrentTimeForDB(),
@@ -735,350 +1195,6 @@ namespace KPLN_Looker
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Событие на открытый документ
-        /// </summary>
-        private void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
-        {
-            Document doc = args.Document;
-            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
-                return;
-
-            #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
-            if (DBMainService.CurrentDBUser.IsUserRestricted)
-            {
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Статус допуска: Ограничен в работе с реальными проектами " +
-                    $"(IsUserRestricted={DBMainService.CurrentDBUser.IsUserRestricted})\n" +
-                    $"Действие: Открыл файл {doc.Title}.");
-
-                MessageBox.Show(
-                    $"Вы открыли проект с диска Y:\\. Напомню - Ваша работа ограничена тестовыми файлами! " +
-                    $"Данные переданы в BIM-отдел",
-                    "KPLN: Ошибка",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
-            #endregion
-
-            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-
-            #region Обработка работы в архивных копиях
-            if (fileFullName.ToLower().Contains("архив"))
-            {
-                MessageBox.Show(
-                    "Вы открыли АРХИВНЫЙ проект. Работа в нём запрещена, только просмотр!\n" +
-                    "\nИНФО: Если попытаетесь что-то синхронизировать - проект закроется",
-                    "KPLN: Архивный проект",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
-                #region Извещение в чат bim-отдела
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Статус допуска: Сотрудник открыл АРХИВНЫЙ проект\n" +
-                    $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
-                    $"Путь к модели: [b]{fileFullName}[/b].");
-                #endregion
-            }
-            #endregion
-
-            #region Обработка проектов КПЛН
-            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
-            if (dBProject != null)
-            {
-                // Ищу документ
-                DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
-                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
-                if (dBDocument == null)
-                {
-                    dBDocument = new DBDocument()
-                    {
-                        CentralPath = fileFullName,
-                        ProjectId = dBProject.Id,
-                        SubDepartmentId = prjDBSubDepartment.Id,
-                        LastChangedUserId = DBMainService.CurrentDBUser.Id,
-                        LastChangedData = DBMainService.CurrentTimeForDB(),
-                        IsClosed = false,
-                    };
-
-                    DBMainService.DocDbService.CreateDBDocument(dBDocument);
-                }
-
-                //Обрабатываю документ
-                DBMainService.DocDbService.UpdateDBDocument_IsClosedByProject(dBProject);
-
-                // Вывожу окно, если документ ЗАКРЫТ к редактированию
-                if (dBProject.IsClosed)
-                {
-                    MessageBox.Show(
-                        "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на " +
-                        "внесение изменений в этот проект - обратитесь в BIM-отдел.\n" +
-                        "Чтобы открыть проект для ознакомления - откройте его с ОТСОЕДИНЕНИЕМ" +
-                        "\nИНФО: Сейчас файл закроется",
-                        "KPLN: Закрытый проект",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-
-                    #region Извещение в чат bim-отдела
-                    BitrixMessageSender.SendMsg_ToBIMChat(
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
-                        $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{fileFullName}[/b].");
-                    #endregion
-
-
-                    #region Извещение пользователю как делать правильно
-                    int currentUserBitrixId = DBMainService.CurrentDBUser.BitrixUserID;
-                    if (currentUserBitrixId != -1)
-                    {
-                        string jsonRequestToUser = $@"{{
-                                    ""DIALOG_ID"": ""{currentUserBitrixId}"",
-                                    ""MESSAGE"": ""Проект {doc.Title} закрыт. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
-                                    ""ATTACH"": [
-                                        {{
-                                            ""IMAGE"": {{
-                                                ""NAME"": ""KPLN_Looker_CentralFile_Open.jpg"",
-                                                ""LINK"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
-                                                ""PREVIEW"": ""https://kpln.bitrix24.ru/disk/showFile/1783104/?&ncc=1&ts=1729584883&filename=KPLN_Looker_CentralFile_Open.jpg"",
-                                                ""WIDTH"": ""1000"",
-                                                ""HEIGHT"": ""1000""
-                                            }}
-                                        }}
-                                    ]
-                                }}";
-
-                        BitrixMessageSender.SendMsg_ToUser_ByJSONRequest(jsonRequestToUser);
-                    }
-                    #endregion
-
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
-
-                    return;
-                }
-
-
-                // Отлов пользователей с ограничением допуска к работе в текущем проекте
-                DBProjectsAccessMatrix[] currentPrjMatrixColl = DBMainService
-                    .PrjAccessMatrixDbService
-                    .GetDBProjectMatrix_ByProject(dBProject)
-                    .ToArray();
-                if (currentPrjMatrixColl.Length > 0
-                            && currentPrjMatrixColl.All(prj => prj.UserId != DBMainService.CurrentDBUser.Id))
-                {
-                    _isProjectCloseToUser = true;
-                    MessageBox.Show(
-                        $"Вы открыли файл проекта {dBProject.Name}. Данный проект идёт с требованиями от заказчика," +
-                        $" и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
-                        "\nИНФО: Сейчас файл закроется",
-                        "KPLN: Ограниченный проект",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-
-                    BitrixMessageSender.SendMsg_ToBIMChat(
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
-                        $"Действие: Открыл проект {doc.Title}.");
-
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
-
-                    return;
-                }
-            }
-            else
-            {
-                TaskDialog td = new TaskDialog("ВНИМАНИЕ")
-                {
-                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
-                    MainInstruction = "Вы работаете в незарегистрированном проекте. Скинь скрин в BIM-отдел",
-                    FooterText = $"Специалисту BIM-отдела: файл - {fileFullName}",
-                    CommonButtons = TaskDialogCommonButtons.Ok,
-                };
-                td.Show();
-            }
-            #endregion
-        }
-
-        /// <summary>
-        /// Событие на сохранение файла (НЕ работает при синзронизации, даже если указать о сохранении локалки)
-        /// </summary>
-        private void OnDocumentSaved(object sender, DocumentSavedEventArgs args)
-        {
-            Document doc = args.Document;
-
-            ARKonFileSendMsg(doc);
-        }
-
-        /// <summary>
-        /// Событие на синхронизацию файла
-        /// </summary>
-        private void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
-        {
-            Document doc = args.Document;
-
-            ARKonFileSendMsg(doc);
-
-#if REVIT
-            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
-                return;
-#endif
-
-            #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
-            if (DBMainService.CurrentDBUser.IsUserRestricted)
-            {
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                    $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Статус допуска: Ограничен в работе с реальными проектами (IsUserRestricted={DBMainService.CurrentDBUser.IsUserRestricted})\n" +
-                    $"Действие: Произвел синхронизацию файла {doc.Title}.");
-
-                MessageBox.Show(
-                    $"Вы произвели синхронизацию проекта с диска Y:\\, хотя у вас нет к этому доступа (вы не сдали КЛ BIM-отделу). " +
-                    $"Данные переданы в BIM-отдел и ГИ бюро. Файл будет ЗАКРЫТ.",
-                    "KPLN: Ошибка",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
-            }
-            #endregion
-
-            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-
-            #region Обработка работы в архивных копиях
-            if (fileFullName.ToLower().Contains("архив"))
-            {
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Статус допуска: Сотрудник засинхронизировал АРХИВНЫЙ проект\n" +
-                    $"Действие: Произвел синхронизацию в {doc.Title}.");
-
-                MessageBox.Show(
-                    $"Вы произвели синхронизацию АРХИВНОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
-                    "KPLN: Ошибка",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
-            }
-            #endregion
-
-            #region Работа с проектами КПЛН
-            // Получаю проект из БД КПЛН
-            DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
-            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, dBProject, prjDBSubDepartment);
-            if (dBDocument != null)
-            {
-                DBMainService
-                    .DocDbService
-                    .UpdateDBDocument_LastChangedData(dBDocument, DBMainService.CurrentDBUser, DBMainService.CurrentTimeForDB());
-
-                // Защита закрытого проекта от изменений (файл вообще не должен открываться, но ЕСЛИ это произошло - будет уведомление)
-                if (dBDocument.IsClosed)
-                {
-                    BitrixMessageSender.SendMsg_ToBIMChat(
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Статус допуска: Сотрудник засинхронизировал ЗАКРЫТЫЙ проект (проект все же НЕ удалось закрыть)\n" +
-                        $"Действие: Произвел синхронизацию в {doc.Title}.");
-
-                    MessageBox.Show(
-                        $"Вы произвели синхронизацию ЗАКРЫТОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
-                        "KPLN: Ошибка",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
-                }
-                // Отлов пользователей с ограничением допуска к работе в текущем проекте
-                else if (_isProjectCloseToUser)
-                {
-                    BitrixMessageSender.SendMsg_ToBIMChat(
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Статус допуска: Данный сотрудник не имеет доступа к этому проекту (его нужно внести в список)\n" +
-                        $"Действие: Произвел синхронизацию в {doc.Title}.");
-
-                    MessageBox.Show(
-                        $"Вы открыли файл проекта {dBProject.Name}. " +
-                        $"Данный проект идёт с требованиями от заказчика, и с ними необходимо предварительно ознакомиться. " +
-                        $"Для этого - обратись в BIM-отдел. Файл будет ЗАКРЫТ.",
-                        "KPLN: Ошибка",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(DBMainService.CurrentDBUser, doc));
-                }
-            }
-            #endregion
-
-            #region Бэкап версий с RS на наш сервак по проектам
-            if (args.Status == RevitAPIEventStatus.Succeeded && dBProject != null && dBProject.RevitServerPath != null)
-            {
-                bool isSET = doc.PathName.Contains("СЕТ_1");
-                // Проект Сетунь
-                if (isSET)
-                {
-                    if (doc.PathName.Contains("_АР_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_КР_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ЭОМ"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ВК"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ПТ"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ПБ_") || doc.PathName.Contains("_АК_") || doc.PathName.Contains("_СС_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
-                }
-
-                // Проект Матросская тишина
-                bool isMTRS = doc.PathName.Contains("МТРС_");
-                if (isMTRS)
-                {
-                    ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc));
-                    if (mPath.ServerPath)
-                    {
-                        if (doc.PathName.Contains("_КР_"))
-                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                        else if (doc.PathName.Contains("_ОВ_ТМ_"))
-                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
-                        else if (doc.PathName.Contains("_ОВ_АТМ_"))
-                            RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
-                    }
-                }
-
-                // Проект Матросская тишина
-                bool isIZML1 = doc.PathName.Contains("ИЗМЛ_");
-                if (isIZML1)
-                {
-                    if (doc.PathName.Contains("_АР_"))
-                        RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
-                }
-            }
-            #endregion
-
-
-            #region Автопроверки (лучше в конец, чтобы всё остальное отработало корректно)
-            if (RunAutoChecks)
-            {
-                // Модели РФ не проверяем вообще (там нет мониторинга, нет линков. Естьо РН есть, но они не критичны)
-                bool containsRf = _rfFileNames.Any(m => doc.PathName.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (!containsRf)
-                {
-                    UIApplication uiApp = new UIApplication(doc.Application);
-                    CheckBatchRunner.RunAll(uiApp, doc.Title);
-                }
-            }
-            #endregion
         }
     }
 }
