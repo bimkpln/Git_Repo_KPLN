@@ -63,8 +63,15 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             foreach (RevitLinkInstance link in rliColl)
             {
+                // Кастомная заглушка под проект СГРВН.
+                // !!!УДАЛИТЬ ПОСЛЕ 02.03.2026!!!
+                if (link.Name.Contains("СГРВН_") && link.Name.Contains("_КОН_"))
+                    continue;
+                
+                
                 if (IsLinkWithSharedCoordByNameError(link))
                 {
+                    
                     result.Add(new CheckerEntity(
                         link,
                         "Ошибка общей площадки",
