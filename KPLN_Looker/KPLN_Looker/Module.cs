@@ -5,6 +5,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
@@ -82,9 +83,9 @@ namespace KPLN_Looker
         };
 
         /// <summary>
-        /// Счётчик помещений в модели
+        /// Счётчик помещений в модели. Ключ - имя ФХ/модели, значения - коллекция помещений
         /// </summary>
-        private static Room[] _lastDocRooms = null;
+        private static readonly Dictionary<string, Room[]> _lastDocRooms = new Dictionary<string, Room[]>();
 
         public Module()
         {
@@ -129,6 +130,7 @@ namespace KPLN_Looker
                 //Подписка на события
                 application.ControlledApplication.ApplicationInitialized += OnApplicationInitialized;
                 application.ControlledApplication.DocumentOpened += OnDocumentOpened;
+                application.ControlledApplication.DocumentClosing += OnDocumentClosing;
                 application.ViewActivated += OnViewActivated;
                 application.ControlledApplication.DocumentChanged += OnDocumentChanged;
                 application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronized;
@@ -228,6 +230,7 @@ namespace KPLN_Looker
         private static void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
             Document doc = args.Document;
+            if (doc == null) return;
 
             #region Утсановка переменных, привязаных к открытому файлу
             // Имя файла
@@ -239,8 +242,13 @@ namespace KPLN_Looker
             _currentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
 
 
-            // Кол-во помещений в модели
-            _lastDocRooms = GetDocRooms(doc);
+            // Кол-во помещений в текущей модели
+            Room[] docRooms = GetDocRooms(doc);
+
+            if (_lastDocRooms.ContainsKey(fileFullName))
+                _lastDocRooms[fileFullName] = docRooms;
+            else
+                _lastDocRooms.Add(fileFullName, docRooms);
             #endregion
 
 
@@ -406,13 +414,28 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Событие на закрывающийся документ
+        /// </summary>
+        private static void OnDocumentClosing(object sender, DocumentClosingEventArgs args)
+        {
+            Document doc = args.Document;
+            if (doc == null) return;
+
+            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+            if (_lastDocRooms.ContainsKey(fileFullName))
+                _lastDocRooms.Remove(fileFullName);
+        }
+
+        /// <summary>
         /// Событие на активацию вида
         /// </summary>
         private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
             Document doc = args.Document;
+            if (doc == null) return;
+
             UIDocument uidoc = new UIDocument(doc);
+            Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
 
 #if REVIT
             // Игнор НЕ мониторинговых моделей
@@ -474,6 +497,7 @@ namespace KPLN_Looker
         private static void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
             Document doc = args.GetDocument();
+            if (doc == null) return;
 
 #if DEBUG
             // Фильтрация по имени проекта
@@ -510,6 +534,7 @@ namespace KPLN_Looker
         private static void OnDocumentSynchronized(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
             Document doc = args.Document;
+            if (doc == null) return;
 
             ARKonFileSendMsg(doc);
 
@@ -517,9 +542,6 @@ namespace KPLN_Looker
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
                 return;
 #endif
-
-            CheckAndSendError_RoomDeleted(doc);
-
 
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
             if (DBMainService.CurrentDBUser.IsUserRestricted)
@@ -542,6 +564,9 @@ namespace KPLN_Looker
             #endregion
 
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+            
+            // Проверка помещений модели
+            CheckAndSendError_RoomDeleted(doc, fileFullName);
 
             #region Обработка работы в архивных копиях
             if (fileFullName.ToLower().Contains("архив"))
@@ -835,46 +860,56 @@ namespace KPLN_Looker
         /// <summary>
         /// Если проверка факта удаления помещения. При наличии - отправка в BIM в битрикс
         /// </summary>
-        private static void CheckAndSendError_RoomDeleted(Document doc)
+        private static void CheckAndSendError_RoomDeleted(Document doc, string fileFullName)
         {
-
             // Проверка, что это проект КПЛН стадии РД
             if (_currentDBProject == null || _currentDBProject.Stage != "РД") return;
-
-
+            
+            
             Room[] updatedRoomColl = GetDocRooms(doc);
+            if (updatedRoomColl.Length == 0 && _lastDocRooms.ContainsKey(fileFullName) && _lastDocRooms[fileFullName].Length == 0)
+                return;
+
+            // Пусть надоедает юзеру, НО не крашит ревит
+            if (!_lastDocRooms.ContainsKey(fileFullName))
+            {
+                HtmlOutput.Print("Ошибка определения модели при анализе на соответсвие помещений. Отправь разработчику!", MessageType.Error);
+                return;
+            }
 
 
-            // Находим разницу в коллекциях
-            HashSet<ElementId> prevRoomIds = new HashSet<ElementId>(_lastDocRooms.Select(r =>
+            // Старая коллекция ID помещений
+            HashSet<ElementId> prevRoomIds = new HashSet<ElementId>(_lastDocRooms[fileFullName].Select(r =>
                 {
                     if (r != null && r.IsValidObject)
                         return r.Id;
 
                     return new ElementId(-1);
                 }), ElementIdEqualityComparer.Instance);
+            
+            
+            // Новая коллекция ID помещений
             HashSet<ElementId> currRoomIds = new HashSet<ElementId>(updatedRoomColl.Select(r => r.Id), ElementIdEqualityComparer.Instance);
 
-            // Добавлены новые
+
+            // Анализ: Добавлены новые
             IEnumerable<ElementId> addedIds = currRoomIds.Where(id => !prevRoomIds.Contains(id));
             var addedRooms = updatedRoomColl.Where(r => addedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
 
-            // Удаленные
+            // Анализ: Удаленные
             IEnumerable<ElementId> removedIds = prevRoomIds.Where(id => !currRoomIds.Contains(id));
-            var removedRooms = _lastDocRooms.Where(r => removedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
+            var removedRooms = _lastDocRooms[fileFullName].Where(r => removedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
 
-
-            // Общее число изменений. Если его нет - игнор
+            // Анализ: Общее число изменений. Если его нет - игнор
             var changedRooms = addedRooms.Concat(removedRooms).ToArray();
             if (changedRooms.Length == 0) return;
 
 
             // Обновляем коллекцию кол-ва помещений
-            _lastDocRooms = updatedRoomColl;
+            _lastDocRooms[fileFullName] = updatedRoomColl;
 
 
             // Проверка, что это модель АР
-            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
             DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
             if (dBDocument == null || dBDocument.SubDepartmentId != 2) return;
@@ -888,7 +923,7 @@ namespace KPLN_Looker
                     $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
                     $"Действие: Произвёл синхронизацию проекта с [b]созданными/удаленными помещениями[/b] в модели {doc.Title}.\n" +
                     $"Инфо: Пересоздание помещений влияет на работу смежных разделов, а также на проверку соответствия ТЭПов между стадией П и Р.\n" +
-                    $"Список id помещений: {string.Join(",", changedRooms.Select(el => el.Id))}.");
+                    $"Список id помещений из {changedRooms.Count()} шт.: {string.Join(",", changedRooms.Select(el => el.Id))}");
             }
         }
 
