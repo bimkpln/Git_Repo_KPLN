@@ -23,21 +23,16 @@ using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 namespace KPLN_Looker
 {
     public class Module : IExternalModule
-    {
-        /// <summary>
-        /// Кэширование текущего пути мониторингового проекта
-        /// </summary>
-        private static string _monitoredDocFilePath_ExceptARKon;
-
-        /// <summary>
-        /// Кэширование текущего проекта KPLN
-        /// </summary>
-        private static DBProject _currentDBProject;
-
+    {        
         /// <summary>
         /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
         /// </summary>
         private static DBUser[] _arKonFileSubscribersFromBIM;
+
+        /// <summary>
+        /// Кэширование текущего пути мониторингового проекта (ЗА исключением файлов концепций)
+        /// </summary>
+        private static string _currentMonitoredDocFilePath_ExceptARKon;
 
         /// <summary>
         /// Общий фильтр (для анализа на копирование эл-в)
@@ -106,7 +101,12 @@ namespace KPLN_Looker
         /// <summary>
         /// Флаг запуска автопроверок (выключаем из модулей, которые запускают синхрон моделей)
         /// </summary>
-        public static bool RunAutoChecks { get; set; } = true;
+        public static bool RunAutoChecks { get; set; } = true;        
+
+        /// <summary>
+        /// Кэширование текущего проекта KPLN
+        /// </summary>
+        public static DBProject CurrentDBProject { get; private set; }
 
         public Result Close()
         {
@@ -234,12 +234,12 @@ namespace KPLN_Looker
 
             #region Утсановка переменных, привязаных к открытому файлу
             // Имя файла
-            _monitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+            _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
 
 
             // Проект КПЛН
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            _currentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
+            CurrentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
 
 
             // Кол-во помещений в текущей модели
@@ -253,7 +253,7 @@ namespace KPLN_Looker
 
 
             // Если проект не мониториться - игнор
-            if (_monitoredDocFilePath_ExceptARKon == null)
+            if (_currentMonitoredDocFilePath_ExceptARKon == null)
                 return;
 
             #region Отлов пользователей с ограничением допуска к работе ВО ВСЕХ ПРОЕКТАХ
@@ -296,18 +296,19 @@ namespace KPLN_Looker
             }
             #endregion
 
+
             #region Обработка проектов КПЛН
-            if (_currentDBProject != null)
+            if (CurrentDBProject != null)
             {
                 // Ищу документ
                 DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
-                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, CurrentDBProject, prjDBSubDepartment);
                 if (dBDocument == null)
                 {
                     dBDocument = new DBDocument()
                     {
                         CentralPath = fileFullName,
-                        ProjectId = _currentDBProject.Id,
+                        ProjectId = CurrentDBProject.Id,
                         SubDepartmentId = prjDBSubDepartment.Id,
                         LastChangedUserId = DBMainService.CurrentDBUser.Id,
                         LastChangedData = DBMainService.CurrentTimeForDB(),
@@ -317,14 +318,18 @@ namespace KPLN_Looker
                     DBMainService.DocDbService.CreateDBDocument(dBDocument);
                 }
 
-                //Обрабатываю документ
-                DBMainService.DocDbService.UpdateDBDocument_IsClosedByProject(_currentDBProject);
+                // Обновляю файлы по проекту.
+                // !!!ВАЖНО: Работает в одностосроннем порядке - делает IsClosed=true при IsClosed=true у проекта.
+                // Вернуть назад можно ТОЛЬКО через БД вручную, иначе будут проблемы с отдельно закрытыми файлами!!!
+                if (CurrentDBProject.IsClosed)
+                    DBMainService.DocDbService.UpdateDBDocument_Close(CurrentDBProject);
 
-                // Вывожу окно, если документ ЗАКРЫТ к редактированию
-                if (_currentDBProject.IsClosed)
+
+                // Вывожу окно, если проект/документ ЗАКРЫТ к редактированию
+                if (CurrentDBProject.IsClosed || dBDocument.IsClosed)
                 {
                     MessageBox.Show(
-                        "Вы открыли ЗАКРЫТЫЙ проект. Работа в нём запрещена!\nЧтобы получить доступ на " +
+                        "Вы открыли файл, который ЗАКРЫТ от внесения изменений. Работа в нём запрещена!\nЧтобы получить доступ на " +
                         "внесение изменений в этот проект - обратитесь в BIM-отдел.\n" +
                         "Чтобы открыть проект для ознакомления - откройте его с ОТСОЕДИНЕНИЕМ" +
                         "\nИНФО: Сейчас файл закроется",
@@ -335,7 +340,7 @@ namespace KPLN_Looker
                     #region Извещение в чат bim-отдела
                     BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ проект\n" +
+                        $"Статус допуска: Сотрудник открыл ЗАКРЫТЫЙ файл\n" +
                         $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
                         $"Путь к модели: [b]{fileFullName}[/b].");
                     #endregion
@@ -347,7 +352,7 @@ namespace KPLN_Looker
                     {
                         string jsonRequestToUser = $@"{{
                                     ""DIALOG_ID"": ""{currentUserBitrixId}"",
-                                    ""MESSAGE"": ""Проект {doc.Title} закрыт. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый проект[/b]. Если нужно открыть проект с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
+                                    ""MESSAGE"": ""Модель {doc.Title} закрыта от внесения изменений. Актуальный путь - уточняйте у своего руководителя. Вы попытались открыть [b]закрытый файл[/b]. Если нужно открыть файл с целью просмотра (обучение, анализ и т.п.), то нужно это делать с [b]отсоединением[/b]"",
                                     ""ATTACH"": [
                                         {{
                                             ""IMAGE"": {{
@@ -374,14 +379,14 @@ namespace KPLN_Looker
                 // Отлов пользователей с ограничением допуска к работе в текущем проекте
                 DBProjectsAccessMatrix[] currentPrjMatrixColl = DBMainService
                     .PrjAccessMatrixDbService
-                    .GetDBProjectMatrix_ByProject(_currentDBProject)
+                    .GetDBProjectMatrix_ByProject(CurrentDBProject)
                     .ToArray();
                 if (currentPrjMatrixColl.Length > 0
                     && currentPrjMatrixColl.All(prj => prj.UserId != DBMainService.CurrentDBUser.Id))
                 {
                     _isProjectCloseToUser = true;
                     MessageBox.Show(
-                        $"Вы открыли файл проекта {_currentDBProject.Name}. Данный проект идёт с требованиями от заказчика," +
+                        $"Вы открыли файл проекта {CurrentDBProject.Name}. Данный проект идёт с требованиями от заказчика," +
                         $" и с ними необходимо предварительно ознакомиться. Для этого - обратись в BIM-отдел." +
                         "\nИНФО: Сейчас файл закроется",
                         "KPLN: Ограниченный проект",
@@ -434,23 +439,28 @@ namespace KPLN_Looker
             Document doc = args.Document;
             if (doc == null) return;
 
-            UIDocument uidoc = new UIDocument(doc);
-            Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
 
-#if REVIT
-            // Игнор НЕ мониторинговых моделей
-            if (MonitoredDocFilePath_ExceptARKon(doc) == null)
-                return;
-#endif
             #region Утсановка переменных, привязаных к виду
             // Имя файла
-            _monitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+            _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
 
 
             // Проект КПЛН
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            _currentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
+            CurrentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
             #endregion
+
+
+#if REVIT
+            // Игнор НЕ мониторинговых моделей
+            if (_currentMonitoredDocFilePath_ExceptARKon == null)
+                return;
+#endif
+
+
+            UIDocument uidoc = new UIDocument(doc);
+            Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
+            
 
             #region Закрываю вид, если он для бим-отдела
             if (!(activeView is View3D _)
@@ -501,28 +511,28 @@ namespace KPLN_Looker
 
 #if DEBUG
             // Фильтрация по имени проекта
-            if (_monitoredDocFilePath_ExceptARKon != null)
+            if (_currentMonitoredDocFilePath_ExceptARKon != null)
             {
                 CheckAndSendError_FamilyInstanceUserHided(args, doc.ActiveView);
 
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                    !_monitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    !_currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                     // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                    && !_monitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                    && !_currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
                     CheckError_FamilyCopiedFromOtherFile(doc, args);
             }
 #else
             // Фильтрация по имени проекта
-            if (_monitoredDocFilePath_ExceptARKon != null)
+            if (_currentMonitoredDocFilePath_ExceptARKon != null)
             {
                 CheckAndSendError_FamilyInstanceUserHided(args, doc.ActiveView);
 
                 // Анализ загрузки семейств путем копирования
                 if (// Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                    !_monitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                    !_currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                     // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                    && !_monitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                    && !_currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
                     CheckError_FamilyCopiedFromOtherFile(doc, args);
             }
 #endif
@@ -588,9 +598,9 @@ namespace KPLN_Looker
 
             #region Работа с проектами КПЛН
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            if (_currentDBProject != null && prjDBSubDepartment != null)
+            if (CurrentDBProject != null && prjDBSubDepartment != null)
             {
-                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+                DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, CurrentDBProject, prjDBSubDepartment);
                 if (dBDocument != null)
                 {
                     DBMainService
@@ -622,7 +632,7 @@ namespace KPLN_Looker
                             $"Действие: Произвел синхронизацию в {doc.Title}.");
 
                         MessageBox.Show(
-                            $"Вы открыли файл проекта {_currentDBProject.Name}. " +
+                            $"Вы открыли файл проекта {CurrentDBProject.Name}. " +
                             $"Данный проект идёт с требованиями от заказчика, и с ними необходимо предварительно ознакомиться. " +
                             $"Для этого - обратись в BIM-отдел. Файл будет ЗАКРЫТ.",
                             "KPLN: Ошибка",
@@ -636,7 +646,7 @@ namespace KPLN_Looker
             #endregion
 
             #region Бэкап версий с RS на наш сервак по проектам
-            if (args.Status == RevitAPIEventStatus.Succeeded && _currentDBProject != null && _currentDBProject.RevitServerPath != null)
+            if (args.Status == RevitAPIEventStatus.Succeeded && CurrentDBProject != null && CurrentDBProject.RevitServerPath != null)
             {
                 bool isSET = doc.PathName.Contains("СЕТ_1");
                 // Проект Сетунь
@@ -714,11 +724,11 @@ namespace KPLN_Looker
             string familyName = args.FamilyName;
             string familyPath = args.FamilyPath;
 
-            if (_monitoredDocFilePath_ExceptARKon == null
+            if (_currentMonitoredDocFilePath_ExceptARKon == null
                 // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                || _monitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                || _currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                 // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                || _monitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                || _currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
                 return;
 
             // Игнор семейств от BimStep
@@ -863,7 +873,7 @@ namespace KPLN_Looker
         private static void CheckAndSendError_RoomDeleted(Document doc, string fileFullName)
         {
             // Проверка, что это проект КПЛН стадии РД
-            if (_currentDBProject == null || _currentDBProject.Stage != "РД") return;
+            if (CurrentDBProject == null || CurrentDBProject.Stage != "РД") return;
             
             
             Room[] updatedRoomColl = GetDocRooms(doc);
@@ -911,7 +921,7 @@ namespace KPLN_Looker
 
             // Проверка, что это модель АР
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, CurrentDBProject, prjDBSubDepartment);
             if (dBDocument == null || dBDocument.SubDepartmentId != 2) return;
 
 
@@ -1024,7 +1034,7 @@ namespace KPLN_Looker
 #endif
                 return;
 
-            if (_currentDBProject == null)
+            if (CurrentDBProject == null)
                 return;
 
             string docTitle = doc.Title;
@@ -1047,7 +1057,7 @@ namespace KPLN_Looker
                 // Если проекты из БД отличаются - блокирую
                 string openDocFileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(openDoc);
                 DBProject openDocDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(openDocFileFullName, RevitVersion);
-                if (openDocDBProject != null && _currentDBProject.Id == openDocDBProject.Id)
+                if (openDocDBProject != null && CurrentDBProject.Id == openDocDBProject.Id)
                     continue;
 
                 countDifferenceProjects++;
@@ -1167,7 +1177,7 @@ namespace KPLN_Looker
 
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
             // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
-            if (_currentDBProject == null)
+            if (CurrentDBProject == null)
             {
                 string centralPathForUser = fileFullName.Replace("\\\\stinproject.local\\project", "Y:");
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
@@ -1187,7 +1197,7 @@ namespace KPLN_Looker
 
             // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
             DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, _currentDBProject, prjDBSubDepartment);
+            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, CurrentDBProject, prjDBSubDepartment);
             if (dBDocument == null)
             {
                 foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
@@ -1196,7 +1206,7 @@ namespace KPLN_Looker
                         dbUser,
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{_currentDBProject.Name}_{_currentDBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
+                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{CurrentDBProject.Name}_{CurrentDBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
                         $"Путь к модели: [b]{fileFullName}[/b].",
                         "Y");
@@ -1206,7 +1216,7 @@ namespace KPLN_Looker
                 dBDocument = new DBDocument()
                 {
                     CentralPath = fileFullName,
-                    ProjectId = _currentDBProject.Id,
+                    ProjectId = CurrentDBProject.Id,
                     SubDepartmentId = prjDBSubDepartment.Id,
                     LastChangedUserId = DBMainService.CurrentDBUser.Id,
                     LastChangedData = DBMainService.CurrentTimeForDB(),
