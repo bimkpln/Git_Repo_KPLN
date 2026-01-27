@@ -102,7 +102,7 @@ namespace KPLN_IOSClasher.Services
             DBSubDepartment openDocPrjDBSubDepartmentDebug = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileNameDebug);
             int openDocPrjDBSubDepartmentIdDebug = openDocPrjDBSubDepartmentDebug == null ? -1 : openDocPrjDBSubDepartmentDebug.Id;
             CheckDocDBSubDepartmentId = openDocPrjDBSubDepartmentIdDebug;
-            IsDocumentAnalyzing = true;
+            IsDocumentAnalyzing = false;
 #endif
         }
 
