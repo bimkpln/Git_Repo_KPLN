@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Library_SQLiteWorker.FactoryParts.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -86,14 +87,15 @@ namespace KPLN_Library_SQLiteWorker.FactoryParts
 
         #region Update
         /// <summary>
-        /// Обновить статус IsClosed документа по статусу проекта
+        /// Обновить статус IsClosed на true
+        /// !!!ВАЖНО: Вернуть назад можно ТОЛЬКО через БД вручную, иначе будут проблемы с отдельно закрытыми файлами!!!
         /// </summary>
-        public Task UpdateDBDocument_IsClosedByProject(DBProject dbProject)
+        public Task UpdateDBDocument_Close(DBProject dbProject)
         {
             return Task.Run(() =>
             {
                 ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                    $"SET {nameof(DBDocument.IsClosed)}='{dbProject.IsClosed}' WHERE {nameof(DBDocument.ProjectId)}='{dbProject.Id}';");
+                    $"SET {nameof(DBDocument.IsClosed)}='True' WHERE {nameof(DBDocument.ProjectId)}='{dbProject.Id}';");
             });
         }
 
