@@ -58,18 +58,21 @@ namespace KPLN_ExtraFilter.Common
             if (elemsToFind.All(el => el == null))
                 return null;
 
+            IEnumerable<Element> oneTypeIDElColl = FilterElemCollByTypeId(elemsToFind);
+
+
             // Основной блок
             HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
             HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-            Element firstElement = elemsToFind.FirstOrDefault();
+            Element firstElement = oneTypeIDElColl.FirstOrDefault();
             AddParam(firstElement, commonInstParameters, exceptReadOnly);
 
             // Не у всех элементов есть возможность выбрать тип. Например - помещения
             if (doc.GetElement(firstElement.GetTypeId()) is Element typeElem)
                 AddParam(typeElem, commonTypeParameters, exceptReadOnly);
 
-            int countElemsToFind = elemsToFind.Count();
-            foreach (Element currentElement in elemsToFind)
+            int countElemsToFind = oneTypeIDElColl.Count();
+            foreach (Element currentElement in oneTypeIDElColl)
             {
                 // Игнорирую уже добавленный эл-т
                 if (countElemsToFind > 1
@@ -108,18 +111,21 @@ namespace KPLN_ExtraFilter.Common
             if (elemsToFind.All(el => el == null))
                 return null;
 
+            IEnumerable<Element> oneTypeIDElColl = FilterElemCollByTypeId(elemsToFind);
+
+
             // Основной блок
             HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
             HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-            Element firstElement = elemsToFind.FirstOrDefault();
+            Element firstElement = oneTypeIDElColl.FirstOrDefault();
             AddParam(firstElement, commonInstParameters, exceptReadOnly);
 
             // Не у всех элементов есть возможность выбрать тип. Например - помещения
             if (doc.GetElement(firstElement.GetTypeId()) is Element typeElem)
                 AddParam(typeElem, commonTypeParameters, exceptReadOnly);
 
-            int countElemsToFind = elemsToFind.Count();
-            foreach (Element currentElement in elemsToFind)
+            int countElemsToFind = oneTypeIDElColl.Count();
+            foreach (Element currentElement in oneTypeIDElColl)
             {
                 // Игнорирую уже добавленный эл-т
                 if (countElemsToFind > 1
@@ -224,5 +230,15 @@ namespace KPLN_ExtraFilter.Common
                 setToAdd.Add(param);
             }
         }
+
+        /// <summary>
+        /// Отфильтровать коллекцию, чтобы взять по ОДНОМУ экземпляру КАЖДОГО типа
+        /// </summary>
+        /// <param name="elemsToFind"></param>
+        /// <returns></returns>
+        private static IEnumerable<Element> FilterElemCollByTypeId(IEnumerable<Element> elemsToFind) =>
+            elemsToFind
+                .GroupBy(el => el.GetTypeId())
+                .Select(g => g.First());
     }
 }
