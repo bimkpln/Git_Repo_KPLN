@@ -615,6 +615,8 @@ namespace KPLN_Tools
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
             }
 
+// Только для 20 версии, т.к.для более новых появилось событие изменения выбора пользователем
+#if Revit2020 || Debug2020
             PushButtonData sendMsgToBitrix = CreateBtnData(
                 CommandSendMsgToBitrix.PluginName,
                 CommandSendMsgToBitrix.PluginName,
@@ -634,6 +636,7 @@ namespace KPLN_Tools
             sendMsgToBitrix.AvailabilityClassName = typeof(ButtonAvailable_UserSelect).FullName;
 
             panel.AddItem(sendMsgToBitrix);
+#endif
 
 
             PushButtonData nodeManager = CreateBtnData(
@@ -654,7 +657,7 @@ namespace KPLN_Tools
                     "http://moodle/mod/book/view.php?id=502&chapterid=1342");
 
             mPanel.AddItem(nodeManager);
-            #endregion
+#endregion
 
             return Result.Succeeded;
         }

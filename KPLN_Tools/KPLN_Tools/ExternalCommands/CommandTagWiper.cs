@@ -44,27 +44,22 @@ namespace KPLN_Tools.ExternalCommands
             View activeView = uidoc.ActiveView;
 
             // Обрабатываю пользовательскую выборку листов
-            List<ViewSheet> sheetsList = new List<ViewSheet>();
+            List<Element> userSelectedViews = new List<Element>();
             List<ElementId> selIds = uidoc.Selection.GetElementIds().ToList();
             if (selIds.Count > 0)
             {
                 foreach (ElementId selId in selIds)
                 {
                     Element elem = doc.GetElement(selId);
-#if Revit2020 || Debug2020 || Revit2023 || Debug2023
-                    BuiltInCategory catBIC = (BuiltInCategory)elem.Category.Id.IntegerValue;                
-#else
-                    BuiltInCategory catBIC = elem.Category.BuiltInCategory;                
-#endif
-                    if (catBIC == BuiltInCategory.OST_Sheets)
-                    {
-                        ViewSheet curViewSheet = elem as ViewSheet;
-                        sheetsList.Add(curViewSheet);
-                    }
+                    if (elem is ViewPlan _ || elem is ViewSheet _)
+                        userSelectedViews.Add(elem);
                 }
-                if (sheetsList.Count == 0)
+                if (userSelectedViews.Count == 0)
                 {
-                    TaskDialog.Show("Ошибка", "В выборке нет ни одного листа :(", TaskDialogCommonButtons.Ok);
+                    TaskDialog.Show(
+                        "Ошибка", 
+                        "Выборка не содержит планов/листов. Можно запустить на активном виде, но нужно отменить выделение элементов в модели",
+                        TaskDialogCommonButtons.Ok);
                     return Result.Cancelled;
                 }
             }
@@ -91,26 +86,19 @@ namespace KPLN_Tools.ExternalCommands
 
                 DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
-
-#if Revit2020 || Debug2020 || Revit2023 || Debug2023
-                BuiltInCategory catBIC = (BuiltInCategory)activeView.Category.Id.IntegerValue;                
-#else
-                BuiltInCategory catBIC = activeView.Category.BuiltInCategory;
-#endif
                 // Анализирую выбранные листы
-                if (sheetsList.Count > 0)
+                if (userSelectedViews.Count > 0)
                 {
-                    foreach (ViewSheet viewSheet in sheetsList)
+                    foreach (Element elem in userSelectedViews)
                     {
-                        FindAllElementsOnList(doc, viewSheet);
+                        FindAllElementsOnList(doc, elem);
                     }
                     ShowResult(doc);
                 }
 
                 // Анализирую все видовые экраны активного листа
-                else if (catBIC == BuiltInCategory.OST_Sheets)
+                else if (activeView is ViewSheet viewSheet)
                 {
-                    ViewSheet viewSheet = activeView as ViewSheet;
                     FindAllElementsOnList(doc, viewSheet);
                     ShowResult(doc);
                 }
@@ -143,7 +131,10 @@ namespace KPLN_Tools.ExternalCommands
         {
             List<ElementId> errorTags = new List<ElementId>();
 
-            ICollection<ElementId> collection = new FilteredElementCollector(doc, viewId).OfCategory(BuiltInCategory.OST_RoomTags).WhereElementIsNotElementType().ToElementIds();
+            ICollection<ElementId> collection = new FilteredElementCollector(doc, viewId)
+                .OfCategory(BuiltInCategory.OST_RoomTags)
+                .WhereElementIsNotElementType()
+                .ToElementIds();
 
 
             foreach (ElementId elementId in collection)
@@ -151,7 +142,6 @@ namespace KPLN_Tools.ExternalCommands
                 RoomTag roomTag = doc.GetElement(elementId) as RoomTag;
                 if (roomTag.TaggedRoomId.LinkedElementId.Equals(ElementId.InvalidElementId))
                     errorTags.Add(elementId);
-
             }
 
             if (errorTags.Count > 0)
@@ -166,22 +156,31 @@ namespace KPLN_Tools.ExternalCommands
         /// <summary>
         /// Метод для поиска в модели элементов аннотаций на листах и записи в коллекцию или словарь (в зависимости от количества выбранных листов)
         /// </summary>
-        private void FindAllElementsOnList(Document doc, ViewSheet viewSheet)
+        private void FindAllElementsOnList(Document doc, Element viewElem)
         {
             // Анализирую размещенные виды
-            ICollection<ElementId> allViewPorts = viewSheet.GetAllViewports();
-            foreach (ElementId vpId in allViewPorts)
+            if (viewElem is ViewSheet viewSheet)
             {
-                Viewport vp = (Viewport)doc.GetElement(vpId);
-                ElementId viewId = vp.ViewId;
-                Element currentElement = doc.GetElement(viewId);
-
-                // Анализирую только виды
-                if (currentElement.GetType().Equals(typeof(ViewPlan)))
+                ICollection<ElementId> allViewPorts = viewSheet.GetAllViewports();
+                foreach (ElementId vpId in allViewPorts)
                 {
-                    FindAllElements(doc, viewId);
+                    Viewport vp = (Viewport)doc.GetElement(vpId);
+                    ElementId viewId = vp.ViewId;
+                    Element currentElement = doc.GetElement(viewId);
+
+                    // Анализирую только виды
+                    if (currentElement.GetType().Equals(typeof(ViewPlan)))
+                    {
+                        FindAllElements(doc, viewId);
+                    }
                 }
             }
+            else if (viewElem is ViewPlan viewPlan)
+            {
+                FindAllElements(doc, viewPlan.Id);
+            }
+            else
+                throw new Exception("Ошибка принимаемого типа вида на анализ. Отправь разработчику");
         }
 
         /// <summary>
@@ -201,37 +200,37 @@ namespace KPLN_Tools.ExternalCommands
 
                     if (linkDoc != null)
                     {
-
+                        Room[] roomsColl = new FilteredElementCollector(linkDoc)
+                            .OfCategory(BuiltInCategory.OST_Rooms)
+                            .Cast<Room>()
+                            .ToArray();
+                        if (roomsColl.Count() == 0)
+                            continue;
+                        
                         foreach (KeyValuePair<ElementId, List<ElementId>> kvp in _errorDict)
                         {
                             foreach (ElementId elemId in kvp.Value)
                             {
                                 ViewPlan currentView = doc.GetElement(kvp.Key) as ViewPlan;
 
-                                IEnumerable<Room> roomsColl = new FilteredElementCollector(linkDoc)
-                                    .OfCategory(BuiltInCategory.OST_Rooms)
-                                    .Cast<Room>();
-                                if (roomsColl.Count() > 0)
+                                Transform linkTrans = linkInst.GetTransform();
+
+                                RoomTag roomTag = doc.GetElement(elemId) as RoomTag;
+                                LocationPoint tagLocationPoint = roomTag.Location as LocationPoint;
+                                XYZ tagPoint = tagLocationPoint.Point;
+
+                                foreach (Room room in roomsColl)
                                 {
-                                    Transform linkTrans = linkInst.GetTransform();
-
-                                    RoomTag roomTag = doc.GetElement(elemId) as RoomTag;
-                                    LocationPoint tagLocationPoint = roomTag.Location as LocationPoint;
-                                    XYZ tagPoint = tagLocationPoint.Point;
-
-                                    foreach (Room room in roomsColl)
+                                    XYZ transformedToLinkTagPoint = linkTrans.Inverse.OfPoint(tagPoint);
+                                    if (room.IsPointInRoom(transformedToLinkTagPoint))
                                     {
-                                        XYZ transformedToLinkTagPoint = linkTrans.Inverse.OfPoint(tagPoint);
-                                        if (room.IsPointInRoom(transformedToLinkTagPoint))
-                                        {
-                                            LinkElementId roomId = new LinkElementId(linkInst.Id, room.Id);
-                                            UV uvPoint = new UV(tagPoint.X, tagPoint.Y);
+                                        LinkElementId roomId = new LinkElementId(linkInst.Id, room.Id);
+                                        UV uvPoint = new UV(tagPoint.X, tagPoint.Y);
 
-                                            RoomTag newRoomTag = doc.Create.NewRoomTag(roomId, uvPoint, currentView.Id);
-                                            newRoomTag.RoomTagType = roomTag.RoomTagType;
+                                        RoomTag newRoomTag = doc.Create.NewRoomTag(roomId, uvPoint, currentView.Id);
+                                        newRoomTag.RoomTagType = roomTag.RoomTagType;
 
-                                            _correctedList.Add(elemId);
-                                        }
+                                        _correctedList.Add(elemId);
                                     }
                                 }
                             }
