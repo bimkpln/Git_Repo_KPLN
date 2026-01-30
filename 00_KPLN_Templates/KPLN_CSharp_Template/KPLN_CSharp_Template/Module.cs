@@ -3,6 +3,7 @@ using KPLN_Loader.Common;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -11,6 +12,7 @@ namespace KPLN_CSharp_Template
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Close()
         {
@@ -27,10 +29,18 @@ namespace KPLN_CSharp_Template
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Панель шаблон");
 
             //Добавляю выпадающий список pullDown
-            PulldownButtonData pullDownData = new PulldownButtonData("Шаблон", "Шаблон");
-            pullDownData.ToolTip = "Описание выпадающего списка";
-            PulldownButton pullDown = panel.AddItem(pullDownData) as PulldownButton;
-            pullDown.Image = PngImageSource("KPLN_CSharp_Template.Imagens.temp.png");
+            PulldownButton pullDownBtn = CreatePulldownButtonInRibbon(
+                "Шаблон", 
+                "Шаблон",
+                "Шаблон",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                "temp",
+                panel,
+                false);
 
             //Добавляю кнопку в выпадающий список pullDown
             AddPushButtonDataInPullDown(
@@ -44,8 +54,8 @@ namespace KPLN_CSharp_Template
                     ModuleData.ModuleName
                 ),
                 typeof(ExternalCommands.PullDownHW).FullName,
-                pullDown,
-                "KPLN_CSharp_Template.Imagens.pushPin.png",
+                pullDownBtn,
+                "pushPin",
                 "http://moodle.stinproject.local"
             );
 
@@ -64,11 +74,51 @@ namespace KPLN_CSharp_Template
                 ),
                 typeof(ExternalCommands.ButtonHW).FullName,
                 currentPanel,
-                "KPLN_CSharp_Template.Imagens.temp.png",
+                "temp",
                 "http://moodle.stinproject.local"
             );
 
             return Result.Succeeded;
+        }
+
+        /// <summary>
+        /// Метод для создания PulldownButton из RibbonItem (выпадающий список).
+        /// Данный метод добавляет 1 отдельный элемент. Для добавления нескольких - нужны перегрузки методов AddStackedItems (добавит 2-3 элемента в столбик)
+        /// </summary>
+        /// <param name="name">Внутреннее имя вып. списка</param>
+        /// <param name="text">Имя, видимое пользователю</param>
+        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
+        /// <param name="imageName">Имя иконки. Формат имени "Имя16.png", "Имя16_dark.png"</param>
+        /// <param name="panel">Панель, в которую добавляем кнопку</param
+        /// <param name="showName">Показывать имя?</param
+        private PulldownButton CreatePulldownButtonInRibbon(
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            string imageName,
+            RibbonPanel panel,
+            bool showName)
+        {
+            PulldownButton pullDownRI = panel.AddItem(new PulldownButtonData(name, text)
+            {
+                ToolTip = shortDescription,
+                LongDescription = longDescription,
+                Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16),
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32),
+            }) as PulldownButton;
+
+            // Тонкая настройка видимости RibbonItem
+            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(pullDownRI.GetId());
+            revitRibbonItem.ShowText = showName;
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((pullDownRI, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
+
+            return pullDownRI;
         }
 
         /// <summary>
@@ -80,7 +130,7 @@ namespace KPLN_CSharp_Template
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="pullDownButton">Выпадающий список, в который добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки, как ресурса</param>
+        /// <param name="imageName">Имя иконки. Формат имени "Имя16.png", "Имя16_dark.png"</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPullDown(string name, string text, string shortDescription, string longDescription, string className, PulldownButton pullDownButton, string imageName, string contextualHelp)
         {
@@ -89,9 +139,14 @@ namespace KPLN_CSharp_Template
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
 
         /// <summary>
@@ -103,7 +158,7 @@ namespace KPLN_CSharp_Template
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
         /// <param name="panel">Панель, в которую добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки, как ресурса</param>
+        /// <param name="imageName">Имя иконки. Формат имени "Имя16.png", "Имя16_dark.png"</param>
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
         {
@@ -112,21 +167,14 @@ namespace KPLN_CSharp_Template
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
+            button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-        }
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="embeddedPathname">Имя иконки с раширением</param>
-        private ImageSource PngImageSource(string embeddedPathname)
-        {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }

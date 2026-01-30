@@ -45,6 +45,22 @@
   </PropertyGroup>
   <!-- STATIC REFERENCES -->
   <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UIFramework">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\AdWindows.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -61,24 +77,56 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <!-- CONFIG REFERENCES -->
-  <ItemGroup>
-    <Reference Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="RevitAPIUI">
-      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Loader">
-      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_PluginActivityWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_PluginActivityWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_SQLiteWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Loader">
+          <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
   <ItemGroup>
     <Compile Include="ExternalCommands\ButtonHW.cs" />
     <Compile Include="ExternalCommands\PullDownHW.cs" />
@@ -98,8 +146,8 @@
     <Folder Include="Common\" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\pushPin.png" />
-    <EmbeddedResource Include="Imagens\temp.png" />
+    <Resource Include="Imagens\pushPin.png" />
+    <Resource Include="Imagens\temp.png" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
