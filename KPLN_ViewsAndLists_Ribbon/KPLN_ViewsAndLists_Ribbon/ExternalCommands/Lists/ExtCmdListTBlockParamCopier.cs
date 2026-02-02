@@ -14,7 +14,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class CommandListTBlockParamCopier : IExternalCommand
+    internal class ExtCmdListTBlockParamCopier : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

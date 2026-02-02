@@ -13,7 +13,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
     [Autodesk.Revit.Attributes.Regeneration(Autodesk.Revit.Attributes.RegenerationOption.Manual)]
     [Autodesk.Revit.Attributes.Journaling(Autodesk.Revit.Attributes.JournalingMode.NoCommandData)]
 
-    class CommandBatchDelete : IExternalCommand
+    class ExtCmdBatchDelete : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

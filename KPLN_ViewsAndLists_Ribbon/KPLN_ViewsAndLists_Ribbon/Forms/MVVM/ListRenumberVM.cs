@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_ViewsAndLists_Ribbon.Common.Lists;
+using KPLN_ViewsAndLists_Ribbon.Forms.Commands;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,6 +11,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Input;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 {
@@ -99,7 +101,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             };
             TitleBlockParameters = new ObservableCollection<Parameter>(tBlockParams);
 
-            OkCommand = new RelayCommand(OnOk);
+            OkCommand = new RelayCommand<object>(_ => OnOk());
         }
 
         public RenameMode SelectedMode
@@ -251,9 +253,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         }
 
         // 5. Управление
-        public RelayCommand OkCommand { get; set; }
+        public ICommand OkCommand { get; set; }
 
-        public RelayCommand CancelCommand { get; set; }
+        public ICommand CancelCommand { get; set; }
 
         public Action CloseAction { get; set; }
 
@@ -426,24 +428,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             foreach (char c in charArray)
             {
                 if (Char.IsLetter(c))
-                {
                     number = number.Trim(c);
-                }
                 else if (Enum.IsDefined(typeof(UniDecCodes), (int)c))
-                {
                     number = number.Trim(c);
-                }
                 else if (c.Equals('.'))
-                {
                     continue;
-                }
                 else if (Char.IsPunctuation(c))
-                {
                     number = number.Split(c)[1];
-                }
             }
-            if (number.All(c => c.Equals('0'))) return "0";
-            else number = number.Length > 1 ? number.TrimStart('0') : number;
+
+            if (number.All(c => c.Equals('0'))) 
+                return "0";
+            else 
+                number = number.Length > 1 ? number.TrimStart('0') : number;
 
             return number;
         }
@@ -492,7 +489,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                 string[] splitedNumber = number.Split('/');
                 string lastPartSplNumber = splitedNumber[splitedNumber.Length - 1];
                 charArray = lastPartSplNumber.ToCharArray();
-                
+
                 foreach (char c in charArray)
                 {
                     if (c.Equals('.'))
@@ -609,7 +606,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             foreach (ViewSheet curVSheet in sheets)
             {
                 string durtyNumb = curVSheet.SheetNumber;
-                string clearNumb = durtyNumb.Split(new string[] { _sysPref }, StringSplitOptions.None)[1];
+                string clearNumb;
+                string[] splNumb = durtyNumb.Split(new string[] { _sysPref }, StringSplitOptions.None);
+                if (splNumb.Length == 1)
+                    clearNumb = splNumb[0];
+                else
+                    clearNumb = durtyNumb.Split(new string[] { _sysPref }, StringSplitOptions.None)[1];
+                
                 curVSheet.SheetNumber = clearNumb;
             }
         }

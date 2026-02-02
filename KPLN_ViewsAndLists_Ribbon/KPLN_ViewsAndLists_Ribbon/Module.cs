@@ -11,6 +11,9 @@ namespace KPLN_ViewsAndLists_Ribbon
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+
+
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Виды и листы");
 
@@ -52,7 +55,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.CommandCutCopy).FullName,
+                typeof(ExternalCommands.Views.ExtCmdCutCopy).FullName,
                 pullDown_Views,
                 "CutCopy",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1295"
@@ -69,7 +72,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.CommandViewTemplateCopy).FullName,
+                typeof(ExternalCommands.Views.ExtCmdViewTemplateCopy).FullName,
                 pullDown_Views,
                 "ViewTemplateCopy",
                 "http://moodle/"
@@ -85,7 +88,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.CommandCreate).FullName,
+                typeof(ExternalCommands.Views.ExtCmdCreate).FullName,
                 pullDown_Views,
                 "CommandCreate",
                 "http://moodle/mod/book/view.php?id=502&chapterid=670"
@@ -101,7 +104,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.CommandBatchDelete).FullName,
+                typeof(ExternalCommands.Views.ExtCmdBatchDelete).FullName,
                 pullDown_Views,
                 "CommandBatchDelete",
                 "http://moodle/mod/book/view.php?id=502&chapterid=670"
@@ -117,7 +120,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.CommandViewColoring).FullName,
+                typeof(ExternalCommands.Views.ExtCmdViewColoring).FullName,
                 pullDown_Views,
                 "CommandViewColoring",
                 "http://moodle/mod/book/view.php?id=502&chapterid=671l"
@@ -137,7 +140,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.CommandWallHatch).FullName,
+                typeof(ExternalCommands.Views.ExtCmdWallHatch).FullName,
                 pullDown_Views,
                 "CommandWallHatch",
                 "http://bim-starter.com/plugins/wallhatch/"
@@ -157,7 +160,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Lists.CommandListRenumber).FullName,
+                typeof(ExternalCommands.Lists.ExtCmdListRenumber).FullName,
                 pullDown_Lists,
                 "CommandListRename",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
@@ -174,7 +177,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Lists.CommandListTBlockParamCopier).FullName,
+                typeof(ExternalCommands.Lists.ExtCmdListTBlockParamCopier).FullName,
                 pullDown_Lists,
                 "CommandListTBlockParamCopier",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"
@@ -193,7 +196,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Lists.CommandListRevisionClouds).FullName,
+                typeof(ExternalCommands.Lists.ExtCmdListRevisionClouds).FullName,
                 pullDown_Lists,
                 "CommandListRevisionClouds",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1330"
@@ -203,22 +206,19 @@ namespace KPLN_ViewsAndLists_Ribbon
             return Result.Succeeded;
         }
 
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         /// <summary>
         /// Метод для добавления кнопки в выпадающий список
         /// </summary>
         /// <param name="name">Внутреннее имя кнопки</param>
         /// <param name="text">Имя, видимое пользователю</param>
-        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="description">Краткое описание, видимое пользователю</param>
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
-        /// <param name="pullDownButton">Выпадающий список, в который добавляем кнопку</param>
+        /// <param name="pullDown">Выпадающий список, в который добавляем кнопку</param>
         /// <param name="imageName">Имя иконки</param>
-        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
+        /// <param name="anchorlHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPullDown(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp)
         {
             PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);

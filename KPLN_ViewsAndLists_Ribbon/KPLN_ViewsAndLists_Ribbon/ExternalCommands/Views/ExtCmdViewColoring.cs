@@ -12,7 +12,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 {
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
 
-    class CommandViewColoring : IExternalCommand
+    class ExtCmdViewColoring : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

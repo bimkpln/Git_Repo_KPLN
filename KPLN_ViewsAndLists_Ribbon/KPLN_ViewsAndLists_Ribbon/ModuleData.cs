@@ -20,6 +20,11 @@ namespace KPLN_ViewsAndLists_Ribbon
         /// </summary>
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
 
+        /// <summary>
+        /// Версия Revit, в которой запускается плагин
+        /// </summary>
+        public static int RevitVersion { get; set; }
+
         private static string GetModuleCreationDate()
         {
             string filePath = Assembly.GetExecutingAssembly().Location;
