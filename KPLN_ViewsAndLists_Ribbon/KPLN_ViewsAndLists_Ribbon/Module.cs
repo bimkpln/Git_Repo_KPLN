@@ -63,10 +63,10 @@ namespace KPLN_ViewsAndLists_Ribbon
 
             AddPushButtonDataInPullDown(
                 "ViewTemplateCopy",
-                "Копировать\nшаблоны вида",
+                "Пакетное копирование\nшаблонов вида",
                 "Копировать шаблоны вида из другого проекта",
                 string.Format(
-                    "Копирует шаблоны вида из указанного проекта, в текущий (на котором плагин запустили)." +
+                    "Пакетное копирование шаблонов видов из одного проекта в один или несколько других файлов без необходимости их открытия." +
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
@@ -75,7 +75,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.ExtCmdViewTemplateCopy).FullName,
                 pullDown_Views,
                 "ViewTemplateCopy",
-                "http://moodle/"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1339"
             );
 
             AddPushButtonDataInPullDown(
