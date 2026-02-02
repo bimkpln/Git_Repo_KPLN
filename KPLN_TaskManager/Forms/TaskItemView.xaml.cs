@@ -605,7 +605,7 @@ namespace KPLN_TaskManager.Forms
 
                 bitrUploadTasks[i] = Task<string>.Run(() =>
                 {
-                    return BitrixMessageSender.UploadFile(groupId, imgBuff, fileName);
+                    return BitrixMessageSender.UploadFile_ToSpecialFolder(imgBuff, fileName);
                 });
 
             }
