@@ -12,6 +12,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace KPLN_Library_Bitrix24Worker
 {
@@ -92,6 +93,160 @@ namespace KPLN_Library_Bitrix24Worker
             {
                 MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        /// <summary>
+        /// Отправить сообщение в чат пользователей. Если чата нет - создать
+        /// </summary>
+        public static async Task<bool> SendMsg_ToUsersChat(DBUser dBUserSender, IEnumerable<DBUser> dBUsersReceiver, string msg, string imgId = "")
+        {
+            // Собираю данные по пользователям битрикс
+            int bitrixUserIdSender = await GetDBUserBitrixId_ByDBUser(dBUserSender);
+            List<int> bitrixUserIdsReceiver = new List<int>();
+            foreach(var user in dBUsersReceiver)
+            {
+                bitrixUserIdsReceiver.Add(await GetDBUserBitrixId_ByDBUser(user));
+            }
+            
+            if (bitrixUserIdSender == -1 || bitrixUserIdsReceiver.Any(id => id == -1)) 
+                throw new Exception("\n[KPLN]: Ошибка получения ID пользователя Bitrix\n\n");
+
+
+            // Формирую имя чата
+            string chatTitle = string.Empty;
+            string chatTitleRev = string.Empty;
+            if (bitrixUserIdsReceiver.Count == 1)
+            {
+                chatTitle = $"{dBUserSender.Surname} {dBUserSender.Name} и {dBUsersReceiver.FirstOrDefault().Surname} {dBUsersReceiver.FirstOrDefault().Name}";
+                chatTitleRev = $"{dBUsersReceiver.FirstOrDefault().Surname} {dBUsersReceiver.FirstOrDefault().Name} и {dBUserSender.Surname} {dBUserSender.Name}";
+            }
+            else
+            {
+                chatTitle = $"{dBUserSender.Surname} {dBUserSender.Name} и остальные";
+                chatTitleRev = chatTitle;
+            }
+
+
+            // Работа с чатом
+            List<int> finishIDListOfBitrUsers = bitrixUserIdsReceiver;
+            // Добавляю робота бим, чтобы чат был
+            finishIDListOfBitrUsers.Insert(0, 1310);
+            finishIDListOfBitrUsers.Insert(1, bitrixUserIdSender);
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    // Ищу чат
+                    string chatID = string.Empty;
+                    HttpResponseMessage responseGetLastChats = await client.GetAsync($"{WebHookUrl}/im.recent.list");
+                    if (!responseGetLastChats.IsSuccessStatusCode)
+                        throw new Exception("\n[KPLN]: Ошибка получения чатов из Bitrix\n\n");
+
+                    string responseContent = await responseGetLastChats.Content.ReadAsStringAsync();
+
+                    dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
+
+                    foreach (var item in jsonResponse?.result.items)
+                    {
+                        var itemTitle = item?.title;
+                        if (itemTitle == chatTitle || itemTitle == chatTitleRev)
+                            chatID = item.id;
+                    }
+
+                        
+                    // Чат не найден. Создаю
+                    if (string.IsNullOrEmpty(chatID))
+                    {
+                        var requestNewChatData = new Dictionary<string, object>
+                        {
+                            ["TITLE"] = chatTitle,
+                            ["USERS"] = finishIDListOfBitrUsers,
+                        };
+
+                        var jsonNeChatContent = new StringContent(JsonConvert.SerializeObject(requestNewChatData), Encoding.UTF8, "application/json");
+                        var responseNewChat = await client.PostAsync($"{WebHookUrl}/im.chat.add", jsonNeChatContent);
+                        string responseNewChatContent = await responseNewChat.Content.ReadAsStringAsync();
+                        if (!responseNewChat.IsSuccessStatusCode)
+                            throw new Exception("\n[KPLN]: Не удалось создать чат в Bitrix\n\n");
+
+                        dynamic jsonNewChatResponse = JsonConvert.DeserializeObject(responseNewChatContent);
+
+                        chatID = $"chat{jsonNewChatResponse?.result}";
+                    }
+
+
+                    // Отправляю в чат
+                    StringContent contentMsg;
+                    if (!string.IsNullOrEmpty(imgId))
+                    {
+                        HttpResponseMessage responseGetImg = await client.GetAsync($"{WebHookUrl}/disk.file.get?id={imgId}");
+                        string responseGetImgContent = await responseGetImg.Content.ReadAsStringAsync();
+                        dynamic jResp = JsonConvert.DeserializeObject(responseGetImgContent);
+
+                        string detailUrl = jResp?.result?.DETAIL_URL; 
+                        string downloadUrl = jResp?.result?.DOWNLOAD_URL;
+                        string name = jResp?.result?.NAME;
+
+                        var msgObj = new
+                        {
+                            DIALOG_ID = chatID,
+                            MESSAGE = msg,
+                            ATTACH = new[]
+                            {
+                                new
+                                {
+                                    IMAGE = new
+                                    {
+                                        NAME = name,
+                                        LINK = detailUrl,
+                                        PREVIEW = downloadUrl,
+                                        WIDTH = 300,
+                                        HEIGHT = 300
+                                    }
+                                }
+                            }
+                        };
+
+                        contentMsg = new StringContent(
+                            JsonConvert.SerializeObject(msgObj),
+                            Encoding.UTF8,
+                            "application/json"
+                        );
+                    }
+                    else
+                    {
+                        var msgObj = new Dictionary<string, object>
+                        {
+                            ["DIALOG_ID"] = chatID,
+                            ["MESSAGE"] = msg
+                        };
+
+                        contentMsg = new StringContent(
+                            JsonConvert.SerializeObject(msgObj),
+                            Encoding.UTF8,
+                            "application/json"
+                        );
+                    }
+
+                    // Отправка POST
+                    HttpResponseMessage response = await client.PostAsync($"{WebHookUrl}/im.message.add", contentMsg);
+                    if (!response.IsSuccessStatusCode)
+                        throw new Exception("\n[KPLN]: Ошибка отправик сообщения в чат Bitrix\n\n");
+                    
+                    // Читаю итог
+                    string responseMsgContent = await response.Content.ReadAsStringAsync();
+                    if (string.IsNullOrEmpty(responseMsgContent))
+                        throw new Exception("\n[KPLN]: Ошибка отправки сообщения в чат Bitrix\n\n");
+
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при отправке сообщения в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -383,17 +538,29 @@ namespace KPLN_Library_Bitrix24Worker
         /// <summary>
         /// Загрузить файл на диск
         /// </summary>
-        /// <returns></returns>
-        public static async Task<string> UploadFile(int groupId, byte[] fileBytes, string fileName)
+        /// <returns>Id файла</returns>
+        public static async Task<string> UploadFile_ToSpecialFolder(byte[] fileBytes, string fileName)
         {
-            int rootObjId = await GetDiskRootObjId_ByGroupId(groupId);
+            // Захожу в обший диск. ID диска = 11 (статичное поле, нет смысла его цеплять отдельно)
+            string specailDictId = await GetDiskFolderID_ByRootIdANDName("11", "BIM_Файлы робота");
+
+            if (string.IsNullOrEmpty(specailDictId))
+            {
+                MessageBox.Show(
+                    "Ошибка: не удалось получить папку для загрузки файла.",
+                    "Ошибка",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                return null;
+            }
 
             try
             {
                 using (HttpClient client = new HttpClient())
                 {
                     // 1. Атрымліваем uploadUrl
-                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/disk.folder.uploadfile?id={rootObjId}");
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/disk.folder.uploadfile?id={specailDictId}");
                     string responseContent = await response.Content.ReadAsStringAsync();
 
                     dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
@@ -439,7 +606,7 @@ namespace KPLN_Library_Bitrix24Worker
         /// </summary>
         /// <param name="groupId"></param>
         /// <returns></returns>
-        public static async Task<int> GetDiskRootObjId_ByGroupId(int groupId)
+        public static async Task<string> GetDiskId_ByGroupId(string groupId)
         {
             try
             {
@@ -455,8 +622,8 @@ namespace KPLN_Library_Bitrix24Worker
                         foreach (var item in jsonResponse?.result)
                         {
                             var entityId = item?.ENTITY_ID;
-                            if (entityId == $"{groupId}")
-                                return item.ROOT_OBJECT_ID;
+                            if (entityId == groupId)
+                                return item.ID;
                         }
                     }
                 }
@@ -466,8 +633,41 @@ namespace KPLN_Library_Bitrix24Worker
                 MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            // Бывает, что не у всех проектов есть открытытй диск. В таком случае - кидаю на BIM (общая)
-            return 23560;
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Получить ID папки по имени в нужном корне
+        /// </summary>
+        /// <returns></returns>
+        public static async Task<string> GetDiskFolderID_ByRootIdANDName(string rootId, string folderName)
+        {
+            try
+            {
+                using (HttpClient client = new HttpClient())
+                {
+                    HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/disk.storage.getchildren?id={rootId}");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        string responseContent = await response.Content.ReadAsStringAsync();
+
+                        dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
+
+                        foreach (var item in jsonResponse?.result)
+                        {
+                            var entityName = item?.NAME;
+                            if (entityName == folderName)
+                                return item.ID;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            return string.Empty;
         }
         #endregion
 
