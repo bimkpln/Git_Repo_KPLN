@@ -1,0 +1,250 @@
+﻿<Window x:Class="KPLN_DefaultPanelExtension_Modify.Forms.SendMsgToBitrix"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_DefaultPanelExtension_Modify.Forms.Models"
+        mc:Ignorable="d" 
+        Width="400" 
+        Height="Auto" 
+        SizeToContent="Height"
+        Title="KPLN: Поиск пользователя" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        WindowStyle="ToolWindow"  
+        Topmost="False" 
+        WindowStartupLocation="CenterScreen" 
+        Loaded="OnLoaded">
+    
+    <Window.Resources>
+        <Style x:Key="BTN" TargetType="Button">
+            <Setter Property="Background" Value="Orange"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border CornerRadius="5" Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="Red" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#FF00C867" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="M_TXT" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5,0,5,0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxWidth" Value="400"/>
+        </Style>
+
+        <Style x:Key="TBX" TargetType="TextBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5,0,5,0"/>
+            <Setter Property="MaxWidth" Value="400"/>
+        </Style>
+
+        <Style x:Key="CHCBX" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="MaxWidth" Value="400"/>
+        </Style>
+    </Window.Resources>
+
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="*" MinHeight="100" MaxHeight="300"/>
+            <RowDefinition Height="5"/>
+            <RowDefinition Height="*" MinHeight="50" MaxHeight="210"/>
+            <RowDefinition Height="*" MinHeight="40" MaxHeight="100"/>
+            <RowDefinition Height="35"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="64*"/>
+            <ColumnDefinition Width="111*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel 
+            Background="Orange" 
+            Grid.ColumnSpan="2">
+            <TextBlock 
+                Text="Поиск по фамилии пользователя:" 
+                Margin="5,5,5,0"
+                VerticalAlignment="Center" 
+                Style="{StaticResource M_TXT}"/>
+            <TextBox 
+                x:Name="UserInput_Surname"
+                Text="{Binding FilterBySurname, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource TBX}" 
+                VerticalAlignment="Center" 
+                FontStretch="ExtraExpanded"/>
+
+            <TextBlock 
+                Text="Поиск по имени пользователя:" 
+                VerticalAlignment="Center" 
+                Style="{StaticResource M_TXT}"/>
+            <TextBox 
+                x:Name="UserInput_Name"
+                Text="{Binding FilterByName, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource TBX}" 
+                VerticalAlignment="Center" 
+                FontStretch="ExtraExpanded"/>
+
+            <TextBlock 
+                Text="Поиск по отделу пользователя:" 
+                VerticalAlignment="Center" 
+                Style="{StaticResource M_TXT}"/>
+            <TextBox 
+                x:Name="UserInput_Department"
+                Text="{Binding FilterByDepartment, UpdateSourceTrigger=PropertyChanged}"
+                Margin="5,0,5,5"
+                Style="{StaticResource TBX}" 
+                VerticalAlignment="Center" 
+                FontStretch="ExtraExpanded"/>
+        </StackPanel>
+
+        <ScrollViewer 
+            x:Name="UsersScroll"
+            Grid.Row="1" 
+            Grid.ColumnSpan="2"
+            Margin="0, 0, 0, 5"
+            PreviewMouseWheel="ScrollViewer_PreviewMouseWheel"
+            VerticalScrollBarVisibility="Visible">
+            <StackPanel Orientation="Vertical">
+                <ItemsControl 
+                    x:Name="Users"
+                    ItemsSource="{Binding UserEntitysCollection}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox 
+                                Style="{StaticResource CHCBX}" 
+                                Content="{Binding UserDataView}" 
+                                IsChecked ="{Binding IsSelected}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+        
+        <Expander
+            Name="ImgExpander"
+            Grid.Row="3"
+            Grid.ColumnSpan="2"
+            Header="Изображение (не обязательно):"
+            FontWeight="Bold"
+            IsEnabled="False"
+            IsExpanded="False">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition Height="25"/>
+                    <RowDefinition Height="15"/>
+                </Grid.RowDefinitions>
+        
+                <Image 
+                    Name="BodyImg"
+                    Width="200" 
+                    Height="200" 
+                    VerticalAlignment="Top" 
+                    ToolTip="Нажми ЛМК, чтобы открыть изображение в большем формате"
+                    Source="{Binding MsgImageSource,UpdateSourceTrigger=PropertyChanged}"
+                    MouseLeftButtonDown="BodyImg_MouseLeftButtonDown"/>
+
+                <DockPanel 
+                    Grid.Row="1"
+                    HorizontalAlignment="Center"
+                    LastChildFill="False">
+                    <Button
+                        x:Name="DeleteBtn"
+                        Width="25"
+                        Style="{StaticResource BTN}"
+                        ToolTip="Удалить изображение"
+                        Click="ImgDelete_Click">
+                        <Button.Content>
+                            <TextBlock
+                                Text="🗑️"
+                                FontSize="14"/>
+                        </Button.Content>
+                    </Button>
+                </DockPanel>
+        
+                <TextBlock
+                    Grid.Row="2"
+                    FontSize="10"
+                    HorizontalAlignment="Center"
+                    Text="{Binding CurrentImgSpecialFormat, UpdateSourceTrigger=PropertyChanged}"/>
+
+            </Grid>
+        </Expander>
+
+        <StackPanel
+            Grid.Row="4" 
+            Grid.ColumnSpan="2">
+            <TextBlock 
+                Text="Комментарий (не обязательно):" 
+                VerticalAlignment="Center" 
+                Style="{StaticResource M_TXT}"/>
+            <TextBox 
+                x:Name="UserInput_Comment"
+                xml:lang="ru-RU"
+                SpellCheck.IsEnabled="True"
+                AcceptsReturn="True"
+                MinHeight="40"
+                MaxHeight ="100"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                Text="{Binding MessageToSend_UserComment, UpdateSourceTrigger=PropertyChanged}"
+                Style="{StaticResource TBX}" 
+                TextWrapping="Wrap"
+                HorizontalAlignment="Stretch" 
+                VerticalAlignment="Stretch" 
+                FontStretch="ExtraExpanded"/>
+        </StackPanel>
+
+        <DockPanel 
+            Grid.Row="5"
+            Grid.ColumnSpan="2"
+            HorizontalAlignment="Center"
+            LastChildFill="False">
+            <Button 
+                x:Name="RunBtn"
+                Style="{StaticResource BTN}" 
+                Content="Отправить!" 
+                Width="180"
+                ToolTip="Отправить выбранному пользователю/-ям"
+                Click="RunBtn_Click"/>
+
+            <Button
+                Name="ImgLoad"
+                Content="Изображение"
+                Width="180"
+                Style="{StaticResource BTN}" 
+                ToolTip="Нажми, чтобы добавить новое/заменить предыдущее изображение из буфера обмена (предварительно создай его любым удобным способом)"
+                Click="ImgLoad_Click"/>
+
+        </DockPanel>
+        
+        
+    </Grid>
+</Window>

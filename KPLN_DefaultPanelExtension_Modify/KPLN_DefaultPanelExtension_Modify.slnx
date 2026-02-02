@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug2020" />
+    <BuildType Name="Debug2023" />
+    <BuildType Name="Debug2024" />
+    <BuildType Name="Revit2020" />
+    <BuildType Name="Revit2023" />
+    <BuildType Name="Revit2024" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="../01_KPLN_Library/KPLN_Library_Bitrix24Worker/KPLN_Library_Bitrix24Worker/KPLN_Library_Bitrix24Worker.csproj" Id="b81fecfc-20d8-46e0-88df-6620fbd3d970">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="KPLN_DefaultPanelExtension_Modify/KPLN_DefaultPanelExtension_Modify.csproj" Id="187230dc-40bc-43ad-b904-4fe755208a4a">
+    <Platform Project="x64" />
+  </Project>
+</Solution>
