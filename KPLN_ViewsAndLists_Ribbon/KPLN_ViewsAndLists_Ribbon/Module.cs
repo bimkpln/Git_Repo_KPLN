@@ -1,5 +1,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
+using KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists;
+using KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views;
 using System.Reflection;
 
 namespace KPLN_ViewsAndLists_Ribbon
@@ -46,16 +48,18 @@ namespace KPLN_ViewsAndLists_Ribbon
 
             #region Добавляю в выпадающий список элементы для видов
             AddPushButtonDataInPullDown(
-                "BatchViewCut",
-                "Копировать\nподрезку",
-                "Копировать подрезку",
+                ExtCmdCutCopy.PluginName,
+                ExtCmdCutCopy.PluginName,
+                "Копирует подрезку активного плана на выбранные из списка планы этажей/потолков/несущих конструкций.",
                 string.Format(
-                    "Копирует подрезку активного плана на выбранные из списка.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Запусти на плане-доноре, и выбери из списка другие планы, куда нужно скопировать подрезку\n" +
+                    "Помимо копирования границ подрезки, плагин копирует и настройки видимости подрезки." +
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.ExtCmdCutCopy).FullName,
+                typeof(ExtCmdCutCopy).FullName,
                 pullDown_Views,
                 "CutCopy",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1295"
@@ -72,7 +76,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Views.ExtCmdViewTemplateCopy).FullName,
+                typeof(ExtCmdViewTemplateCopy).FullName,
                 pullDown_Views,
                 "ViewTemplateCopy",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1339"
@@ -149,8 +153,8 @@ namespace KPLN_ViewsAndLists_Ribbon
 
             #region Добавляю в выпадающий список элементы для листов
             AddPushButtonDataInPullDown(
-                "CommandListRenumber",
-                "Перенумеровать\nлисты",
+                ExtCmdListRenumber.PluginName,
+                ExtCmdListRenumber.PluginName,
                 "Перенумеровать листы",
                 string.Format(
                     "Изменяет нумерацию по заданной функции;\n" +
@@ -160,7 +164,7 @@ namespace KPLN_ViewsAndLists_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Lists.ExtCmdListRenumber).FullName,
+                typeof(ExtCmdListRenumber).FullName,
                 pullDown_Lists,
                 "CommandListRename",
                 "http://moodle/mod/book/view.php?id=502&chapterid=911"

@@ -2,8 +2,10 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_PluginActivityWorker;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 {
@@ -13,6 +15,8 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
     class ExtCmdCutCopy : IExternalCommand
     {
+        internal const string PluginName = "Копировать подрезку";
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //Получение объектов приложения и документа
@@ -31,12 +35,11 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 IList<CurveLoop> activeViewCropCurves= activeView.GetCropRegionShapeManager().GetCropShape();
                 if (!activeViewCrop)
                 {
-                    TaskDialog crBoxDialog = new TaskDialog("Ошибка")
-                    {
-                        MainIcon = TaskDialogIcon.TaskDialogIconError,
-                        MainContent = "Твой текущий вид не содержит подрезки. Копировать нечего"
-                    };
-                    crBoxDialog.Show();
+                    MessageBox.Show(
+                        "Твой текущий вид не содержит подрезки. Копировать нечего",
+                        "Внимание",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
 
                     return Result.Failed;
                 }
@@ -76,17 +79,26 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                     }
                 }
 
+
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
+                
+                MessageBox.Show(
+                    $"Подрезка успешно скопирована для планов, в количестве {mainForm.SelectedElements.Count} шт.",
+                    "Итог",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
                 return Result.Succeeded;
             }
 
-            TaskDialog taskDialog = new TaskDialog("Ошибка")
-            {
-                MainIcon = TaskDialogIcon.TaskDialogIconError,
-                MainContent = "Запускай с активного плана этажа, плана потолков, или плана несущих конструкций"
-            };
-            taskDialog.Show();
+            MessageBox.Show(
+                "Запускай с активного плана этажа, плана потолков, или плана несущих конструкций", 
+                "Внимание", 
+                MessageBoxButton.OK, 
+                MessageBoxImage.Warning);
 
-            return Result.Failed;
+            return Result.Cancelled;
         }
     }
 }
