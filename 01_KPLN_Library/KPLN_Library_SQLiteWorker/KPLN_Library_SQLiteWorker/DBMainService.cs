@@ -14,12 +14,14 @@ namespace KPLN_Library_SQLiteWorker
         private static UserDbService _userDbService;
         private static ProjectDbService _projectDbService;
         private static DocumentDbService _docDbService;
+        private static ModuleDbService _moduleDbService;
         private static SubDepartmentDbService _subDepartmentDbService;
         private static ProjectsAccessMatrixDbService _projectAccessMatrixDbService;
         private static ProjectsIOSClashMatrixDbService _projectsIOSClashMatrixDbService;
         private static RevitDialogDbService _revitDialogDbService;
         private static ModuleAutostartDbService _moduleAutostartDbService;
         private static RevitDocExchangesDbService _revitDocExchangesDbService;
+        private static PluginActivityDbService _pluginActivityDbService;
 
 
         private static DBUser _dBUser;
@@ -59,6 +61,17 @@ namespace KPLN_Library_SQLiteWorker
                     _docDbService = (DocumentDbService)new CreatorDocumentDbService().CreateService();
 
                 return _docDbService;
+            }
+        }
+
+        public static ModuleDbService ModuleDbService
+        {
+            get
+            {
+                if (_moduleDbService == null)
+                    _moduleDbService = (ModuleDbService)new CreatorModuleDbService().CreateService();
+
+                return _moduleDbService;
             }
         }
 
@@ -116,13 +129,23 @@ namespace KPLN_Library_SQLiteWorker
             }
         }
 
-        internal static RevitDocExchangesDbService RevitDocExchangesDbService
+        public static RevitDocExchangesDbService RevitDocExchangesDbService
         {
             get
             {
                 if (_revitDocExchangesDbService == null)
                     _revitDocExchangesDbService = (RevitDocExchangesDbService)new CreatorRevitDocExchangesDbService().CreateService();
                 return _revitDocExchangesDbService;
+            }
+        }
+
+        public static PluginActivityDbService PluginActivityDbService
+        {
+            get
+            {
+                if (_pluginActivityDbService == null)
+                    _pluginActivityDbService = (PluginActivityDbService)new CreatorPluginActivityDbService().CreateService();
+                return _pluginActivityDbService;
             }
         }
         #endregion
