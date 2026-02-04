@@ -44,6 +44,9 @@
   </PropertyGroup>
   <!-- STATIC REFERENCES -->
   <ItemGroup>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
@@ -81,24 +84,12 @@
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\AdWindows.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_Bitrix24Worker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="KPLN_Library_Forms">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_PluginActivityWorker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="KPLN_Library_ConfigWorker">
-      <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Looker">
@@ -119,6 +110,7 @@
     <Compile Include="ExternalCommands\Lists\ExtCmdListRenumber.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdViewTemplateCopy.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdCutCopy.cs" />
+    <Compile Include="ExternalCommands\Views\ExtCmdViewTemplateCopySolo.cs" />
     <Compile Include="Forms\CopyViewForm.xaml.cs">
       <DependentUpon>CopyViewForm.xaml</DependentUpon>
     </Compile>
@@ -127,6 +119,9 @@
     </Compile>
     <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
       <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\CopyViewSoloForm.xaml.cs">
+      <DependentUpon>CopyViewSoloForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ListRenumberForm.xaml.cs">
       <DependentUpon>ListRenumberForm.xaml</DependentUpon>
@@ -206,6 +201,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\CopyViewFormSelectManyDocs.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\CopyViewSoloForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

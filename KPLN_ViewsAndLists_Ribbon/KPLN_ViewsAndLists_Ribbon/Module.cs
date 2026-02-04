@@ -62,6 +62,23 @@ namespace KPLN_ViewsAndLists_Ribbon
             );
 
             AddPushButtonDataInPullDown(
+               "ViewTemplateCopySolo",
+               "Копировать\nшаблоны видов",
+               "Копирование шаблонов вида из открытых файлов или связей в текущий проект",
+               string.Format(
+                   "Копирование шаблонов вида из открытых файлов в текущий проект, с возможностью заменить имеющийся или создать копию шаблона." +
+                   "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                   ModuleData.Date,
+                   ModuleData.Version,
+                   ModuleData.ModuleName
+               ),
+               typeof(ExternalCommands.Views.CommandViewTemplateCopySolo).FullName,
+               pullDown_Views,
+               "ViewTemplateCopy",
+               "http://moodle/mod/book/view.php?id=502&chapterid=1339"
+           );
+
+            AddPushButtonDataInPullDown(
                 "ViewTemplateCopy",
                 "Пакетное копирование\nшаблонов вида",
                 "Копировать шаблоны вида из другого проекта",
