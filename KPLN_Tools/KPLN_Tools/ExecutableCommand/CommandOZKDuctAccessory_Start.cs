@@ -8,6 +8,7 @@ using KPLN_Tools.ExternalCommands;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools.ExecutableCommand
@@ -46,33 +47,52 @@ namespace KPLN_Tools.ExecutableCommand
                 _extensibleStorageBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, DateTime.Now);
                 #endregion
 
+
+                if (!CheckParams())
+                {
+                    MessageBox.Show(
+                        $"Не найдены параметры. Детали выведены отдельным окном",
+                        "Ошибка",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+
+                    t.RollBack();
+                    return Result.Cancelled;
+                }
+
+
+                int counter = 0;
                 foreach (OZKDuctAccessoryEntity entity in _ozkDuctAccessoryEntities)
                 {
-                    if (CheckParams())
+                    string prefParamData = entity.PreffixParamData;
+                    string sufParamData = entity.SuffixParamData;
+                    foreach (FamilyInstance famInst in entity.CurrentFamilyInstances)
                     {
-                        string prefParamData = entity.PreffixParam.AsString();
-                        string sufParamData = entity.SuffixParam.AsString();
-                        foreach (FamilyInstance famInst in entity.CurrentFamilyInstances)
+                        string sizeData = null;
+                        Parameter diamParam = famInst.get_Parameter(_diamParamGuid);
+                        if (diamParam != null)
+                            sizeData = $"ø{diamParam.AsValueString()}";
+                        else
                         {
-                            string sizeData = null;
-                            Parameter diamParam = famInst.get_Parameter(_diamParamGuid);
-                            if (diamParam != null)
-                                sizeData = $"ø{diamParam.AsValueString()}";
-                            else
-                            {
-                                Parameter widthParam = famInst.get_Parameter(_widthParamGuid);
-                                Parameter heightParam = famInst.get_Parameter(_heightParamGuid);
-                                sizeData = $"{widthParam.AsValueString()}x{heightParam.AsValueString()}";
-                            }
-                            famInst.get_Parameter(_markParamGuid).Set($"{prefParamData}{sizeData}{sufParamData}");
+                            Parameter widthParam = famInst.get_Parameter(_widthParamGuid);
+                            Parameter heightParam = famInst.get_Parameter(_heightParamGuid);
+                            sizeData = $"{widthParam.AsValueString()}x{heightParam.AsValueString()}";
                         }
-                    }
-                    else
-                        return Result.Cancelled;
 
+                        famInst.get_Parameter(_markParamGuid).Set($"{prefParamData}{sizeData}{sufParamData}");
+                        counter++;
+                    }
                 }
                 
                 t.Commit();
+
+
+                MessageBox.Show(
+                    $"Данные успешно переданы в ОЗК, в количестве {counter} шт.",
+                    "Итог",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
                 return Result.Succeeded;
             }
         }
@@ -89,8 +109,8 @@ namespace KPLN_Tools.ExecutableCommand
                         fi.get_Parameter(_markParamGuid) == null
                         || (fi.get_Parameter(_heightParamGuid) == null && fi.get_Parameter(_widthParamGuid) == null && fi.get_Parameter(_diamParamGuid) == null))
                         .Any()
-                    || ent.PreffixParam == null 
-                    || ent.SuffixParam == null);
+                    || string.IsNullOrEmpty(ent.PreffixParamData) 
+                    || string.IsNullOrEmpty(ent.SuffixParamData));
             
             if (errorColl.Any())
             {

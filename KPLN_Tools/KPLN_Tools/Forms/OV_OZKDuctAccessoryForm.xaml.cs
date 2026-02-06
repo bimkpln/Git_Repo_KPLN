@@ -4,6 +4,8 @@ using KPLN_Library_Forms.ExecutableCommand;
 using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExecutableCommand;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,10 +19,10 @@ namespace KPLN_Tools.Forms
 
         public OV_OZKDuctAccessoryForm(
             UIApplication uiapp,
-            OZKDuctAccessoryEntity[] ozkDuctAccessoryEntities)
+            IEnumerable<OZKDuctAccessoryEntity> ozkDuctAccessoryEntities)
         {
             _uiapp = uiapp;
-            OZKDuctAccessoryEntities = ozkDuctAccessoryEntities;
+            OZKDuctAccessoryEntities = ozkDuctAccessoryEntities.ToArray();
 
             InitializeComponent();
             OZKTypes.ItemsSource = OZKDuctAccessoryEntities;
@@ -33,9 +35,7 @@ namespace KPLN_Tools.Forms
         private void HandlePressBtn(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
-            {
                 Close();
-            }
         }
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
