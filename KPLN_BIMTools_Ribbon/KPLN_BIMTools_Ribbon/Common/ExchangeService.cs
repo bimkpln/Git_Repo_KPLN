@@ -174,23 +174,48 @@ namespace KPLN_BIMTools_Ribbon.Common
 
                                     // Проверяю КУДА копирвать.
                                     // Это папка, если нет - то ревит-сервер
+                                    bool isRevitServerFile = false;
+                                    bool isKPLNServerFile = false;
                                     if (Directory.Exists(config.PathTo))
-                                        newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
+                                        isKPLNServerFile = true;
                                     // Убеждаюсь и обрабатываю ревит-сервер
                                     else if (CheckPathFoRevitServer(config.PathTo))
-                                        newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
+                                        isRevitServerFile = true;
+                                    
+                                    
                                     // Если ничего из вышеописанного - то ошибка
-                                    else
+                                    if (isRevitServerFile == isKPLNServerFile)
                                     {
                                         Module.CurrentLogger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
                                         continue;
                                     }
 
-                                    // Если удалось сохранить, то подсчет, иначе - ошибка
-                                    if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
-                                        CountProcessedDocs++;
-                                    else
-                                        Module.CurrentLogger.Error($"Файл {config.Name} не экспортирован. Ошибки описаны выше.\n");
+                                    // Часто встречаются фантомные ошибки открытия, особенно с RS. Ввожу итерации
+                                    int exchIteration = 1;
+                                    int maxExchIteration = 2;
+                                    while (exchIteration <= maxExchIteration)
+                                    {
+                                        // Запускаю экспорт
+                                        if (isKPLNServerFile)
+                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
+                                        else if (isRevitServerFile)
+                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
+
+                                        // Проверка результатов итерации
+                                        if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
+                                        {
+                                            CountProcessedDocs++;
+                                            break;
+                                        }
+
+                                        Module.CurrentLogger.Debug($"Файл {config.Name} не экспортирован. Ошибки описаны выше. Выполнена итерация {exchIteration} из {maxExchIteration} возможных");
+                                        exchIteration++;
+                                    }
+
+
+                                    // След. итерации не помогли, выхожу
+                                    if (newFilePath == null || string.IsNullOrEmpty(newFilePath))
+                                        Module.CurrentLogger.Error($"Файл {config.Name} не экспортирован (количество попыток - {maxExchIteration}). Ошибки описаны выше.\n");
                                 }
                             }
                             // Все равно добавляю 1, чтобы попало в отчет
