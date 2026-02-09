@@ -29,7 +29,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             if (doc.IsFamilyDocument)
             {
                 MessageBox.Show(
-                    "Рабоатет только с проектами Revit. Сейчас запущено в семействе",
+                    "Работает только с проектами Revit. Сейчас запущено в семействе",
                     "Ошибка",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -95,7 +95,8 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             if (!actViewCrop)
             {
                 MessageBox.Show(
-                    "Твой текущий вид не содержит подрезки. Копировать нечего",
+                    "На текущем виде подрезка не активна. Копировать то, что не используется - недопустимо. " +
+                        "Включи и проанализируй подрезку перед копированием",
                     "Внимание",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
