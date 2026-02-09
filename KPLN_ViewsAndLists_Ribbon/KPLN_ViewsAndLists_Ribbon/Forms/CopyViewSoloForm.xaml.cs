@@ -61,7 +61,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private void CopyTemplates_Click(object sender, RoutedEventArgs e)
         {
             _vm.CopySelectedTemplates();
-            Close();
+            //Close();
         }
 
         private sealed class CopyTemplatesHandler : IExternalEventHandler
@@ -730,12 +730,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     "2) Копировать с новым именем (ИМЯ_ДАТА) и назначить на виды",
                     "Новый шаблон будет назначен видам, которые сейчас используют старый");
 
-                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
-                    "3) Заменить существующий шаблон новым",
-                    "Старый шаблон будет снят с видов и удалён. Новый получит это имя.");
+                //td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,"3) Заменить существующий шаблон новым", "Старый шаблон будет снят с видов и удалён. Новый получит это имя.");
 
                 td.AddCommandLink(TaskDialogCommandLinkId.CommandLink4,
-                    "4) Заменить существующий шаблон новым и назначить на виды",
+                    "3) Заменить существующий шаблон новым и назначить на виды",
                     "Старый шаблон будет удалён, новый получит это имя и будет назначен на виды");
 
                 td.CommonButtons = TaskDialogCommonButtons.Cancel;
@@ -745,7 +743,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                 if (res == TaskDialogResult.CommandLink1) return DuplicateAction.CopyWithPrefix;
                 if (res == TaskDialogResult.CommandLink2) return DuplicateAction.CopyWithPrefixAndAssign;
-                if (res == TaskDialogResult.CommandLink3) return DuplicateAction.ReplaceOldKeepName;
+                //if (res == TaskDialogResult.CommandLink3) return DuplicateAction.ReplaceOldKeepName;
                 if (res == TaskDialogResult.CommandLink4) return DuplicateAction.ReplaceOldAndAssign;
 
                 return DuplicateAction.CancelOrSkip;

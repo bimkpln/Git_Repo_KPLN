@@ -275,6 +275,12 @@
   <ItemGroup>
     <Folder Include="ExecutableCommand\" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\ViewTemplateCopySolo16.png" />
+    <Resource Include="Imagens\ViewTemplateCopySolo16_dark.png" />
+    <Resource Include="Imagens\ViewTemplateCopySolo32.png" />
+    <Resource Include="Imagens\ViewTemplateCopySolo32_dark.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild">
   </Target>
