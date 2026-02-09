@@ -113,6 +113,7 @@
   <ItemGroup>
     <Compile Include="Common\Lists\TBlockEntity.cs" />
     <Compile Include="Common\Lists\UniCodesCollection.cs" />
+    <Compile Include="Common\RevitWindowUtil.cs" />
     <Compile Include="Common\UserErrorException.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListRevisionClouds.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListTBlockParamCopier.cs" />
