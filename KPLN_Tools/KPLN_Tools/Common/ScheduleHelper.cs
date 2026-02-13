@@ -31,6 +31,7 @@ namespace KPLN_Tools.Common
             TableData tableData = se.SE_ViewSchedule.GetTableData();
             TableSectionData body = tableData.GetSectionData(SectionType.Body);
             ScheduleDefinition def = se.SE_ViewSchedule.Definition;
+            Document doc = se.SE_ViewSchedule.Document;
 
             int rows = body.NumberOfRows;
             int cols = body.NumberOfColumns;
@@ -62,10 +63,26 @@ namespace KPLN_Tools.Common
                 var rowData = new List<CellData>();
                 for (int col = 0; col < cols; col++)
                 {
+                    // По типу ячейки определяем является ли ячейка элементами
                     CellType cellType = body.GetCellType(row, col);
                     bool isElementRow = (cellType == CellType.Parameter || cellType == CellType.CombinedParameter);
+
+                    // Забираем текст. Если параметр по типу данных отличается от текста - приводим типы данных к спец. виду
                     string cellText = se.SE_ViewSchedule.GetCellText(SectionType.Body, row, col);
-                    cellText = DoubleWithoutCulture(cellText);
+                    if (doc.GetElement(body.GetCellParamId(row, col)) is ParameterElement paramElem)
+                    {
+                        Definition paramDef = paramElem.GetDefinition();
+#if Debug2020 || Revit2020
+                        var dataType = paramDef.ParameterGroup;
+                        if (dataType != BuiltInParameterGroup.PG_TEXT)
+                            cellText = DoubleWithoutCulture(cellText);
+#else
+                        ForgeTypeId dataTypeId = paramDef.GetDataType();
+                        if (dataTypeId != SpecTypeId.String.Text)
+                            cellText = DoubleWithoutCulture(cellText);
+#endif
+                    }
+
 
                     rowData.Add(new CellData(cellText, isElementRow));
                 }

@@ -71,6 +71,23 @@ namespace KPLN_Tools.ExecutableCommand
                 }
 
 
+                // Проверка на сортировку по параметру 
+                foreach(var filed in groupFields)
+                {
+                    if (targetCol == filed.ColumnIndex)
+                    {
+                        MessageBox.Show(
+                            _scheduleForm.MainSchIncWindow, 
+                            "Запрещено сортировать по параметру, в который вписывается значение номера. Проверь настройки сортировки спецификации.", 
+                            "Ошибка автоинкременты", 
+                            MessageBoxButton.OK, 
+                            MessageBoxImage.Error);
+                        
+                        return Result.Cancelled;
+                    }
+                }
+
+
                 // Записываю значения, предварительно верстая группирование элементов
                 for (int modelRow = 0; modelRow < model.Rows.Count; modelRow++)
                 {
