@@ -4,7 +4,6 @@ using Autodesk.Revit.UI.Events;
 using KPLN_DefaultPanelExtension_Modify.ExecutableCommands;
 using KPLN_Loader.Common;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
@@ -15,7 +14,7 @@ namespace KPLN_DefaultPanelExtension_Modify
     {
         private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
         private readonly ObservableCollection<Element> _selElems = new ObservableCollection<Element>();
-        
+
         private UIControlledApplication _controlledApp;
 
         private Autodesk.Windows.RibbonPanel _modifyPanel;
@@ -142,7 +141,7 @@ namespace KPLN_DefaultPanelExtension_Modify
         /// </summary>
         private void OnUiElementActivated(object sender, Autodesk.Windows.UIElementActivatedEventArgs e)
         {
-            if(_selElems != null && _selElems.Any())
+            if (_selElems != null && _selElems.Any())
             {
                 if (e.Item?.Id == _sendToBtrBtnId)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExtCmdSendToBitrix());
@@ -163,8 +162,6 @@ namespace KPLN_DefaultPanelExtension_Modify
             {
                 Name = name,
                 Id = name,
-                AllowInStatusBar = true,
-                AllowInToolBar = true,
                 IsEnabled = true,
                 IsToolTipEnabled = true,
                 IsVisible = false,
@@ -194,6 +191,7 @@ namespace KPLN_DefaultPanelExtension_Modify
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
             // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNWindButtonsForImageReverse.Add((button, _sendToBtrBtnId, Assembly.GetExecutingAssembly().GetName().Name));
             KPLN_Loader.Application.KPLNWindButtonsForImageReverse.Add((button, _positionBtnId, Assembly.GetExecutingAssembly().GetName().Name));
 #endif
 
@@ -206,7 +204,7 @@ namespace KPLN_DefaultPanelExtension_Modify
         private void SelElems_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             bool visibleSentToBtrBtn = null != _selElems && _selElems.Any();
-            bool visiblePositionBtn = visibleSentToBtrBtn && _selElems.All(el => el is Viewport);
+            bool visiblePositionBtn = visibleSentToBtrBtn && _selElems.All(el => el is Viewport || el is ScheduleSheetInstance);
 
             _modifyPanel.IsVisible = visibleSentToBtrBtn || visiblePositionBtn;
             _sendToBtrBtn.IsVisible = visibleSentToBtrBtn;

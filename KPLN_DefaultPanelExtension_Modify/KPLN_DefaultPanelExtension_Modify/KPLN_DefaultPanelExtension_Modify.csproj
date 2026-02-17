@@ -54,6 +54,10 @@
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\DefaultPanelExt_Modify\2023\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />
@@ -105,6 +109,10 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
@@ -129,6 +137,10 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
@@ -137,16 +149,31 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\XyzJsonConverter.cs" />
+    <Compile Include="ExecutableCommands\ExcCmdListVPPositionSet.cs" />
     <Compile Include="ExecutableCommands\ExcCmdListVPPositionStart.cs" />
     <Compile Include="ExecutableCommands\ExtCmdSendToBitrix.cs" />
+    <Compile Include="ExternalEventHandler\ListVPPositionHandler.cs" />
+    <Compile Include="ExternalEventHandler\UnsubEventHandler.cs" />
+    <Compile Include="Forms\Commands.cs" />
+    <Compile Include="Forms\ListVPPositionMainFrom.xaml.cs">
+      <DependentUpon>ListVPPositionMainFrom.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\Models\ListVPPositionCreateM.cs" />
+    <Compile Include="Forms\Models\ListVPPositionCreateVM.cs" />
+    <Compile Include="Forms\Models\ListVPPositionMainVM.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_VM.cs" />
     <Compile Include="Forms\ImgLargeFrom.xaml.cs">
       <DependentUpon>ImgLargeFrom.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ListVPPositionCreateFrom.xaml.cs">
+      <DependentUpon>ListVPPositionCreateFrom.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SendMsgToBitrix.xaml.cs">
       <DependentUpon>SendMsgToBitrix.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ValueConvertors\EnumEqualsConverter.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -157,7 +184,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Common\" />
+    <Page Include="Forms\ListVPPositionCreateStyles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -167,6 +197,14 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\ImgLargeFrom.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\ListVPPositionMainFrom.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\ListVPPositionCreateFrom.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -187,5 +225,9 @@
     <Resource Include="Imagens\ExtCmdListVPPosition32.png" />
     <Resource Include="Imagens\ExtCmdListVPPosition32_dark.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,0 +1,170 @@
+﻿<Window x:Class="KPLN_DefaultPanelExtension_Modify.Forms.ListVPPositionCreateFrom"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_DefaultPanelExtension_Modify.Forms"
+        xmlns:vconv="clr-namespace:KPLN_DefaultPanelExtension_Modify.Forms.ValueConvertors"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        Background="#0F1115"
+        FontFamily="Segoe UI"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        Loaded="OnLoaded">
+
+
+    <Window.InputBindings>
+        <KeyBinding
+    Key="Escape"
+    Command="{Binding CloseWindowCmd}"
+    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="ListVPPositionCreateStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Радио-группа для ToggleButton -->
+            <vconv:EnumEqualsConverter x:Key="EnumEqualsConverter"/>
+        </ResourceDictionary>
+    </Window.Resources>
+
+
+    <Grid>
+        <!-- Центровка карточки -->
+        <Border Width="550"
+            Padding="28"
+            Background="{StaticResource CardBgBrush}"
+            Effect="{StaticResource CardShadow}"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Заголовок -->
+                <StackPanel Grid.Row="0" Margin="0,0,0,18">
+                    <TextBlock Text="Создание конфигурации"
+                        FontSize="30"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimaryBrush}"/>
+                </StackPanel>
+
+                <!-- Имя -->
+                <StackPanel Grid.Row="1" Margin="0,0,0,18">
+                    <TextBlock Text="Введи имя конфигурации"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Margin="0,0,0,8"/>
+                    <TextBox 
+                    x:Name="ConfigName"
+                    Style="{StaticResource ModernTextBox}"
+                    Text="{Binding ListVPPositionItem.ConfigName, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+
+                <!-- Условие -->
+                <StackPanel Grid.Row="2" Margin="0,0,0,10">
+                    <TextBlock Text="Выбери условие выравнивания"
+                        FontSize="20"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Margin="0,0,0,12"/>
+                </StackPanel>
+
+                <!-- Кнопки-раскладка 3x3 (с пустыми ячейками как на примере) -->
+                <Grid Grid.Row="3" Margin="0,0,0,18">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Лево верх -->
+                    <ToggleButton Grid.Row="0" Grid.Column="0"
+                            Style="{StaticResource PillButton}"
+                            Content="Лево  верх"
+                            IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=LeftTop}"
+                            Command="{Binding SelectAlignCmd}"
+                            CommandParameter="LeftTop"/>
+
+                    <!-- Право верх -->
+                    <ToggleButton Grid.Row="0" Grid.Column="2"
+                            Style="{StaticResource PillButton}"
+                            Content="Право  верх"
+                            IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=RightTop}"
+                            Command="{Binding SelectAlignCmd}"
+                            CommandParameter="RightTop"/>
+
+                    <!-- Центр -->
+                    <ToggleButton Grid.Row="1" Grid.Column="1"
+                            Style="{StaticResource PillButton}"
+                            Content="Центр"
+                            MinWidth="140"
+                            IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=Center}"
+                            Command="{Binding SelectAlignCmd}"
+                            CommandParameter="Center"/>
+
+                    <!-- Лево низ -->
+                    <ToggleButton Grid.Row="2" Grid.Column="0"
+                            Style="{StaticResource PillButton}"
+                            Content="Лево  низ"
+                            IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=LeftBottom}"
+                            Command="{Binding SelectAlignCmd}"
+                            CommandParameter="LeftBottom"/>
+
+                    <!-- Право низ -->
+                    <ToggleButton Grid.Row="2" Grid.Column="2"
+                            Style="{StaticResource PillButton}"
+                            Content="Право  низ"
+                            IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=RightBottom}"
+                            Command="{Binding SelectAlignCmd}"
+                            CommandParameter="RightBottom"/>
+                    
+                    <!-- Право низ -->
+                    <ToggleButton Grid.Row="3" Grid.ColumnSpan="3"
+                            Style="{StaticResource PillButton}"
+                            Content="Совмещение внутренних начал"
+                            IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=OrignToOrigin}"
+                            IsEnabled="{Binding ListVPPositionItem.ByOriginVisible}"
+                            Command="{Binding SelectAlignCmd}"
+                            CommandParameter="OrignToOrigin"/>
+                </Grid>
+
+                <!-- Сохранить/подсказка -->
+                <DockPanel Grid.Row="4"
+                        LastChildFill="False">
+                    <Button 
+                        Style="{StaticResource PrimaryButton}"
+                        Content="Сохранить"
+                        Width="400"
+                        Command="{Binding SaveCmd}"
+                        CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    <Button 
+                        Style="{StaticResource PrimaryButton}"
+                        Content="?"
+                        ToolTip="Открыть инструкцию на Moodle"
+                        Width="60"
+                        Command="{Binding HelpCmd}"
+                        CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                </DockPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
