@@ -92,6 +92,8 @@ namespace KPLN_Clashes_Ribbon.Commands
                     if (_report.SubElements.Any())
                     {
                         resultInst = GetClashPoints(uidoc, _report.SubElements.ToArray());
+                        if (resultInst == null)
+                            return Result.Cancelled;
 
                         // Выделяю элементы пересечения в модели
                         ElementId[] firstElemsId = _report.SubElements.Select(subRI => new ElementId(subRI.Element_1_Id)).ToArray();
@@ -102,6 +104,8 @@ namespace KPLN_Clashes_Ribbon.Commands
                     else
                     {
                         resultInst = GetClashPoints(uidoc, new ReportItem[1] { _report });
+                        if (resultInst == null)
+                            return Result.Cancelled;
 
                         // Выделяю элементы пересечения в модели
                         uidoc.Selection.SetElementIds(new List<ElementId>
@@ -168,19 +172,20 @@ namespace KPLN_Clashes_Ribbon.Commands
             Document doc = uidoc.Document;
             HashSet<XYZ> xyzToCreate = new HashSet<XYZ>(new ComparerByXYZ());
 
-            // Уточняю трансофрм, если БТП была смещена
-            var docBP = new FilteredElementCollector(doc)
-                .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
-                .FirstOrDefault();
-            var docBPBBox = docBP.get_BoundingBox(null);
-
             Transform docTRans = doc.ActiveProjectLocation.GetTotalTransform();
-            if (!docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
-                docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
+            
+            //// Уточняю трансофрм, если БТП была смещена
+            //var docBP = new FilteredElementCollector(doc)
+            //    .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+            //    .FirstOrDefault();
+            //var docBPBBox = docBP.get_BoundingBox(null);
+            ////if (!docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
+            ////    docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
 
             // Создание новых
             // Метка, что хотя бы один элемент был удален
             bool elemsDeleted = false;
+            bool elemsNotInOpenFile = true;
             foreach (ReportItem subRI in riArr)
             {
                 // Проверка на наличие элемента в файле
@@ -190,20 +195,23 @@ namespace KPLN_Clashes_Ribbon.Commands
                 {
                     if (doc.Title.Contains(subRI.Element_1_DocName) || doc.Title.Contains(subRI.Element_2_DocName))
                         elemsDeleted = true;
-                    else
-                    {
-                        TaskDialog.Show("Внимание!",
-                            "Элементы отсутсвует в открытом проекте - скорее всего это элементы не относятся к вашей модели.\n" +
-                            "ВАЖНО: Внимательно прочитай имя отчета - оно должно содержать аббревиатуру твоего раздела");
-
-                        break;
-                    }
                 }
+                else
+                    elemsNotInOpenFile = false;
 
                 XYZ subRIPoint = GetXYZFromReportItem(subRI);
                 XYZ transLoc = docTRans.OfPoint(subRIPoint);
 
                 xyzToCreate.Add(transLoc);
+            }
+
+            if (elemsNotInOpenFile)
+            {
+                TaskDialog.Show("Внимание!",
+                    "Элементы отсутсвуют в открытом проекте - скорее всего это элементы не относятся к вашей модели.\n" +
+                    "ВАЖНО: Внимательно прочитай имя отчета - оно должно содержать аббревиатуру твоего раздела");
+
+                return null;
             }
 
             if (elemsDeleted)
