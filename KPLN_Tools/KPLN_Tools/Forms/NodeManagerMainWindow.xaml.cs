@@ -134,14 +134,11 @@ namespace KPLN_Tools.Forms
             set => _tags = value;
         }
 
-        // Нормализованная строка тегов: DWG первым, алфавит, без дублей
         public string TagsNormalized
         {
             get => TagHelper.NormalizeTagsString(_tags);
             set
             {
-                // Если вдруг кто-то привяжется TwoWay к TagsNormalized —
-                // просто кладём значение в Tags.
                 _tags = value;
             }
         }
@@ -347,7 +344,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
         private bool IsUserInTestList()
         {
 #if !Revit2020 && !Debug2020
@@ -371,7 +367,6 @@ namespace KPLN_Tools.Forms
             }
 #endif
         }
-
 
         private List<int> GetAllowedUserIdsFromDb()
         {
@@ -471,11 +466,6 @@ namespace KPLN_Tools.Forms
             return null;
         }
 
-
-
-
-
-
         private List<string> LoadRvtPathsFromDb()
         {
             var result = new List<string>();
@@ -542,8 +532,7 @@ namespace KPLN_Tools.Forms
                 .ToList();
         }
 
-
-
+        ////////////////////////////////////////////////
         //////////////////////////////// КАТЕГОРИИ УЗЛОВ
         private List<NodeCategoryRow> LoadNodeCategories()
         {
@@ -584,7 +573,6 @@ namespace KPLN_Tools.Forms
 
             NodeCategoryUi globalNoCat = null;
 
-            // "Без категории" — только суперюзеру
             if (IsSuperUser)
             {
                 globalNoCat = new NodeCategoryUi
@@ -599,10 +587,8 @@ namespace KPLN_Tools.Forms
 
             _currentSelectedNode = null;
 
-            // ===== BIM =====
             if (_subDB == 8)
             {
-                // BIM видит все категории, как "старое" поведение
                 foreach (var cat in categories)
                 {
                     var rootNode = new NodeCategoryUi
@@ -636,14 +622,12 @@ namespace KPLN_Tools.Forms
                     }
                 }
 
-                // По умолчанию выбираем либо BIM-категорию, либо первую
                 _currentSelectedNode =
                     CategoryTree.FirstOrDefault(n => n.CatId == 8)
                     ?? CategoryTree.FirstOrDefault();
             }
             else
             {
-                // ===== Обычные отделы (2–7) =====
                 var deptRow = categories.FirstOrDefault(c => c.Id == _subDB);
 
                 if (deptRow != null)
@@ -720,17 +704,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
         private void AttachSubtree(int catId, NodeCategoryUi parent, SubcatDto dto)
         {
             var node = new NodeCategoryUi
@@ -752,11 +725,6 @@ namespace KPLN_Tools.Forms
                 }
             }
         }
-
-
-
-
-
 
         private List<NodeElementRow> LoadNodeElements()
         {
@@ -796,14 +764,6 @@ namespace KPLN_Tools.Forms
             return result;
         }
 
-
-
-
-
-
-
-
-
         private List<string> GetSubcatIdsRecursive(NodeCategoryUi node)
         {
             var list = new List<string>();
@@ -819,14 +779,6 @@ namespace KPLN_Tools.Forms
             foreach (var child in node.Children)
                 CollectSubcatIds(child, list);
         }
-
-
-
-
-
-
-
-
 
         private void LoadElementCounts()
         {
@@ -863,11 +815,6 @@ namespace KPLN_Tools.Forms
                 RecalculateTotals(root);
             }
         }
-
-
-
-
-
 
         private int RecalculateTotals(NodeCategoryUi node)
         {
@@ -924,6 +871,7 @@ namespace KPLN_Tools.Forms
             LoadElementsForNode(node);
         }
 
+        /////////////////////////////////////
         //////////////////////////////// УЗЛЫ
         private void LoadElementsForNode(NodeCategoryUi node)
         {
@@ -1092,7 +1040,7 @@ namespace KPLN_Tools.Forms
             ApplySorting();
         }
 
-
+        /////////////////////////////////////////////////////////////
         //////////////////////////////// ДЕЙСТВИЯ + РЕЗУЛЬТАТЫ ВЫВОДА
         private void BtnSearch_Click(object sender, RoutedEventArgs e)
         {
@@ -1553,6 +1501,7 @@ namespace KPLN_Tools.Forms
             IsEditTagsMode = false;
         }
 
+        //////////////////////////////////////////////
         //////////////////////////////// СВОЙСТВА УЗЛА
         private string GetCategoryPath(int? catId, string subcatId)
         {
@@ -1654,7 +1603,6 @@ namespace KPLN_Tools.Forms
             ReloadCurrentElement(element.Id);
         }
 
-
         private void SaveTagsToDb(NodeElementUi element)
         {
             try
@@ -1735,8 +1683,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
-
         private void BtnChangeCategory_Click(object sender, RoutedEventArgs e)
         {
             if (!IsSuperUser)
@@ -1808,23 +1754,6 @@ namespace KPLN_Tools.Forms
             finally { }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         private void BtnReplacePreview_Click(object sender, RoutedEventArgs e)
         {
             if (_currentElement == null)
@@ -1889,9 +1818,6 @@ namespace KPLN_Tools.Forms
                     return;
                 }
 
-                // --------------------------------------------------------------------
-                // 1) Нормализуем путь из БД (обычный file path). Для RevitServer/Cloud
-                // --------------------------------------------------------------------
                 string targetFull;
                 try { targetFull = Path.GetFullPath(rvtPath); }
                 catch { targetFull = rvtPath; }
@@ -1902,11 +1828,6 @@ namespace KPLN_Tools.Forms
                 Document localDoc = null;
                 Document centralDoc = null;
 
-                // --------------------------------------------------------------------
-                // 2) Ищем среди УЖЕ открытых документов:
-                //    - если документ workshared: сравниваем его CENTRAL path с targetFull (из БД)
-                //    - при совпадении: если текущий документ != central -> это local (предпочитаем его)
-                // --------------------------------------------------------------------
                 foreach (Document d in app.Documents)
                 {
                     try
@@ -1963,10 +1884,6 @@ namespace KPLN_Tools.Forms
 
                 Document targetDoc = localDoc ?? centralDoc;
 
-                // --------------------------------------------------------------------
-                // 3) Если документ НЕ открыт - открываем.
-                //    Если файл похож на обычный путь и это workshared central - пробуем создать local и открыть local.
-                // --------------------------------------------------------------------
                 if (targetDoc == null)
                 {
                     if (looksLikeFilePath && !File.Exists(targetFull))
@@ -2028,9 +1945,6 @@ namespace KPLN_Tools.Forms
                     return;
                 }
 
-                // --------------------------------------------------------------------
-                // 4) Активируем документ
-                // --------------------------------------------------------------------
                 UIDocument udoc = _uiapp.ActiveUIDocument;
                 try
                 {
@@ -2043,9 +1957,6 @@ namespace KPLN_Tools.Forms
                 }
                 catch { }
 
-                // --------------------------------------------------------------------
-                // 5) Ищем вид в targetDoc
-                // --------------------------------------------------------------------
                 try
                 {
                     targetView = new FilteredElementCollector(targetDoc)
@@ -2064,16 +1975,12 @@ namespace KPLN_Tools.Forms
                     return;
                 }
 
-                // --------------------------------------------------------------------
-                // 6) Проверяем, открыт ли вид (не переоткрывая централь!)
-                // --------------------------------------------------------------------
                 bool viewIsOpen = false;
 
                 try
                 {
                     if (udoc == null || udoc.Document != targetDoc)
                     {
-                        // ещё раз пытаемся активировать именно targetDoc
                         if (!string.IsNullOrEmpty(targetDoc.PathName))
                             udoc = _uiapp.OpenAndActivateDocument(targetDoc.PathName);
                     }
@@ -2095,9 +2002,6 @@ namespace KPLN_Tools.Forms
                     viewIsOpen = false;
                 }
 
-                // --------------------------------------------------------------------
-                // 7) Если вид не открыт - открываем (активируем)
-                // --------------------------------------------------------------------
                 if (!viewIsOpen)
                 {
                     try
@@ -2111,9 +2015,6 @@ namespace KPLN_Tools.Forms
                     catch { }
                 }
 
-                // --------------------------------------------------------------------
-                // 8) Захват изображения и запись в БД
-                // --------------------------------------------------------------------
                 var captureWindow = new ScreenCaptureWindow(1000, 800);
                 captureWindow.Owner = this;
 
@@ -2204,32 +2105,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-
-
-
-
-
-
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         private void ReloadCurrentElement(long elementId)
         {
             if (_currentSelectedNode == null)
@@ -2270,6 +2145,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        ////////////////////////////////
         ////////////////////// НАСТРОЙКИ
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
@@ -2399,7 +2275,6 @@ namespace KPLN_Tools.Forms
                     conn.Open();
                     EnsureSchema(conn);
 
-                    // загружаем уже существующие пары "вид + файл"
                     var existing = LoadExistingByViewAndPath(conn);
 
                     using (var tx = conn.BeginTransaction())
@@ -2419,7 +2294,6 @@ namespace KPLN_Tools.Forms
                             string now = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
                             string uName = userName ?? string.Empty;
 
-                            // ключ по имени вида + пути к модели
                             string key = MakeViewKey(viewName, targetFull);
 
                             if (existing.TryGetValue(key, out long id))
@@ -2709,7 +2583,9 @@ namespace KPLN_Tools.Forms
 
             var uidoc = _uiapp?.ActiveUIDocument;
 
-            _copyHandler.Init(_uiapp, DbPath, _currentElement.Id, this);
+            bool useLegends = (ChkUseLegendsInsteadOfViews?.IsChecked == true);
+            _copyHandler.Init(_uiapp, DbPath, _currentElement.Id, this, useLegends);
+
             _copyEvent.Raise();
         }
 
@@ -2790,6 +2666,7 @@ namespace KPLN_Tools.Forms
             var activeView = uidoc.ActiveView;
 
             bool isLegend = activeView.ViewType == ViewType.Legend;
+            bool useLegends = (ChkUseLegendsInsteadOfViews?.IsChecked == true);
 
             if (!(activeView is ViewSheet) && !(activeView is ViewDrafting) && !isLegend)
             {
@@ -2797,8 +2674,205 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            _placeViewHandler.Init(_uiapp, rvtPath, sourceViewName, this);
+            _placeViewHandler.Init(_uiapp, rvtPath, sourceViewName, this, useLegends);
             _placeViewEvent.Raise();
+        }
+    }
+
+    /////////////////////////
+    // НОЖНИЦЫ
+    public class ScreenCaptureWindow : Window
+    {
+        private readonly int _maxWidth;
+        private readonly int _maxHeight;
+
+        private System.Windows.Controls.Canvas _canvas;
+        private System.Windows.Shapes.Rectangle _selectionRectShape;
+        private System.Windows.Point _startPoint;
+        private bool _isDragging;
+
+        public byte[] CapturedBytes { get; private set; }
+
+        public ScreenCaptureWindow(int maxWidth, int maxHeight)
+        {
+            _maxWidth = maxWidth;
+            _maxHeight = maxHeight;
+
+            InitWindow();
+        }
+
+        private void InitWindow()
+        {
+            this.WindowStyle = WindowStyle.None;
+            this.AllowsTransparency = true;
+            this.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(10, 0, 0, 0));
+            this.ResizeMode = ResizeMode.NoResize;
+            this.ShowInTaskbar = false;
+
+            this.Left = SystemParameters.VirtualScreenLeft;
+            this.Top = SystemParameters.VirtualScreenTop;
+            this.Width = SystemParameters.VirtualScreenWidth;
+            this.Height = SystemParameters.VirtualScreenHeight;
+
+            this.Cursor = Cursors.Cross;
+
+            _canvas = new System.Windows.Controls.Canvas();
+            this.Content = _canvas;
+
+            _selectionRectShape = new System.Windows.Shapes.Rectangle
+            {
+                Stroke = System.Windows.Media.Brushes.Red,
+                StrokeThickness = 1,
+                Fill = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromArgb(50, 255, 255, 255)),
+                Visibility = System.Windows.Visibility.Collapsed
+            };
+            _canvas.Children.Add(_selectionRectShape);
+
+            this.MouseDown += OnMouseDown;
+            this.MouseMove += OnMouseMove;
+            this.MouseUp += OnMouseUp;
+            this.KeyDown += OnKeyDown;
+        }
+
+        private void OnKeyDown(object sender, KeyEventArgs e)
+        {
+
+            if (e.Key == Key.Escape)
+            {
+                this.DialogResult = false;
+                this.Close();
+            }
+        }
+
+        private void OnMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton != MouseButtonState.Pressed)
+                return;
+
+            _isDragging = true;
+            _startPoint = e.GetPosition(this);
+
+            System.Windows.Controls.Canvas.SetLeft(_selectionRectShape, _startPoint.X);
+            System.Windows.Controls.Canvas.SetTop(_selectionRectShape, _startPoint.Y);
+            _selectionRectShape.Width = 0;
+            _selectionRectShape.Height = 0;
+            _selectionRectShape.Visibility = System.Windows.Visibility.Visible;
+        }
+
+        private void OnMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isDragging)
+                return;
+
+            System.Windows.Point pos = e.GetPosition(this);
+
+            double x = Math.Min(pos.X, _startPoint.X);
+            double y = Math.Min(pos.Y, _startPoint.Y);
+            double w = Math.Abs(pos.X - _startPoint.X);
+            double h = Math.Abs(pos.Y - _startPoint.Y);
+
+            System.Windows.Controls.Canvas.SetLeft(_selectionRectShape, x);
+            System.Windows.Controls.Canvas.SetTop(_selectionRectShape, y);
+            _selectionRectShape.Width = w;
+            _selectionRectShape.Height = h;
+        }
+
+        private void OnMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isDragging)
+                return;
+
+            _isDragging = false;
+
+            double x = System.Windows.Controls.Canvas.GetLeft(_selectionRectShape);
+            double y = System.Windows.Controls.Canvas.GetTop(_selectionRectShape);
+            double w = _selectionRectShape.Width;
+            double h = _selectionRectShape.Height;
+
+            if (w < 5 || h < 5)
+            {
+                this.DialogResult = false;
+                this.Close();
+                return;
+            }
+
+            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+            int leftPx = (int)Math.Round((this.Left + x) * dpi.DpiScaleX);
+            int topPx = (int)Math.Round((this.Top + y) * dpi.DpiScaleY);
+            int widthPx = (int)Math.Round(w * dpi.DpiScaleX);
+            int heightPx = (int)Math.Round(h * dpi.DpiScaleY);
+
+            try
+            {
+                CapturedBytes = CaptureAndScale(leftPx, topPx, widthPx, heightPx,
+                    _maxWidth, _maxHeight);
+                this.DialogResult = CapturedBytes != null;
+            }
+            catch
+            {
+                this.DialogResult = false;
+            }
+            finally
+            {
+                this.Close();
+            }
+        }
+
+        private static byte[] CaptureAndScale(
+            int left, int top, int width, int height,
+            int maxWidth, int maxHeight)
+        {
+            using (var bmp = new System.Drawing.Bitmap(width, height))
+            {
+                using (var g = System.Drawing.Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen(left, top, 0, 0,
+                        new System.Drawing.Size(width, height));
+                }
+
+                double scaleW = (double)maxWidth / width;
+                double scaleH = (double)maxHeight / height;
+                double scale = Math.Min(Math.Min(scaleW, scaleH), 1.0);
+
+                int newW = (int)Math.Round(width * scale);
+                int newH = (int)Math.Round(height * scale);
+
+                System.Drawing.Bitmap resultBmp = bmp;
+
+                if (scale < 1.0)
+                {
+                    resultBmp = new System.Drawing.Bitmap(newW, newH);
+                    using (var g2 = System.Drawing.Graphics.FromImage(resultBmp))
+                    {
+                        g2.InterpolationMode =
+                            System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g2.SmoothingMode =
+                            System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                        g2.PixelOffsetMode =
+                            System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                        g2.CompositingQuality =
+                            System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+
+                        g2.Clear(System.Drawing.Color.White);
+                        g2.DrawImage(bmp, 0, 0, newW, newH);
+                    }
+                }
+
+                try
+                {
+                    using (var ms = new MemoryStream())
+                    {
+                        resultBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                        return ms.ToArray();
+                    }
+                }
+                finally
+                {
+                    if (!object.ReferenceEquals(resultBmp, bmp))
+                        resultBmp.Dispose();
+                }
+            }
         }
     }
 
@@ -2825,39 +2899,42 @@ namespace KPLN_Tools.Forms
 
 
 
-
-
-
-
-
-
-
-    /////////////////////////////// КОПИРОВАНИЕ ВИДОВ
+    /////////////////////////////// 
+    // Использовать типы, которые уже есть в целевом документе, и не создавать новые копии типов из источника.
     internal sealed class UseDestinationTypesHandler : IDuplicateTypeNamesHandler
     {
         public DuplicateTypeAction OnDuplicateTypeNamesFound(DuplicateTypeNamesHandlerArgs args)
             => DuplicateTypeAction.UseDestinationTypes;
     }
 
+    /////////////////////////////// КОПИРОВАНИЕ ВИДОВ
     internal sealed class CopyNodeToViewHandler : IExternalEventHandler
     {
         private UIApplication _uiapp;
+
+        private Window _ownerWindow;
+        private bool _useLegendsInsteadOfViews;
+
         private string _dbPath;
         private long _nodeId;
 
-        private Window _ownerWindow;
-
-        public void Init(UIApplication uiapp, string dbPath, long nodeId, Window ownerWindow)
-        {
-            _uiapp = uiapp;
-            _dbPath = dbPath;
-            _nodeId = nodeId;
-
-            _ownerWindow = ownerWindow;
-        }
-
         public string GetName() => "KPLN. Копирование узла";
 
+        public void Init(UIApplication uiapp, string dbPath, long nodeId, Window ownerWindow, bool useLegendsInsteadOfViews)
+        {
+            _uiapp = uiapp;
+
+            _ownerWindow = ownerWindow;
+            _useLegendsInsteadOfViews = useLegendsInsteadOfViews;
+
+            _dbPath = dbPath;
+            _nodeId = nodeId;
+        }
+
+
+        /// <summary>
+        /// Путь к DWG, если это именно линк, а не “импорт в тело проекта”
+        /// </summary>
         private static string TryGetDwgPathFromInstance(Document doc, ImportInstance inst)
         {
             var linkType = doc.GetElement(inst.GetTypeId()) as CADLinkType;
@@ -2876,6 +2953,9 @@ namespace KPLN_Tools.Forms
             return userPath;
         }
 
+        /// <summary>
+        /// Заменяет запрещённые символы в имени файла на _, чтобы имя вида можно было использовать как имя DWG-файла
+        /// </summary>
         private static string MakeSafeFileName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
@@ -2890,6 +2970,9 @@ namespace KPLN_Tools.Forms
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Пытается получить “базовый путь модели”: Workshared → GetWorksharingCentralModelPath(), во всех других случаях → targetDoc.PathName
+        /// </summary>
         private static string GetTargetBaseModelPath(Document targetDoc)
         {
             try
@@ -2905,6 +2988,9 @@ namespace KPLN_Tools.Forms
             return targetDoc.PathName;
         }
 
+        /// <summary>
+        /// Восстанавливает положение DWG на виде.
+        /// </summary>
         private static void Apply2DTransformLikeSource(Document doc, ElementId importInstanceId, Transform srcTr)
         {
             if (srcTr == null)
@@ -2925,13 +3011,74 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// <summary>
+        /// Создаёт легенду в документе: 
+        /// уже существует -> null; вообще нет -> предупреждение + null; иначе: дублирует любую существующую легенду, очищает, переименовывает и возвращает её
+        /// </summary>
+        public static View CreateEmptyLegendOrNull(Document doc, string legendName)
+        {
+            if (doc == null) throw new ArgumentNullException(nameof(doc));
+            if (string.IsNullOrWhiteSpace(legendName)) throw new ArgumentException("legendName пуст.", nameof(legendName));
+
+            var legend = new FilteredElementCollector(doc)
+                .OfClass(typeof(View)).Cast<View>()
+                .FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend && string.Equals(v.Name, legendName, StringComparison.InvariantCultureIgnoreCase));
+
+            var templateLegend = legend ?? new FilteredElementCollector(doc)
+                .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend);
+
+            if (templateLegend == null)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов",
+                    "В проекте нет ни одной легенды. Revit API не умеет создавать Legend View с нуля. Создайте пустую легенду вручную и повторите команду.");
+                return null;
+            }
+
+            using (var t = new Transaction(doc, "KPLN. Подготовка легенды узла"))
+            {
+                t.Start();
+
+                if (legend == null)
+                {
+                    var newId = templateLegend.Duplicate(ViewDuplicateOption.Duplicate);
+                    legend = doc.GetElement(newId) as View;
+                    if (legend == null)
+                    {
+                        t.RollBack();
+                        return null;
+                    }
+
+                    legend.Name = legendName;
+                }
+                else
+                {
+                    if (!string.Equals(legend.Name, legendName, StringComparison.InvariantCultureIgnoreCase))
+                        legend.Name = legendName;
+                }
+
+                var delIds = new FilteredElementCollector(doc, legend.Id)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e.ViewSpecific && !(e is View) && e.Category != null)
+                    .Select(e => e.Id)
+                    .ToList();
+
+                if (delIds.Count > 0)
+                    doc.Delete(delIds);
+
+                t.Commit();
+            }
+
+            return legend;
+        }
+
         public void Execute(UIApplication app)
         {
             try
             {
-                var uidoc = _uiapp?.ActiveUIDocument ?? throw new InvalidOperationException("Нет активного документа.");
-                var targetDoc = uidoc.Document;
+                UIDocument uidoc = _uiapp?.ActiveUIDocument ?? throw new InvalidOperationException("Нет активного документа");
+                Document targetDoc = uidoc.Document;
 
+                // Путь и свойства узла из БД
                 string rvtPath = null, propJson = null;
                 using (var conn = new System.Data.SQLite.SQLiteConnection("Data Source=" + _dbPath + ";Version=3;FailIfMissing=False;"))
                 {
@@ -2966,6 +3113,7 @@ namespace KPLN_Tools.Forms
                 if (string.IsNullOrWhiteSpace(sourceViewName))
                     throw new InvalidOperationException("В PROP нет ключа \"ИМЯ ВИДА\".");
 
+                // Проверка открыт ли уже файл с узлами
                 Document sourceDoc = _uiapp.Application.Documents
                     .Cast<Document>()
                     .FirstOrDefault(d =>
@@ -2992,360 +3140,36 @@ namespace KPLN_Tools.Forms
                 }
                 catch { }
 
-
+                // Вид-донор
                 var sourceView = new FilteredElementCollector(sourceDoc)
                     .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase))
                     ?? throw new InvalidOperationException($"В документе-источнике не найден вид \"{sourceViewName}\".");
-
+                // Все элементы на виде-доноре
                 var allInView = new FilteredElementCollector(sourceDoc, sourceView.Id).WhereElementIsNotElementType().ToElements();
 
-                // DWG
-                bool hasAnyDwg = allInView.OfType<ImportInstance>().Any();
+                /////////////////////
+                ///////////////// DWG
+                /////////////////////
+                bool hasAnyDwg = allInView.OfType<ImportInstance>().Any(); // Считаем есть ли на виде ImportInstance (это в том числе и DWG)
                 if (hasAnyDwg)
                 {
-                    // Проверяем: есть ли на исходном виде что-то кроме DWG 
+                    // DWG + графика
                     bool hasNonDwgStuff = new FilteredElementCollector(sourceDoc, sourceView.Id)
                         .WhereElementIsNotElementType().Any(e =>
                             e.ViewSpecific && !(e is ImportInstance) && !(e is View) && !(e is Group) && e.Category != null);
 
-                    // Есть DWG + есть аннотации/прочее
-                    // ============================================================
                     if (hasNonDwgStuff)
                     {
-
-
-                        TaskDialog.Show("Менеджер узлов","Вы пытаетесь добавить узел, который состоит одновремено из DWG и встроенной графики. " +
+                        TaskDialog.Show("Менеджер узлов", "Вы пытаетесь добавить узел, который состоит одновремено из DWG и встроенной графики. " +
                             "Добавление таких узлов запрещено: обратитесь к разработчику узла для того, чтобы он поправил данный узел.");
-                        return;
-
-
-                        string baseModelPath = GetTargetBaseModelPath(targetDoc);
-                        string baseSafeName = MakeSafeFileName(sourceViewName);
-
-                        string dwgFolder = null;
-                        bool canUseProjectFolder = !string.IsNullOrWhiteSpace(baseModelPath) && File.Exists(baseModelPath);
-
-                        if (!canUseProjectFolder)
-                        {
-                            string mainDb = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
-
-                            string foundMainPath = null;
-                            int? foundSubDepId = null;
-                            string foundSubDepCode = null;
-
-                            try
-                            {
-                                using (var conn = new System.Data.SQLite.SQLiteConnection(
-                                    "Data Source=" + mainDb + ";Version=3;FailIfMissing=True;"))
-                                {
-                                    conn.Open();
-
-                                    using (var cmd = conn.CreateCommand())
-                                    {
-                                        cmd.CommandText = @"
-                                            SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
-                                            FROM Projects
-                                            WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
-                                               OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
-                                               OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
-                                               OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
-
-                                        using (var r = cmd.ExecuteReader())
-                                        {
-                                            while (r.Read())
-                                            {
-                                                string mp = r.IsDBNull(0) ? null : r.GetString(0);
-
-                                                string p1 = r.IsDBNull(1) ? null : r.GetString(1);
-                                                string p2 = r.IsDBNull(2) ? null : r.GetString(2);
-                                                string p3 = r.IsDBNull(3) ? null : r.GetString(3);
-                                                string p4 = r.IsDBNull(4) ? null : r.GetString(4);
-
-                                                bool match =
-                                                    (!string.IsNullOrWhiteSpace(p1) && baseModelPath.StartsWith(p1.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
-                                                    (!string.IsNullOrWhiteSpace(p2) && baseModelPath.StartsWith(p2.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
-                                                    (!string.IsNullOrWhiteSpace(p3) && baseModelPath.StartsWith(p3.Trim(), StringComparison.InvariantCultureIgnoreCase)) ||
-                                                    (!string.IsNullOrWhiteSpace(p4) && baseModelPath.StartsWith(p4.Trim(), StringComparison.InvariantCultureIgnoreCase));
-
-                                                if (match)
-                                                {
-                                                    foundMainPath = mp;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if (string.IsNullOrWhiteSpace(foundMainPath))
-                                    {
-                                        TaskDialog.Show("KPLN. Менеджер узлов",
-                                            "В MainDB в таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
-                                            "Путь к файлу на Revit-сервере:\n" + (baseModelPath ?? "<null>") + "\n" +
-                                            "Для решения проблемы - обратитесь в BIM-отдел");
-                                        return;
-                                    }
-
-                                    using (var cmd = conn.CreateCommand())
-                                    {
-                                        cmd.CommandText = @"
-                                            SELECT SubDepartmentId
-                                            FROM Documents
-                                            WHERE CentralPath = @p
-                                            LIMIT 1;";
-                                        cmd.Parameters.AddWithValue("@p", baseModelPath);
-
-                                        var obj = cmd.ExecuteScalar();
-                                        if (obj != null && obj != DBNull.Value && int.TryParse(obj.ToString(), out int dep))
-                                            foundSubDepId = dep;
-                                    }
-
-                                    if (!foundSubDepId.HasValue)
-                                    {
-                                        TaskDialog.Show("KPLN. Менеджер узлов",
-                                            "Файл с данным CentralPath не зарегистрирован в БД (таблица Documents).\n" +
-                                            "Текущий CentralPath:\n" + (baseModelPath ?? "<null>") + "\n" +
-                                            "Для решения проблемы - обратитесь в BIM-отдел");
-                                        return;
-                                    }
-
-                                    using (var cmd = conn.CreateCommand())
-                                    {
-                                        cmd.CommandText = @"
-                                            SELECT Code
-                                            FROM SubDepartments
-                                            WHERE Id = @id
-                                            LIMIT 1;";
-                                        cmd.Parameters.AddWithValue("@id", foundSubDepId.Value);
-
-                                        var obj = cmd.ExecuteScalar();
-                                        foundSubDepCode = (obj == null || obj == DBNull.Value) ? null : obj.ToString();
-                                        if (!string.IsNullOrWhiteSpace(foundSubDepCode))
-                                            foundSubDepCode = foundSubDepCode.Trim();
-                                    }
-
-                                    conn.Close();
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка чтения MainDB:\n" + ex.Message);
-                                return;
-                            }
-
-                            string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
-
-                            string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
-                                ? foundSubDepCode
-                                : foundSubDepId.Value.ToString(CultureInfo.InvariantCulture);
-
-                            // Формируем dwgFolder = <mainPathDisplay>\BIM\8.Менеджер узлов\<depDisplay> ---
-                            try
-                            {
-                                foreach (char ch in Path.GetInvalidFileNameChars())
-                                    depDisplay = depDisplay.Replace(ch.ToString(), "_");
-
-                                string baseBim = Path.Combine(mainPathDisplay, "BIM");
-                                string managerDir = Path.Combine(baseBim, "8.Менеджер узлов");
-                                dwgFolder = Path.Combine(managerDir, depDisplay);
-
-                                Directory.CreateDirectory(dwgFolder);
-                            }
-                            catch (Exception ex)
-                            {
-                                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать директорию для DWG:\n" +
-                                    (dwgFolder ?? "<null>") + "\n\n" + ex.Message);
-                                return;
-                            }
-
-                            // Если хочешь показать пользователю — оставь, иначе можно убрать
-                            TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder);
-                        }
-
-                        else
-                        {
-                            string modelDir = Path.GetDirectoryName(baseModelPath);
-                            dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
-                            Directory.CreateDirectory(dwgFolder);
-                        }
-
-                        ViewDrafting targetView;
-                        using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и настройка вида узла"))
-                        {
-                            t.Start();
-
-                            targetView = new FilteredElementCollector(targetDoc)
-                                .OfClass(typeof(ViewDrafting))
-                                .Cast<ViewDrafting>()
-                                .FirstOrDefault(v => !v.IsTemplate &&
-                                    string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
-
-                            if (targetView == null)
-                            {
-                                var draftingTypeId = new FilteredElementCollector(targetDoc)
-                                    .OfClass(typeof(ViewFamilyType))
-                                    .Cast<ViewFamilyType>()
-                                    .First(vft => vft.ViewFamily == ViewFamily.Drafting)
-                                    .Id;
-
-                                targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
-                                targetView.Name = sourceViewName;
-                            }
-
-                            try { targetView.Scale = sourceView.Scale; } catch { }
-                            try { targetView.Discipline = sourceView.Discipline; } catch { }
-                            try { targetView.DetailLevel = sourceView.DetailLevel; } catch { }
-                            try { targetView.DisplayStyle = sourceView.DisplayStyle; } catch { }
-                            try { targetView.PartsVisibility = sourceView.PartsVisibility; } catch { }
-
-                            try
-                            {
-                                if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
-                                {
-                                    var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
-                                    if (srcTemplate != null)
-                                    {
-                                        string templateName = srcTemplate.Name;
-
-                                        var dstTemplate = new FilteredElementCollector(targetDoc)
-                                            .OfClass(typeof(View))
-                                            .Cast<View>()
-                                            .FirstOrDefault(v => v.IsTemplate &&
-                                                string.Equals(v.Name, templateName, StringComparison.InvariantCultureIgnoreCase));
-
-                                        if (dstTemplate != null)
-                                        {
-                                            targetView.ViewTemplateId = dstTemplate.Id;
-                                        }
-                                        else
-                                        {
-                                            TaskDialog.Show("KPLN. Менеджер узлов",
-                                                $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
-                                                "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
-                                                "Вид будет создан/обновлён без назначения шаблона. Возможно некорректное отображение DWG/аннотаций.");
-                                        }
-                                    }
-                                }
-                            }
-                            catch { }
-
-                            t.Commit();
-                        }
-
-                        using (var t = new Transaction(targetDoc, "KPLN. Очистка вида узла перед вставкой слепка DWG"))
-                        {
-                            t.Start();
-
-                            var toDelete = new FilteredElementCollector(targetDoc, targetView.Id)
-                                .WhereElementIsNotElementType()
-                                .Where(e =>
-                                    e.ViewSpecific &&
-                                    !(e is View) &&
-                                    !(e is Group) &&
-                                    e.Category != null)
-                                .Select(e => e.Id)
-                                .ToList();
-
-                            if (toDelete.Count > 0)
-                                targetDoc.Delete(toDelete);
-
-                            t.Commit();
-                        }
-
-                        string snapshotNameNoExt = baseSafeName;
-                        string snapshotPath = Path.Combine(dwgFolder, snapshotNameNoExt + ".dwg");
-
-                        if (File.Exists(snapshotPath))
-                        {
-                            var msg =
-                                $"Файл DWG уже существует:\n{snapshotPath}\n\n" +
-                                "Да — перезаписать DWG и перезаписать содержимое вида.\n" +
-                                "Нет — открыть существующий вид.\n" +
-                                "Отмена — ничего не менять.";
-
-                            var result = System.Windows.MessageBox.Show(
-                                msg, "KPLN. Менеджер узлов",
-                                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-
-                            if (result == MessageBoxResult.Cancel)
-                            {
-                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
-                                return;
-                            }
-                            else if (result == MessageBoxResult.No)
-                            {
-                                uidoc.ActiveView = targetView;
-                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
-                                return;
-                            }
-                            else
-                            {
-                                try { File.Delete(snapshotPath); } catch { }
-                            }
-                        }
-
-                        bool exportOk = false;
-                        string exportErr = null;
-                        try
-                        {
-                            var viewIds = new List<ElementId> { sourceView.Id };
-                            var opt = new DWGExportOptions();
-
-                            exportOk = sourceDoc.Export(dwgFolder, snapshotNameNoExt, viewIds, opt);
-                        }
-                        catch (Exception ex)
-                        {
-                            exportErr = ex.Message;
-                        }
-
-                        if (!exportOk || !File.Exists(snapshotPath))
-                        {
-                            TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось экспортировать вид в DWG.\n" +
-                                (exportErr != null ? ("\n" + exportErr) : ""));
-
-                            if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
-                            return;
-                        }
-
-                        using (var t = new Transaction(targetDoc, "KPLN. Линковка слепка DWG"))
-                        {
-                            t.Start();
-
-                            var opt = new DWGImportOptions
-                            {
-                                ThisViewOnly = true,
-                                Placement = ImportPlacement.Origin,
-                                OrientToView = true
-                            };
-
-                            ElementId linkedId;
-                            bool ok = targetDoc.Link(snapshotPath, opt, targetView, out linkedId);
-
-                            t.Commit();
-
-                            if (!ok || linkedId == ElementId.InvalidElementId)
-                            {
-                                TaskDialog.Show("KPLN. Менеджер узлов",
-                                    "DWG экспортирован, но не удалось залинковать его в целевой вид.");
-
-                                if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
-                                return;
-                            }
-                        }
-
-                        if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
-
-                        uidoc.ActiveView = targetView;
-
-                        TaskDialog.Show("KPLN. Менеджер узлов", $"Готово");
                         return;
                     }
 
                     // Чисто DWG 
-                    // ============================================================
-
-                    var dwgInstances = allInView.OfType<ImportInstance>().ToList();
+                    List<ImportInstance> dwgInstances = allInView.OfType<ImportInstance>().ToList();
                     var dwgPlacements = new List<(ImportInstance inst, string fullPath, Autodesk.Revit.DB.Transform tr)>();
 
+                    // Формируем dwgPlacements (список DWG) из dwgInstance
                     foreach (var inst in dwgInstances)
                     {
                         string path = TryGetDwgPathFromInstance(sourceDoc, inst);
@@ -3365,21 +3189,18 @@ namespace KPLN_Tools.Forms
 
                     if (dwgPlacements.Count == 0)
                     {
-                        TaskDialog.Show("KPLN. Менеджер узлов",
-                            "На исходном виде обнаружен DWG, но это, вероятно, импорт без живой ссылки. " +
-                            "Перенос такого DWG в другой документ не поддерживается Revit API.");
-
+                        TaskDialog.Show("KPLN. Менеджер узлов", "На исходном виде обнаружен DWG, но это, вероятно, импорт без живой ссылки. Перенос такого DWG в другой документ не поддерживается Revit API.");
                         if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
                         return;
                     }
 
-                    string baseModelPath2 = GetTargetBaseModelPath(targetDoc);
-                    string baseSafeName2 = MakeSafeFileName(sourceViewName);
+                    string baseModelPath2 = GetTargetBaseModelPath(targetDoc); // Путь к модели, в которую копируем
+                    string baseSafeName2 = MakeSafeFileName(sourceViewName); // Безопасное имя вида
+                    string dwgFolder2 = null; // Адресс папки для сохранения DWG
+                    bool folderOnDisk = !string.IsNullOrWhiteSpace(baseModelPath2) && File.Exists(baseModelPath2); // Папка на диске: да или нет
 
-                    string dwgFolder2 = null;
-                    bool canUseProjectFolder2 = !string.IsNullOrWhiteSpace(baseModelPath2) && File.Exists(baseModelPath2);
-
-                    if (!canUseProjectFolder2)
+                    // Revit Server
+                    if (!folderOnDisk)
                     {
                         string mainDb = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
 
@@ -3387,6 +3208,7 @@ namespace KPLN_Tools.Forms
                         int? foundSubDepId = null;
                         string foundSubDepCode = null;
 
+                        // Поиск в MainDB соответствий проекта и отдела для файла проекта
                         try
                         {
                             using (var conn = new System.Data.SQLite.SQLiteConnection(
@@ -3433,7 +3255,7 @@ namespace KPLN_Tools.Forms
                                 if (string.IsNullOrWhiteSpace(foundMainPath))
                                 {
                                     TaskDialog.Show("KPLN. Менеджер узлов",
-                                        "В MainDB в таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
+                                        "В таблице Projects не найдено соответствий RevitServerPath* и MainPath.\n" +
                                         "Путь к файлу на Revit-сервере:\n" + (baseModelPath2 ?? "<null>") + "\n" +
                                         "Для решения проблемы - обратитесь в BIM-отдел");
                                     return;
@@ -3486,6 +3308,7 @@ namespace KPLN_Tools.Forms
                             return;
                         }
 
+                        // Моздание папки на локальном диске, которая дублирует логику RS из MainDB
                         string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
 
                         string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
@@ -3510,8 +3333,9 @@ namespace KPLN_Tools.Forms
                             return;
                         }
 
-                        TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder2);                  
-                }
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Вы работаете с файлом на Revit-сервере. DWG будет сохранён в:\n" + dwgFolder2);
+                    }
+                    // Локальный файл
                     else
                     {
                         string modelDir = Path.GetDirectoryName(baseModelPath2);
@@ -3519,6 +3343,7 @@ namespace KPLN_Tools.Forms
                         Directory.CreateDirectory(dwgFolder2);
                     }
 
+                    // Планируем пары (откуда копировать → куда копировать)
                     var plannedLocalCopies = new List<(string srcFullPath, string localCopyPath)>();
                     for (int i = 0; i < dwgPlacements.Count; i++)
                     {
@@ -3530,48 +3355,68 @@ namespace KPLN_Tools.Forms
                         plannedLocalCopies.Add((dwgPlacements[i].fullPath, localCopy));
                     }
 
-                    bool anyExists = plannedLocalCopies.Any(x => File.Exists(x.localCopyPath));
-
-                    if (anyExists)
+                    // Если уже существуют такие файлы
+                    if (plannedLocalCopies.Any(x => File.Exists(x.localCopyPath)))
                     {
+                        string kind = _useLegendsInsteadOfViews ? "легенды" : "вида";
                         string msg =
                             $"В папке уже существуют DWG-файлы для узла \"{sourceViewName}\":\n" +
                             $"{dwgFolder2}\n\n" +
-                            "Да — перезаписать DWG (все) и перезаписать содержимое соответствующего вида узла.\n" +
-                            "Нет — открыть существующий вид с этим узлом.\n" +
-                            "Отмена — ничего не менять.";
+                            $"Да - перезаписать DWG и содержимое {kind} узла.\n" +
+                            $"Нет - открыть существующ{(_useLegendsInsteadOfViews ? "ую легенду" : "ий вид")} с этим узлом.\n" +
+                            "Отмена - ничего не менять.";
 
                         var result = System.Windows.MessageBox.Show(
                             msg, "KPLN. Менеджер узлов",
                             MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
 
+                        // Выход (отмена)
                         if (result == MessageBoxResult.Cancel)
                         {
                             if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
                             return;
                         }
+                        // Нажали "Нет"
+                        // Нажатие "Да" просто продолжит выполнение операции с перезаписью
                         else if (result == MessageBoxResult.No)
                         {
-                            var existingView = new FilteredElementCollector(targetDoc)
-                                .OfClass(typeof(ViewDrafting))
-                                .Cast<ViewDrafting>()
-                                .FirstOrDefault(v => !v.IsTemplate &&
-                                    string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
-
-                            if (existingView != null)
+                            // Открываем легенду с именем узла
+                            View existing = null;
+                            if (_useLegendsInsteadOfViews)
                             {
-                                uidoc.ActiveView = existingView;
+                                existing = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(View)).Cast<View>()
+                                    .FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend && string.Equals(v.Name, baseSafeName2, StringComparison.InvariantCultureIgnoreCase));
+                            }
+                            // Открываем вид с именем узла
+                            else
+                            {
+                                existing = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(ViewDrafting))
+                                    .Cast<ViewDrafting>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+                            }
+
+                            if (existing != null)
+                            {
+                                uidoc.ActiveView = existing;
                                 if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
                                 return;
                             }
+                            // Не найден вид
+                            // Нажатие "Да" просто продолжит выполнение операции с перезаписью
                             else
                             {
+                                string missingMsg = _useLegendsInsteadOfViews
+                                    ? $"DWG уже существует в папке,\nно легенда \"{baseSafeName2}\" в документе не найдена.\n\n" +
+                                      "Создать новую легенду с этим именем\nи залинковать на неё существующие DWG?"
+                                    : $"DWG уже существует в папке,\nно вид \"{sourceViewName}\" в документе не найден.\n\n" +
+                                      "Создать новый чертёжный вид с этим именем\nи залинковать на него существующие DWG?";
+
                                 var ask = System.Windows.MessageBox.Show(
-                                    $"DWG уже существует в папке,\nно вид \"{sourceViewName}\" в документе не найден.\n\n" +
-                                    "Создать новый чертёжный вид с этим именем\nи залинковать на него существующие DWG?",
-                                    "KPLN. Менеджер узлов",
+                                    missingMsg, "KPLN. Менеджер узлов",
                                     MessageBoxButton.YesNo, MessageBoxImage.Question);
 
+                                // Выход
                                 if (ask == MessageBoxResult.No)
                                 {
                                     if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
@@ -3581,6 +3426,7 @@ namespace KPLN_Tools.Forms
                         }
                     }
 
+                    // Физическое копирование DWG файлов
                     for (int i = 0; i < plannedLocalCopies.Count; i++)
                     {
                         string src = plannedLocalCopies[i].srcFullPath;
@@ -3599,206 +3445,655 @@ namespace KPLN_Tools.Forms
                             return;
                         }
                     }
-
-                    ViewDrafting targetView2;
-                    using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и настройка вида узла"))
+                    // Копирование на легенду
+                    if (_useLegendsInsteadOfViews)
                     {
-                        t.Start();
+                        View legend = CreateEmptyLegendOrNull(targetDoc, baseSafeName2);
 
-                        targetView2 = new FilteredElementCollector(targetDoc)
-                            .OfClass(typeof(ViewDrafting))
-                            .Cast<ViewDrafting>()
-                            .FirstOrDefault(v => !v.IsTemplate &&
-                                string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+                        if (legend == null)
+                            return;
 
-                        if (targetView2 == null)
+                        using (var t = new Transaction(targetDoc, "KPLN. Настройка легенды узла"))
                         {
+                            t.Start();
+
+                            try { legend.Scale = sourceView.Scale; } catch { }
+                            try { legend.Discipline = sourceView.Discipline; } catch { }
+                            try { legend.DetailLevel = sourceView.DetailLevel; } catch { }
+                            try { legend.DisplayStyle = sourceView.DisplayStyle; } catch { }
+                            try { legend.PartsVisibility = sourceView.PartsVisibility; } catch { }
+
+                            try
+                            {
+                                if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
+                                {
+                                    var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
+                                    if (srcTemplate != null)
+                                    {
+                                        string templateName = srcTemplate.Name;
+
+                                        var dstTemplate = new FilteredElementCollector(targetDoc)
+                                            .OfClass(typeof(View))
+                                            .Cast<View>()
+                                            .FirstOrDefault(v => v.IsTemplate &&
+                                                string.Equals(v.Name, templateName, StringComparison.InvariantCultureIgnoreCase));
+
+                                        if (dstTemplate != null)
+                                        {
+                                            legend.ViewTemplateId = dstTemplate.Id;
+                                        }
+                                        else
+                                        {
+                                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                                $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
+                                                "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
+                                                "Легенда будет создана без назначения шаблона. Возможно некорректное отображение DWG.");
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Очистка старых DWG на легенде узла"))
+                        {
+                            t.Start();
+
+                            var oldDwgs = new FilteredElementCollector(targetDoc, legend.Id)
+                                .OfClass(typeof(ImportInstance))
+                                .ToElementIds();
+
+                            if (oldDwgs.Count > 0)
+                                targetDoc.Delete(oldDwgs);
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Линковка DWG с восстановлением позиции"))
+                        {
+                            t.Start();
+
+                            for (int i = 0; i < dwgPlacements.Count; i++)
+                            {
+                                var srcPlacement = dwgPlacements[i];
+                                string localCopyPath = plannedLocalCopies[i].localCopyPath;
+
+                                var opt = new DWGImportOptions
+                                {
+                                    ThisViewOnly = true,
+                                    Placement = ImportPlacement.Origin,
+                                    OrientToView = true
+                                };
+
+                                ElementId linkedId;
+                                bool ok = targetDoc.Link(localCopyPath, opt, legend, out linkedId);
+                                if (!ok || linkedId == ElementId.InvalidElementId)
+                                    continue;
+
+                                Apply2DTransformLikeSource(targetDoc, linkedId, srcPlacement.tr);
+                            }
+
+                            t.Commit();
+                        }
+
+                        if (openedSourceHere)
+                        {
+                            try { sourceDoc.Close(false); } catch { }
+                        }
+
+                        uidoc.ActiveView = legend;
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            $"DWG с вида \"{sourceViewName}\" скопирован(ы) в папку:\n\"{dwgFolder2}\"\nи залинкован(ы) на легенду \"{legend.Name}\" в активном документе.");
+
+                        return;
+                    }
+                    // Копирование на вид
+                    else
+                    {
+                        ViewDrafting targetView2;
+                        using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и настройка вида узла"))
+                        {
+                            t.Start();
+
+                            targetView2 = new FilteredElementCollector(targetDoc)
+                                .OfClass(typeof(ViewDrafting))
+                                .Cast<ViewDrafting>()
+                                .FirstOrDefault(v => !v.IsTemplate &&
+                                    string.Equals(v.Name, sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                            if (targetView2 == null)
+                            {
+                                var draftingTypeId = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(ViewFamilyType))
+                                    .Cast<ViewFamilyType>()
+                                    .First(vft => vft.ViewFamily == ViewFamily.Drafting)
+                                    .Id;
+
+                                targetView2 = ViewDrafting.Create(targetDoc, draftingTypeId);
+                                targetView2.Name = sourceViewName;
+                            }
+
+                            try { targetView2.Scale = sourceView.Scale; } catch { }
+                            try { targetView2.Discipline = sourceView.Discipline; } catch { }
+                            try { targetView2.DetailLevel = sourceView.DetailLevel; } catch { }
+                            try { targetView2.DisplayStyle = sourceView.DisplayStyle; } catch { }
+                            try { targetView2.PartsVisibility = sourceView.PartsVisibility; } catch { }
+
+                            try
+                            {
+                                if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
+                                {
+                                    var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
+                                    if (srcTemplate != null)
+                                    {
+                                        string templateName = srcTemplate.Name;
+
+                                        var dstTemplate = new FilteredElementCollector(targetDoc)
+                                            .OfClass(typeof(View))
+                                            .Cast<View>()
+                                            .FirstOrDefault(v => v.IsTemplate &&
+                                                string.Equals(v.Name, templateName, StringComparison.InvariantCultureIgnoreCase));
+
+                                        if (dstTemplate != null)
+                                        {
+                                            targetView2.ViewTemplateId = dstTemplate.Id;
+                                        }
+                                        else
+                                        {
+                                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                                $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
+                                                "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
+                                                "Вид будет создан/обновлён без назначения шаблона. Возможно некорректное отображение DWG.");
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Очистка аннотации на виде узла"))
+                        {
+                            t.Start();
+
+                            var toDelete = new FilteredElementCollector(targetDoc, targetView2.Id)
+                                .WhereElementIsNotElementType()
+                                .Where(e =>
+                                    e.ViewSpecific &&
+                                    !(e is ImportInstance) &&
+                                    !(e is View) &&
+                                    !(e is Group) &&
+                                    e.Category != null)
+                                .Select(e => e.Id)
+                                .ToList();
+
+                            if (toDelete.Count > 0)
+                                targetDoc.Delete(toDelete);
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Очистка старых DWG на виде узла"))
+                        {
+                            t.Start();
+
+                            var oldDwgs = new FilteredElementCollector(targetDoc, targetView2.Id)
+                                .OfClass(typeof(ImportInstance))
+                                .ToElementIds();
+
+                            if (oldDwgs.Count > 0)
+                                targetDoc.Delete(oldDwgs);
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Линковка DWG с восстановлением позиции"))
+                        {
+                            t.Start();
+
+                            for (int i = 0; i < dwgPlacements.Count; i++)
+                            {
+                                var srcPlacement = dwgPlacements[i];
+                                string localCopyPath = plannedLocalCopies[i].localCopyPath;
+
+                                var opt = new DWGImportOptions
+                                {
+                                    ThisViewOnly = true,
+                                    Placement = ImportPlacement.Origin,
+                                    OrientToView = true
+                                };
+
+                                ElementId linkedId;
+                                bool ok = targetDoc.Link(localCopyPath, opt, targetView2, out linkedId);
+                                if (!ok || linkedId == ElementId.InvalidElementId)
+                                    continue;
+
+                                Apply2DTransformLikeSource(targetDoc, linkedId, srcPlacement.tr);
+                            }
+
+                            t.Commit();
+                        }
+
+                        if (openedSourceHere)
+                        {
+                            try { sourceDoc.Close(false); } catch { }
+                        }
+
+
+                        uidoc.ActiveView = targetView2;
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            $"DWG с вида \"{sourceViewName}\" скопирован(ы) в папку:\n\"{dwgFolder2}\"\nи залинкован(ы) на вид в активном документе.");
+
+                        return;
+                    }
+                }
+
+                ////////////////////////////////////////////////
+                ///////////////// Графика (линии, надписи и т.д)
+                ////////////////////////////////////////////////
+                else
+                {
+                    // Копирование на легенду
+                    if (_useLegendsInsteadOfViews)
+                    {
+                        // Проверка: есть ли легенды в проекте
+                        var anyLegend = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(View))
+                                    .Cast<View>()
+                                    .FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend);
+
+                        if (anyLegend == null)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                "В проекте нет ни одной легенды. Revit API не умеет создавать Legend View с нуля. " +
+                                "Создайте пустую легенду вручную и повторите команду.");
+                            return;
+                        }
+
+                        // Копирование чертёжного вида
+                        ViewDrafting targetView;
+                        using (var t = new Transaction(targetDoc, "KPLN. Создание временного вида узла"))
+                        {
+                            t.Start();
+
                             var draftingTypeId = new FilteredElementCollector(targetDoc)
                                 .OfClass(typeof(ViewFamilyType))
                                 .Cast<ViewFamilyType>()
                                 .First(vft => vft.ViewFamily == ViewFamily.Drafting)
                                 .Id;
 
-                            targetView2 = ViewDrafting.Create(targetDoc, draftingTypeId);
-                            targetView2.Name = sourceViewName;
+                            targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
+                            targetView.Name = "_tempViewForPlugin0517";
+
+                            t.Commit();
                         }
 
-                        try { targetView2.Scale = sourceView.Scale; } catch { }
-                        try { targetView2.Discipline = sourceView.Discipline; } catch { }
-                        try { targetView2.DetailLevel = sourceView.DetailLevel; } catch { }
-                        try { targetView2.DisplayStyle = sourceView.DisplayStyle; } catch { }
-                        try { targetView2.PartsVisibility = sourceView.PartsVisibility; } catch { }
-
-                        try
-                        {
-                            if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
-                            {
-                                var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
-                                if (srcTemplate != null)
-                                {
-                                    string templateName = srcTemplate.Name;
-
-                                    var dstTemplate = new FilteredElementCollector(targetDoc)
-                                        .OfClass(typeof(View))
-                                        .Cast<View>()
-                                        .FirstOrDefault(v => v.IsTemplate &&
-                                            string.Equals(v.Name, templateName, StringComparison.InvariantCultureIgnoreCase));
-
-                                    if (dstTemplate != null)
-                                    {
-                                        targetView2.ViewTemplateId = dstTemplate.Id;
-                                    }
-                                    else
-                                    {
-                                        TaskDialog.Show("KPLN. Менеджер узлов",
-                                            $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
-                                            "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
-                                            "Вид будет создан/обновлён без назначения шаблона. Возможно некорректное отображение DWG.");
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
-
-                        t.Commit();
-                    }
-
-                    using (var t = new Transaction(targetDoc, "KPLN. Очистка аннотации на виде узла"))
-                    {
-                        t.Start();
-
-                        var toDelete = new FilteredElementCollector(targetDoc, targetView2.Id)
-                            .WhereElementIsNotElementType()
-                            .Where(e =>
-                                e.ViewSpecific &&
-                                !(e is ImportInstance) &&
-                                !(e is View) &&
-                                !(e is Group) &&
-                                e.Category != null)
+                        var elementsToCopy2 = allInView
+                            .Where(e => e.ViewSpecific && !(e is ImportInstance))
                             .Select(e => e.Id)
                             .ToList();
 
-                        if (toDelete.Count > 0)
-                            targetDoc.Delete(toDelete);
-
-                        t.Commit();
-                    }
-
-                    using (var t = new Transaction(targetDoc, "KPLN. Очистка старых DWG на виде узла"))
-                    {
-                        t.Start();
-
-                        var oldDwgs = new FilteredElementCollector(targetDoc, targetView2.Id)
-                            .OfClass(typeof(ImportInstance))
-                            .ToElementIds();
-
-                        if (oldDwgs.Count > 0)
-                            targetDoc.Delete(oldDwgs);
-
-                        t.Commit();
-                    }
-
-                    using (var t = new Transaction(targetDoc, "KPLN. Линковка DWG с восстановлением позиции"))
-                    {
-                        t.Start();
-
-                        for (int i = 0; i < dwgPlacements.Count; i++)
+                        if (elementsToCopy2.Count == 0)
                         {
-                            var srcPlacement = dwgPlacements[i];
-                            string localCopyPath = plannedLocalCopies[i].localCopyPath;
+                            if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
 
-                            var opt = new DWGImportOptions
-                            {
-                                ThisViewOnly = true,
-                                Placement = ImportPlacement.Origin,
-                                OrientToView = true
-                            };
-
-                            ElementId linkedId;
-                            bool ok = targetDoc.Link(localCopyPath, opt, targetView2, out linkedId);
-                            if (!ok || linkedId == ElementId.InvalidElementId)
-                                continue;
-
-                            Apply2DTransformLikeSource(targetDoc, linkedId, srcPlacement.tr);
+                            uidoc.ActiveView = targetView;
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                $"Создан вид \"{targetView.Name}\", но на исходном виде нет элементов для копирования.");
+                            return;
                         }
 
-                        t.Commit();
+                        var options2 = new CopyPasteOptions();
+                        options2.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                        ICollection<ElementId> copiedIds;
+                        using (var t = new Transaction(targetDoc, "KPLN. Копирование элементов узла (в temp Drafting)"))
+                        {
+                            t.Start();
+
+                            copiedIds = ElementTransformUtils.CopyElements(
+                                sourceView,
+                                elementsToCopy2,
+                                targetView,
+                                Autodesk.Revit.DB.Transform.Identity,
+                                options2);
+
+                            t.Commit();
+                        }
+
+                        var copiedList = (copiedIds ?? new List<ElementId>())
+                            .Where(id => id != ElementId.InvalidElementId && targetDoc.GetElement(id) != null)
+                            .ToList();
+
+                        if (copiedList.Count == 0)
+                        {
+                            if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+
+                            uidoc.ActiveView = targetView;
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                $"Создан вид \"{targetView.Name}\", но после копирования на нём нет элементов (копирование вернуло пусто).");
+                            return;
+                        }
+
+                        // Создание Detail Group
+                        ElementId groupTypeId = ElementId.InvalidElementId;
+
+                        var ungroupable = new List<ElementId>();
+                        var groupable = new List<ElementId>();
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Группировка элементов (Detail Group)"))
+                        {
+                            t.Start();
+
+                            try
+                            {
+                                Group groupInst = targetDoc.Create.NewGroup(copiedList);
+                                groupTypeId = groupInst?.GetTypeId() ?? ElementId.InvalidElementId;
+                                groupable.AddRange(copiedList);
+                            }
+                            catch
+                            {
+                                foreach (var id in copiedList)
+                                {
+                                    if (id == ElementId.InvalidElementId || targetDoc.GetElement(id) == null)
+                                    {
+                                        ungroupable.Add(id);
+                                        continue;
+                                    }
+
+                                    try
+                                    {
+                                        Group probe = targetDoc.Create.NewGroup(new List<ElementId> { id });
+
+                                        if (probe != null)
+                                        {
+                                            groupable.Add(id);
+                                        }
+                                        else
+                                        {
+                                            ungroupable.Add(id);
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        ungroupable.Add(id);
+                                    }
+                                }
+
+                                if (groupable.Count > 0)
+                                {
+                                    Group groupInst2 = targetDoc.Create.NewGroup(groupable);
+                                    groupTypeId = groupInst2?.GetTypeId() ?? ElementId.InvalidElementId;
+                                }
+                                else
+                                {
+                                    groupTypeId = ElementId.InvalidElementId;
+                                }
+                            }
+
+                            t.Commit();
+                        }
+
+                        if (groupTypeId == ElementId.InvalidElementId)
+                        {
+                            uidoc.ActiveView = targetView;
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                "Не удалось создать группу ни из одного элемента.\n" +
+                                "Скорее всего в наборе только элементы, которые нельзя группировать.");
+                            return;
+                        }
+
+                        // Создаём/находим легенду
+                        View legendTemp = null;
+                        string legendName = MakeSafeFileName(sourceViewName);
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и очистка легенды узла"))
+                        {
+                            t.Start();
+
+                            legendTemp = new FilteredElementCollector(targetDoc)
+                                .OfClass(typeof(View))
+                                .Cast<View>()
+                                .FirstOrDefault(v => !v.IsTemplate
+                                    && v.ViewType == ViewType.Legend
+                                    && string.Equals(v.Name, legendName, StringComparison.OrdinalIgnoreCase));
+
+                            if (legendTemp == null)
+                            {
+                                ElementId newId = anyLegend.Duplicate(ViewDuplicateOption.Duplicate);
+                                legendTemp = targetDoc.GetElement(newId) as View;
+
+                                if (legendTemp == null)
+                                {
+                                    t.RollBack();
+                                    TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать легенду.");
+                                    return;
+                                }
+
+                                try { legendTemp.Name = legendName; } catch { }
+                            }
+
+                            var delIds = new FilteredElementCollector(targetDoc, legendTemp.Id)
+                                .WhereElementIsNotElementType().Where(e => e.ViewSpecific && !(e is View) && e.Category != null)
+                                .Select(e => e.Id).ToList();
+
+                            if (delIds.Count > 0)
+                                targetDoc.Delete(delIds);
+
+                            t.Commit();
+                        }
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Настройка легенды узла"))
+                        {
+                            t.Start();
+
+                            try { legendTemp.Scale = sourceView.Scale; } catch { }
+                            try { legendTemp.Discipline = sourceView.Discipline; } catch { }
+                            try { legendTemp.DetailLevel = sourceView.DetailLevel; } catch { }
+                            try { legendTemp.DisplayStyle = sourceView.DisplayStyle; } catch { }
+                            try { legendTemp.PartsVisibility = sourceView.PartsVisibility; } catch { }
+
+                            try
+                            {
+                                if (sourceView.ViewTemplateId != ElementId.InvalidElementId)
+                                {
+                                    var srcTemplate = sourceDoc.GetElement(sourceView.ViewTemplateId) as View;
+                                    if (srcTemplate != null)
+                                    {
+                                        string templateName = srcTemplate.Name;
+
+                                        var dstTemplate = new FilteredElementCollector(targetDoc)
+                                            .OfClass(typeof(View))
+                                            .Cast<View>()
+                                            .FirstOrDefault(v => v.IsTemplate &&
+                                                string.Equals(v.Name, templateName, StringComparison.OrdinalIgnoreCase));
+
+                                        if (dstTemplate != null)
+                                        {
+                                            legendTemp.ViewTemplateId = dstTemplate.Id;
+                                        }
+                                        else
+                                        {
+                                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                                $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
+                                                "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
+                                                "Легенда будет создана/обновлена без назначения шаблона. Возможно некорректное отображение.");
+                                        }
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            t.Commit();
+                        }
+
+                        // Размещение группы на легенде
+                        uidoc.ActiveView = legendTemp;
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Размещение группы на легенде"))
+                        {
+                            t.Start();
+
+                            var gt = targetDoc.GetElement(groupTypeId) as GroupType;
+                            if (gt == null)
+                            {
+                                t.RollBack();
+                                TaskDialog.Show("KPLN. Менеджер узлов", "Не найден GroupType для размещения (стал невалидным).");
+                                return;
+                            }
+
+                            Group placed = targetDoc.Create.PlaceGroup(XYZ.Zero, gt);
+                            if (placed == null)
+                            {
+                                t.RollBack();
+                                TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось разместить группу на легенде (PlaceGroup вернул null).");
+                                return;
+                            }
+
+                            t.Commit();
+                        }
+               
+                            // Удаляем временные виды
+                            using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла (пусто)"))
+                            {
+                                t.Start();
+                          
+                                try
+                                {
+                                    if (targetView != null && targetView.IsValidObject)
+                                        targetDoc.Delete(targetView.Id);
+                                }
+                                catch { }
+                                                   
+                                try
+                                {
+                                    var viewToDelete = new FilteredElementCollector(targetDoc)
+                                        .OfClass(typeof(View))
+                                        .Cast<View>()
+                                        .FirstOrDefault(v => !v.IsTemplate
+                                                             && v.ViewType != ViewType.Legend
+                                                             && string.Equals(v.Name, legendName, StringComparison.OrdinalIgnoreCase));
+
+                                    if (viewToDelete != null && viewToDelete.IsValidObject)
+                                        targetDoc.Delete(viewToDelete.Id);
+                                }
+                                catch { }
+                            
+                                t.Commit();
+                            }
+      
+                        if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
+
+                        var dlg = new Autodesk.Revit.UI.TaskDialog("KPLN. Менеджер узлов");
+
+                        if (ungroupable.Count > 0)
+                        {
+                            dlg.MainIcon = Autodesk.Revit.UI.TaskDialogIcon.TaskDialogIconWarning;
+                            dlg.MainInstruction = "Узел перенесён на легенду, но часть элементов не удалось сгруппировать.";
+
+                            int previewCount = 20;
+
+                            var previewLines = ungroupable
+                                .Where(id => id != ElementId.InvalidElementId)
+                                .Select(id =>
+                                {
+                                    var el = targetDoc.GetElement(id);
+                                    string typeName = el?.GetType().Name ?? "<null>";
+                                    int intId = id.IntegerValue;
+                                    return $"{typeName} (Id={intId})";
+                                })
+                                .Take(previewCount)
+                                .ToList();
+
+                            string previewText = previewLines.Count > 0
+                                ? string.Join("\n", previewLines)
+                                : "<нет данных>";
+
+                            int remaining = Math.Max(0, ungroupable.Count - previewLines.Count);
+                            string moreText = remaining > 0 ? $"\n... и ещё {remaining}" : "";
+
+                            dlg.MainContent =               
+                                $"Сгруппировано: {groupable.Count}\n" +
+                                $"Не сгруппировано: {ungroupable.Count}\n\n" +
+                                $"Первые {previewCount} элементов, которые не удалось сгруппировать:\n{previewText}{moreText}";
+                        }
+                        else
+                        {
+                            dlg.MainIcon = Autodesk.Revit.UI.TaskDialogIcon.TaskDialogIconInformation;
+                            dlg.MainInstruction = "Узел перенесён на легенду.";
+                            dlg.MainContent =
+                                $"Элементы с вида \"{sourceViewName}\" сгруппированы и размещены на легенде \"{legendTemp.Name}\".";
+                        }
+
+                        dlg.Show();
+                        return;
                     }
+                    // Копирование на вид
+                    else
+                    {                       
+                        ViewDrafting targetView;
+                        using (var t = new Transaction(targetDoc, "KPLN. Создание временного вида узла"))
+                        {
+                            t.Start();
 
-                    if (openedSourceHere)
-                    {
-                        try { sourceDoc.Close(false); } catch { }
-                    }
+                            var draftingTypeId = new FilteredElementCollector(targetDoc)
+                                .OfClass(typeof(ViewFamilyType))
+                                .Cast<ViewFamilyType>()
+                                .First(vft => vft.ViewFamily == ViewFamily.Drafting)
+                                .Id;
 
-                    uidoc.ActiveView = targetView2;
+                            targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
+                            targetView.Name = "_tempViewForPlugin0517";
 
-                    TaskDialog.Show("KPLN. Менеджер узлов",
-                        $"DWG с вида \"{sourceViewName}\" скопирован(ы) в папку:\n\"{dwgFolder2}\"\nи залинкован(ы) на вид в активном документе.");
+                            t.Commit();
+                        }
 
-                    return;
-                }
-                // ВСЁ ОСТАЛЬНОЕ
-                else
-                {
-                    ViewDrafting targetView;
-                    using (var t = new Transaction(targetDoc, "KPLN. Создание временного вида узла"))
-                    {
-                        t.Start();
+                        var elementsToCopy2 = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
 
-                        var draftingTypeId = new FilteredElementCollector(targetDoc)
-                            .OfClass(typeof(ViewFamilyType))
-                            .Cast<ViewFamilyType>()
-                            .First(vft => vft.ViewFamily == ViewFamily.Drafting)
-                            .Id;
+                        if (elementsToCopy2.Count == 0)
+                        {
+                            if (openedSourceHere)
+                            {
+                                try { sourceDoc.Close(false); } catch { }
+                            }
 
-                        targetView = ViewDrafting.Create(targetDoc, draftingTypeId);
-                        targetView.Name = "_tempViewForPlugin0517";
+                            _uiapp.ActiveUIDocument.ActiveView = targetView;
+                            TaskDialog.Show("KPLN. Менеджер узлов", $"Создан вид \"{targetView.Name}\", но на исходном виде нет элементов для копирования.");
+                            return;
+                        }
 
-                        t.Commit();
-                    }
+                        var options2 = new CopyPasteOptions();
+                        options2.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
 
-                    var elementsToCopy = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
+                        using (var t = new Transaction(targetDoc, "KPLN. Копирование элементов узла"))
+                        {
+                            t.Start();
 
-                    if (elementsToCopy.Count == 0)
-                    {
+                            ElementTransformUtils.CopyElements(sourceView, elementsToCopy2, targetView, Autodesk.Revit.DB.Transform.Identity, options2);
+
+                            t.Commit();
+                        }
+
+                        bool hasElemsOnTempView = new FilteredElementCollector(targetDoc, targetView.Id).WhereElementIsNotElementType().Any(e => e.ViewSpecific);
+
+                        using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла"))
+                        {
+                            t.Start();
+                            targetDoc.Delete(targetView.Id);
+                            targetView = null;
+                            t.Commit();
+                        }
+
                         if (openedSourceHere)
                         {
                             try { sourceDoc.Close(false); } catch { }
                         }
 
-                        _uiapp.ActiveUIDocument.ActiveView = targetView;
-                        TaskDialog.Show("KPLN. Менеджер узлов", $"Создан вид \"{targetView.Name}\", но на исходном виде нет элементов для копирования.");
-                        return;
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Вид с узлом ``{sourceViewName}`` скопирован в активный документ.");
                     }
-
-                    var options = new CopyPasteOptions();
-                    options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
-
-                    using (var t = new Transaction(targetDoc, "KPLN. Копирование элементов узла"))
-                    {
-                        t.Start();
-
-                        ElementTransformUtils.CopyElements(sourceView, elementsToCopy, targetView, Autodesk.Revit.DB.Transform.Identity, options);
-
-                        t.Commit();
-                    }
-
-                    bool hasElemsOnTempView = new FilteredElementCollector(targetDoc, targetView.Id).WhereElementIsNotElementType().Any(e => e.ViewSpecific);
-
-                    using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла"))
-                    {
-                        t.Start();
-                        targetDoc.Delete(targetView.Id);
-                        targetView = null;
-                        t.Commit();
-                    }
-
-                    if (openedSourceHere)
-                    {
-                        try { sourceDoc.Close(false); } catch { }
-                    }
-
-                    TaskDialog.Show("KPLN. Менеджер узлов", $"Вид с узлом ``{sourceViewName}`` скопирован в активный документ.");
                 }
             }
 
@@ -3849,64 +4144,74 @@ namespace KPLN_Tools.Forms
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ////////////////////// КОПИРОВАНИЕ НА ВИД, ЛИСТ, ЛЕГЕНДУ
     internal sealed class PlaceDraftingViewOnSheetHandler : IExternalEventHandler
     {
         private UIApplication _uiapp;
         private string _sourceRvtPath;
         private string _sourceViewName;
+
         private Window _ownerWindow;
+        private bool _useLegendsInsteadOfViews;
 
-        private enum DwgChoice
+        // Варианты выбора DWG
+        private enum DwgChoice {ExportOverwriteAndUse, UseExisting, Cancel}
+
+        // Есть ли на донорском виде импортированный DWG (уходит на три ветки)
+        private bool ViewContainsDwg(Document donorDoc, ViewDrafting donorView)
         {
-            ExportOverwriteAndUse,
-            UseExisting,
-            Cancel
-        }
+            var imports = new FilteredElementCollector(donorDoc, donorView.Id)
+                .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
 
-        public void Init(UIApplication uiapp, string sourceRvtPath, string sourceViewName, Window ownerWindow)
-        {
-            _uiapp = uiapp;
-            _sourceRvtPath = sourceRvtPath;
-            _sourceViewName = sourceViewName;
-            _ownerWindow = ownerWindow;
-        }
-
-        public string GetName() => "KPLN. Размещение узла";
-
-        private static readonly string _stateDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KPLN", "МУ");
-        private static readonly string _lastDwgDirFile = Path.Combine(_stateDir, "lastDirDWG.txt");
-
-        private static string LoadLastDwgDir()
-        {
-            try
+            foreach (var imp in imports)
             {
-                if (!File.Exists(_lastDwgDirFile)) return null;
-                var dir = (File.ReadAllText(_lastDwgDirFile) ?? string.Empty).Trim();
-                return Directory.Exists(dir) ? dir : null;
+                var type = donorDoc.GetElement(imp.GetTypeId()) as ElementType;
+                if (type == null) continue;
+
+                var name = type.Name ?? string.Empty;
+                if (name.EndsWith(".dwg", StringComparison.InvariantCultureIgnoreCase))
+                    return true;
             }
-            catch { return null; }
+
+            return false;
         }
 
-        private static void SaveLastDwgDir(string dir)
+        // Узел в котором DWG и графика
+        private static void AbortIfDwgMixedWithGraphics(Document donorDoc, ViewDrafting donorView, bool hasDwg)
         {
+            if (!hasDwg)
+                return;
+
+            bool hasNonDwgStuff;
             try
             {
-                if (string.IsNullOrWhiteSpace(dir)) return;
-                if (!Directory.Exists(dir)) return;
-
-                Directory.CreateDirectory(_stateDir);
-                File.WriteAllText(_lastDwgDirFile, dir);
-            }
-            catch { }
-        }
-
-        private static bool HasNonDwgViewSpecificStuff(Document donorDoc, View donorView)
-        {
-            try
-            {
-                return new FilteredElementCollector(donorDoc, donorView.Id)
+                hasNonDwgStuff = new FilteredElementCollector(donorDoc, donorView.Id)
                     .WhereElementIsNotElementType()
                     .Any(e =>
                         e != null &&
@@ -3918,16 +4223,8 @@ namespace KPLN_Tools.Forms
             }
             catch
             {
-                return true;
+                hasNonDwgStuff = true;
             }
-        }
-
-        private static void AbortIfDwgMixedWithGraphics(Document donorDoc, ViewDrafting donorView, bool hasDwg)
-        {
-            if (!hasDwg)
-                return;
-
-            bool hasNonDwgStuff = HasNonDwgViewSpecificStuff(donorDoc, donorView);
             if (!hasNonDwgStuff)
                 return;
 
@@ -3937,6 +4234,7 @@ namespace KPLN_Tools.Forms
             throw new OperationCanceledException("DWG + встроенная графика на донорском виде");
         }
 
+        // Центральный файл на RS
         private static bool TargetCentralIsNotLocalFile(Document doc, out string centralUserVisible)
         {
             centralUserVisible = null;
@@ -3965,152 +4263,9 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        private static string AskUserForDwgPath(Window ownerWindow, string centralInfo, string defaultFileName)
-        {
-            var lastDir = LoadLastDwgDir();
-
-            string startDir =
-                (!string.IsNullOrWhiteSpace(lastDir) && Directory.Exists(lastDir)) ? lastDir :
-                Directory.Exists(@"Y:\") ? @"Y:\" :
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-            var dlg = new Microsoft.Win32.SaveFileDialog
-            {
-                Title = "Необходимо выбрать локальную дирректорию, чтобы сохранить DWG",
-                Filter = "DWG (*.dwg)|*.dwg",
-                DefaultExt = ".dwg",
-                AddExtension = true,
-                OverwritePrompt = false,
-                FileName = defaultFileName,
-                InitialDirectory = startDir,
-                RestoreDirectory = true
-            };
-
-            bool? res = dlg.ShowDialog(ownerWindow);
-            if (res != true || string.IsNullOrWhiteSpace(dlg.FileName))
-                return null;
-
-            var folder = Path.GetDirectoryName(dlg.FileName);
-            if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
-                SaveLastDwgDir(folder);
-
-            return dlg.FileName;
-        }
-
-        private string GetDwgFilePathForTarget(Document targetDoc)
-        {
-            if (TargetCentralIsNotLocalFile(targetDoc, out var centralStr))
-            {
-                string dwgFolderFromDb = ResolveDwgFolderFromMainDb(centralStr);
-                if (string.IsNullOrWhiteSpace(dwgFolderFromDb))
-                    return null;
-
-                return Path.Combine(dwgFolderFromDb, _sourceViewName + ".dwg");
-            }
-
-            string baseModelPath = GetTargetModelPath(targetDoc);
-            if (string.IsNullOrWhiteSpace(baseModelPath) || !File.Exists(baseModelPath))
-                return null;
-
-            string modelDir = Path.GetDirectoryName(baseModelPath);
-            if (string.IsNullOrWhiteSpace(modelDir))
-                return null;
-
-            string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
-            Directory.CreateDirectory(dwgFolder);
-
-            return Path.Combine(dwgFolder, _sourceViewName + ".dwg");
-        }
-
-        public void Execute(UIApplication app)
-        {
-            var uidoc = app.ActiveUIDocument;
-            if (uidoc == null)
-                return;
-
-            var doc = uidoc.Document;
-            if (doc == null)
-                return;
-
-            var av = uidoc.ActiveView;
-            bool isLegend = av.ViewType == ViewType.Legend;
-            if (!(av is ViewSheet) && !(av is ViewDrafting) && !isLegend)
-            {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист, чертёжный вид или легенда.");
-                return;
-            }
-            if (string.IsNullOrWhiteSpace(_sourceRvtPath) || string.IsNullOrWhiteSpace(_sourceViewName))
-            {
-                TaskDialog.Show("KPLN. Менеджер узлов", "Не заданы путь к донорской модели или имя вида-донора.");
-                return;
-            }
-
-            if (av is ViewSheet sheet)
-            {
-                _ownerWindow.Topmost = false;
-                HandleSheetCase(app, uidoc, doc, sheet);
-            }
-            else if (av is ViewDrafting draftingView)
-            {
-                _ownerWindow.Topmost = false;
-                HandleDraftingCase(app, uidoc, doc, draftingView);
-            }
-            else if (av.ViewType == ViewType.Legend)
-            {
-                _ownerWindow.Topmost = false;
-                HandleLegendCase(app, uidoc, doc, av);
-            }
-
-            _ownerWindow.Topmost = true;
-            _ownerWindow.Topmost = false;
-
-        }
-
-        /// <summary>
-        /// Проверка, есть ли на виде DWG.
-        /// </summary>
-        private bool ViewContainsDwg(Document donorDoc, ViewDrafting donorView)
-        {
-            var imports = new FilteredElementCollector(donorDoc, donorView.Id)
-                .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
-
-            foreach (var imp in imports)
-            {
-                var type = donorDoc.GetElement(imp.GetTypeId()) as ElementType;
-                if (type == null) continue;
-
-                var name = type.Name ?? string.Empty;
-                if (name.EndsWith(".dwg", StringComparison.InvariantCultureIgnoreCase))
-                    return true;
-            }
-
-            return false;
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        // Логика получения путь для DWG из MainDB (RS)
         private static string ResolveDwgFolderFromMainDb(string centralPath)
         {
-            // centralPath должен быть именно CentralPath (например RSN://...)
             if (string.IsNullOrWhiteSpace(centralPath))
                 return null;
 
@@ -4127,16 +4282,15 @@ namespace KPLN_Tools.Forms
                 {
                     conn.Open();
 
-                    // 1) Projects -> MainPath по префиксу RevitServerPath*
                     using (var cmd = conn.CreateCommand())
                     {
                         cmd.CommandText = @"
-                    SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
-                    FROM Projects
-                    WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
-                       OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
-                       OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
-                       OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
+                            SELECT MainPath, RevitServerPath, RevitServerPath2, RevitServerPath3, RevitServerPath4
+                            FROM Projects
+                            WHERE (RevitServerPath  IS NOT NULL AND TRIM(RevitServerPath)  <> '')
+                               OR (RevitServerPath2 IS NOT NULL AND TRIM(RevitServerPath2) <> '')
+                               OR (RevitServerPath3 IS NOT NULL AND TRIM(RevitServerPath3) <> '')
+                               OR (RevitServerPath4 IS NOT NULL AND TRIM(RevitServerPath4) <> '');";
 
                         using (var r = cmd.ExecuteReader())
                         {
@@ -4173,14 +4327,13 @@ namespace KPLN_Tools.Forms
                         return null;
                     }
 
-                    // 2) Documents -> SubDepartmentId по CentralPath
                     using (var cmd = conn.CreateCommand())
                     {
                         cmd.CommandText = @"
-                    SELECT SubDepartmentId
-                    FROM Documents
-                    WHERE CentralPath = @p
-                    LIMIT 1;";
+                            SELECT SubDepartmentId
+                            FROM Documents
+                            WHERE CentralPath = @p
+                            LIMIT 1;";
                         cmd.Parameters.AddWithValue("@p", centralPath);
 
                         var obj = cmd.ExecuteScalar();
@@ -4197,14 +4350,13 @@ namespace KPLN_Tools.Forms
                         return null;
                     }
 
-                    // 3) SubDepartments -> Code по Id
                     using (var cmd = conn.CreateCommand())
                     {
                         cmd.CommandText = @"
-                    SELECT Code
-                    FROM SubDepartments
-                    WHERE Id = @id
-                    LIMIT 1;";
+                            SELECT Code
+                            FROM SubDepartments
+                            WHERE Id = @id
+                            LIMIT 1;";
                         cmd.Parameters.AddWithValue("@id", foundSubDepId.Value);
 
                         var obj = cmd.ExecuteScalar();
@@ -4222,19 +4374,15 @@ namespace KPLN_Tools.Forms
                 return null;
             }
 
-            // приводим путь проекта к Y:\
             string mainPathDisplay = foundMainPath.Replace(@"\\stinproject.local\project\", @"Y:\");
 
-            // отдел
             string depDisplay = !string.IsNullOrWhiteSpace(foundSubDepCode)
                 ? foundSubDepCode
                 : foundSubDepId.Value.ToString(CultureInfo.InvariantCulture);
 
-            // чистим имя папки
             foreach (char ch in Path.GetInvalidFileNameChars())
                 depDisplay = depDisplay.Replace(ch.ToString(), "_");
 
-            // BIM\8.Менеджер узлов\<dep>
             string baseBim = Path.Combine(mainPathDisplay, "BIM");
             string managerDir = Path.Combine(baseBim, "8.Менеджер узлов");
             string dwgFolder = Path.Combine(managerDir, depDisplay);
@@ -4253,30 +4401,225 @@ namespace KPLN_Tools.Forms
             return dwgFolder;
         }
 
+        // Логика получения путь для DWG (локальная модель)
+        private string GetDwgFilePathForTarget(Document targetDoc)
+        {
+            if (TargetCentralIsNotLocalFile(targetDoc, out var centralStr))
+            {
+                string dwgFolderFromDb = ResolveDwgFolderFromMainDb(centralStr);
+                if (string.IsNullOrWhiteSpace(dwgFolderFromDb))
+                    return null;
 
+                return Path.Combine(dwgFolderFromDb, _sourceViewName + ".dwg");
+            }
 
+            string baseModelPath = GetTargetModelPath(targetDoc);
+            if (string.IsNullOrWhiteSpace(baseModelPath) || !File.Exists(baseModelPath))
+                return null;
 
+            string modelDir = Path.GetDirectoryName(baseModelPath);
+            if (string.IsNullOrWhiteSpace(modelDir))
+                return null;
 
+            string dwgFolder = Path.Combine(modelDir, "DWG_Менеджер узлов");
+            Directory.CreateDirectory(dwgFolder);
 
+            return Path.Combine(dwgFolder, _sourceViewName + ".dwg");
+        }
 
+        /// <summary>
+        /// ТОЛЬКО ДЛЯ ЛИСТ. ДОНОР: ВИД. 
+        /// Выбор точки на листе и создание/перемещение viewport.
+        /// </summary>
+        private void PlaceViewportOnSheet(UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, View view)
+        {
+            uidoc.ActiveView = targetSheet;
 
+            XYZ point;
+            try
+            {
+                point = uidoc.Selection.PickPoint("Выберите точку для размещения узла на листе");
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return;
+            }
 
+            using (var t = new Transaction(targetDoc, "KPLN. Размещение узла на листе"))
+            {
+                t.Start();
 
+                var existingVp = new FilteredElementCollector(targetDoc)
+                    .OfClass(typeof(Viewport)).Cast<Viewport>().FirstOrDefault(vp => vp.ViewId == view.Id);
 
+                if (existingVp != null)
+                {
+                    if (existingVp.SheetId == targetSheet.Id)
+                    {
+                        XYZ currentCenter = existingVp.GetBoxCenter();
+                        XYZ delta = point - currentCenter;
+                        ElementTransformUtils.MoveElement(targetDoc, existingVp.Id, delta);
+                    }
+                    else
+                    {
+                        var otherSheet = targetDoc.GetElement(existingVp.SheetId) as ViewSheet;
+                        string sheetName = otherSheet != null ? otherSheet.SheetNumber + " " + otherSheet.Name : "<неизвестно>";
 
+                        TaskDialog.Show("KPLN. Менеджер узлов", $"Вид \"{view.Name}\" уже размещён на листе:\n{sheetName}\n\n" +
+                            "Один и тот же вид нельзя добавить на несколько листов. Используйте копирование через легенду в плагине или создайте дубликат вида, если нужно разместить узел на другом листе.");
 
+                    }
 
+                    t.Commit();
+                    return;
+                }
 
+                Viewport.Create(targetDoc, targetSheet.Id, view.Id, point);
 
+                var titleParam = view.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION);
+                if (titleParam != null && !titleParam.IsReadOnly)
+                {
+                    titleParam.Set("\u200B");
+                }
 
+                t.Commit();
+            }
+        }
 
+        /// <summary>
+        /// ТОЛЬКО ДЛЯ ЛИСТ. ДОНОР: ЛЕГЕНДА. 
+        /// Выбор точки на листе и создание/перемещение viewport.
+        /// </summary>
+        private void PlaceLegendViewportOnSheet(UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, View legendView)
+        {
+            if (uidoc == null) throw new ArgumentNullException(nameof(uidoc));
+            if (targetDoc == null) throw new ArgumentNullException(nameof(targetDoc));
+            if (targetSheet == null) throw new ArgumentNullException(nameof(targetSheet));
+            if (legendView == null) throw new ArgumentNullException(nameof(legendView));
 
+            if (legendView.ViewType != ViewType.Legend)
+                throw new ArgumentException("Передан View, который не является Legend.", nameof(legendView));
 
+            uidoc.ActiveView = targetSheet;
+
+            XYZ point;
+            try
+            {
+                point = uidoc.Selection.PickPoint("Выберите точку для размещения узла на листе");
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return;
+            }
+
+            using (var t = new Transaction(targetDoc, "KPLN. Размещение легенды на листе"))
+            {
+                t.Start();
+
+                var existingVpOnThisSheet = new FilteredElementCollector(targetDoc, targetSheet.Id)
+                    .OfClass(typeof(Viewport))
+                    .Cast<Viewport>()
+                    .FirstOrDefault(vp => vp.ViewId == legendView.Id);
+
+                if (existingVpOnThisSheet != null)
+                {
+                    XYZ currentCenter = existingVpOnThisSheet.GetBoxCenter();
+                    XYZ delta = point - currentCenter;
+                    ElementTransformUtils.MoveElement(targetDoc, existingVpOnThisSheet.Id, delta);
+
+                    t.Commit();
+                    return;
+                }
+
+                Viewport.Create(targetDoc, targetSheet.Id, legendView.Id, point);
+
+                var titleParam = legendView.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION);
+                if (titleParam != null && !titleParam.IsReadOnly)
+                    titleParam.Set("\u200B");
+
+                t.Commit();
+            }
+        }
+
+        // Удаляем все элементы в легенде
+        private static void ClearLegendContents(Document doc, View legendView)
+        {
+            if (doc == null) throw new ArgumentNullException(nameof(doc));
+            if (legendView == null) throw new ArgumentNullException(nameof(legendView));
+          
+            var delIds = new FilteredElementCollector(doc, legendView.Id)
+                .WhereElementIsNotElementType()
+                .Where(e =>
+                    e != null &&
+                    e.ViewSpecific &&
+                    !(e is View) &&
+                    e.Category != null)
+                .Select(e => e.Id)
+                .ToList();
+
+            if (delIds.Count > 0)
+                doc.Delete(delIds);
+        }
+
+        public string GetName() => "KPLN. Размещение узла";
+
+        public void Init(UIApplication uiapp, string sourceRvtPath, string sourceViewName, Window ownerWindow, bool useLegendsInsteadOfViews)
+        {
+            _uiapp = uiapp;
+            _sourceRvtPath = sourceRvtPath;
+            _sourceViewName = sourceViewName;
+            _ownerWindow = ownerWindow;
+            _useLegendsInsteadOfViews = useLegendsInsteadOfViews;
+        }
+
+        public void Execute(UIApplication app)
+        {
+            var uidoc = app.ActiveUIDocument;
+            if (uidoc == null)
+                return;
+
+            var doc = uidoc.Document;
+            if (doc == null)
+                return;
+
+            var av = uidoc.ActiveView;
+            bool isLegend = av.ViewType == ViewType.Legend;
+            if (!(av is ViewSheet) && !(av is ViewDrafting) && !isLegend)
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Копирование узла поддерживается только, если открыт лист, чертёжный вид или легенда.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(_sourceRvtPath) || string.IsNullOrWhiteSpace(_sourceViewName))
+            {
+                TaskDialog.Show("KPLN. Менеджер узлов", "Не заданы путь к донорской модели или имя вида-донора.");
+                return;
+            }
+
+            if (av is ViewSheet sheet)
+            {
+                _ownerWindow.Topmost = false;
+                HandleSheetCase(app, uidoc, doc, sheet, _useLegendsInsteadOfViews);
+            }
+            else if (av is ViewDrafting draftingView)
+            {
+                _ownerWindow.Topmost = false;
+                HandleDraftingCase(app, uidoc, doc, draftingView);
+            }
+            else if (av.ViewType == ViewType.Legend)
+            {
+                _ownerWindow.Topmost = false;
+                HandleLegendCase(app, uidoc, doc, av);
+            }
+
+            _ownerWindow.Topmost = true;
+            _ownerWindow.Topmost = false;
+
+        }
 
         /// <summary>
         /// ЛИСТ
         /// </summary>
-        private void HandleSheetCase(UIApplication app, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
+        private void HandleSheetCase(UIApplication app, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, bool _useLegendsInsteadOfViews)
         {
             Document donorDoc = null;
             bool donorOpenedHere = false;
@@ -4314,7 +4657,6 @@ namespace KPLN_Tools.Forms
 
                 bool hasDwg = ViewContainsDwg(donorDoc, donorView);
 
-
                 try
                 {
                     AbortIfDwgMixedWithGraphics(donorDoc, donorView, hasDwg);
@@ -4327,12 +4669,12 @@ namespace KPLN_Tools.Forms
                 // DWG
                 if (hasDwg)
                 {
-                    HandleDwgBranch(donorDoc, donorView, uidoc, targetDoc, targetSheet);
+                    HandleDwgBranch(donorDoc, donorView, uidoc, targetDoc, targetSheet, _useLegendsInsteadOfViews);
                 }
                 // Без DWG
                 else
                 {
-                    HandleNonDwgBranch(donorDoc, donorView, uidoc, targetDoc, targetSheet);
+                    HandleNonDwgBranch(donorDoc, donorView, uidoc, targetDoc, targetSheet, _useLegendsInsteadOfViews);
                 }
             }
             catch (Exception ex)
@@ -4352,8 +4694,9 @@ namespace KPLN_Tools.Forms
         /// <summary>
         /// ЛИСТ. На донорском виде есть DWG.
         /// </summary>
-        private void HandleDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
+        private void HandleDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, bool _useLegendsInsteadOfViews)
         {
+            // Куда сохранить DWG
             string dwgFilePath = GetDwgFilePathForTarget(targetDoc);
             if (string.IsNullOrWhiteSpace(dwgFilePath))
             {
@@ -4372,8 +4715,8 @@ namespace KPLN_Tools.Forms
 
             bool dwgExists = File.Exists(dwgFilePath);
 
+            // Что делаем, если DWG уже есть в папке
             DwgChoice choice;
-
             if (dwgExists)
             {
                 var td = new TaskDialog("KPLN. Менеджер узлов");
@@ -4427,6 +4770,7 @@ namespace KPLN_Tools.Forms
                 var viewIds = new List<ElementId> { donorView.Id };
 
                 bool exported = donorDoc.Export(dwgFolder, _sourceViewName, viewIds, dwgExportOptions);
+
                 if (!exported || !File.Exists(dwgFilePath))
                 {
                     TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось экспортировать DWG из вида-донора.");
@@ -4443,276 +4787,800 @@ namespace KPLN_Tools.Forms
                 }
             }
 
-            ViewDrafting draftingView = null;
-
-            using (var t = new Transaction(targetDoc, "KPLN. Обновление вида узла (DWG)"))
+            // Копируем через легенду
+            if (_useLegendsInsteadOfViews)
             {
-                t.Start();
+                string legendName = _sourceViewName;
+                View legendView = null;
 
-                draftingView = new FilteredElementCollector(targetDoc)
-                    .OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
-                    .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
 
-                if (draftingView == null)
+                using (var t = new Transaction(targetDoc, "KPLN. Обновление легенды узла (DWG)"))
                 {
-                    var draftingType = new FilteredElementCollector(targetDoc)
-                        .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(vft => vft.ViewFamily == ViewFamily.Drafting);
+                    t.Start();
 
-                    if (draftingType == null)
+                    legendView = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate
+                            && v.ViewType == ViewType.Legend
+                            && string.Equals(v.Name, legendName, StringComparison.InvariantCultureIgnoreCase));
+
+                    var anyLegend = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend);
+
+                    if (legendView == null)
                     {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "В проекте не найден тип для чертёжных видов.");
+                        if (anyLegend == null)
+                        {
+                            t.RollBack();
+                            TaskDialog.Show("KPLN. Менеджер узлов",
+                                "В проекте нет ни одной легенды. Revit API не умеет создавать Legend View с нуля. Создайте пустую легенду вручную и повторите команду.");
+                            return;
+                        }
+
+                        ElementId newId = anyLegend.Duplicate(ViewDuplicateOption.Duplicate);
+                        legendView = targetDoc.GetElement(newId) as View;
+
+                        if (legendView == null)
+                        {
+                            t.RollBack();
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать легенду.");
+                            return;
+                        }
+
+                        try { legendView.Name = legendName; } catch { }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            if (!string.Equals(legendView.Name, legendName, StringComparison.InvariantCultureIgnoreCase))
+                                legendView.Name = legendName;
+                        }
+                        catch { }
+                    }
+
+                    // Очистка легенды от всего
+                    var delIds = new FilteredElementCollector(targetDoc, legendView.Id)
+                        .WhereElementIsNotElementType().Where(e => e != null && e.ViewSpecific && !(e is View) && e.Category != null).Select(e => e.Id).ToList();
+
+                    if (delIds.Count > 0)
+                        targetDoc.Delete(delIds);
+
+
+                    // Импорт DWG в легенду
+                    var dwgImportOptions = new DWGImportOptions
+                    {
+                        ThisViewOnly = true
+                    };
+
+                    ElementId importedId;
+                    bool imported = targetDoc.Import(dwgFilePath, dwgImportOptions, legendView, out importedId);
+                    if (!imported)
+                    {
+                        t.RollBack();
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось импортировать/залинковать DWG в легенду.");
+                        return;
+                    }
+
+                    t.Commit();
+                }
+
+                if (legendView == null)
+                    return;
+
+                PlaceLegendViewportOnSheet(uidoc, targetDoc, targetSheet, legendView);
+                return;
+            }
+            // Копируем через вид
+            else
+            {
+                ViewDrafting draftingView = null;
+
+                using (var t = new Transaction(targetDoc, "KPLN. Обновление вида узла (DWG)"))
+                {
+                    t.Start();
+
+                    draftingView = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
+                        .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                    if (draftingView == null)
+                    {
+                        var draftingType = new FilteredElementCollector(targetDoc)
+                            .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(vft => vft.ViewFamily == ViewFamily.Drafting);
+
+                        if (draftingType == null)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "В проекте не найден тип для чертёжных видов.");
+                            t.RollBack();
+                            return;
+                        }
+
+                        draftingView = ViewDrafting.Create(targetDoc, draftingType.Id);
+                        draftingView.Name = _sourceViewName;
+                    }
+
+                    List<ImportInstance> oldImports = new FilteredElementCollector(targetDoc, draftingView.Id)
+                        .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
+
+                    foreach (var imp in oldImports)
+                    {
+                        try { targetDoc.Delete(imp.Id); }
+                        catch { }
+                    }
+
+                    var dwgImportOptions = new DWGImportOptions
+                    {
+                        ThisViewOnly = true
+                    };
+
+                    ElementId importedId;
+                    bool imported = targetDoc.Import(dwgFilePath, dwgImportOptions, draftingView, out importedId);
+                    if (!imported)
+                    {
+                        TaskDialog.Show("KPLN. Менеджер узлов",
+                            "Не удалось импортировать/залинковать DWG в вид узла.");
                         t.RollBack();
                         return;
                     }
 
-                    draftingView = ViewDrafting.Create(targetDoc, draftingType.Id);
-                    draftingView.Name = _sourceViewName;
+                    t.Commit();
                 }
 
-                var oldImports = new FilteredElementCollector(targetDoc, draftingView.Id)
-                    .OfClass(typeof(ImportInstance)).Cast<ImportInstance>().ToList();
-
-                foreach (var imp in oldImports)
-                {
-                    try { targetDoc.Delete(imp.Id); }
-                    catch { }
-                }
-
-                var dwgImportOptions = new DWGImportOptions
-                {
-                    ThisViewOnly = true
-                };
-
-                ElementId importedId;
-                bool imported = targetDoc.Import(dwgFilePath, dwgImportOptions, draftingView, out importedId);
-                if (!imported)
-                {
-                    TaskDialog.Show("KPLN. Менеджер узлов",
-                        "Не удалось импортировать/залинковать DWG в вид узла.");
-                    t.RollBack();
+                if (draftingView == null)
                     return;
-                }
 
-                t.Commit();
+                PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, draftingView);
             }
-
-            if (draftingView == null)
-                return;
-
-            PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, draftingView);
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// ЛИСТ. На донорском виде нет DWG.
         /// </summary>
-        private void HandleNonDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet)
+        private void HandleNonDwgBranch(Document donorDoc, ViewDrafting donorView, UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, bool _useLegendsInsteadOfViews)
         {
-            var existingView = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting))
-                .Cast<ViewDrafting>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
 
-            if (existingView != null)
+
+
+
+
+
+
+
+
+
+
+            // Копирование через легенду
+            if (_useLegendsInsteadOfViews)
             {
-                var td = new TaskDialog("KPLN. Менеджер узлов");
-                td.MainInstruction = $"Вид узла \"{_sourceViewName}\" уже существует в текущем файле.";
-                td.MainContent = "Выберите, что сделать:";
-                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1,
-                    "Использовать существующий вид для размещения");
-                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2,
-                    "Пересоздать существующий вид из файла-донора");
-                td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
-                    "Отмена");
-                td.CommonButtons = TaskDialogCommonButtons.Close;
-                td.DefaultButton = TaskDialogResult.Close;
-
-                var res = td.Show();
-                if (res == TaskDialogResult.CommandLink1)
+                var anyLegend = new FilteredElementCollector(targetDoc).OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend);
+                if (anyLegend == null)
                 {
-                    uidoc.ActiveView = targetSheet;
-                    PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, existingView);
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "В проекте нет ни одной легенды. Revit API не умеет создавать Legend View с нуля.\n" +
+                        "Создайте пустую легенду вручную и повторите команду.");
                     return;
                 }
-                else if (res == TaskDialogResult.CommandLink2)
+
+                // Если легенда с таким именем уже есть — спросить что делать
+                string legendName = _sourceViewName;
+                var existingLegend = new FilteredElementCollector(targetDoc)
+                    .OfClass(typeof(View)).Cast<View>()
+                    .FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend && string.Equals(v.Name, legendName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (existingLegend != null)
                 {
-                    using (var tDel = new Transaction(targetDoc, "KPLN. Удаление существующего вида узла"))
+                    var td = new TaskDialog("KPLN. Менеджер узлов");
+                    td.MainInstruction = $"Легенда узла \"{legendName}\" уже существует в текущем файле.";
+                    td.MainContent = "Выберите, что сделать:";
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1,
+                        "Использовать существующую легенду для размещения");
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2,
+                        "Пересоздать легенду");
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
+                        "Отмена");
+                    td.CommonButtons = TaskDialogCommonButtons.Close;
+                    td.DefaultButton = TaskDialogResult.Close;
+
+                    var res = td.Show();
+                    if (res == TaskDialogResult.CommandLink1)
                     {
-                        tDel.Start();
-
-                        var vpToDelete = new FilteredElementCollector(targetDoc).OfClass(typeof(Viewport))
-                            .Cast<Viewport>().Where(vp => vp.ViewId == existingView.Id).Select(vp => vp.Id).ToList();
-
-                        if (vpToDelete.Count > 0)
-                            targetDoc.Delete(vpToDelete);
-
-                        targetDoc.Delete(existingView.Id);
-
-                        tDel.Commit();
-                    }
-                }
-                else
-                {
-                    return;
-                }
-            }
-
-            var allInView = new FilteredElementCollector(donorDoc, donorView.Id).WhereElementIsNotElementType().ToList();
-            var elementsToCopy = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
-
-            if (elementsToCopy.Count == 0)
-            {
-                TaskDialog.Show("KPLN. Менеджер узлов", $"На исходном виде \"{donorView.Name}\" нет элементов для копирования.");
-                return;
-            }
-
-            ViewDrafting targetView = null;
-            bool targetViewWasCreatedHere = false;
-
-            using (var t = new Transaction(targetDoc, "KPLN. Подготовка вида узла"))
-            {
-                t.Start();
-
-                targetView = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
-                    .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
-
-                if (targetView == null)
-                {
-                    var draftingType = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewFamilyType))
-                        .Cast<ViewFamilyType>().FirstOrDefault(vft => vft.ViewFamily == ViewFamily.Drafting);
-
-                    if (draftingType == null)
-                    {
-                        TaskDialog.Show("KPLN. Менеджер узлов", "В проекте не найден тип для чертёжных видов.");
-                        t.RollBack();
+                        uidoc.ActiveView = targetSheet;
+                        PlaceLegendViewportOnSheet(uidoc, targetDoc, targetSheet, existingLegend);
                         return;
                     }
-
-                    targetView = ViewDrafting.Create(targetDoc, draftingType.Id);
-                    targetView.Name = _sourceViewName;
-                    targetViewWasCreatedHere = true;
-                }
-                else
-                {
-                    var toDelete = new FilteredElementCollector(targetDoc, targetView.Id)
-                        .WhereElementIsNotElementType().Where(e => e.ViewSpecific && !(e is ImportInstance))
-                        .Select(e => e.Id).ToList();
-
-                    if (toDelete.Count > 0)
-                        targetDoc.Delete(toDelete);
-                }
-
-                t.Commit();
-            }
-
-            if (targetView == null)
-                return;
-            using (var t2 = new Transaction(targetDoc, "KPLN. Копирование элементов узла"))
-            {
-                t2.Start();
-
-                var options = new CopyPasteOptions();
-                options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
-
-                var draftingIdsBefore = new FilteredElementCollector(targetDoc)
-                    .OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
-
-                try
-                {
-                    ElementTransformUtils.CopyElements(donorView, elementsToCopy, targetView, Autodesk.Revit.DB.Transform.Identity, options);
-                }
-                catch (Exception ex)
-                {
-                    t2.RollBack();
-                    TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при копировании элементов узла:\n" + ex.Message);
-                    return;
-                }
-
-                var draftingIdsAfter = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
-
-                var newIds = draftingIdsAfter.Where(id => !draftingIdsBefore.Contains(id)).ToList();
-
-                if (newIds.Count > 0)
-                {
-                    var realView = targetDoc.GetElement(newIds[0]) as ViewDrafting;
-                    if (realView != null)
+                    else if (res == TaskDialogResult.CommandLink2)
                     {
-                        if (targetViewWasCreatedHere && targetView.Id != realView.Id)
+                        using (var tDel = new Transaction(targetDoc, "KPLN. Очистка существующей легенды узла"))
                         {
-                            try { targetDoc.Delete(targetView.Id); } catch { }
+                            tDel.Start();
+
+                            try
+                            {
+                                ClearLegendContents(targetDoc, existingLegend);
+                            }
+                            catch { }
+
+                            try
+                            {
+                                if (!string.Equals(existingLegend.Name, legendName, StringComparison.OrdinalIgnoreCase))
+                                    existingLegend.Name = legendName;
+                            }
+                            catch { }
+
+                            tDel.Commit();
                         }
-
-                        targetView = realView;
-
-                        if (!string.Equals(targetView.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            try { targetView.Name = _sourceViewName; } catch { }
-                        }
-                    }
-                }
-
-                t2.Commit();
-            }
-
-            uidoc.ActiveView = targetSheet;
-            TaskDialog.Show("KPLN. Менеджер узлов", "Сейчас вас перекинет на ранее ативный вид, и вам нужно будет указать точку для размещения узла на листе.");
-            PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, targetView);
-        }
-
-        /// <summary>
-        /// Выбор точки на листе и создание/перемещение viewport.
-        /// </summary>
-        private void PlaceViewportOnSheet(UIDocument uidoc, Document targetDoc, ViewSheet targetSheet, View view)
-        {
-            uidoc.ActiveView = targetSheet;
-
-            XYZ point;
-            try
-            {
-                point = uidoc.Selection.PickPoint("Выберите точку для размещения узла на листе");
-            }
-            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
-            {
-                return;
-            }
-
-            using (var t = new Transaction(targetDoc, "KPLN. Размещение узла на листе"))
-            {
-                t.Start();
-
-                var existingVp = new FilteredElementCollector(targetDoc)
-                    .OfClass(typeof(Viewport)).Cast<Viewport>().FirstOrDefault(vp => vp.ViewId == view.Id);
-
-                if (existingVp != null)
-                {
-                    if (existingVp.SheetId == targetSheet.Id)
-                    {
-                        XYZ currentCenter = existingVp.GetBoxCenter();
-                        XYZ delta = point - currentCenter;
-                        ElementTransformUtils.MoveElement(targetDoc, existingVp.Id, delta);
                     }
                     else
                     {
-                        var otherSheet = targetDoc.GetElement(existingVp.SheetId) as ViewSheet;
-                        string sheetName = otherSheet != null ? otherSheet.SheetNumber + " " + otherSheet.Name : "<неизвестно>";
-
-                        TaskDialog.Show("KPLN. Менеджер узлов", $"Вид \"{view.Name}\" уже размещён на листе:\n{sheetName}\n\n" +
-                            "Один и тот же вид нельзя добавить на несколько листов. Создайте дубликат вида, если нужно разместить узел на другом листе.");
-
+                        return;
                     }
+                }
 
-                    t.Commit();
+                // Собираем элементы на донорском виде 
+                var allInView = new FilteredElementCollector(donorDoc, donorView.Id).WhereElementIsNotElementType().ToList();
+                var elementsToCopy = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
+
+                if (elementsToCopy.Count == 0)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"На исходном виде \"{donorView.Name}\" нет элементов для копирования.");
                     return;
                 }
 
-                Viewport.Create(targetDoc, targetSheet.Id, view.Id, point);
-
-                var titleParam = view.get_Parameter(BuiltInParameter.VIEW_DESCRIPTION);
-                if (titleParam != null && !titleParam.IsReadOnly)
+                // Создаём временный DraftingView в targetDoc
+                ViewDrafting tempDrafting = null;
+                using (var t = new Transaction(targetDoc, "KPLN. Создание временного вида узла (temp Drafting)"))
                 {
-                    titleParam.Set("\u200B");
+                    t.Start();
+
+                    var draftingTypeId = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(ViewFamilyType))
+                        .Cast<ViewFamilyType>()
+                        .First(vft => vft.ViewFamily == ViewFamily.Drafting)
+                        .Id;
+
+                    tempDrafting = ViewDrafting.Create(targetDoc, draftingTypeId);
+                    tempDrafting.Name = "_tempViewForPlugin0517";
+
+                    t.Commit();
                 }
 
-                t.Commit();
+
+                if (tempDrafting == null)
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось создать временный вид при создании узла");
+                    return;
+                }
+
+                ICollection<ElementId> copiedIds;
+                var options = new CopyPasteOptions();
+                options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                using (var t = new Transaction(targetDoc, "KPLN. Копирование элементов узла во временный Drafting"))
+                {
+                    t.Start();
+
+                    try
+                    {
+                        copiedIds = ElementTransformUtils.CopyElements(
+                            donorView,
+                            elementsToCopy,
+                            tempDrafting,
+                            Autodesk.Revit.DB.Transform.Identity,
+                            options);
+                    }
+                    catch (Exception ex)
+                    {
+                        t.RollBack();
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при копировании элементов узла:\n" + ex.Message);
+                        return;
+                    }
+
+                    t.Commit();
+                }
+
+                var copiedList = (copiedIds ?? new List<ElementId>())
+                    .Where(id => id != ElementId.InvalidElementId && targetDoc.GetElement(id) != null)
+                    .ToList();
+
+                if (copiedList.Count == 0)
+                {
+                    uidoc.ActiveView = tempDrafting;
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        $"Создан вид \"{tempDrafting.Name}\", но после копирования на нём нет элементов (копирование вернуло пусто).");
+                    return;
+                }
+
+                // Пытаемся создать Detail Group: что можно — сгруппировать, что нельзя — в список
+                ElementId groupTypeId = ElementId.InvalidElementId;
+
+                var ungroupable = new List<ElementId>();
+                var groupable = new List<ElementId>();
+
+                using (var t = new Transaction(targetDoc, "KPLN. Группировка элементов (Detail Group)"))
+                {
+                    t.Start();
+
+                    try
+                    {
+                        Group groupInst = targetDoc.Create.NewGroup(copiedList);
+                        groupTypeId = groupInst?.GetTypeId() ?? ElementId.InvalidElementId;
+                        groupable.AddRange(copiedList);
+                    }
+                    catch
+                    {
+                        foreach (var id in copiedList)
+                        {
+                            if (id == ElementId.InvalidElementId || targetDoc.GetElement(id) == null)
+                            {
+                                ungroupable.Add(id);
+                                continue;
+                            }
+
+                            try
+                            {
+                                Group probe = targetDoc.Create.NewGroup(new List<ElementId> { id });
+                                if (probe != null)
+                                    groupable.Add(id);
+                                else
+                                    ungroupable.Add(id);
+                            }
+                            catch
+                            {
+                                ungroupable.Add(id);
+                            }
+                        }
+
+                        if (groupable.Count > 0)
+                        {
+                            Group groupInst2 = targetDoc.Create.NewGroup(groupable);
+                            groupTypeId = groupInst2?.GetTypeId() ?? ElementId.InvalidElementId;
+                        }
+                        else
+                        {
+                            groupTypeId = ElementId.InvalidElementId;
+                        }
+                    }
+
+                    t.Commit();
+                }
+
+                if (groupTypeId == ElementId.InvalidElementId)
+                {
+                    uidoc.ActiveView = tempDrafting;
+                    TaskDialog.Show("KPLN. Менеджер узлов",
+                        "Не удалось создать группу ни из одного элемента.\n" +
+                        "Скорее всего в наборе только элементы, которые нельзя группировать.");
+                    return;
+                }
+
+                // Создаём/дублируем/очищаем легенду
+                View legendTemp = null;
+
+                using (var t = new Transaction(targetDoc, "KPLN. Поиск/создание и очистка легенды узла"))
+                {
+                    t.Start();
+
+                    legendTemp = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(View)).Cast<View>().FirstOrDefault(v => !v.IsTemplate && v.ViewType == ViewType.Legend && string.Equals(v.Name, legendName, StringComparison.OrdinalIgnoreCase));
+
+                    if (legendTemp == null)
+                    {
+                        ElementId newId = anyLegend.Duplicate(ViewDuplicateOption.Duplicate);
+                        legendTemp = targetDoc.GetElement(newId) as View;
+
+                        if (legendTemp == null)
+                        {
+                            t.RollBack();
+                            TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось создать легенду.");
+                            return;
+                        }
+
+                        try { legendTemp.Name = legendName; } catch { }
+                    }
+
+                    // Полная очистка легенды
+                    var delIds = new FilteredElementCollector(targetDoc, legendTemp.Id)
+                        .WhereElementIsNotElementType().Where(e => e.ViewSpecific && !(e is View) && e.Category != null).Select(e => e.Id).ToList();
+
+                    if (delIds.Count > 0)
+                        targetDoc.Delete(delIds);
+
+                    t.Commit();
+                }
+
+                if (legendTemp == null)
+                {
+                    TaskDialog.Show("Ошибка", "Не удалось создать легенду");
+                    return;
+                }
+
+                // Приминение стилей вида к легенде
+                using (var t = new Transaction(targetDoc, "KPLN. Настройка легенды узла"))
+                {
+                    t.Start();
+
+                    try { legendTemp.Scale = donorView.Scale; } catch { }
+                    try { legendTemp.Discipline = donorView.Discipline; } catch { }
+                    try { legendTemp.DetailLevel = donorView.DetailLevel; } catch { }
+                    try { legendTemp.DisplayStyle = donorView.DisplayStyle; } catch { }
+                    try { legendTemp.PartsVisibility = donorView.PartsVisibility; } catch { }
+
+                    try
+                    {
+                        if (donorView.ViewTemplateId != ElementId.InvalidElementId)
+                        {
+                            var srcTemplate = donorDoc.GetElement(donorView.ViewTemplateId) as View;
+                            if (srcTemplate != null)
+                            {
+                                string templateName = srcTemplate.Name;
+
+                                var dstTemplate = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(View))
+                                    .Cast<View>()
+                                    .FirstOrDefault(v => v.IsTemplate &&
+                                        string.Equals(v.Name, templateName, StringComparison.OrdinalIgnoreCase));
+
+                                if (dstTemplate != null)
+                                {
+                                    legendTemp.ViewTemplateId = dstTemplate.Id;
+                                }
+                                else
+                                {
+                                    TaskDialog.Show("KPLN. Менеджер узлов",
+                                        $"В исходном документе у вида установлен шаблон: \"{templateName}\"\n" +
+                                        "Но в текущем проекте шаблон вида с таким именем не найден.\n" +
+                                        "Легенда будет создана/обновлена без назначения шаблона. Возможно некорректное отображение.");
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    t.Commit();
+                }
+
+                // Размещаем группу на легенде
+                uidoc.ActiveView = legendTemp;
+
+                using (var t = new Transaction(targetDoc, "KPLN. Размещение группы на легенде"))
+                {
+                    t.Start();
+
+                    var gt = targetDoc.GetElement(groupTypeId) as GroupType;
+                    if (gt == null)
+                    {
+                        t.RollBack();
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не найден GroupType для размещения (стал невалидным).");
+                        return;
+                    }
+
+                    Group placed = targetDoc.Create.PlaceGroup(XYZ.Zero, gt);
+                    if (placed == null)
+                    {
+                        t.RollBack();
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Не удалось разместить группу на легенде (PlaceGroup вернул null).");
+                        return;
+                    }
+
+                    t.Commit();
+                }
+
+                // Удаляем tempDrafting
+                using (var t = new Transaction(targetDoc, "KPLN. Удаление временного DraftingView"))
+                {
+                    t.Start();
+                    try
+                    {
+                        if (tempDrafting != null && tempDrafting.IsValidObject)
+                            targetDoc.Delete(tempDrafting.Id);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        var viewToDelete = new FilteredElementCollector(targetDoc)
+                            .OfClass(typeof(View))
+                            .Cast<View>()
+                            .FirstOrDefault(v =>
+                                v != null &&
+                                !v.IsTemplate &&
+                                v.ViewType != ViewType.Legend &&
+                                string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                        if (viewToDelete != null && viewToDelete.IsValidObject)
+                            targetDoc.Delete(viewToDelete.Id);
+                    }
+                    catch { }
+
+                    t.Commit();
+                }
+
+                // Размещаем легенду на листе 
+                uidoc.ActiveView = targetSheet;
+                TaskDialog.Show("KPLN. Менеджер узлов",
+                    "Сейчас вас перекинет на ранее активный вид, и вам нужно будет указать точку для размещения узла на листе.");
+                PlaceLegendViewportOnSheet(uidoc, targetDoc, targetSheet, legendTemp);
+
+                // Финальный диалог (с предупреждением, если что-то не сгруппировалось)
+                var dlg = new Autodesk.Revit.UI.TaskDialog("KPLN. Менеджер узлов");
+
+                if (ungroupable.Count > 0)
+                {
+                    dlg.MainIcon = Autodesk.Revit.UI.TaskDialogIcon.TaskDialogIconWarning;
+                    dlg.MainInstruction = "Узел перенесён на легенду, но часть элементов не удалось сгруппировать.";
+
+                    int previewCount = 20;
+
+                    var previewLines = ungroupable
+                        .Where(id => id != ElementId.InvalidElementId)
+                        .Select(id =>
+                        {
+                            var el = targetDoc.GetElement(id);
+                            string typeName = el?.GetType().Name ?? "<null>";
+                            int intId = id.IntegerValue;
+                            return $"{typeName} (Id={intId})";
+                        })
+                        .Take(previewCount)
+                        .ToList();
+
+                    string previewText = previewLines.Count > 0
+                        ? string.Join("\n", previewLines)
+                        : "<нет данных>";
+
+                    int remaining = Math.Max(0, ungroupable.Count - previewLines.Count);
+                    string moreText = remaining > 0 ? $"\n... и ещё {remaining}" : "";
+
+                    dlg.MainContent =
+                        $"Сгруппировано: {groupable.Count}\n" +
+                        $"Не сгруппировано: {ungroupable.Count}\n\n" +
+                        $"Первые {previewCount} элементов, которые не удалось сгруппировать:\n{previewText}{moreText}";
+                }
+                else
+                {
+                    dlg.MainIcon = Autodesk.Revit.UI.TaskDialogIcon.TaskDialogIconInformation;
+                    dlg.MainInstruction = "Узел перенесён на легенду.";
+                    dlg.MainContent =
+                        $"Элементы с вида \"{_sourceViewName}\" сгруппированы и размещены на легенде \"{legendTemp.Name}\".";
+                }
+
+                dlg.Show();
+                return;
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // Копирование через вид
+            else
+            {
+                var existingView = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting))
+                .Cast<ViewDrafting>().FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                if (existingView != null)
+                {
+                    var td = new TaskDialog("KPLN. Менеджер узлов");
+                    td.MainInstruction = $"Вид узла \"{_sourceViewName}\" уже существует в текущем файле.";
+                    td.MainContent = "Выберите, что сделать:";
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink1,
+                        "Использовать существующий вид для размещения");
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink2,
+                        "Пересоздать существующий вид из файла-донора");
+                    td.AddCommandLink(TaskDialogCommandLinkId.CommandLink3,
+                        "Отмена");
+                    td.CommonButtons = TaskDialogCommonButtons.Close;
+                    td.DefaultButton = TaskDialogResult.Close;
+
+                    var res = td.Show();
+                    if (res == TaskDialogResult.CommandLink1)
+                    {
+                        uidoc.ActiveView = targetSheet;
+                        PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, existingView);
+                        return;
+                    }
+                    else if (res == TaskDialogResult.CommandLink2)
+                    {
+                        using (var tDel = new Transaction(targetDoc, "KPLN. Удаление существующего вида узла"))
+                        {
+                            tDel.Start();
+
+                            var vpToDelete = new FilteredElementCollector(targetDoc).OfClass(typeof(Viewport))
+                                .Cast<Viewport>().Where(vp => vp.ViewId == existingView.Id).Select(vp => vp.Id).ToList();
+
+                            if (vpToDelete.Count > 0)
+                                targetDoc.Delete(vpToDelete);
+
+                            targetDoc.Delete(existingView.Id);
+
+                            tDel.Commit();
+                        }
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
+
+                var allInView = new FilteredElementCollector(donorDoc, donorView.Id).WhereElementIsNotElementType().ToList();
+                var elementsToCopy = allInView.Where(e => e.ViewSpecific && !(e is ImportInstance)).Select(e => e.Id).ToList();
+
+                if (elementsToCopy.Count == 0)
+                {
+                    TaskDialog.Show("KPLN. Менеджер узлов", $"На исходном виде \"{donorView.Name}\" нет элементов для копирования.");
+                    return;
+                }
+
+                ViewDrafting targetView = null;
+                bool targetViewWasCreatedHere = false;
+
+                using (var t = new Transaction(targetDoc, "KPLN. Подготовка вида узла"))
+                {
+                    t.Start();
+
+                    targetView = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).Cast<ViewDrafting>()
+                        .FirstOrDefault(v => !v.IsTemplate && string.Equals(v.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase));
+
+                    if (targetView == null)
+                    {
+                        var draftingType = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewFamilyType))
+                            .Cast<ViewFamilyType>().FirstOrDefault(vft => vft.ViewFamily == ViewFamily.Drafting);
+
+                        if (draftingType == null)
+                        {
+                            TaskDialog.Show("KPLN. Менеджер узлов", "В проекте не найден тип для чертёжных видов.");
+                            t.RollBack();
+                            return;
+                        }
+
+                        targetView = ViewDrafting.Create(targetDoc, draftingType.Id);
+                        targetView.Name = _sourceViewName;
+                        targetViewWasCreatedHere = true;
+                    }
+                    else
+                    {
+                        var toDelete = new FilteredElementCollector(targetDoc, targetView.Id)
+                            .WhereElementIsNotElementType().Where(e => e.ViewSpecific && !(e is ImportInstance))
+                            .Select(e => e.Id).ToList();
+
+                        if (toDelete.Count > 0)
+                            targetDoc.Delete(toDelete);
+                    }
+
+                    t.Commit();
+                }
+
+                if (targetView == null)
+                    return;
+                using (var t2 = new Transaction(targetDoc, "KPLN. Копирование элементов узла"))
+                {
+                    t2.Start();
+
+                    var options = new CopyPasteOptions();
+                    options.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
+
+                    var draftingIdsBefore = new FilteredElementCollector(targetDoc)
+                        .OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
+
+                    try
+                    {
+                        ElementTransformUtils.CopyElements(donorView, elementsToCopy, targetView, Autodesk.Revit.DB.Transform.Identity, options);
+                    }
+                    catch (Exception ex)
+                    {
+                        t2.RollBack();
+                        TaskDialog.Show("KPLN. Менеджер узлов", "Ошибка при копировании элементов узла:\n" + ex.Message);
+                        return;
+                    }
+
+                    var draftingIdsAfter = new FilteredElementCollector(targetDoc).OfClass(typeof(ViewDrafting)).ToElementIds().ToList();
+
+                    var newIds = draftingIdsAfter.Where(id => !draftingIdsBefore.Contains(id)).ToList();
+
+                    if (newIds.Count > 0)
+                    {
+                        var realView = targetDoc.GetElement(newIds[0]) as ViewDrafting;
+                        if (realView != null)
+                        {
+                            if (targetViewWasCreatedHere && targetView.Id != realView.Id)
+                            {
+                                try { targetDoc.Delete(targetView.Id); } catch { }
+                            }
+
+                            targetView = realView;
+
+                            if (!string.Equals(targetView.Name, _sourceViewName, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                try { targetView.Name = _sourceViewName; } catch { }
+                            }
+                        }
+                    }
+
+                    t2.Commit();
+                }
+
+                uidoc.ActiveView = targetSheet;
+                TaskDialog.Show("KPLN. Менеджер узлов", "Сейчас вас перекинет на ранее ативный вид, и вам нужно будет указать точку для размещения узла на листе.");
+                PlaceViewportOnSheet(uidoc, targetDoc, targetSheet, targetView);
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         /// <summary>
         /// ЧЕРТЁЖНЫЙ ВИД
@@ -4992,7 +5860,6 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            // Жёсткая сортировка
             var elemsOnTemp = new FilteredElementCollector(targetDoc, tempView.Id)
                 .WhereElementIsNotElementType()
                 .Where(e => e.ViewSpecific && !(e is ImportInstance) && !(e is View) && !(e is Group) && e.Category != null && e.OwnerViewId == tempView.Id)
@@ -5089,24 +5956,6 @@ namespace KPLN_Tools.Forms
                 t3.Commit();
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// <summary>
         /// ЛЕГЕНДЫ
@@ -5393,231 +6242,6 @@ namespace KPLN_Tools.Forms
             }
 
             return bb == null ? null : (bb.Min + bb.Max) * 0.5;
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // НОЖНИЦЫ
-    public class ScreenCaptureWindow : Window
-    {
-        private readonly int _maxWidth;
-        private readonly int _maxHeight;
-
-        private System.Windows.Controls.Canvas _canvas;
-        private System.Windows.Shapes.Rectangle _selectionRectShape;
-        private System.Windows.Point _startPoint;
-        private bool _isDragging;
-
-        public byte[] CapturedBytes { get; private set; }
-
-        public ScreenCaptureWindow(int maxWidth, int maxHeight)
-        {
-            _maxWidth = maxWidth;
-            _maxHeight = maxHeight;
-
-            InitWindow();
-        }
-
-        private void InitWindow()
-        {
-            this.WindowStyle = WindowStyle.None;
-            this.AllowsTransparency = true;
-            this.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(10, 0, 0, 0));
-            this.ResizeMode = ResizeMode.NoResize;
-            this.ShowInTaskbar = false;
-
-            this.Left = SystemParameters.VirtualScreenLeft;
-            this.Top = SystemParameters.VirtualScreenTop;
-            this.Width = SystemParameters.VirtualScreenWidth;
-            this.Height = SystemParameters.VirtualScreenHeight;
-
-            this.Cursor = Cursors.Cross;
-
-            _canvas = new System.Windows.Controls.Canvas();
-            this.Content = _canvas;
-
-            _selectionRectShape = new System.Windows.Shapes.Rectangle
-            {
-                Stroke = System.Windows.Media.Brushes.Red,
-                StrokeThickness = 1,
-                Fill = new System.Windows.Media.SolidColorBrush(
-                    System.Windows.Media.Color.FromArgb(50, 255, 255, 255)),
-                Visibility = System.Windows.Visibility.Collapsed
-            };
-            _canvas.Children.Add(_selectionRectShape);
-
-            this.MouseDown += OnMouseDown;
-            this.MouseMove += OnMouseMove;
-            this.MouseUp += OnMouseUp;
-            this.KeyDown += OnKeyDown;
-        }
-
-        private void OnKeyDown(object sender, KeyEventArgs e)
-        {
-
-            if (e.Key == Key.Escape)
-            {
-                this.DialogResult = false;
-                this.Close();
-            }
-        }
-
-        private void OnMouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.LeftButton != MouseButtonState.Pressed)
-                return;
-
-            _isDragging = true;
-            _startPoint = e.GetPosition(this);
-
-            System.Windows.Controls.Canvas.SetLeft(_selectionRectShape, _startPoint.X);
-            System.Windows.Controls.Canvas.SetTop(_selectionRectShape, _startPoint.Y);
-            _selectionRectShape.Width = 0;
-            _selectionRectShape.Height = 0;
-            _selectionRectShape.Visibility = System.Windows.Visibility.Visible;
-        }
-
-        private void OnMouseMove(object sender, MouseEventArgs e)
-        {
-            if (!_isDragging)
-                return;
-
-            System.Windows.Point pos = e.GetPosition(this);
-
-            double x = Math.Min(pos.X, _startPoint.X);
-            double y = Math.Min(pos.Y, _startPoint.Y);
-            double w = Math.Abs(pos.X - _startPoint.X);
-            double h = Math.Abs(pos.Y - _startPoint.Y);
-
-            System.Windows.Controls.Canvas.SetLeft(_selectionRectShape, x);
-            System.Windows.Controls.Canvas.SetTop(_selectionRectShape, y);
-            _selectionRectShape.Width = w;
-            _selectionRectShape.Height = h;
-        }
-
-        private void OnMouseUp(object sender, MouseButtonEventArgs e)
-        {
-            if (!_isDragging)
-                return;
-
-            _isDragging = false;
-
-            double x = System.Windows.Controls.Canvas.GetLeft(_selectionRectShape);
-            double y = System.Windows.Controls.Canvas.GetTop(_selectionRectShape);
-            double w = _selectionRectShape.Width;
-            double h = _selectionRectShape.Height;
-
-            if (w < 5 || h < 5)
-            {
-                this.DialogResult = false;
-                this.Close();
-                return;
-            }
-
-            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
-            int leftPx = (int)Math.Round((this.Left + x) * dpi.DpiScaleX);
-            int topPx = (int)Math.Round((this.Top + y) * dpi.DpiScaleY);
-            int widthPx = (int)Math.Round(w * dpi.DpiScaleX);
-            int heightPx = (int)Math.Round(h * dpi.DpiScaleY);
-
-            try
-            {
-                CapturedBytes = CaptureAndScale(leftPx, topPx, widthPx, heightPx,
-                    _maxWidth, _maxHeight);
-                this.DialogResult = CapturedBytes != null;
-            }
-            catch
-            {
-                this.DialogResult = false;
-            }
-            finally
-            {
-                this.Close();
-            }
-        }
-
-        private static byte[] CaptureAndScale(
-            int left, int top, int width, int height,
-            int maxWidth, int maxHeight)
-        {
-            using (var bmp = new System.Drawing.Bitmap(width, height))
-            {
-                using (var g = System.Drawing.Graphics.FromImage(bmp))
-                {
-                    g.CopyFromScreen(left, top, 0, 0,
-                        new System.Drawing.Size(width, height));
-                }
-
-                double scaleW = (double)maxWidth / width;
-                double scaleH = (double)maxHeight / height;
-                double scale = Math.Min(Math.Min(scaleW, scaleH), 1.0);
-
-                int newW = (int)Math.Round(width * scale);
-                int newH = (int)Math.Round(height * scale);
-
-                System.Drawing.Bitmap resultBmp = bmp;
-
-                if (scale < 1.0)
-                {
-                    resultBmp = new System.Drawing.Bitmap(newW, newH);
-                    using (var g2 = System.Drawing.Graphics.FromImage(resultBmp))
-                    {
-                        g2.InterpolationMode =
-                            System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        g2.SmoothingMode =
-                            System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                        g2.PixelOffsetMode =
-                            System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                        g2.CompositingQuality =
-                            System.Drawing.Drawing2D.CompositingQuality.HighQuality;
-
-                        g2.Clear(System.Drawing.Color.White);
-                        g2.DrawImage(bmp, 0, 0, newW, newH);
-                    }
-                }
-
-                try
-                {
-                    using (var ms = new MemoryStream())
-                    {
-                        resultBmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                        return ms.ToArray();
-                    }
-                }
-                finally
-                {
-                    if (!object.ReferenceEquals(resultBmp, bmp))
-                        resultBmp.Dispose();
-                }
-            }
         }
     }
 }
