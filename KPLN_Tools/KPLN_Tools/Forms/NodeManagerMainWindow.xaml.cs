@@ -1523,7 +1523,7 @@ namespace KPLN_Tools.Forms
 
             return string.Join(" > ", stack);
         }
-     
+
         private void BtnSaveComment_Click(object sender, RoutedEventArgs e)
         {
             if (!IsSuperUser)
@@ -1650,7 +1650,7 @@ namespace KPLN_Tools.Forms
             List<string> allTags;
             try
             {
-                allTags = GetAllTagsFromDb(); 
+                allTags = GetAllTagsFromDb();
             }
             catch (Exception ex)
             {
@@ -1678,7 +1678,7 @@ namespace KPLN_Tools.Forms
                 element.Tags = TagHelper.NormalizeTagsString(
                     string.Join(", ", resultTags));
 
-                SaveTagsToDb(element); 
+                SaveTagsToDb(element);
                 ReloadCurrentElement(element.Id);
             }
         }
@@ -1857,11 +1857,11 @@ namespace KPLN_Tools.Forms
                             if (!string.IsNullOrEmpty(docFull) &&
                                 string.Equals(docFull, centralFull, StringComparison.InvariantCultureIgnoreCase))
                             {
-                                centralDoc = d; 
+                                centralDoc = d;
                             }
                             else
                             {
-                                localDoc = d; 
+                                localDoc = d;
                             }
                         }
                         else
@@ -2100,7 +2100,7 @@ namespace KPLN_Tools.Forms
                 catch { }
 
                 this.Show();
-                this.Topmost = true;              
+                this.Topmost = true;
                 this.Topmost = false;
             }
         }
@@ -2429,7 +2429,7 @@ namespace KPLN_Tools.Forms
                 TaskDialog.Show("UpdateDb", "Ошибка при финализации базы:\n" + ex.Message);
             }
         }
-    
+
         private static void EnsureSchema(SQLiteConnection conn)
         {
             using (var cmd = conn.CreateCommand())
@@ -3955,36 +3955,36 @@ namespace KPLN_Tools.Forms
 
                             t.Commit();
                         }
-               
-                            // Удаляем временные виды
-                            using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла (пусто)"))
-                            {
-                                t.Start();
-                          
-                                try
-                                {
-                                    if (targetView != null && targetView.IsValidObject)
-                                        targetDoc.Delete(targetView.Id);
-                                }
-                                catch { }
-                                                   
-                                try
-                                {
-                                    var viewToDelete = new FilteredElementCollector(targetDoc)
-                                        .OfClass(typeof(View))
-                                        .Cast<View>()
-                                        .FirstOrDefault(v => !v.IsTemplate
-                                                             && v.ViewType != ViewType.Legend
-                                                             && string.Equals(v.Name, legendName, StringComparison.OrdinalIgnoreCase));
 
-                                    if (viewToDelete != null && viewToDelete.IsValidObject)
-                                        targetDoc.Delete(viewToDelete.Id);
-                                }
-                                catch { }
-                            
-                                t.Commit();
+                        // Удаляем временные виды
+                        using (var t = new Transaction(targetDoc, "KPLN. Обработка временного вида узла (пусто)"))
+                        {
+                            t.Start();
+
+                            try
+                            {
+                                if (targetView != null && targetView.IsValidObject)
+                                    targetDoc.Delete(targetView.Id);
                             }
-      
+                            catch { }
+
+                            try
+                            {
+                                var viewToDelete = new FilteredElementCollector(targetDoc)
+                                    .OfClass(typeof(View))
+                                    .Cast<View>()
+                                    .FirstOrDefault(v => !v.IsTemplate
+                                                         && v.ViewType != ViewType.Legend
+                                                         && string.Equals(v.Name, legendName, StringComparison.OrdinalIgnoreCase));
+
+                                if (viewToDelete != null && viewToDelete.IsValidObject)
+                                    targetDoc.Delete(viewToDelete.Id);
+                            }
+                            catch { }
+
+                            t.Commit();
+                        }
+
                         if (openedSourceHere) { try { sourceDoc.Close(false); } catch { } }
 
                         var dlg = new Autodesk.Revit.UI.TaskDialog("KPLN. Менеджер узлов");
@@ -4015,7 +4015,7 @@ namespace KPLN_Tools.Forms
                             int remaining = Math.Max(0, ungroupable.Count - previewLines.Count);
                             string moreText = remaining > 0 ? $"\n... и ещё {remaining}" : "";
 
-                            dlg.MainContent =               
+                            dlg.MainContent =
                                 $"Сгруппировано: {groupable.Count}\n" +
                                 $"Не сгруппировано: {ungroupable.Count}\n\n" +
                                 $"Первые {previewCount} элементов, которые не удалось сгруппировать:\n{previewText}{moreText}";
@@ -4033,7 +4033,7 @@ namespace KPLN_Tools.Forms
                     }
                     // Копирование на вид
                     else
-                    {                       
+                    {
                         ViewDrafting targetView;
                         using (var t = new Transaction(targetDoc, "KPLN. Создание временного вида узла"))
                         {
@@ -4181,7 +4181,7 @@ namespace KPLN_Tools.Forms
         private bool _useLegendsInsteadOfViews;
 
         // Варианты выбора DWG
-        private enum DwgChoice {ExportOverwriteAndUse, UseExisting, Cancel}
+        private enum DwgChoice { ExportOverwriteAndUse, UseExisting, Cancel }
 
         // Есть ли на донорском виде импортированный DWG (уходит на три ветки)
         private bool ViewContainsDwg(Document donorDoc, ViewDrafting donorView)
@@ -4546,7 +4546,7 @@ namespace KPLN_Tools.Forms
         {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
             if (legendView == null) throw new ArgumentNullException(nameof(legendView));
-          
+
             var delIds = new FilteredElementCollector(doc, legendView.Id)
                 .WhereElementIsNotElementType()
                 .Where(e =>
@@ -4747,7 +4747,7 @@ namespace KPLN_Tools.Forms
             }
             else
             {
-                TaskDialog.Show("Выбор точки","Укажите точку для размещения узла");
+                TaskDialog.Show("Выбор точки", "Укажите точку для размещения узла");
                 choice = DwgChoice.ExportOverwriteAndUse;
             }
 
@@ -5714,7 +5714,7 @@ namespace KPLN_Tools.Forms
                 }
             }
             else
-            {               
+            {
                 choice = DwgChoice.ExportOverwriteAndUse;
             }
 
