@@ -93,6 +93,7 @@
     <Compile Include="APITools.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="Common\Collections.cs" />
+    <Compile Include="Common\BuildViewpointsByObjectComments.cs" />
     <Compile Include="Common\CustomClashTest.cs" />
     <Compile Include="Common\GroupClashesByComment.cs" />
     <Compile Include="DBTools.cs" />
@@ -186,6 +187,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\comment_small.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\comVP_big.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Source\comVP_small.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="Source\counter_big.png">
