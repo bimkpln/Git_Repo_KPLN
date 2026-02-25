@@ -217,6 +217,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
@@ -466,6 +467,10 @@
     <Resource Include="Imagens\holes16_dark.png" />
     <Resource Include="Imagens\holes32.png" />
     <Resource Include="Imagens\holes32_dark.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesBig.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

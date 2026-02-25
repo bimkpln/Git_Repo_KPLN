@@ -294,11 +294,28 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.TEPDesignSmall.png",
                     "http://moodle");
 
+                PushButtonData evacuationRoutes = CreateBtnData(
+                    "Автомоделирование путей эвакуации",
+                    "Автомоделирование путей эвакуации",
+                    "Плагин для автомоделирования путей эвакуации",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_AR_EvacuationRoutes).FullName,
+                    "KPLN_Tools.Imagens.evacuationRoutesBig.png",
+                    "KPLN_Tools.Imagens.evacuationRoutesSmall.png",
+                    "http://moodle");
+
+
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
 #if Debug2023 || Revit2023
                 arToolsPullDownBtn.AddPushButton(arPyatnGraph);
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
 #endif
+                arToolsPullDownBtn.AddPushButton(evacuationRoutes);
             }
 
             #endregion
