@@ -511,6 +511,12 @@ namespace KPLN_FamilyManager.Forms
         private const string RFA_ROOT = @"X:\BIM\3_Семейства";
         private List<FamilyManagerRecord> _records;
 
+        private bool _uiLoaded = false;
+        private static readonly Dictionary<string, bool> _loadedForProject = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private static bool _docEventsHooked = false;
+        private int _pendingProjectId = -1; 
+        private int _pendingStageId = -1;
+
         private const string BIM = "BIM";
         private const string BIM_ADMIN = "BIM (Админ)";
         private static bool IsBimAdmin(string dep)
@@ -568,7 +574,46 @@ namespace KPLN_FamilyManager.Forms
         public void SetUIApplication(UIApplication uiapp)
         {
             _uiapp = uiapp;
+
+            HookProjectOpenEventsOnce();
             ResetDeptCacheAndUi();
+        }
+
+        private void HookProjectOpenEventsOnce()
+        {
+            if (_docEventsHooked) return;
+            if (_uiapp?.Application == null) return;
+
+            _docEventsHooked = true;
+
+            _uiapp.Application.DocumentOpened += (s, e) =>
+            {
+                try
+                {
+                    if (e?.Document == null) return;
+                    if (e.Document.IsFamilyDocument) return;
+
+                    var key = (e.Document.PathName ?? e.Document.Title ?? "").Trim();
+                    if (string.IsNullOrWhiteSpace(key)) return;
+
+                    _loadedForProject[key] = false;
+
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (!_uiLoaded) return;
+
+                        var depUi = GetCurrentDepartment();
+
+                        if (IsBimAdmin(depUi))
+                            return;
+
+                        // показать заглушку немедленно
+                        ShowManualLoadPlaceholder(depUi);
+
+                    }), DispatcherPriority.Background);
+                }
+                catch { }
+            };
         }
 
         public FamilyManager(string currentStr)
@@ -684,6 +729,151 @@ namespace KPLN_FamilyManager.Forms
                     return obj != null;
                 }
             }
+        }
+
+        private bool IsManualLoadMode(string depUi) => !IsBimAdmin(depUi);
+        private static string GetProjectDocKey(UIApplication uiapp)
+        {
+            try
+            {
+                if (uiapp?.ActiveUIDocument?.Document == null) return "no_doc";
+
+                Document d = uiapp.ActiveUIDocument.Document;
+                if (d.IsFamilyDocument)
+                {
+                    d = uiapp.Application.Documents.Cast<Document>().FirstOrDefault(x => !x.IsFamilyDocument);
+                    if (d == null) return "no_project";
+                }
+
+                var key = (d.PathName ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(key)) return key;
+
+                return (d.Title ?? "project").Trim();
+            }
+            catch
+            {
+                return "no_doc";
+            }
+        }
+
+        private bool IsLoadedForCurrentProject()
+        {
+            var key = GetProjectDocKey(_uiapp);
+            if (string.IsNullOrWhiteSpace(key)) return false;
+            return _loadedForProject.TryGetValue(key, out var v) && v;
+        }
+
+        private void SetLoadedForCurrentProject(bool value)
+        {
+            var key = GetProjectDocKey(_uiapp);
+            if (string.IsNullOrWhiteSpace(key)) return;
+            _loadedForProject[key] = value;
+        }
+
+        private void ShowManualLoadPlaceholder(string depUi)
+        {
+            EnsureLookupsLoaded(); 
+
+            var root = new Grid { Margin = new Thickness(12) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); 
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); 
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            bool isAR = string.Equals(depUi?.Trim(), "АР", StringComparison.OrdinalIgnoreCase);
+
+            var text = isAR
+                ? "Укажите стадию и проект или оставьте \"Без фильтра\", чтобы отобразить все семейства, после чего нажмите кнопку \"Загрузить\"."
+                : "Укажите проект или оставьте \"Без фильтра\", чтобы отобразить все семейства, после чего нажмите кнопку \"Загрузить\".";
+
+            var tb = new TextBlock
+            {
+                Text = text,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10),
+                Opacity = 0.85
+            };
+            Grid.SetRow(tb, 0);
+            root.Children.Add(tb);
+
+            var filtersPanel = new StackPanel { Orientation = Orientation.Vertical, Margin = new Thickness(0, 0, 0, 10) };
+
+            _cbStage = null;
+            if (isAR)
+            {
+                _cbStage = new ComboBox { Height = 22, Margin = new Thickness(0, 0, 0, 8), IsEditable = false };
+                BindStageCombo_DefaultId1(_cbStage);
+
+                if (_pendingStageId != -1) _cbStage.SelectedValue = _pendingStageId;
+
+                _cbStage.SelectionChanged += (s, e) =>
+                {
+                    if (_cbStage?.SelectedValue is int id) _pendingStageId = id;
+                };
+
+                filtersPanel.Children.Add(_cbStage);
+            }
+
+            _cbProject = new ComboBox { Height = 22, IsEditable = false };
+            BindProjectCombo_DefaultId1(_cbProject);
+
+            if (_pendingProjectId != -1) _cbProject.SelectedValue = _pendingProjectId;
+
+            _cbProject.SelectionChanged += (s, e) =>
+            {
+                if (_cbProject?.SelectedValue is int id) _pendingProjectId = id;
+            };
+
+            filtersPanel.Children.Add(_cbProject);
+
+            Grid.SetRow(filtersPanel, 1);
+            root.Children.Add(filtersPanel);
+
+            var btn = new Button
+            {
+                Content = "Загрузить",
+                Width = 120,
+                Height = 26,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            btn.Click += (s, e) =>
+            {
+                SetLoadedForCurrentProject(true);
+                ReloadData(); 
+            };
+
+            Grid.SetRow(btn, 2);
+            root.Children.Add(btn);
+
+            _bimRootPanel = null;
+            _bimScrollViewer = null;
+            _universalRootPanel = null;
+            _univScrollViewer = null;
+            _scenarioContent = null;
+
+            _btnOpenInRevit = null;
+            _btnLoadIntoProject = null;
+
+            MainArea.Child = root;
+        }
+
+        private void LoadOrShowPlaceholder()
+        {
+            var depUi = GetCurrentDepartment();
+
+            if (IsBimAdmin(depUi))
+            {
+                SetLoadedForCurrentProject(true); 
+                ReloadData();
+                return;
+            }
+
+            if (!IsLoadedForCurrentProject())
+            {
+                ShowManualLoadPlaceholder(depUi);
+                return;
+            }
+
+            ReloadData();
         }
 
         // Обновление статуса (доступности кнопок)
@@ -937,7 +1127,8 @@ namespace KPLN_FamilyManager.Forms
             StartFavoritesWatcher();
 
             _suppressAutoReload = false;
-            ReloadData();
+            LoadOrShowPlaceholder();
+            _uiLoaded = true;
         }
 
         // XAML. Док панель. Обновление статуса CmbDepartment (
@@ -960,13 +1151,16 @@ namespace KPLN_FamilyManager.Forms
 
             UpdateUiState();
 
+
+            //if (!_suppressAutoReload) ReloadData();
             if (!_suppressAutoReload)
-                ReloadData();
+                LoadOrShowPlaceholder();
         }
 
         // XAML. Док панель. Загрузка данных по кнопке
         private void BtnReload_Click(object sender, System.Windows.RoutedEventArgs e)
         {
+            SetLoadedForCurrentProject(true); // Это я добавил
             ReloadData();
         }
 
@@ -1158,8 +1352,13 @@ namespace KPLN_FamilyManager.Forms
                         IsEditable = false
                     };
                     BindStageCombo_DefaultId1(_cbStage);
+
+                    if (_pendingStageId != -1)
+                        _cbStage.SelectedValue = _pendingStageId;
+
                     _cbStage.SelectionChanged += (s, e) =>
                     {
+                        if (_cbStage?.SelectedValue is int sid) _pendingStageId = sid;
                         ClearCurrentDeptSelection();
                         RefreshScenario();
                         UpdateSelectionButtonsState();
@@ -1177,12 +1376,19 @@ namespace KPLN_FamilyManager.Forms
                     IsEditable = false
                 };
                 BindProjectCombo_DefaultId1(_cbProject);
+
+                if (_pendingProjectId != -1)
+                    _cbProject.SelectedValue = _pendingProjectId;
+
                 _cbProject.SelectionChanged += (s, e) =>
                 {
+                    if (_cbProject?.SelectedValue is int pid) _pendingProjectId = pid;
                     ClearCurrentDeptSelection();
                     RefreshScenario();
                     UpdateSelectionButtonsState();
                 };
+
+
 
                 filtersPanel.Children.Add(_cbProject);
 
@@ -2918,13 +3124,6 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
-
-
-
-
-
-
-
         // Интерфейс универсального отдела
         private IEnumerable<FamilyManagerRecord> GetUniversalFiltered(string depUi)
         {
@@ -2943,6 +3142,12 @@ namespace KPLN_FamilyManager.Forms
             string q = (_isWatermarkActive ? null : _tbSearch?.Text)?.Trim();
             if (!string.IsNullOrEmpty(q))
                 filtered = filtered.Where(r => MatchesSearchByIndex(r, q));
+
+            if (_cbStage != null && _cbStage.SelectedValue is int stageId)
+            {
+                if (stageId > 0)
+                    filtered = filtered.Where(r => r.Stage == stageId);
+            }
 
             if (_cbProject != null && _cbProject.SelectedValue is int projectId)
             {
