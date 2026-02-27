@@ -22,8 +22,9 @@ namespace KPLN_Publication.Forms.MVVMCore
         private int _currentProgress;
         private int _maxProgress = 1;
 
-        private string _mainStatus = "Анализирую.....";
+        private string _mainStatus = "Экспортирую.....";
         public bool _isComplete = false;
+        private bool _isCancellationRequested;
 
         public ProgressInfoViewModel()
         {
@@ -71,12 +72,31 @@ namespace KPLN_Publication.Forms.MVVMCore
                 _isComplete = value;
                 if (_isComplete)
                 {
-                    MaintStatus = "Завершено!";
+                    MaintStatus = "Завершено";
                     CompleteStatus?.Invoke();
                 }
-
                 OnPropertyChanged();
             }
+        }
+
+        public bool IsCancellationRequested
+        {
+            get => _isCancellationRequested;
+            private set
+            {
+                _isCancellationRequested = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public void RequestCancellation()
+        {
+            if (IsCancellationRequested || IsComplete)
+                return;
+
+            IsCancellationRequested = true;
+            MaintStatus = "Отменено пользователем";
+            CompleteStatus?.Invoke();
         }
 
         public void DoEvents()

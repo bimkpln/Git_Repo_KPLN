@@ -39,7 +39,8 @@ namespace KPLN_Publication.Forms
 
         private void CancelBtn_Click(object sender, RoutedEventArgs e)
         {
-
+            if (DataContext is ProgressInfoViewModel progressInfo)
+                progressInfo.RequestCancellation();
         }
     }
 }

@@ -4,6 +4,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker;
+using KPLN_Loader.Forms;
 using KPLN_Publication.Forms;
 using KPLN_Publication.Forms.MVVMCore;
 using System;
@@ -401,15 +402,33 @@ namespace KPLN_Publication.ExternalCommands.Print
                 // Открываю окно статуса
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel
                 {
-                    ProcessTitle = "Экспорт видов/листов...",
+                    ProcessTitle = "Экспорт в pdf видов/листов...",
                     MaxProgress = mSheets.Count
                 };
-                ProgressWindow window = new ProgressWindow(progressInfoViewModel);
-                window.Show();
+                ProgressWindow window = null;
+                ManualResetEvent formReady = new ManualResetEvent(false);
+                Thread uiThread = new Thread(() =>
+                {
+                    window = new ProgressWindow(progressInfoViewModel);
+                    window.Show();
+                    formReady.Set();
+                    System.Windows.Threading.Dispatcher.Run();
+                });
+                uiThread.SetApartmentState(ApartmentState.STA);
+                uiThread.IsBackground = true;
+                uiThread.Start();
+                formReady.WaitOne();
+
 
                 //печатаю каждый лист
                 foreach (MainEntity msheet in mSheets)
                 {
+                    if (progressInfoViewModel.IsCancellationRequested)
+                    {
+                        logger.Write("Пользователь отменил процесс экспорта в pdf");
+                        break;
+                    }
+
                     logger.Write(" ");
                     logger.Write("Печатается лист: " + msheet.MainView.Name);
                     if (printSettings.isRefreshSchedules)
@@ -486,6 +505,16 @@ namespace KPLN_Publication.ExternalCommands.Print
                     progressInfoViewModel.DoEvents();
                 }
 
+                
+                if (!progressInfoViewModel.IsCancellationRequested)
+                {
+                    window.Dispatcher.Invoke(() =>
+                    {
+                        progressInfoViewModel.IsComplete = true;
+                        window.UpdateLayout();
+                    });
+                }
+    
                 if (rlt != null)
                 {
 
@@ -743,9 +772,36 @@ namespace KPLN_Publication.ExternalCommands.Print
                 // Создаем набор для экспорта
                 ICollection<ElementId> viewsToExport = new List<ElementId>(mSheets.Select(sh => sh.MainView.Id));
 
+                // Открываю окно статуса
+                ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel
+                {
+                    ProcessTitle = "Экспорт в dwg видов/листов...",
+                    MaxProgress = mSheets.Count
+                };
+                ProgressWindow window = null;
+                ManualResetEvent formReady = new ManualResetEvent(false);
+                Thread uiThread = new Thread(() =>
+                {
+                    window = new ProgressWindow(progressInfoViewModel);
+                    window.Show();
+                    formReady.Set();
+                    System.Windows.Threading.Dispatcher.Run();
+                });
+                uiThread.SetApartmentState(ApartmentState.STA);
+                uiThread.IsBackground = true;
+                uiThread.Start();
+                formReady.WaitOne();
+
+
                 //экспортирую каждый лист
                 foreach (MainEntity msheet in mSheets)
                 {
+                    if (progressInfoViewModel.IsCancellationRequested)
+                    {
+                        logger.Write("Пользователь отменил процесс экспорта в dwg");
+                        break;
+                    }
+
                     logger.Write(" ");
                     logger.Write("Экспортируется лист: " + msheet.MainView.Name);
 
@@ -763,6 +819,18 @@ namespace KPLN_Publication.ExternalCommands.Print
                         dwgOptions);
                     if (exportSuccess)
                         exportedSheetCount++;
+
+                    ++progressInfoViewModel.CurrentProgress;
+                    progressInfoViewModel.DoEvents();
+                }
+
+                if (!progressInfoViewModel.IsCancellationRequested)
+                {
+                    window.Dispatcher.Invoke(() =>
+                    {
+                        progressInfoViewModel.IsComplete = true;
+                        window.UpdateLayout();
+                    });
                 }
 
                 if (rlt != null)
