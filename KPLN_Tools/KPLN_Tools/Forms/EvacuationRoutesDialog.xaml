@@ -1,0 +1,53 @@
+﻿<Window x:Class="KPLN_Tools.ExternalCommands.UI.EvacuationRoutesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Маршруты эвакуации"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" FontFamily="Century Gothic">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="TbStairsInfo" FontSize="12" Margin="0,0,0,10"/>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="240"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock VerticalAlignment="Center" Text="Высота (мм):"/>
+            <TextBox Grid.Column="1" x:Name="TbHeightMm" Margin="8,0,0,0" Height="26" VerticalContentAlignment="Center" PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_OnPaste"/>
+        </Grid>
+
+        <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="240"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Ширина (мм):"/>
+            <TextBox Grid.Row="0" Grid.Column="1" x:Name="TbWidthMm" Margin="8,0,0,0" Height="26" VerticalContentAlignment="Center" PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_OnPaste"/>
+            <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CbUseRunWidth" Content="По ширине марша" Margin="8,0,0,0" Checked="UseRunWidth_Changed" Unchecked="UseRunWidth_Changed" IsChecked="True"/>
+        </Grid>
+
+        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Width="90" Height="24" Margin="0,0,12,0" Content="Отмена" Click="Cancel_Click"/>
+            <Button Width="130" Height="24" Margin="0,0,8,0" Content="Выбрать лестницу" Click="PickOne_Click"/>
+            <Button Width="100" Height="24" Content="Все лестницы" Click="Ok_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>
