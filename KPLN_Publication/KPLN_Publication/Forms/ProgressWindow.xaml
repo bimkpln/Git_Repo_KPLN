@@ -1,0 +1,99 @@
+﻿<Window 
+    x:Class="KPLN_Publication.Forms.ProgressWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:KPLN_Publication.Forms"
+    mc:Ignorable="d" 
+    Height="Auto"
+    Width="400"
+    Title="KPLN: Пакетная выдача"
+    SizeToContent="Height"
+    Topmost="True"
+    Background="White">
+
+    <Window.Resources>
+        <Style x:Key="TXTBL" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="PRBR" TargetType="ProgressBar">
+            <Setter Property="Foreground" Value="Red"/>
+            <Setter Property="Height" Value="25"/>
+        </Style>
+
+        
+        <Style x:Key="BTN" TargetType="Button">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="5,5,5,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border 
+                            CornerRadius="5" 
+                            Padding="1"
+                            Background="{TemplateBinding Background}">
+                            <Grid>
+                                <ContentPresenter 
+                                    x:Name="MyContentPresenter" 
+                                    Content="{TemplateBinding Content}" 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    
+    <StackPanel Margin="10">
+        <StackPanel>
+            <TextBlock 
+                Text="{Binding ProcessTitle}"
+                Style="{StaticResource TXTBL}"/>
+            <Grid>
+                <ProgressBar
+                    Minimum="0"
+                    Maximum="{Binding MaxProgress}"
+                    Value="{Binding CurrentProgress}"
+                    Style="{StaticResource PRBR}"/>
+                <TextBlock
+                    Text="{Binding ProgressCount}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"/>
+            </Grid>
+        </StackPanel>
+
+        
+        <DockPanel
+            LastChildFill="True">
+            <TextBlock 
+                Text="Статус процесса: "
+                FontWeight="Bold"
+                Style="{StaticResource TXTBL}"/>
+            <TextBlock 
+                Text="{Binding MaintStatus}"
+                Style="{StaticResource TXTBL}"/>
+        </DockPanel>
+
+
+        <Button
+            Style="{StaticResource BTN}"
+            Content="Отмена"
+            Click="CancelBtn_Click"/>
+    </StackPanel>
+
+</Window>

@@ -287,6 +287,10 @@
     <Compile Include="Forms\EnterNameForm.xaml.cs">
       <DependentUpon>EnterNameForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\MVVMCore\ProgressInfoViewModel.cs" />
+    <Compile Include="Forms\ProgressWindow.xaml.cs">
+      <DependentUpon>ProgressWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SetManager.xaml.cs">
       <DependentUpon>SetManager.xaml</DependentUpon>
     </Compile>
@@ -387,6 +391,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\EnterNameForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\ProgressWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

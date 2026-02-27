@@ -46,7 +46,6 @@ namespace KPLN_Publication
                 string linkDocTitle = GetDocTitleWithoutRvt(linkDoc.Title);
                 if (data.ContainsKey(linkDocTitle)) continue;
 
-                RevitLinkType rlt = mainDoc.GetElement(rli.GetTypeId()) as RevitLinkType;
                 List<MainEntity> curSheets = GetEntitiesFromDocument(linkDoc, selViews);
 
                 data.Add(linkDocTitle, curSheets);
@@ -59,7 +58,9 @@ namespace KPLN_Publication
         public static string GetDocTitleWithoutRvt(string docTitle)
         {
             string result = docTitle;
-            if (docTitle.EndsWith(".rvt")) result = docTitle.Substring(0, docTitle.Length - 4);
+            if (docTitle.EndsWith(".rvt")) 
+                result = docTitle.Substring(0, docTitle.Length - 4);
+            
             return result;
         }
 
