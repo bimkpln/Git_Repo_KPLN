@@ -366,7 +366,7 @@ namespace KPLN_Quantificator.Common
             }
 
             // +1000 мм (в единицах модели)
-            double pad = GetPaddingInModelUnits(doc, 1000.0);
+            double pad = GetPaddingInModelUnits(doc, 500.0);
 
             int created = 0;
             int updated = 0;
