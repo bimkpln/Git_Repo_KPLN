@@ -215,6 +215,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
