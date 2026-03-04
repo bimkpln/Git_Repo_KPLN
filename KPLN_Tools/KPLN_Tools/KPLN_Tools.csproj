@@ -215,6 +215,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
@@ -228,6 +229,9 @@
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\EvacuationRoutesDialog.xaml.cs">
+      <DependentUpon>EvacuationRoutesDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
@@ -433,6 +437,10 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\EvacuationRoutesDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -464,6 +472,10 @@
     <Resource Include="Imagens\holes16_dark.png" />
     <Resource Include="Imagens\holes32.png" />
     <Resource Include="Imagens\holes32_dark.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesBig.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
+    <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
