@@ -170,7 +170,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
                     else
                     {
-                        failedStairsIds.Add(s.Id.IntegerValue);
+                        failedStairsIds.Add(EidInt(s.Id));
                     }
 
                     if (stairFailedRuns != null && stairFailedRuns.Count > 0)
@@ -234,7 +234,7 @@ namespace KPLN_Tools.ExternalCommands
                 else
                 {
                     // ===== РЕЖИМ: ОДНА ЛЕСТНИЦА =====
-                    int stairId = targetStairs[0].Id.IntegerValue;
+                    int stairId = EidInt(targetStairs[0].Id);
 
                     bool stairFailed = stairsFail.Contains(stairId);
                     bool anyRunsFailed = runsFail.Count > 0;
@@ -266,7 +266,23 @@ namespace KPLN_Tools.ExternalCommands
 
 
 
+        private static long EidValue(ElementId id)
+        {
+#if Revit2024 || Debug2024
+            return id.Value;
+#else
+    return id.IntegerValue;
+#endif
+        }
 
+        private static int EidInt(ElementId id)
+        {
+#if Revit2024 || Debug2024
+            return (int)id.Value;
+#else
+            return id.IntegerValue;
+#endif
+        }
 
 
 
@@ -363,7 +379,7 @@ namespace KPLN_Tools.ExternalCommands
             if (!hasRuns && !hasLandings) return false;
 
 
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
             double heightFt = UnitUtils.ConvertToInternalUnits(data.HeightMm, UnitTypeId.Millimeters);
             if (heightFt <= 1e-9) return false;
             double epsFt = UnitUtils.ConvertToInternalUnits(1.0, UnitTypeId.Millimeters);
@@ -382,7 +398,7 @@ namespace KPLN_Tools.ExternalCommands
                     StairsRun run = doc.GetElement(runId) as StairsRun;
                     if (run == null)
                     {
-                        failedRunIds.Add(runId.IntegerValue);
+                        failedRunIds.Add(EidInt(runId));
                         continue;
                     }
 
@@ -396,7 +412,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
                     else
                     {
-                        failedRunIds.Add(runId.IntegerValue);
+                        failedRunIds.Add(EidInt(runId));
                     }
                 }
             }
@@ -419,13 +435,13 @@ namespace KPLN_Tools.ExternalCommands
                     StairsLanding landing = doc.GetElement(landingId) as StairsLanding;
                     if (landing == null)
                     {
-                        failedLandingIds.Add(landingId.IntegerValue);
+                        failedLandingIds.Add(EidInt(landingId));
                         continue;
                     }
 
                     bool okLanding = TryCreateRouteBodyOnLanding(doc, stairs, landing, runs, runInfos, data, heightFt);
                     if (okLanding) createdLandings++;
-                    else failedLandingIds.Add(landingId.IntegerValue);
+                    else failedLandingIds.Add(EidInt(landingId));
                 }
             }
 
@@ -482,7 +498,7 @@ namespace KPLN_Tools.ExternalCommands
             if (p0.Z <= p1.Z) { bottomCenter = p0; topCenter = p1; }
             else { bottomCenter = p1; topCenter = p0; }
 
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
             double widthFt = data.UseRunWidth ? GetRunWidthFt(run, bottomCenter, topCenter) : UnitUtils.ConvertToInternalUnits(data.WidthMm, UnitTypeId.Millimeters);
 #else
             double widthFt = data.UseRunWidth ? GetRunWidthFt(run, bottomCenter, topCenter) : UnitUtils.ConvertToInternalUnits(data.WidthMm, DisplayUnitType.DUT_MILLIMETERS);
@@ -538,7 +554,7 @@ namespace KPLN_Tools.ExternalCommands
             runInfo = new RunRouteBodyInfo
             {
                 RunId = run.Id,
-                StairsId = stairs.Id.IntegerValue,
+                StairsId = EidInt(stairs.Id),
                 WidthFt = widthFt,
                 HeightFt = heightFt,
                 XDirPlan = xP,
@@ -562,7 +578,7 @@ namespace KPLN_Tools.ExternalCommands
             };
 
             // СОЗДАТЬ ИЛИ ОБНОВИТЬ
-            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", run.Id.IntegerValue.ToString(), $"ПЭ_{stairs.Id.IntegerValue}{run.Id.IntegerValue}", solid);
+            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", EidValue(run.Id).ToString(), $"ПЭ_{EidValue(stairs.Id)}{EidValue(run.Id)}", solid);
             return true;
         }
 
@@ -654,7 +670,7 @@ namespace KPLN_Tools.ExternalCommands
                 return false;
 
 
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
             double depthFt = data.UseRunWidth ? Math.Max(A.run.WidthFt, B.run.WidthFt) : UnitUtils.ConvertToInternalUnits(data.WidthMm, UnitTypeId.Millimeters);
 
             if (depthFt <= 1e-9)
@@ -721,7 +737,7 @@ namespace KPLN_Tools.ExternalCommands
                 return false;
 
             // СОЗДАТЬ ИЛИ ОБНОВИТЬ
-            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", landing.Id.IntegerValue.ToString(), $"ПЭ_Л_{stairs.Id.IntegerValue}_{landing.Id.IntegerValue}", solid);
+            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", EidValue(landing.Id).ToString(), $"ПЭ_Л_{EidValue(stairs.Id)}_{EidValue(landing.Id)}", solid);
             return true;
         }
 
@@ -789,7 +805,7 @@ namespace KPLN_Tools.ExternalCommands
             CollectSolidsRecursive(ge, Transform.Identity, solids);
             if (solids.Count == 0) return false;
 
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
             double big = UnitUtils.ConvertToInternalUnits(20000.0, UnitTypeId.Millimeters);
 #else
             double big = UnitUtils.ConvertToInternalUnits(20000.0, DisplayUnitType.DUT_MILLIMETERS);
@@ -977,7 +993,7 @@ namespace KPLN_Tools.ExternalCommands
             XYZ dirPlan = new XYZ(top.X - bottom.X, top.Y - bottom.Y, 0.0);
             if (dirPlan.GetLength() < 1e-9)
             {
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
                 return UnitUtils.ConvertToInternalUnits(1000.0, UnitTypeId.Millimeters);
 #else
                 return UnitUtils.ConvertToInternalUnits(1000.0, DisplayUnitType.DUT_MILLIMETERS);
@@ -992,7 +1008,7 @@ namespace KPLN_Tools.ExternalCommands
             BoundingBoxXYZ bb = run.get_BoundingBox(null);
             if (bb == null)
             {
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
                 return UnitUtils.ConvertToInternalUnits(1000.0, UnitTypeId.Millimeters);
 #else
                 return UnitUtils.ConvertToInternalUnits(1000.0, DisplayUnitType.DUT_MILLIMETERS);
@@ -1024,7 +1040,7 @@ namespace KPLN_Tools.ExternalCommands
             double w = max - min;
             if (w <= 1e-6)
             {
-#if Debug2023 || RDebug2024 || Revit2023 || Revit2024
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
                 w = UnitUtils.ConvertToInternalUnits(1000.0, UnitTypeId.Millimeters);
 #else
                 w = UnitUtils.ConvertToInternalUnits(1000.0, DisplayUnitType.DUT_MILLIMETERS);
