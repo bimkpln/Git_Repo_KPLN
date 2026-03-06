@@ -22,6 +22,14 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
         <Style 
+            x:Key="TBlockTooltip"
+            TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style 
             x:Key="TBox"
             TargetType="TextBox">
             <Setter Property="Margin" Value="5"/>
@@ -145,7 +153,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock
                     Style="{StaticResource TBlock}"
-                    Text="Проверять и находить отсутсв. материалы"/>
+                    Text="Проверять и находить отсутств. материалы"/>
                 <CheckBox
                     Grid.Column="1"
                     Style="{StaticResource CBox}"
@@ -236,14 +244,29 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock
                     Style="{StaticResource TBlock}"
-                    Text="Имя рабочих наборов, которые нужно закрыть (указывать через '~')"/>
+                    Text="Имя рабочих наборов, которые нужно закрыть (правила описаны в подсказке)"/>
                 <TextBox
                     Grid.Column="1"
                     Style="{StaticResource TBox}"
                     Width="140"
-                    ToolTip="Вводишь имя через тильду '~', правила поиска - 'Имя начинается с'"
                     Text="{Binding WorksetToCloseNamesStartWith, 
-                        UpdateSourceTrigger=PropertyChanged}"/>
+                        UpdateSourceTrigger=PropertyChanged}">
+                    <TextBox.ToolTip>
+                        <StackPanel MaxWidth="700">
+                            <TextBlock Style="{StaticResource TBlockTooltip}"><Bold>ОСНОВНЫЕ ПРАВИЛА: </Bold></TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">1. Разделитель между разными РН - <Italic>тильда "~"</Italic></TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">2. Правила поиска РН по умолчанию <Italic>"Начинается с"</Italic></TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">3. Для замены правила на <Italic>"Содержит" - нужно обернуть часть имени с обеих сторон "*"</Italic></TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">4. Для замены правила на <Italic>"НЕ содержит" - нужно обернуть часть имени с обеих сторон "!"</Italic></TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}"><Bold>ПРИМЕРЫ: </Bold></TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">1. 00_" закроет все РН, имя которых НАЧИНАЮТСЯ С "00_"</TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">2. 00_АР~00_КР" закроет все РН, имя которых НАЧИНАЮТСЯ С "00_АР", плюс все РН, которые НАЧИНАЮТСЯ С "00_КР"</TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">3. *АР*~00_КР" закроет все РН, имя которых СОДЕРЖАТ"АР", плюс все РН, которые НАЧИНАЮТСЯ С "00_КР"</TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">4. *АР*~00_КР~!00_КР_К1!" закроет все РН, имя которых СОДЕРАЖТ"АР", плюс все РН, которые НАЧИНАЮТСЯ С "00_КР",</TextBlock>
+                            <TextBlock Style="{StaticResource TBlockTooltip}">плюс ПРОИГНОРИРУЕТ закрытие для всех РН которые СОДЕРЖАТ "00_КР_К1"</TextBlock>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
             </Grid>
         </Border>
         

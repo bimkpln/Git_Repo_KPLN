@@ -4,6 +4,7 @@ using KPLN_BIMTools_Ribbon.ExternalCommands;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using NLog;
+using NLog.Config;
 using System;
 using System.IO;
 using System.Reflection;
@@ -14,6 +15,8 @@ namespace KPLN_BIMTools_Ribbon
     public class Module : IExternalModule
     {
         internal static Logger CurrentLogger { get; private set; }
+        internal static string CurrentLoggerFullName { get; private set; }
+        private static readonly LogFactory _bimToolsLogFactory = new LogFactory();
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
@@ -36,19 +39,22 @@ namespace KPLN_BIMTools_Ribbon
             #endregion
 
             #region Настройка NLog
-            // Конфиг для логгера лежит в KPLN_Loader. Это связано с инициализацией dll самим ревитом. Настройку тоже производить в основном конфиге
-            CurrentLogger = LogManager.GetLogger("KPLN_BIMTools");
+            string logFileKey = $"KPLN_BIMTools";
+            string nLogConfigPath = Path.Combine(Path.GetDirectoryName(_assemblyPath), "nlog.config");
+            XmlLoggingConfiguration lcp = new XmlLoggingConfiguration(nLogConfigPath, _bimToolsLogFactory);
+            _bimToolsLogFactory.Configuration = lcp;
+            CurrentLogger = _bimToolsLogFactory.GetLogger(logFileKey);
 
             string windrive = $"{Path.GetPathRoot(Environment.SystemDirectory)}KPLN_Temp";
-            string logDirPath = $"{windrive}\\KPLN_Logs\\{ModuleData.RevitVersion}";
-            string logFileName = "KPLN_BIMTools";
-            LogManager.Configuration.Variables["bimtools_logdir"] = logDirPath;
-            LogManager.Configuration.Variables["bimtools_logfilename"] = logFileName;
+            string logDirPath = $"{windrive}\\KPLN_Logs\\{ModuleData.RevitVersion}\\";
+            CurrentLoggerFullName = $"{logDirPath}{DateTime.Now:yyyyMMdd}_{DateTime.Now:HH-mm-ss}_{logFileKey}.log";
+            _bimToolsLogFactory.Configuration.Variables["bimtools_logfilefullname"] = CurrentLoggerFullName;
+            _bimToolsLogFactory.ReconfigExistingLoggers();
             #endregion
 
             CommandRVTExchange.SetStaticEnvironment(application);
 
-            Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
+            Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileKey));
 
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "BIM");
@@ -285,6 +291,7 @@ namespace KPLN_BIMTools_Ribbon
         /// Очистка от старых логов
         /// </summary>
         /// <param name="logPath">Путь к логам</param>
+        [Obsolete("02.03.2026: Замени на ClearingOldLogs из KPLN_Loader")]
         private void ClearingOldLogs(string logPath, string logName)
         {
             if (Directory.Exists(logPath))
