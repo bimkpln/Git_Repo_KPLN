@@ -217,6 +217,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
@@ -229,6 +230,9 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
+    <Compile Include="Forms\ApartmentManagerWindow.xaml.cs">
+      <DependentUpon>ApartmentManagerWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -439,6 +443,10 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\ApartmentManagerWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -478,6 +486,8 @@
     <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
+    <EmbeddedResource Include="Imagens\ApartmentManagerBig.png" />
+    <EmbeddedResource Include="Imagens\ApartmentManagerSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
