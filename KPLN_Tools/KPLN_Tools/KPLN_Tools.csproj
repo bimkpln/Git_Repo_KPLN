@@ -233,6 +233,9 @@
     <Compile Include="Forms\ApartmentManagerWindow.xaml.cs">
       <DependentUpon>ApartmentManagerWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ApartmentPresetsWindow.xaml.cs">
+      <DependentUpon>ApartmentPresetsWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -444,6 +447,10 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
     <Page Include="Forms\ApartmentManagerWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ApartmentPresetsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data.SQLite;
@@ -10,23 +12,60 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Microsoft.Win32;
 
 namespace KPLN_Tools.Forms
 {
+    public class ApartmentPresetData
+    {
+        public int WallHeight { get; set; }
+
+        public string WallType { get; set; }
+        public string EntryDoor { get; set; }
+        public string BathroomDoor { get; set; }
+        public string RoomDoor { get; set; }
+
+        public ApartmentPresetData Clone()
+        {
+            return new ApartmentPresetData
+            {
+                WallHeight = this.WallHeight,
+                WallType = this.WallType,
+                EntryDoor = this.EntryDoor,
+                BathroomDoor = this.BathroomDoor,
+                RoomDoor = this.RoomDoor
+            };
+        }
+    }
+
     public partial class ApartmentManagerWindow : Window
     {
         public int SelectedApartmentId { get; private set; }
         public int _nDep;
+
+        public ApartmentPresetData ApartmentPresetData { get; private set; }
+        public bool ConvertTo3DRequested { get; private set; }
 
         public ApartmentManagerWindow(int nDep)
         {
             InitializeComponent();
             _nDep = nDep;
 
+
+            ApartmentPresetData = new ApartmentPresetData
+            {
+                WallHeight = 3000,
+                WallType = "Не выбрано",
+                EntryDoor = "Не выбрано",
+                BathroomDoor = "Не выбрано",
+                RoomDoor = "Не выбрано"
+            };
+
             ApartmentManagerVm vm = new ApartmentManagerVm(_nDep);
             vm.ItemPicked += Vm_ItemPicked;
             vm.RequestClose += Vm_RequestClose;
+
+            vm.ApartmentPresetsRequested += Vm_ApartmentPresetsRequested;
+            vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
 
             DataContext = vm;
         }
@@ -43,6 +82,25 @@ namespace KPLN_Tools.Forms
             DialogResult = false;
             Close();
         }
+
+        private void Vm_ApartmentPresetsRequested()
+        {
+            var wnd = new ApartmentPresetsWindow(ApartmentPresetData);
+            wnd.Owner = this;
+
+            bool? res = wnd.ShowDialog();
+            if (res == true)
+            {
+                ApartmentPresetData = wnd.ResultPresetData;
+            }
+        }
+
+        private void Vm_ConvertTo3DRequested()
+        {
+            ConvertTo3DRequested = true;
+            DialogResult = true;
+            Close();
+        }
     }
 
     internal class ApartmentManagerVm : INotifyPropertyChanged
@@ -51,10 +109,13 @@ namespace KPLN_Tools.Forms
 
         public event Action RequestClose;
         public event Action<int> ItemPicked;
+        public event Action ApartmentPresetsRequested;
+        public event Action ConvertTo3DRequested;
 
         public bool IsDep8 { get; private set; }
 
         public ObservableCollection<ApartmentTypeVm> ApartmentTypes { get; private set; }
+
         private ApartmentTypeVm _selectedType;
         public ApartmentTypeVm SelectedType
         {
@@ -72,8 +133,9 @@ namespace KPLN_Tools.Forms
 
         public ICommand PickItemCommand { get; private set; }
         public ICommand CloseCommand { get; private set; }
-        public ICommand RefreshDbCommand { get; private set; }
         public ICommand UploadImageCommand { get; private set; }
+        public ICommand OpenApartmentPresetsCommand { get; private set; }
+        public ICommand ConvertTo3DCommand { get; private set; }
 
         public ApartmentManagerVm(int nDep)
         {
@@ -83,38 +145,22 @@ namespace KPLN_Tools.Forms
 
             PickItemCommand = new RelayCommand<ApartmentItemVm>(OnPick);
             CloseCommand = new RelayCommand(OnClose);
-
-            RefreshDbCommand = new RelayCommand(OnRefreshDb);
             UploadImageCommand = new RelayCommand<ApartmentItemVm>(OnUploadImage);
+            OpenApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
+            ConvertTo3DCommand = new RelayCommand(OnConvertTo3D);
 
             LoadTypes();
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-        // ОБНОВИТЬ БД
-        private void OnRefreshDb()
-        {           
-            LoadTypes();
-            if (SelectedType != null)
-                LoadItems();
+        private void OnOpenApartmentPresets()
+        {
+            ApartmentPresetsRequested?.Invoke();
         }
 
-
-
-
-
-
+        private void OnConvertTo3D()
+        {
+            ConvertTo3DRequested?.Invoke();
+        }
 
         private void LoadTypes()
         {
