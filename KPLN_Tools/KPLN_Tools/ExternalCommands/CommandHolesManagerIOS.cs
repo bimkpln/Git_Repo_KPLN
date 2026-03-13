@@ -39,18 +39,33 @@ namespace KPLN_Tools.ExternalCommands
 
             try
             {
-                // Получаю связанные модели АР (нужно доработать, т.к. сейчас возможны ошибки поиска моделей - лучше добавить проверку по БД) и элементы стяжек пола
-                IEnumerable<RevitLinkInstance> linkedModels = new FilteredElementCollector(doc)
-                    .OfClass(typeof(RevitLinkInstance))
-                    .Where(lm =>
-                        lm.Name.ToUpper().Contains("_AR_")
-                        || lm.Name.ToUpper().Contains("_АР_")
-                        || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
-                        || (lm.Name.ToUpper().Contains("-AR.RVT") || lm.Name.ToUpper().Contains("-АР.RVT"))
-                        || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
-                    .Cast<RevitLinkInstance>();
-                if (!linkedModels.Any())
-                    throw new Exception("Для работы обязателено нужно подгрузить все связи АР (кроме разбивочных файлов), которые являются подложкой для модели ИОС");
+                // Забираю связи. Для СГРВН - тест в АР не дублируется КР. Для остальных - достаточно АР.
+                IEnumerable<RevitLinkInstance> linkedModels;
+                if (doc.Title.StartsWith("СГРВН") && doc.Title.Contains("Офис"))
+                {
+                    linkedModels = new FilteredElementCollector(doc)
+                        .OfClass(typeof(RevitLinkInstance))
+                        .Where(lm =>
+                            lm.Name.ToUpper().Contains("_АР_")
+                            || lm.Name.ToUpper().Contains("_КР_"))
+                        .Cast<RevitLinkInstance>();
+                    if (!(linkedModels.Any(lm => lm.Name.Contains("_АР_")) && linkedModels.Any(lm => lm.Name.Contains("_КР_"))))
+                        throw new Exception("Для работы в СГРВН_Офис продаж - обязателено нужно подгрузить все связи АР и КР");
+                }
+                else
+                {
+                    linkedModels = new FilteredElementCollector(doc)
+                        .OfClass(typeof(RevitLinkInstance))
+                        .Where(lm =>
+                            lm.Name.ToUpper().Contains("_AR_")
+                            || lm.Name.ToUpper().Contains("_АР_")
+                            || (lm.Name.ToUpper().Contains("_AR.RVT") || lm.Name.ToUpper().Contains("_АР.RVT"))
+                            || (lm.Name.ToUpper().Contains("-AR.RVT") || lm.Name.ToUpper().Contains("-АР.RVT"))
+                            || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
+                        .Cast<RevitLinkInstance>();
+                    if (!linkedModels.Any())
+                        throw new Exception("Для работы обязателено нужно подгрузить все связи АР (кроме разбивочных файлов), которые являются подложкой для модели ИОС");
+                }
 
                 // Получаю абсолютную отметку базовой точки проекта (т.е. абс. отметка проекта)
                 var basePoint = new FilteredElementCollector(doc)
@@ -142,9 +157,9 @@ namespace KPLN_Tools.ExternalCommands
             catch (Exception ex)
             {
                 if (ex.InnerException != null)
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message}\n StackTrace: {ex.StackTrace}", MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.InnerException.Message}\n", MessageType.Error);
                 else
-                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message}\n StackTrace: {ex.StackTrace}", MessageType.Header);
+                    Print($"Работа скрипта остановлена. Устрани ошибку:\n {ex.Message}\n", MessageType.Error);
 
                 return Result.Cancelled;
             }

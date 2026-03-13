@@ -59,6 +59,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                              || docPath.Contains("АУПТ") 
                              || docPath.Contains("ЭОМ") 
                              || docPath.Contains("СС") 
+                             || docPath.Contains("ПБ")
                              || docPath.Contains("АК")
                              || docPath.Contains("АВ")))
                 {

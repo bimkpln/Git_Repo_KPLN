@@ -873,7 +873,9 @@ namespace KPLN_Looker
         private static void CheckAndSendError_RoomDeleted(Document doc, string fileFullName)
         {
             // Проверка, что это проект КПЛН стадии РД
+#if REVIT
             if (CurrentDBProject == null || CurrentDBProject.Stage != "РД") return;
+#endif
             
             
             Room[] updatedRoomColl = GetDocRooms(doc);
@@ -949,7 +951,7 @@ namespace KPLN_Looker
                 .Where(el =>
                 {
                     if (el is Room room)
-                        return room.Area > 0.001;
+                        return room.LimitOffset > 0.001;
 
                     return false;
                 })
