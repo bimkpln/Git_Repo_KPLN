@@ -65,84 +65,73 @@ namespace KPLN_Tools.ExecutableCommand
                         return Result.Cancelled;
                     }
 
-                    List<Solid> roomSolids = new List<Solid>();
+                    List<AxisRoomEdge> allEdges = new List<AxisRoomEdge>();
                     List<string> debugMessages = new List<string>();
 
                     foreach (FamilyInstance apartmentFi in apartmentInstances)
                     {
-                        try
+                        List<FamilyInstance> roomInstances = FindRoomSubComponents(doc, apartmentFi);
+                        if (roomInstances.Count == 0)
                         {
-                            FamilyInstance roomFi = FindRoomSubComponent(doc, apartmentFi);
-                            if (roomFi == null)
-                            {
-                                debugMessages.Add("Не найден вложенный экземпляр 'Помещение' у экземпляра Id=" + GetElementIdValue(apartmentFi.Id));
-                                continue;
-                            }
-
-                            Solid roomSolid = BuildRoomSolidFromInstance(roomFi, preset.WallHeight);
-                            if (roomSolid == null || roomSolid.Volume <= 0)
-                            {
-                                debugMessages.Add("Не удалось построить solid помещения у экземпляра Id=" + GetElementIdValue(apartmentFi.Id));
-                                continue;
-                            }
-
-                            roomSolids.Add(roomSolid);
+                            debugMessages.Add("Не найдены вложенные экземпляры 'Помещение' у экземпляра Id=" + GetElementIdValue(apartmentFi.Id));
+                            continue;
                         }
-                        catch (Exception exRoom)
+
+                        foreach (FamilyInstance roomFi in roomInstances)
                         {
-                            debugMessages.Add("Ошибка обработки экземпляра Id=" + GetElementIdValue(apartmentFi.Id) + ": " + exRoom.Message);
+                            try
+                            {
+                                CurveLoop roomLoop = BuildRoomLoopFromInstance(roomFi);
+                                List<AxisRoomEdge> roomEdges = ExtractAxisEdgesFromLoop(roomLoop, GetElementIdValue(roomFi.Id));
+                                allEdges.AddRange(roomEdges);
+                            }
+                            catch (Exception exRoom)
+                            {
+                                debugMessages.Add("Ошибка обработки вложенного помещения Id=" + GetElementIdValue(roomFi.Id) + ": " + exRoom.Message);
+                            }
                         }
                     }
 
-                    if (roomSolids.Count == 0)
+                    if (allEdges.Count == 0)
                     {
                         string debugText = debugMessages.Count > 0
                             ? "\n\n" + string.Join("\n", debugMessages)
                             : "";
-                        TaskDialog.Show("Apartment Manager", "Не удалось получить ни одного solid для построения стен." + debugText);
+                        TaskDialog.Show("Apartment Manager", "Не удалось получить ни одного контура помещений." + debugText);
                         return Result.Cancelled;
                     }
 
-                    Solid unitedSolid;
-                    try
+                    List<Line> wallAxisLines = BuildWallAxisLinesFromRoomEdges(allEdges, wallType.Width);
+                    if (wallAxisLines.Count == 0)
                     {
-                        unitedSolid = UnionSolids(roomSolids);
-                    }
-                    catch (Exception exUnion)
-                    {
-                        TaskDialog.Show("Ошибка", "Не удалось объединить контуры помещений:\n" + exUnion.Message);
-                        return Result.Failed;
-                    }
-
-                    List<CurveLoop> outerLoops;
-                    try
-                    {
-                        outerLoops = GetOuterBottomFaceLoops(unitedSolid);
-                    }
-                    catch (Exception exLoops)
-                    {
-                        TaskDialog.Show("Ошибка", "Не удалось получить внешний контур объединённого помещения:\n" + exLoops.Message);
-                        return Result.Failed;
-                    }
-
-                    if (outerLoops == null || outerLoops.Count == 0)
-                    {
-                        TaskDialog.Show("Ошибка", "Не найден внешний контур для построения стен.");
-                        return Result.Failed;
+                        string debugText = debugMessages.Count > 0
+                            ? "\n\n" + string.Join("\n", debugMessages)
+                            : "";
+                        TaskDialog.Show("Apartment Manager", "Не удалось вычислить оси стен." + debugText);
+                        return Result.Cancelled;
                     }
 
                     double wallHeightInternal = ConvertMmToInternal(preset.WallHeight);
 
-                    using (Transaction t = new Transaction(doc, "KPLN - Построение стен по внешнему контуру"))
+                    using (Transaction t = new Transaction(doc, "KPLN - Построение стен по помещениям"))
                     {
                         t.Start();
 
-                        CreateWallsByLoops(
-                            doc,
-                            outerLoops,
-                            floorPlan.GenLevel,
-                            wallType,
-                            wallHeightInternal);
+                        foreach (Line axis in wallAxisLines)
+                        {
+                            if (axis == null || axis.Length < 1e-6)
+                                continue;
+
+                            Wall.Create(
+                                doc,
+                                axis,
+                                wallType.Id,
+                                floorPlan.GenLevel.Id,
+                                wallHeightInternal,
+                                0,
+                                false,
+                                false);
+                        }
 
                         t.Commit();
                     }
@@ -150,8 +139,8 @@ namespace KPLN_Tools.ExecutableCommand
                     string report =
                         "Построение завершено.\n" +
                         "Экземпляров квартир: " + apartmentInstances.Count + "\n" +
-                        "Solid помещений: " + roomSolids.Count + "\n" +
-                        "Внешних контуров: " + outerLoops.Count;
+                        "Границ помещений: " + allEdges.Count + "\n" +
+                        "Стеновых осей: " + wallAxisLines.Count;
 
                     if (debugMessages.Count > 0)
                         report += "\n\nЗамечания:\n" + string.Join("\n", debugMessages);
@@ -411,14 +400,16 @@ namespace KPLN_Tools.ExecutableCommand
             return ElementId.InvalidElementId;
         }
 
-        private static FamilyInstance FindRoomSubComponent(Document doc, FamilyInstance apartmentInstance)
+        private static List<FamilyInstance> FindRoomSubComponents(Document doc, FamilyInstance apartmentInstance)
         {
+            List<FamilyInstance> result = new List<FamilyInstance>();
+
             if (apartmentInstance == null)
-                return null;
+                return result;
 
             ICollection<ElementId> subIds = apartmentInstance.GetSubComponentIds();
             if (subIds == null || subIds.Count == 0)
-                return null;
+                return result;
 
             foreach (ElementId subId in subIds)
             {
@@ -444,20 +435,19 @@ namespace KPLN_Tools.ExecutableCommand
                 bool byCategory = cat != null && cat.Name.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
 
                 if (byFamily || byType || byCategory)
-                    return subFi;
+                    result.Add(subFi);
             }
 
-            return null;
+            return result;
         }
 
-        private static Solid BuildRoomSolidFromInstance(FamilyInstance roomFi, int wallHeightMm)
+        private static CurveLoop BuildRoomLoopFromInstance(FamilyInstance roomFi)
         {
             if (roomFi == null)
                 throw new ArgumentNullException("roomFi");
 
             double width = GetRequiredLengthParam(roomFi, "Ширина", "Width");
             double depth = GetRequiredLengthParam(roomFi, "Глубина", "Depth");
-            double height = ConvertMmToInternal(wallHeightMm);
 
             Transform tr = roomFi.GetTransform();
             if (tr == null)
@@ -466,12 +456,13 @@ namespace KPLN_Tools.ExecutableCommand
             double halfW = width / 2.0;
             double halfD = depth / 2.0;
 
-            // Здесь заложено предположение, что точка вставки вложенного "Помещения" находится в центре.
-            // Если у семейства база не по центру, нужно будет заменить локальные точки.
-            XYZ p1 = new XYZ(-halfW, -halfD, 0);
-            XYZ p2 = new XYZ(halfW, -halfD, 0);
-            XYZ p3 = new XYZ(halfW, halfD, 0);
-            XYZ p4 = new XYZ(-halfW, halfD, 0);
+            // Если база семейства "Помещение" не по центру, а из угла,
+            // замени точки на:
+            // p1=(0,0,0), p2=(width,0,0), p3=(width,depth,0), p4=(0,depth,0)
+            XYZ p1 = tr.OfPoint(new XYZ(-halfW, -halfD, 0));
+            XYZ p2 = tr.OfPoint(new XYZ(halfW, -halfD, 0));
+            XYZ p3 = tr.OfPoint(new XYZ(halfW, halfD, 0));
+            XYZ p4 = tr.OfPoint(new XYZ(-halfW, halfD, 0));
 
             List<Curve> profile = new List<Curve>();
             profile.Add(Line.CreateBound(p1, p2));
@@ -479,15 +470,7 @@ namespace KPLN_Tools.ExecutableCommand
             profile.Add(Line.CreateBound(p3, p4));
             profile.Add(Line.CreateBound(p4, p1));
 
-            CurveLoop loop = CurveLoop.Create(profile);
-            List<CurveLoop> loops = new List<CurveLoop> { loop };
-
-            Solid localSolid = GeometryCreationUtilities.CreateExtrusionGeometry(
-                loops,
-                XYZ.BasisZ,
-                height);
-
-            return SolidUtils.CreateTransformed(localSolid, tr);
+            return CurveLoop.Create(profile);
         }
 
         private static double GetRequiredLengthParam(Element e, params string[] paramNames)
@@ -548,132 +531,387 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
-        private static Solid UnionSolids(List<Solid> solids)
+        private static List<AxisRoomEdge> ExtractAxisEdgesFromLoop(CurveLoop loop, long ownerId)
         {
-            if (solids == null || solids.Count == 0)
-                throw new Exception("Список solids пуст.");
+            if (loop == null)
+                throw new ArgumentNullException("loop");
 
-            Solid result = solids[0];
+            List<Line> lines = loop.OfType<Curve>().Select(x => x as Line).Where(x => x != null).ToList();
+            if (lines.Count == 0)
+                throw new Exception("Контур помещения не содержит линейных сегментов.");
 
-            for (int i = 1; i < solids.Count; i++)
+            double area = GetSignedAreaXY(loop);
+            bool ccw = area > 0.0;
+
+            List<AxisRoomEdge> result = new List<AxisRoomEdge>();
+
+            foreach (Line line in lines)
             {
-                result = BooleanOperationsUtils.ExecuteBooleanOperation(
-                    result,
-                    solids[i],
-                    BooleanOperationsType.Union);
+                XYZ p0 = line.GetEndPoint(0);
+                XYZ p1 = line.GetEndPoint(1);
+
+                if (Math.Abs(p0.Y - p1.Y) < 1e-6)
+                {
+                    double y = 0.5 * (p0.Y + p1.Y);
+                    double z = 0.5 * (p0.Z + p1.Z);
+                    double from = Math.Min(p0.X, p1.X);
+                    double to = Math.Max(p0.X, p1.X);
+
+                    double dx = p1.X - p0.X;
+                    int outwardSign = GetSign(-dx);
+                    if (!ccw)
+                        outwardSign = -outwardSign;
+
+                    result.Add(new AxisRoomEdge
+                    {
+                        Orientation = AxisOrientation.Horizontal,
+                        Coord = y,
+                        Z = z,
+                        From = from,
+                        To = to,
+                        OutwardSign = outwardSign,
+                        OwnerId = ownerId
+                    });
+                }
+                else if (Math.Abs(p0.X - p1.X) < 1e-6)
+                {
+                    double x = 0.5 * (p0.X + p1.X);
+                    double z = 0.5 * (p0.Z + p1.Z);
+                    double from = Math.Min(p0.Y, p1.Y);
+                    double to = Math.Max(p0.Y, p1.Y);
+
+                    double dy = p1.Y - p0.Y;
+                    int outwardSign = GetSign(dy);
+                    if (!ccw)
+                        outwardSign = -outwardSign;
+
+                    result.Add(new AxisRoomEdge
+                    {
+                        Orientation = AxisOrientation.Vertical,
+                        Coord = x,
+                        Z = z,
+                        From = from,
+                        To = to,
+                        OutwardSign = outwardSign,
+                        OwnerId = ownerId
+                    });
+                }
+                else
+                {
+                    throw new Exception("Обнаружен неортогональный сегмент. Этот код рассчитан на прямоугольные помещения.");
+                }
             }
 
             return result;
         }
 
-        private static List<CurveLoop> GetOuterBottomFaceLoops(Solid solid)
+        private static List<Line> BuildWallAxisLinesFromRoomEdges(List<AxisRoomEdge> sourceEdges, double wallWidth)
         {
-            if (solid == null)
-                throw new ArgumentNullException("solid");
+            const double tol = 1e-6;
+            double halfWidth = wallWidth / 2.0;
+            double maxPairDistance = wallWidth + tol;
 
-            double minZ = double.MaxValue;
-            List<PlanarFace> bottomFaces = new List<PlanarFace>();
+            List<AxisRoomEdge> working = sourceEdges
+                .Where(x => x != null && x.To - x.From > tol)
+                .Select(x => x.Clone())
+                .ToList();
 
-            foreach (Face face in solid.Faces)
+            List<Line> axisLines = new List<Line>();
+
+            bool foundPair;
+            do
             {
-                PlanarFace pf = face as PlanarFace;
-                if (pf == null)
-                    continue;
+                foundPair = false;
 
-                XYZ normal = pf.FaceNormal;
-                if (normal == null)
-                    continue;
+                int bestI = -1;
+                int bestJ = -1;
+                double bestDistance = double.MaxValue;
+                double bestFrom = 0.0;
+                double bestTo = 0.0;
 
-                if (!IsAlmostEqual(normal, -XYZ.BasisZ))
-                    continue;
-
-                double z = pf.Origin.Z;
-
-                if (z < minZ - 1e-9)
+                for (int i = 0; i < working.Count; i++)
                 {
-                    minZ = z;
-                    bottomFaces.Clear();
-                    bottomFaces.Add(pf);
-                }
-                else if (Math.Abs(z - minZ) < 1e-9)
-                {
-                    bottomFaces.Add(pf);
-                }
-            }
-
-            if (bottomFaces.Count == 0)
-                throw new Exception("Не найдена нижняя горизонтальная грань у объединённого solid.");
-
-            List<CurveLoop> result = new List<CurveLoop>();
-
-            foreach (PlanarFace bottomFace in bottomFaces)
-            {
-                CurveLoop outerLoop = GetLongestLoop(bottomFace);
-                if (outerLoop != null)
-                    result.Add(outerLoop);
-            }
-
-            return result;
-        }
-
-        private static CurveLoop GetLongestLoop(PlanarFace face)
-        {
-            if (face == null)
-                return null;
-
-            EdgeArrayArray edgeLoops = face.EdgeLoops;
-            CurveLoop bestLoop = null;
-            double bestLength = -1.0;
-
-            foreach (EdgeArray edgeArray in edgeLoops)
-            {
-                List<Curve> curves = new List<Curve>();
-                double totalLength = 0.0;
-
-                foreach (Edge edge in edgeArray)
-                {
-                    Curve c = edge.AsCurve();
-                    curves.Add(c);
-                    totalLength += c.Length;
-                }
-
-                CurveLoop loop = CurveLoop.Create(curves);
-                if (totalLength > bestLength)
-                {
-                    bestLength = totalLength;
-                    bestLoop = loop;
-                }
-            }
-
-            return bestLoop;
-        }
-
-        private static void CreateWallsByLoops(
-            Document doc,
-            IEnumerable<CurveLoop> loops,
-            Level level,
-            WallType wallType,
-            double wallHeight)
-        {
-            foreach (CurveLoop loop in loops)
-            {
-                foreach (Curve curve in loop)
-                {
-                    Line line = curve as Line;
-                    if (line == null)
+                    AxisRoomEdge a = working[i];
+                    if (a == null || a.Length <= tol)
                         continue;
 
-                    Wall.Create(
-                        doc,
-                        line,
-                        wallType.Id,
-                        level.Id,
-                        wallHeight,
-                        0,
-                        false,
-                        false);
+                    for (int j = i + 1; j < working.Count; j++)
+                    {
+                        AxisRoomEdge b = working[j];
+                        if (b == null || b.Length <= tol)
+                            continue;
+
+                        if (a.Orientation != b.Orientation)
+                            continue;
+
+                        if (Math.Abs(a.Z - b.Z) > tol)
+                            continue;
+
+                        if (a.OutwardSign == b.OutwardSign)
+                            continue;
+
+                        double overlapFrom = Math.Max(a.From, b.From);
+                        double overlapTo = Math.Min(a.To, b.To);
+
+                        if (overlapTo - overlapFrom <= tol)
+                            continue;
+
+                        double distance = Math.Abs(a.Coord - b.Coord);
+                        if (distance > maxPairDistance)
+                            continue;
+
+                        if (distance < bestDistance)
+                        {
+                            bestDistance = distance;
+                            bestI = i;
+                            bestJ = j;
+                            bestFrom = overlapFrom;
+                            bestTo = overlapTo;
+                            foundPair = true;
+                        }
+                    }
+                }
+
+                if (foundPair)
+                {
+                    AxisRoomEdge a = working[bestI];
+                    AxisRoomEdge b = working[bestJ];
+
+                    double axisCoord = 0.5 * (a.Coord + b.Coord);
+                    axisLines.Add(BuildAxisLine(a.Orientation, axisCoord, a.Z, bestFrom, bestTo));
+
+                    List<AxisRoomEdge> aParts = SubtractInterval(a, bestFrom, bestTo);
+                    List<AxisRoomEdge> bParts = SubtractInterval(b, bestFrom, bestTo);
+
+                    if (bestI > bestJ)
+                    {
+                        working.RemoveAt(bestI);
+                        working.RemoveAt(bestJ);
+                    }
+                    else
+                    {
+                        working.RemoveAt(bestJ);
+                        working.RemoveAt(bestI);
+                    }
+
+                    working.AddRange(aParts);
+                    working.AddRange(bParts);
                 }
             }
+            while (foundPair);
+
+            foreach (AxisRoomEdge edge in working)
+            {
+                if (edge == null || edge.Length <= tol)
+                    continue;
+
+                double axisCoord = edge.Coord + edge.OutwardSign * halfWidth;
+                axisLines.Add(BuildAxisLine(edge.Orientation, axisCoord, edge.Z, edge.From, edge.To));
+            }
+
+            return MergeAxisAlignedLines(axisLines);
+        }
+
+        private static List<AxisRoomEdge> SubtractInterval(AxisRoomEdge edge, double cutFrom, double cutTo)
+        {
+            const double tol = 1e-6;
+            List<AxisRoomEdge> result = new List<AxisRoomEdge>();
+
+            if (edge == null)
+                return result;
+
+            if (cutFrom > edge.From + tol)
+            {
+                result.Add(new AxisRoomEdge
+                {
+                    Orientation = edge.Orientation,
+                    Coord = edge.Coord,
+                    Z = edge.Z,
+                    From = edge.From,
+                    To = cutFrom,
+                    OutwardSign = edge.OutwardSign,
+                    OwnerId = edge.OwnerId
+                });
+            }
+
+            if (cutTo < edge.To - tol)
+            {
+                result.Add(new AxisRoomEdge
+                {
+                    Orientation = edge.Orientation,
+                    Coord = edge.Coord,
+                    Z = edge.Z,
+                    From = cutTo,
+                    To = edge.To,
+                    OutwardSign = edge.OutwardSign,
+                    OwnerId = edge.OwnerId
+                });
+            }
+
+            return result;
+        }
+
+        private static List<Line> MergeAxisAlignedLines(List<Line> lines)
+        {
+            const double tol = 1e-6;
+
+            List<AxisLineData> horizontal = new List<AxisLineData>();
+            List<AxisLineData> vertical = new List<AxisLineData>();
+            List<Line> other = new List<Line>();
+
+            foreach (Line line in lines)
+            {
+                if (line == null)
+                    continue;
+
+                XYZ p0 = line.GetEndPoint(0);
+                XYZ p1 = line.GetEndPoint(1);
+
+                if (Math.Abs(p0.Y - p1.Y) < tol)
+                {
+                    double y = RoundTol(p0.Y, tol);
+                    double z = RoundTol((p0.Z + p1.Z) * 0.5, tol);
+                    double from = Math.Min(p0.X, p1.X);
+                    double to = Math.Max(p0.X, p1.X);
+
+                    horizontal.Add(new AxisLineData
+                    {
+                        Orientation = AxisOrientation.Horizontal,
+                        Coord = y,
+                        Z = z,
+                        From = from,
+                        To = to
+                    });
+                }
+                else if (Math.Abs(p0.X - p1.X) < tol)
+                {
+                    double x = RoundTol(p0.X, tol);
+                    double z = RoundTol((p0.Z + p1.Z) * 0.5, tol);
+                    double from = Math.Min(p0.Y, p1.Y);
+                    double to = Math.Max(p0.Y, p1.Y);
+
+                    vertical.Add(new AxisLineData
+                    {
+                        Orientation = AxisOrientation.Vertical,
+                        Coord = x,
+                        Z = z,
+                        From = from,
+                        To = to
+                    });
+                }
+                else
+                {
+                    other.Add(line);
+                }
+            }
+
+            List<Line> result = new List<Line>();
+            result.AddRange(MergeAxisGroup(horizontal));
+            result.AddRange(MergeAxisGroup(vertical));
+            result.AddRange(other);
+
+            return result;
+        }
+
+        private static List<Line> MergeAxisGroup(List<AxisLineData> items)
+        {
+            const double tol = 1e-6;
+            List<Line> result = new List<Line>();
+
+            var grouped = items
+                .GroupBy(x => new AxisGroupKey(x.Orientation, x.Coord, x.Z, tol))
+                .ToList();
+
+            foreach (var group in grouped)
+            {
+                List<AxisLineData> ordered = group
+                    .OrderBy(x => x.From)
+                    .ThenBy(x => x.To)
+                    .ToList();
+
+                if (ordered.Count == 0)
+                    continue;
+
+                double curFrom = ordered[0].From;
+                double curTo = ordered[0].To;
+
+                for (int i = 1; i < ordered.Count; i++)
+                {
+                    AxisLineData next = ordered[i];
+
+                    if (next.From <= curTo + tol)
+                    {
+                        curTo = Math.Max(curTo, next.To);
+                    }
+                    else
+                    {
+                        result.Add(BuildAxisLine(group.Key.Orientation, group.Key.Coord, group.Key.Z, curFrom, curTo));
+                        curFrom = next.From;
+                        curTo = next.To;
+                    }
+                }
+
+                result.Add(BuildAxisLine(group.Key.Orientation, group.Key.Coord, group.Key.Z, curFrom, curTo));
+            }
+
+            return result;
+        }
+
+        private static Line BuildAxisLine(AxisOrientation orientation, double coord, double z, double from, double to)
+        {
+            if (orientation == AxisOrientation.Horizontal)
+            {
+                XYZ p0 = new XYZ(from, coord, z);
+                XYZ p1 = new XYZ(to, coord, z);
+                return Line.CreateBound(p0, p1);
+            }
+            else
+            {
+                XYZ p0 = new XYZ(coord, from, z);
+                XYZ p1 = new XYZ(coord, to, z);
+                return Line.CreateBound(p0, p1);
+            }
+        }
+
+        private static double GetSignedAreaXY(CurveLoop loop)
+        {
+            if (loop == null)
+                return 0.0;
+
+            List<XYZ> pts = new List<XYZ>();
+
+            foreach (Curve c in loop)
+            {
+                if (c == null)
+                    continue;
+
+                XYZ p = c.GetEndPoint(0);
+                if (pts.Count == 0 || !IsAlmostEqual(pts[pts.Count - 1], p))
+                    pts.Add(p);
+            }
+
+            if (pts.Count < 3)
+                return 0.0;
+
+            if (!IsAlmostEqual(pts[0], pts[pts.Count - 1]))
+                pts.Add(pts[0]);
+
+            double area2 = 0.0;
+            for (int i = 0; i < pts.Count - 1; i++)
+            {
+                XYZ a = pts[i];
+                XYZ b = pts[i + 1];
+                area2 += (a.X * b.Y) - (b.X * a.Y);
+            }
+
+            return area2 * 0.5;
+        }
+
+        private static int GetSign(double value)
+        {
+            if (value > 1e-9) return 1;
+            if (value < -1e-9) return -1;
+            return 0;
         }
 
         private static bool IsAlmostEqual(XYZ a, XYZ b, double tol = 1e-9)
@@ -682,6 +920,11 @@ namespace KPLN_Tools.ExecutableCommand
                 return false;
 
             return a.DistanceTo(b) < tol;
+        }
+
+        private static double RoundTol(double value, double tol)
+        {
+            return Math.Round(value / tol) * tol;
         }
 
         private static long GetElementIdValue(ElementId id)
@@ -700,6 +943,92 @@ namespace KPLN_Tools.ExecutableCommand
 #else
             return UnitUtils.ConvertToInternalUnits(valueMm, DisplayUnitType.DUT_MILLIMETERS);
 #endif
+        }
+
+        private enum AxisOrientation
+        {
+            Horizontal,
+            Vertical
+        }
+
+        private class AxisRoomEdge
+        {
+            public AxisOrientation Orientation { get; set; }
+            public double Coord { get; set; }
+            public double Z { get; set; }
+            public double From { get; set; }
+            public double To { get; set; }
+            public int OutwardSign { get; set; }
+            public long OwnerId { get; set; }
+
+            public double Length
+            {
+                get { return To - From; }
+            }
+
+            public AxisRoomEdge Clone()
+            {
+                return new AxisRoomEdge
+                {
+                    Orientation = Orientation,
+                    Coord = Coord,
+                    Z = Z,
+                    From = From,
+                    To = To,
+                    OutwardSign = OutwardSign,
+                    OwnerId = OwnerId
+                };
+            }
+        }
+
+        private class AxisLineData
+        {
+            public AxisOrientation Orientation { get; set; }
+            public double Coord { get; set; }
+            public double Z { get; set; }
+            public double From { get; set; }
+            public double To { get; set; }
+        }
+
+        private class AxisGroupKey : IEquatable<AxisGroupKey>
+        {
+            public AxisOrientation Orientation { get; private set; }
+            public double Coord { get; private set; }
+            public double Z { get; private set; }
+
+            public AxisGroupKey(AxisOrientation orientation, double coord, double z, double tol)
+            {
+                Orientation = orientation;
+                Coord = RoundTol(coord, tol);
+                Z = RoundTol(z, tol);
+            }
+
+            public bool Equals(AxisGroupKey other)
+            {
+                if (other == null)
+                    return false;
+
+                return Orientation == other.Orientation
+                    && Math.Abs(Coord - other.Coord) < 1e-9
+                    && Math.Abs(Z - other.Z) < 1e-9;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as AxisGroupKey);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    int hash = 17;
+                    hash = hash * 23 + Orientation.GetHashCode();
+                    hash = hash * 23 + Coord.GetHashCode();
+                    hash = hash * 23 + Z.GetHashCode();
+                    return hash;
+                }
+            }
         }
     }
 }
