@@ -4003,7 +4003,7 @@ namespace KPLN_Tools.Forms
                                 {
                                     var el = targetDoc.GetElement(id);
                                     string typeName = el?.GetType().Name ?? "<null>";
-                                    int intId = IDHelper.EidInt(id);
+                                    int intId = IDHelper.ElIdInt(id);
                                     return $"{typeName} (Id={intId})";
                                 })
                                 .Take(previewCount)
@@ -5341,7 +5341,7 @@ namespace KPLN_Tools.Forms
                         {
                             var el = targetDoc.GetElement(id);
                             string typeName = el?.GetType().Name ?? "<null>";
-                            int intId = IDHelper.EidInt(id);
+                            int intId = IDHelper.ElIdInt(id);
                             return $"{typeName} (Id={intId})";
                         })
                         .Take(previewCount)

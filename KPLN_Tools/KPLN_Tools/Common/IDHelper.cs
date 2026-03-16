@@ -1,31 +1,19 @@
 ﻿using Autodesk.Revit.DB;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_Tools.Common
 {
     internal static class IDHelper
     {
-        internal static long EidValue(ElementId id)
-        {
-#if Revit2024 || Debug2024
-            return id.Value;
+#if !Revit2024 && !Debug2024
+        internal static int ElIdValue(ElementId id) => id.IntegerValue;
 #else
-    return id.IntegerValue;
+        internal static long ElIdValue(ElementId id) => id.Value;
 #endif
-        }
 
-        internal static int EidInt(ElementId id)
-        {
-#if Revit2024 || Debug2024
-            return (int)id.Value;
+#if !Revit2024 && !Debug2024
+        internal static int ElIdInt(ElementId id) => id.IntegerValue;
 #else
-            return id.IntegerValue;
+        internal static int ElIdInt(ElementId id) => (int)id.Value;
 #endif
-        }
-
     }
 }

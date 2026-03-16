@@ -171,7 +171,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
                     else
                     {
-                        failedStairsIds.Add(IDHelper.EidInt(s.Id));
+                        failedStairsIds.Add(IDHelper.ElIdInt(s.Id));
                     }
 
                     if (stairFailedRuns != null && stairFailedRuns.Count > 0)
@@ -235,7 +235,7 @@ namespace KPLN_Tools.ExternalCommands
                 else
                 {
                     // ===== РЕЖИМ: ОДНА ЛЕСТНИЦА =====
-                    int stairId = IDHelper.EidInt(targetStairs[0].Id);
+                    int stairId = IDHelper.ElIdInt(targetStairs[0].Id);
 
                     bool stairFailed = stairsFail.Contains(stairId);
                     bool anyRunsFailed = runsFail.Count > 0;
@@ -369,7 +369,7 @@ namespace KPLN_Tools.ExternalCommands
                     StairsRun run = doc.GetElement(runId) as StairsRun;
                     if (run == null)
                     {
-                        failedRunIds.Add(IDHelper.EidInt(runId));
+                        failedRunIds.Add(IDHelper.ElIdInt(runId));
                         continue;
                     }
 
@@ -383,7 +383,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
                     else
                     {
-                        failedRunIds.Add(IDHelper.EidInt(runId));
+                        failedRunIds.Add(IDHelper.ElIdInt(runId));
                     }
                 }
             }
@@ -406,13 +406,13 @@ namespace KPLN_Tools.ExternalCommands
                     StairsLanding landing = doc.GetElement(landingId) as StairsLanding;
                     if (landing == null)
                     {
-                        failedLandingIds.Add(IDHelper.EidInt(landingId));
+                        failedLandingIds.Add(IDHelper.ElIdInt(landingId));
                         continue;
                     }
 
                     bool okLanding = TryCreateRouteBodyOnLanding(doc, stairs, landing, runs, runInfos, data, heightFt);
                     if (okLanding) createdLandings++;
-                    else failedLandingIds.Add(IDHelper.EidInt(landingId));
+                    else failedLandingIds.Add(IDHelper.ElIdInt(landingId));
                 }
             }
 
@@ -525,7 +525,7 @@ namespace KPLN_Tools.ExternalCommands
             runInfo = new RunRouteBodyInfo
             {
                 RunId = run.Id,
-                StairsId = IDHelper.EidInt(stairs.Id),
+                StairsId = IDHelper.ElIdInt(stairs.Id),
                 WidthFt = widthFt,
                 HeightFt = heightFt,
                 XDirPlan = xP,
@@ -549,7 +549,7 @@ namespace KPLN_Tools.ExternalCommands
             };
 
             // СОЗДАТЬ ИЛИ ОБНОВИТЬ
-            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.EidValue(run.Id).ToString(), $"ПЭ_{IDHelper.EidValue(stairs.Id)}{IDHelper.EidValue(run.Id)}", solid);
+            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.ElIdValue(run.Id).ToString(), $"ПЭ_{IDHelper.ElIdValue(stairs.Id)}{IDHelper.ElIdValue(run.Id)}", solid);
             return true;
         }
 
@@ -708,7 +708,7 @@ namespace KPLN_Tools.ExternalCommands
                 return false;
 
             // СОЗДАТЬ ИЛИ ОБНОВИТЬ
-            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.EidValue(landing.Id).ToString(), $"ПЭ_Л_{IDHelper.EidValue(stairs.Id)}_{IDHelper.EidValue(landing.Id)}", solid);
+            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.ElIdValue(landing.Id).ToString(), $"ПЭ_Л_{IDHelper.ElIdValue(stairs.Id)}_{IDHelper.ElIdValue(landing.Id)}", solid);
             return true;
         }
 
