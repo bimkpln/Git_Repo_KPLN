@@ -1,0 +1,85 @@
+﻿<Window x:Class="KPLN_Tools.Forms.ApartmentImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        Title="KPLN. Обновление БД квартир"
+        Width="980" Height="620" WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        FontFamily="Century Gothic" UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" BorderBrush="Black" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                      RowHeight="90" SelectionMode="Single" GridLinesVisibility="Horizontal" Margin="0" VerticalContentAlignment="Center">
+
+                <DataGrid.Resources>
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="Padding" Value="6,4"/>
+                    </Style>
+
+                    <Style TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                    </Style>
+
+                    <Style TargetType="ComboBox">
+                        <Setter Property="Height" Value="28"/>
+                        <Setter Property="MinHeight" Value="28"/>
+                        <Setter Property="VerticalAlignment" Value="Center"/>
+                        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                    </Style>
+                </DataGrid.Resources>
+
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Превью" Width="110">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid VerticalAlignment="Center">
+                                    <Border BorderBrush="#FFBFBFBF" BorderThickness="1" Margin="4" Background="White" Width="78" Height="78"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Image Source="{Binding Preview}" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Имя файла" Binding="{Binding FileName}" Width="220" ElementStyle="{StaticResource {x:Type TextBlock}}"/>
+
+                    <DataGridTextColumn Header="Путь" Binding="{Binding FilePath}" Width="*" ElementStyle="{StaticResource {x:Type TextBlock}}"/>
+
+                    <DataGridTemplateColumn Header="Тип" Width="140">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Grid VerticalAlignment="Center">
+                                    <ComboBox SelectedItem="{Binding SelectedAtype, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Padding="5 6" Margin="4,0">
+                                        <sys:String>Студия</sys:String>
+                                        <sys:String>1К</sys:String>
+                                        <sys:String>1Е</sys:String>
+                                        <sys:String>2К</sys:String>
+                                        <sys:String>2Е</sys:String>
+                                        <sys:String>3К</sys:String>
+                                        <sys:String>3Е</sys:String>
+                                        <sys:String>4К</sys:String>
+                                        <sys:String>4Е</sys:String>
+                                        <sys:String>5К</sys:String>
+                                        <sys:String>5Е</sys:String>
+                                    </ComboBox>
+                                </Grid>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Width="160" Height="34" Margin="0,0,8,0" Click="Ok_Click">Добавить в БД</Button>
+            <Button Width="120" Height="34" Click="Cancel_Click">Отмена</Button>
+        </StackPanel>
+    </Grid>
+</Window>

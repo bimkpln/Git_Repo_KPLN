@@ -6,19 +6,21 @@ using System.ComponentModel;
 using System.Data.SQLite;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Drawing;
 
 namespace KPLN_Tools.Forms
 {
     public class ApartmentPresetData
     {
         public int WallHeight { get; set; }
-
         public string WallType { get; set; }
         public string EntryDoor { get; set; }
         public string BathroomDoor { get; set; }
@@ -28,11 +30,11 @@ namespace KPLN_Tools.Forms
         {
             return new ApartmentPresetData
             {
-                WallHeight = this.WallHeight,
-                WallType = this.WallType,
-                EntryDoor = this.EntryDoor,
-                BathroomDoor = this.BathroomDoor,
-                RoomDoor = this.RoomDoor
+                WallHeight = WallHeight,
+                WallType = WallType,
+                EntryDoor = EntryDoor,
+                BathroomDoor = BathroomDoor,
+                RoomDoor = RoomDoor
             };
         }
     }
@@ -50,7 +52,6 @@ namespace KPLN_Tools.Forms
             InitializeComponent();
             _nDep = nDep;
 
-
             ApartmentPresetData = new ApartmentPresetData
             {
                 WallHeight = 3000,
@@ -63,7 +64,6 @@ namespace KPLN_Tools.Forms
             ApartmentManagerVm vm = new ApartmentManagerVm(_nDep);
             vm.ItemPicked += Vm_ItemPicked;
             vm.RequestClose += Vm_RequestClose;
-
             vm.ApartmentPresetsRequested += Vm_ApartmentPresetsRequested;
             vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
 
@@ -90,9 +90,7 @@ namespace KPLN_Tools.Forms
 
             bool? res = wnd.ShowDialog();
             if (res == true)
-            {
                 ApartmentPresetData = wnd.ResultPresetData;
-            }
         }
 
         private void Vm_ConvertTo3DRequested()
@@ -106,6 +104,7 @@ namespace KPLN_Tools.Forms
     internal class ApartmentManagerVm : INotifyPropertyChanged
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
+        private const string RfaFolderPath = @"Z:\Отдел BIM\Туленинов Роман\aManager";
 
         public event Action RequestClose;
         public event Action<int> ItemPicked;
@@ -122,7 +121,7 @@ namespace KPLN_Tools.Forms
             get { return _selectedType; }
             set
             {
-                if (!object.ReferenceEquals(_selectedType, value))
+                if (!ReferenceEquals(_selectedType, value))
                 {
                     _selectedType = value;
                     OnPropertyChanged();
@@ -136,6 +135,7 @@ namespace KPLN_Tools.Forms
         public ICommand UploadImageCommand { get; private set; }
         public ICommand OpenApartmentPresetsCommand { get; private set; }
         public ICommand ConvertTo3DCommand { get; private set; }
+        public ICommand UpdateDbCommand { get; private set; }
 
         public ApartmentManagerVm(int nDep)
         {
@@ -148,6 +148,7 @@ namespace KPLN_Tools.Forms
             UploadImageCommand = new RelayCommand<ApartmentItemVm>(OnUploadImage);
             OpenApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
             ConvertTo3DCommand = new RelayCommand(OnConvertTo3D);
+            UpdateDbCommand = new RelayCommand<Window>(OnUpdateDb);
 
             LoadTypes();
         }
@@ -174,7 +175,7 @@ namespace KPLN_Tools.Forms
 
             try
             {
-                using (var con = OpenConnection(DbPath, readOnly: true))
+                using (var con = OpenConnection(DbPath, true))
                 using (var cmd = con.CreateCommand())
                 {
                     cmd.CommandText =
@@ -190,10 +191,8 @@ namespace KPLN_Tools.Forms
                             string atypeRaw = r.IsDBNull(0) ? "" : r.GetString(0);
                             string atype = NormalizeAtype(atypeRaw);
 
-                            if (string.IsNullOrWhiteSpace(atype))
-                                continue;
-
-                            ApartmentTypes.Add(new ApartmentTypeVm { Name = atype });
+                            if (!string.IsNullOrWhiteSpace(atype))
+                                ApartmentTypes.Add(new ApartmentTypeVm { Name = atype });
                         }
                     }
                 }
@@ -221,7 +220,7 @@ namespace KPLN_Tools.Forms
 
             try
             {
-                using (var con = OpenConnection(DbPath, readOnly: true))
+                using (var con = OpenConnection(DbPath, true))
                 using (var cmd = con.CreateCommand())
                 {
                     cmd.CommandText =
@@ -237,8 +236,8 @@ namespace KPLN_Tools.Forms
                         while (r.Read())
                         {
                             int id = r.GetInt32(0);
-
                             byte[] bytes = null;
+
                             if (!r.IsDBNull(1))
                                 bytes = (byte[])r["PIC"];
 
@@ -260,16 +259,15 @@ namespace KPLN_Tools.Forms
 
         private void OnUploadImage(ApartmentItemVm item)
         {
-            if (item == null)
+            if (item == null || !IsDep8)
                 return;
 
-            if (!IsDep8)
-                return;
-
-            var ofd = new OpenFileDialog();
-            ofd.Title = "Выберите изображение планировки";
-            ofd.Filter = "Изображения (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg|Все файлы (*.*)|*.*";
-            ofd.Multiselect = false;
+            var ofd = new OpenFileDialog
+            {
+                Title = "Выберите изображение планировки",
+                Filter = "Изображения (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg|Все файлы (*.*)|*.*",
+                Multiselect = false
+            };
 
             bool? ok = ofd.ShowDialog();
             if (ok != true)
@@ -283,7 +281,7 @@ namespace KPLN_Tools.Forms
             {
                 byte[] bytes = File.ReadAllBytes(filePath);
 
-                using (var con = OpenConnection(DbPath, readOnly: false))
+                using (var con = OpenConnection(DbPath, false))
                 using (var cmd = con.CreateCommand())
                 {
                     cmd.CommandText = "UPDATE Main SET PIC = @pic WHERE ID = @id;";
@@ -311,11 +309,200 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        private void OnUpdateDb(Window ownerWindow)
+        {
+            if (!IsDep8)
+                return;
+
+            if (!File.Exists(DbPath))
+            {
+                MessageBox.Show("Не найдена база:\n" + DbPath, "ApartmentManager");
+                return;
+            }
+
+            if (!Directory.Exists(RfaFolderPath))
+            {
+                MessageBox.Show("Не найдена папка:\n" + RfaFolderPath, "ApartmentManager");
+                return;
+            }
+
+            try
+            {
+                string[] files = Directory.GetFiles(RfaFolderPath, "*.rfa", SearchOption.TopDirectoryOnly);
+                HashSet<string> actualPaths = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
+
+                Dictionary<string, int> dbItemsByPath = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                using (var con = OpenConnection(DbPath, true))
+                using (var cmd = con.CreateCommand())
+                {
+                    cmd.CommandText =
+                        "SELECT ID, FPATH " +
+                        "FROM Main " +
+                        "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
+
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            int id = r.GetInt32(0);
+                            string path = r.IsDBNull(1) ? null : r.GetString(1);
+
+                            if (string.IsNullOrWhiteSpace(path))
+                                continue;
+
+                            path = path.Trim();
+
+                            if (!dbItemsByPath.ContainsKey(path))
+                                dbItemsByPath.Add(path, id);
+                        }
+                    }
+                }
+
+                List<KeyValuePair<string, int>> itemsToDelete = dbItemsByPath
+                    .Where(x => !actualPaths.Contains(x.Key))
+                    .ToList();
+
+                List<string> deletedNames = new List<string>();
+
+                if (itemsToDelete.Count > 0)
+                {
+                    using (var con = OpenConnection(DbPath, false))
+                    using (var tx = con.BeginTransaction())
+                    {
+                        foreach (var kvp in itemsToDelete)
+                        {
+                            using (var deleteCmd = con.CreateCommand())
+                            {
+                                deleteCmd.Transaction = tx;
+                                deleteCmd.CommandText = "DELETE FROM Main WHERE ID = @id;";
+                                deleteCmd.Parameters.AddWithValue("@id", kvp.Value);
+                                deleteCmd.ExecuteNonQuery();
+                            }
+
+                            deletedNames.Add(Path.GetFileNameWithoutExtension(kvp.Key));
+                        }
+
+                        tx.Commit();
+                    }
+                }
+
+                List<ApartmentImportItemVm> newItems = new List<ApartmentImportItemVm>();
+
+                foreach (string file in files)
+                {
+                    if (dbItemsByPath.ContainsKey(file))
+                        continue;
+
+                    newItems.Add(new ApartmentImportItemVm
+                    {
+                        FilePath = file,
+                        FileName = Path.GetFileNameWithoutExtension(file),
+                        Preview = ShellPreviewHelper.GetShellPreviewImage(file)
+                    });
+                }
+
+                int addedCount = 0;
+
+                if (newItems.Count > 0)
+                {
+                    var wnd = new ApartmentImportWindow(newItems);
+                    if (ownerWindow != null)
+                        wnd.Owner = ownerWindow;
+
+                    bool? res = wnd.ShowDialog();
+                    if (res == true)
+                    {
+                        List<ApartmentImportItemVm> itemsToInsert = wnd.Items
+                            .Where(x => !string.IsNullOrWhiteSpace(x.SelectedAtype))
+                            .ToList();
+
+                        if (itemsToInsert.Count > 0)
+                        {
+                            using (var con = OpenConnection(DbPath, false))
+                            using (var tx = con.BeginTransaction())
+                            {
+                                int nextId;
+
+                                using (var getMaxCmd = con.CreateCommand())
+                                {
+                                    getMaxCmd.Transaction = tx;
+                                    getMaxCmd.CommandText = "SELECT IFNULL(MAX(ID), 0) FROM Main;";
+                                    object o = getMaxCmd.ExecuteScalar();
+                                    nextId = Convert.ToInt32(o) + 1;
+                                }
+
+                                foreach (var item in itemsToInsert)
+                                {
+                                    byte[] picBytes = ShellPreviewHelper.GetShellPreviewBytes(item.FilePath);
+
+                                    using (var insertCmd = con.CreateCommand())
+                                    {
+                                        insertCmd.Transaction = tx;
+                                        insertCmd.CommandText =
+                                            "INSERT INTO Main (ID, FPATH, VNAME, ATYPE, PIC) " +
+                                            "VALUES (@id, @fpath, @vname, @atype, @pic);";
+
+                                        insertCmd.Parameters.AddWithValue("@id", nextId++);
+                                        insertCmd.Parameters.AddWithValue("@fpath", item.FilePath);
+                                        insertCmd.Parameters.AddWithValue("@vname", item.FileName);
+                                        insertCmd.Parameters.AddWithValue("@atype", item.SelectedAtype);
+
+                                        var pPic = insertCmd.CreateParameter();
+                                        pPic.ParameterName = "@pic";
+                                        pPic.DbType = System.Data.DbType.Binary;
+                                        pPic.Value = (object)picBytes ?? DBNull.Value;
+                                        insertCmd.Parameters.Add(pPic);
+
+                                        insertCmd.ExecuteNonQuery();
+                                    }
+                                }
+
+                                tx.Commit();
+                            }
+
+                            addedCount = itemsToInsert.Count;
+                        }
+                    }
+                }
+
+                LoadTypes();
+
+                if (deletedNames.Count == 0 && addedCount == 0)
+                {
+                    MessageBox.Show("БД уже актуальна. Удалённых и новых файлов не найдено.", "ApartmentManager");
+                    return;
+                }
+
+                string message = "";
+                if (deletedNames.Count > 0)
+                {
+                    message += "Удалено из БД: " + deletedNames.Count;
+                    if (deletedNames.Count <= 20)
+                        message += "\n" + string.Join("\n", deletedNames);
+                }
+
+                if (addedCount > 0)
+                {
+                    if (!string.IsNullOrWhiteSpace(message))
+                        message += "\n\n";
+
+                    message += "Добавлено в БД: " + addedCount;
+                }
+
+                MessageBox.Show(message, "ApartmentManager");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка обновления БД:\n" + ex, "ApartmentManager");
+            }
+        }
+
         private static SQLiteConnection OpenConnection(string dbPath, bool readOnly)
         {
             string cs = readOnly
-                ? ("Data Source=" + dbPath + ";Version=3;Read Only=True;")
-                : ("Data Source=" + dbPath + ";Version=3;");
+                ? "Data Source=" + dbPath + ";Version=3;Read Only=True;"
+                : "Data Source=" + dbPath + ";Version=3;";
 
             var con = new SQLiteConnection(cs);
             con.Open();
@@ -374,14 +561,14 @@ namespace KPLN_Tools.Forms
         private void OnPropertyChanged([CallerMemberName] string p = null)
         {
             var h = PropertyChanged;
-            if (h != null) h(this, new PropertyChangedEventArgs(p));
+            if (h != null)
+                h(this, new PropertyChangedEventArgs(p));
         }
     }
 
     internal class ApartmentTypeVm
     {
         public string Name { get; set; }
-
         public ObservableCollection<ApartmentItemVm> Items { get; private set; }
 
         public ApartmentTypeVm()
@@ -393,7 +580,6 @@ namespace KPLN_Tools.Forms
     internal class ApartmentItemVm : INotifyPropertyChanged
     {
         public int Id { get; set; }
-
         public string Title { get; set; }
 
         private ImageSource _preview;
@@ -411,7 +597,44 @@ namespace KPLN_Tools.Forms
         private void OnPropertyChanged([CallerMemberName] string p = null)
         {
             var h = PropertyChanged;
-            if (h != null) h(this, new PropertyChangedEventArgs(p));
+            if (h != null)
+                h(this, new PropertyChangedEventArgs(p));
+        }
+    }
+
+    public class ApartmentImportItemVm : INotifyPropertyChanged
+    {
+        public string FilePath { get; set; }
+        public string FileName { get; set; }
+
+        private string _selectedAtype;
+        public string SelectedAtype
+        {
+            get { return _selectedAtype; }
+            set
+            {
+                _selectedAtype = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private ImageSource _preview;
+        public ImageSource Preview
+        {
+            get { return _preview; }
+            set
+            {
+                _preview = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string p = null)
+        {
+            var h = PropertyChanged;
+            if (h != null)
+                h(this, new PropertyChangedEventArgs(p));
         }
     }
 
@@ -442,7 +665,9 @@ namespace KPLN_Tools.Forms
 
         public void Execute(object p)
         {
-            if (p == null) return;
+            if (p == null)
+                return;
+
             _execute((T)p);
         }
 
@@ -467,6 +692,157 @@ namespace KPLN_Tools.Forms
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotSupportedException();
+        }
+    }
+
+    internal static class ShellPreviewHelper
+    {
+        public static ImageSource GetShellPreviewImage(string filePath)
+        {
+            try
+            {
+                byte[] bytes = GetShellPreviewBytes(filePath);
+                if (bytes == null || bytes.Length == 0)
+                    return null;
+
+                using (var ms = new MemoryStream(bytes))
+                {
+                    var img = new BitmapImage();
+                    img.BeginInit();
+                    img.CacheOption = BitmapCacheOption.OnLoad;
+                    img.StreamSource = ms;
+                    img.EndInit();
+                    img.Freeze();
+                    return img;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static byte[] GetShellPreviewBytes(string filePath)
+        {
+            Bitmap bmp = null;
+
+            try
+            {
+                bmp = GetShellThumbnail(filePath, 512);
+
+                if (bmp == null)
+                    bmp = GetAssociatedIconBitmap(filePath);
+
+                if (bmp == null)
+                    return null;
+
+                using (bmp)
+                using (var ms = new MemoryStream())
+                {
+                    bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    return ms.ToArray();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Bitmap GetAssociatedIconBitmap(string filePath)
+        {
+            try
+            {
+                Icon icon = Icon.ExtractAssociatedIcon(filePath);
+                if (icon == null)
+                    return null;
+
+                using (icon)
+                {
+                    return icon.ToBitmap();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Bitmap GetShellThumbnail(string filePath, int size)
+        {
+            IShellItemImageFactory factory = null;
+            IntPtr hBitmap = IntPtr.Zero;
+
+            try
+            {
+                Guid shellItemGuid = new Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE");
+                SHCreateItemFromParsingName(filePath, IntPtr.Zero, ref shellItemGuid, out factory);
+
+                SIZE s;
+                s.cx = size;
+                s.cy = size;
+
+                factory.GetImage(
+                    s,
+                    SIIGBF.BIGGERSIZEOK | SIIGBF.THUMBNAILONLY,
+                    out hBitmap);
+
+                if (hBitmap == IntPtr.Zero)
+                    return null;
+
+                using (Bitmap temp = System.Drawing.Image.FromHbitmap(hBitmap))
+                {
+                    return new Bitmap(temp);
+                }
+            }
+            catch
+            {
+                return null;
+            }
+            finally
+            {
+                if (hBitmap != IntPtr.Zero)
+                    DeleteObject(hBitmap);
+
+                if (factory != null)
+                    Marshal.ReleaseComObject(factory);
+            }
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
+        private static extern void SHCreateItemFromParsingName(
+            [MarshalAs(UnmanagedType.LPWStr)] string pszPath,
+            IntPtr pbc,
+            ref Guid riid,
+            [MarshalAs(UnmanagedType.Interface)] out IShellItemImageFactory ppv);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        [ComImport]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [Guid("BCC18B79-BA16-442F-80C4-8A59C30C463B")]
+        private interface IShellItemImageFactory
+        {
+            void GetImage(SIZE size, SIIGBF flags, out IntPtr phbm);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SIZE
+        {
+            public int cx;
+            public int cy;
+        }
+
+        [Flags]
+        private enum SIIGBF
+        {
+            RESIZETOFIT = 0x00,
+            BIGGERSIZEOK = 0x01,
+            MEMORYONLY = 0x02,
+            ICONONLY = 0x04,
+            THUMBNAILONLY = 0x08,
+            INCACHEONLY = 0x10
         }
     }
 }

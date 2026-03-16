@@ -3,16 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:KPLN_Tools.Forms"
         Title="KPLN. Менеджер квартир"
-        Width="1120"
-        Height="640"
-        ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False"
-        FontFamily="Century Gothic"
-        UseLayoutRounding="True"
-        SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Display"
-        TextOptions.TextRenderingMode="ClearType">
+        Width="1120" Height="640" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FontFamily="Century Gothic" UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -88,7 +81,6 @@
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.5"/>
                             </Trigger>
-
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -151,9 +143,7 @@
                                 <DataTemplate>
                                     <Grid Width="200" Height="200" Margin="5">
                                         <Button Style="{StaticResource FlatTileButtonStyle}"
-                                                Command="{Binding DataContext.PickItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"
-                                                Background="#FFEFEFEF">
+                                                Command="{Binding DataContext.PickItemCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Background="#FFEFEFEF">
                                             <Button.ToolTip>
                                                 <ToolTip Placement="Mouse" HasDropShadow="True" Visibility="{Binding Preview, Converter={StaticResource NullToVis}, ConverterParameter=NotNull}">
                                                     <Border Background="White" BorderBrush="Black" BorderThickness="1" Padding="6">
@@ -163,7 +153,7 @@
                                             </Button.ToolTip>
 
                                             <Grid ClipToBounds="True">
-                                                <Border Background="White" BorderBrush="black" BorderThickness="1" Margin="1" Padding="1">
+                                                <Border Background="White" BorderBrush="Black" BorderThickness="1" Margin="1" Padding="1">
                                                     <Image Source="{Binding Preview}" Stretch="Uniform" StretchDirection="DownOnly" SnapsToDevicePixels="True" UseLayoutRounding="True" RenderOptions.BitmapScalingMode="Fant" Visibility="{Binding Preview, Converter={StaticResource NullToVis}, ConverterParameter=NotNull}"/>
                                                 </Border>
 
@@ -172,13 +162,12 @@
                                             </Grid>
                                         </Button>
 
-
-                                        <Button Style="{StaticResource MiniIconButtonStyle}" Visibility="{Binding DataContext.IsDep8, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}" 
-                                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,15,18,0" Command="{Binding DataContext.UploadImageCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" ToolTip="Загрузить/обновить изображение">
+                                        <Button Style="{StaticResource MiniIconButtonStyle}"
+                                                Visibility="{Binding DataContext.IsDep8, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"
+                                                HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,15,18,0" Command="{Binding DataContext.UploadImageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}" ToolTip="Загрузить/обновить изображение">
                                             <TextBlock Text="🖼" FontSize="13"/>
                                         </Button>
-
-                                        
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -189,7 +178,15 @@
         </Grid>
 
         <Grid Grid.Row="1" Margin="0,8,0,0">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Style="{StaticResource BottomActionButtonStyle}" Content="Обновить БД" Margin="0" Visibility="{Binding IsDep8, Converter={StaticResource BoolToVis}}"
+                    Command="{Binding UpdateDbCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Style="{StaticResource BottomActionButtonStyle}" Content="Преднастройки квартир" Command="{Binding OpenApartmentPresetsCommand}"/>
                 <Button Style="{StaticResource BottomActionButtonStyle}" Margin="0" Content="Превратить в 3D" Command="{Binding ConvertTo3DCommand}"/>
             </StackPanel>

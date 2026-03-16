@@ -65,7 +65,7 @@ namespace KPLN_Tools.ExecutableCommand
                         return Result.Cancelled;
                     }
 
-                    List<AxisRoomEdge> allEdges = new List<AxisRoomEdge>();
+                    List<CurveLoop> roomLoops = new List<CurveLoop>();
                     List<string> debugMessages = new List<string>();
 
                     foreach (FamilyInstance apartmentFi in apartmentInstances)
@@ -82,8 +82,7 @@ namespace KPLN_Tools.ExecutableCommand
                             try
                             {
                                 CurveLoop roomLoop = BuildRoomLoopFromInstance(roomFi);
-                                List<AxisRoomEdge> roomEdges = ExtractAxisEdgesFromLoop(roomLoop, GetElementIdValue(roomFi.Id));
-                                allEdges.AddRange(roomEdges);
+                                roomLoops.Add(roomLoop);
                             }
                             catch (Exception exRoom)
                             {
@@ -92,7 +91,7 @@ namespace KPLN_Tools.ExecutableCommand
                         }
                     }
 
-                    if (allEdges.Count == 0)
+                    if (roomLoops.Count == 0)
                     {
                         string debugText = debugMessages.Count > 0
                             ? "\n\n" + string.Join("\n", debugMessages)
@@ -101,7 +100,7 @@ namespace KPLN_Tools.ExecutableCommand
                         return Result.Cancelled;
                     }
 
-                    List<Line> wallAxisLines = BuildWallAxisLinesFromRoomEdges(allEdges, wallType.Width);
+                    List<Line> wallAxisLines = BuildClosedWallAxisLinesFromRooms(roomLoops, wallType.Width, debugMessages);
                     if (wallAxisLines.Count == 0)
                     {
                         string debugText = debugMessages.Count > 0
@@ -111,13 +110,31 @@ namespace KPLN_Tools.ExecutableCommand
                         return Result.Cancelled;
                     }
 
+                    double connectTol = ConvertMmToInternal(150);
+                    List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, floorPlan.GenLevel.Id);
+
+                    List<Line> preparedAxisLines = SnapNewLinesToExistingWalls(wallAxisLines, existingWalls, connectTol);
+                    preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+                    preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls);
+                    preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+
+                    if (preparedAxisLines.Count == 0)
+                    {
+                        string debugText = debugMessages.Count > 0
+                            ? "\n\n" + string.Join("\n", debugMessages)
+                            : "";
+                        TaskDialog.Show("Apartment Manager", "Все вычисленные оси уже перекрыты существующими стенами. Новые стены не созданы." + debugText);
+                        return Result.Cancelled;
+                    }
+
                     double wallHeightInternal = ConvertMmToInternal(preset.WallHeight);
 
+                    int createdWalls = 0;
                     using (Transaction t = new Transaction(doc, "KPLN - Построение стен по помещениям"))
                     {
                         t.Start();
 
-                        foreach (Line axis in wallAxisLines)
+                        foreach (Line axis in preparedAxisLines)
                         {
                             if (axis == null || axis.Length < 1e-6)
                                 continue;
@@ -131,6 +148,8 @@ namespace KPLN_Tools.ExecutableCommand
                                 0,
                                 false,
                                 false);
+
+                            createdWalls++;
                         }
 
                         t.Commit();
@@ -139,8 +158,10 @@ namespace KPLN_Tools.ExecutableCommand
                     string report =
                         "Построение завершено.\n" +
                         "Экземпляров квартир: " + apartmentInstances.Count + "\n" +
-                        "Границ помещений: " + allEdges.Count + "\n" +
-                        "Стеновых осей: " + wallAxisLines.Count;
+                        "Контуров помещений: " + roomLoops.Count + "\n" +
+                        "Стеновых осей после подготовки: " + preparedAxisLines.Count + "\n" +
+                        "Создано стен: " + createdWalls + "\n" +
+                        "Найдено существующих стен на уровне: " + existingWalls.Count;
 
                     if (debugMessages.Count > 0)
                         report += "\n\nЗамечания:\n" + string.Join("\n", debugMessages);
@@ -456,9 +477,6 @@ namespace KPLN_Tools.ExecutableCommand
             double halfW = width / 2.0;
             double halfD = depth / 2.0;
 
-            // Если база семейства "Помещение" не по центру, а из угла,
-            // замени точки на:
-            // p1=(0,0,0), p2=(width,0,0), p3=(width,depth,0), p4=(0,depth,0)
             XYZ p1 = tr.OfPoint(new XYZ(-halfW, -halfD, 0));
             XYZ p2 = tr.OfPoint(new XYZ(halfW, -halfD, 0));
             XYZ p3 = tr.OfPoint(new XYZ(halfW, halfD, 0));
@@ -531,300 +549,515 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
-        private static List<AxisRoomEdge> ExtractAxisEdgesFromLoop(CurveLoop loop, long ownerId)
+        private static List<Line> BuildClosedWallAxisLinesFromRooms(List<CurveLoop> roomLoops, double wallWidth, List<string> debugMessages)
         {
-            if (loop == null)
-                throw new ArgumentNullException("loop");
+            List<Line> result = new List<Line>();
+            double halfWidth = wallWidth / 2.0;
 
-            List<Line> lines = loop.OfType<Curve>().Select(x => x as Line).Where(x => x != null).ToList();
-            if (lines.Count == 0)
-                throw new Exception("Контур помещения не содержит линейных сегментов.");
-
-            double area = GetSignedAreaXY(loop);
-            bool ccw = area > 0.0;
-
-            List<AxisRoomEdge> result = new List<AxisRoomEdge>();
-
-            foreach (Line line in lines)
+            foreach (CurveLoop roomLoop in roomLoops)
             {
-                XYZ p0 = line.GetEndPoint(0);
-                XYZ p1 = line.GetEndPoint(1);
-
-                if (Math.Abs(p0.Y - p1.Y) < 1e-6)
+                try
                 {
-                    double y = 0.5 * (p0.Y + p1.Y);
-                    double z = 0.5 * (p0.Z + p1.Z);
-                    double from = Math.Min(p0.X, p1.X);
-                    double to = Math.Max(p0.X, p1.X);
-
-                    double dx = p1.X - p0.X;
-                    int outwardSign = GetSign(-dx);
-                    if (!ccw)
-                        outwardSign = -outwardSign;
-
-                    result.Add(new AxisRoomEdge
-                    {
-                        Orientation = AxisOrientation.Horizontal,
-                        Coord = y,
-                        Z = z,
-                        From = from,
-                        To = to,
-                        OutwardSign = outwardSign,
-                        OwnerId = ownerId
-                    });
+                    List<Line> offsetLoopLines = BuildOffsetClosedLoop(roomLoop, halfWidth);
+                    result.AddRange(offsetLoopLines);
                 }
-                else if (Math.Abs(p0.X - p1.X) < 1e-6)
+                catch (Exception ex)
                 {
-                    double x = 0.5 * (p0.X + p1.X);
-                    double z = 0.5 * (p0.Z + p1.Z);
-                    double from = Math.Min(p0.Y, p1.Y);
-                    double to = Math.Max(p0.Y, p1.Y);
-
-                    double dy = p1.Y - p0.Y;
-                    int outwardSign = GetSign(dy);
-                    if (!ccw)
-                        outwardSign = -outwardSign;
-
-                    result.Add(new AxisRoomEdge
-                    {
-                        Orientation = AxisOrientation.Vertical,
-                        Coord = x,
-                        Z = z,
-                        From = from,
-                        To = to,
-                        OutwardSign = outwardSign,
-                        OwnerId = ownerId
-                    });
+                    debugMessages.Add("Ошибка построения замкнутого контура стены: " + ex.Message);
                 }
-                else
+            }
+
+            return MergeCollinearLines(result);
+        }
+
+        private static List<Line> BuildOffsetClosedLoop(CurveLoop loop, double offset)
+        {
+            const double tol = 1e-9;
+
+            List<Line> edges = loop
+                .Cast<Curve>()
+                .Select(x => x as Line)
+                .Where(x => x != null && x.Length > tol)
+                .ToList();
+
+            if (edges.Count < 3)
+                throw new Exception("Контур помещения должен содержать минимум 3 линейных сегмента.");
+
+            List<XYZ> vertices = ExtractOrderedVertices(edges);
+            if (vertices.Count < 3)
+                throw new Exception("Не удалось извлечь вершины контура помещения.");
+
+            bool ccw = GetSignedAreaXY(vertices) > 0.0;
+
+            List<OffsetLine2D> offsetLines = new List<OffsetLine2D>();
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                XYZ a = vertices[i];
+                XYZ b = vertices[(i + 1) % vertices.Count];
+
+                XYZ dir = Normalize2D(b - a);
+                if (dir == null)
+                    throw new Exception("Обнаружен нулевой сегмент в контуре.");
+
+                XYZ outward = ccw
+                    ? new XYZ(dir.Y, -dir.X, 0)
+                    : new XYZ(-dir.Y, dir.X, 0);
+
+                XYZ oa = new XYZ(a.X + outward.X * offset, a.Y + outward.Y * offset, a.Z);
+                XYZ ob = new XYZ(b.X + outward.X * offset, b.Y + outward.Y * offset, b.Z);
+
+                offsetLines.Add(new OffsetLine2D
                 {
-                    throw new Exception("Обнаружен неортогональный сегмент. Этот код рассчитан на прямоугольные помещения.");
-                }
+                    P0 = oa,
+                    P1 = ob,
+                    Dir = dir,
+                    Z = a.Z
+                });
+            }
+
+            List<XYZ> offsetVertices = new List<XYZ>();
+            for (int i = 0; i < offsetLines.Count; i++)
+            {
+                OffsetLine2D prev = offsetLines[(i - 1 + offsetLines.Count) % offsetLines.Count];
+                OffsetLine2D cur = offsetLines[i];
+
+                XYZ intersection;
+                if (!TryIntersectInfiniteLines2D(prev.P0, prev.Dir, cur.P0, cur.Dir, out intersection))
+                    intersection = cur.P0;
+
+                double z = 0.5 * (prev.Z + cur.Z);
+                offsetVertices.Add(new XYZ(intersection.X, intersection.Y, z));
+            }
+
+            List<Line> result = new List<Line>();
+            for (int i = 0; i < offsetVertices.Count; i++)
+            {
+                XYZ p0 = offsetVertices[i];
+                XYZ p1 = offsetVertices[(i + 1) % offsetVertices.Count];
+
+                if (p0.DistanceTo(p1) > tol)
+                    result.Add(Line.CreateBound(p0, p1));
             }
 
             return result;
         }
 
-        private static List<Line> BuildWallAxisLinesFromRoomEdges(List<AxisRoomEdge> sourceEdges, double wallWidth)
+        private static List<XYZ> ExtractOrderedVertices(List<Line> lines)
         {
             const double tol = 1e-6;
-            double halfWidth = wallWidth / 2.0;
-            double maxPairDistance = wallWidth + tol;
+            List<XYZ> pts = new List<XYZ>();
 
-            List<AxisRoomEdge> working = sourceEdges
-                .Where(x => x != null && x.To - x.From > tol)
-                .Select(x => x.Clone())
-                .ToList();
+            if (lines == null || lines.Count == 0)
+                return pts;
 
-            List<Line> axisLines = new List<Line>();
-
-            bool foundPair;
-            do
+            foreach (Line line in lines)
             {
-                foundPair = false;
+                XYZ p = line.GetEndPoint(0);
+                if (pts.Count == 0 || pts[pts.Count - 1].DistanceTo(p) > tol)
+                    pts.Add(p);
+            }
 
-                int bestI = -1;
-                int bestJ = -1;
-                double bestDistance = double.MaxValue;
-                double bestFrom = 0.0;
-                double bestTo = 0.0;
+            if (pts.Count >= 2 && pts[0].DistanceTo(pts[pts.Count - 1]) < tol)
+                pts.RemoveAt(pts.Count - 1);
 
-                for (int i = 0; i < working.Count; i++)
+            return pts;
+        }
+
+        private static List<ExistingWallLineInfo> GetExistingWallLinesOnLevel(Document doc, ElementId levelId)
+        {
+            List<ExistingWallLineInfo> result = new List<ExistingWallLineInfo>();
+
+            IEnumerable<Wall> walls = new FilteredElementCollector(doc)
+                .OfClass(typeof(Wall))
+                .Cast<Wall>();
+
+            foreach (Wall wall in walls)
+            {
+                if (wall == null)
+                    continue;
+
+                if (wall.LevelId != levelId)
+                    continue;
+
+                LocationCurve lc = wall.Location as LocationCurve;
+                if (lc == null)
+                    continue;
+
+                Line line = lc.Curve as Line;
+                if (line == null || line.Length < 1e-9)
+                    continue;
+
+                XYZ p0 = line.GetEndPoint(0);
+                XYZ p1 = line.GetEndPoint(1);
+                XYZ dir = Normalize2D(p1 - p0);
+                if (dir == null)
+                    continue;
+
+                result.Add(new ExistingWallLineInfo
                 {
-                    AxisRoomEdge a = working[i];
-                    if (a == null || a.Length <= tol)
-                        continue;
+                    WallId = wall.Id,
+                    P0 = p0,
+                    P1 = p1,
+                    Dir = dir,
+                    Z = 0.5 * (p0.Z + p1.Z)
+                });
+            }
 
-                    for (int j = i + 1; j < working.Count; j++)
+            return result;
+        }
+
+        private static List<Line> SnapNewLinesToExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls, double snapTol)
+        {
+            List<Line> result = new List<Line>();
+
+            foreach (Line line in newLines)
+            {
+                if (line == null || line.Length < 1e-9)
+                    continue;
+
+                Line snapped = SnapSingleLineToExistingWalls(line, existingWalls, snapTol);
+                if (snapped != null && snapped.Length > 1e-9)
+                    result.Add(snapped);
+            }
+
+            return result;
+        }
+
+        private static Line SnapSingleLineToExistingWalls(Line line, List<ExistingWallLineInfo> existingWalls, double snapTol)
+        {
+            XYZ p0 = line.GetEndPoint(0);
+            XYZ p1 = line.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return line;
+
+            XYZ newP0 = SnapEndpointToExistingWalls(p0, new XYZ(-dir.X, -dir.Y, 0), line, existingWalls, snapTol);
+            XYZ newP1 = SnapEndpointToExistingWalls(p1, dir, line, existingWalls, snapTol);
+
+            if (newP0.DistanceTo(newP1) < 1e-9)
+                return null;
+
+            return Line.CreateBound(newP0, newP1);
+        }
+
+        private static XYZ SnapEndpointToExistingWalls(
+            XYZ endpoint,
+            XYZ extensionDir,
+            Line sourceLine,
+            List<ExistingWallLineInfo> existingWalls,
+            double snapTol)
+        {
+            const double tol = 1e-9;
+
+            XYZ bestPoint = endpoint;
+            double bestDist = double.MaxValue;
+
+            XYZ sourceP0 = sourceLine.GetEndPoint(0);
+            XYZ sourceP1 = sourceLine.GetEndPoint(1);
+            XYZ sourceDir = Normalize2D(sourceP1 - sourceP0);
+            if (sourceDir == null)
+                return endpoint;
+
+            foreach (ExistingWallLineInfo ex in existingWalls)
+            {
+                if (Math.Abs(ex.Z - endpoint.Z) > snapTol)
+                    continue;
+
+                XYZ inter;
+                if (TryIntersectInfiniteLines2D(endpoint, extensionDir, ex.P0, ex.Dir, out inter))
+                {
+                    if (PointOnSegment2D(inter, ex.P0, ex.P1, snapTol))
                     {
-                        AxisRoomEdge b = working[j];
-                        if (b == null || b.Length <= tol)
-                            continue;
+                        XYZ delta = inter - endpoint;
+                        double along = Dot2D(delta, extensionDir);
+                        double dist = Distance2D(endpoint, inter);
 
-                        if (a.Orientation != b.Orientation)
-                            continue;
-
-                        if (Math.Abs(a.Z - b.Z) > tol)
-                            continue;
-
-                        if (a.OutwardSign == b.OutwardSign)
-                            continue;
-
-                        double overlapFrom = Math.Max(a.From, b.From);
-                        double overlapTo = Math.Min(a.To, b.To);
-
-                        if (overlapTo - overlapFrom <= tol)
-                            continue;
-
-                        double distance = Math.Abs(a.Coord - b.Coord);
-                        if (distance > maxPairDistance)
-                            continue;
-
-                        if (distance < bestDistance)
+                        if (along >= -tol && dist <= snapTol && dist < bestDist)
                         {
-                            bestDistance = distance;
-                            bestI = i;
-                            bestJ = j;
-                            bestFrom = overlapFrom;
-                            bestTo = overlapTo;
-                            foundPair = true;
+                            bestDist = dist;
+                            bestPoint = new XYZ(inter.X, inter.Y, endpoint.Z);
                         }
                     }
                 }
 
-                if (foundPair)
+                if (AreCollinear2D(sourceP0, sourceP1, ex.P0, ex.P1, snapTol))
                 {
-                    AxisRoomEdge a = working[bestI];
-                    AxisRoomEdge b = working[bestJ];
-
-                    double axisCoord = 0.5 * (a.Coord + b.Coord);
-                    axisLines.Add(BuildAxisLine(a.Orientation, axisCoord, a.Z, bestFrom, bestTo));
-
-                    List<AxisRoomEdge> aParts = SubtractInterval(a, bestFrom, bestTo);
-                    List<AxisRoomEdge> bParts = SubtractInterval(b, bestFrom, bestTo);
-
-                    if (bestI > bestJ)
+                    XYZ[] candidates = new XYZ[] { ex.P0, ex.P1 };
+                    foreach (XYZ c in candidates)
                     {
-                        working.RemoveAt(bestI);
-                        working.RemoveAt(bestJ);
-                    }
-                    else
-                    {
-                        working.RemoveAt(bestJ);
-                        working.RemoveAt(bestI);
-                    }
+                        XYZ delta = c - endpoint;
+                        double along = Dot2D(delta, extensionDir);
+                        double dist = Distance2D(endpoint, c);
 
-                    working.AddRange(aParts);
-                    working.AddRange(bParts);
+                        if (along >= -tol && dist <= snapTol && dist < bestDist)
+                        {
+                            bestDist = dist;
+                            bestPoint = new XYZ(c.X, c.Y, endpoint.Z);
+                        }
+                    }
                 }
             }
-            while (foundPair);
 
-            foreach (AxisRoomEdge edge in working)
-            {
-                if (edge == null || edge.Length <= tol)
-                    continue;
-
-                double axisCoord = edge.Coord + edge.OutwardSign * halfWidth;
-                axisLines.Add(BuildAxisLine(edge.Orientation, axisCoord, edge.Z, edge.From, edge.To));
-            }
-
-            return MergeAxisAlignedLines(axisLines);
+            return bestPoint;
         }
 
-        private static List<AxisRoomEdge> SubtractInterval(AxisRoomEdge edge, double cutFrom, double cutTo)
+        private static List<Line> RemoveSegmentsOverlappingExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls)
         {
             const double tol = 1e-6;
-            List<AxisRoomEdge> result = new List<AxisRoomEdge>();
+            List<Line> result = new List<Line>();
 
-            if (edge == null)
-                return result;
-
-            if (cutFrom > edge.From + tol)
+            foreach (Line newLine in newLines)
             {
-                result.Add(new AxisRoomEdge
+                if (newLine == null || newLine.Length <= tol)
+                    continue;
+
+                List<Line> remaining = SubtractExistingWallsFromNewLine(newLine, existingWalls);
+                foreach (Line part in remaining)
                 {
-                    Orientation = edge.Orientation,
-                    Coord = edge.Coord,
-                    Z = edge.Z,
-                    From = edge.From,
-                    To = cutFrom,
-                    OutwardSign = edge.OutwardSign,
-                    OwnerId = edge.OwnerId
-                });
+                    if (part != null && part.Length > tol)
+                        result.Add(part);
+                }
             }
 
-            if (cutTo < edge.To - tol)
+            return result;
+        }
+
+        private static List<Line> SubtractExistingWallsFromNewLine(Line newLine, List<ExistingWallLineInfo> existingWalls)
+        {
+            const double tol = 1e-6;
+
+            XYZ p0 = newLine.GetEndPoint(0);
+            XYZ p1 = newLine.GetEndPoint(1);
+
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return new List<Line>();
+
+            dir = CanonicalizeDirection(dir);
+            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+
+            double newOffset = Dot2D(p0, normal);
+            double newZ = 0.5 * (p0.Z + p1.Z);
+
+            double newT0 = Dot2D(p0, dir);
+            double newT1 = Dot2D(p1, dir);
+            double newFrom = Math.Min(newT0, newT1);
+            double newTo = Math.Max(newT0, newT1);
+
+            List<Interval1D> cutIntervals = new List<Interval1D>();
+
+            foreach (ExistingWallLineInfo ex in existingWalls)
             {
-                result.Add(new AxisRoomEdge
+                if (ex == null)
+                    continue;
+
+                if (Math.Abs(ex.Z - newZ) > tol)
+                    continue;
+
+                XYZ exDir = CanonicalizeDirection(ex.Dir);
+                if (exDir == null)
+                    continue;
+
+                if (Math.Abs(Cross2D(dir, exDir)) > tol)
+                    continue;
+
+                double exOffset = Dot2D(ex.P0, normal);
+                if (Math.Abs(exOffset - newOffset) > tol)
+                    continue;
+
+                double exT0 = Dot2D(ex.P0, dir);
+                double exT1 = Dot2D(ex.P1, dir);
+                double exFrom = Math.Min(exT0, exT1);
+                double exTo = Math.Max(exT0, exT1);
+
+                double overlapFrom = Math.Max(newFrom, exFrom);
+                double overlapTo = Math.Min(newTo, exTo);
+
+                if (overlapTo - overlapFrom > tol)
                 {
-                    Orientation = edge.Orientation,
-                    Coord = edge.Coord,
-                    Z = edge.Z,
-                    From = cutTo,
-                    To = edge.To,
-                    OutwardSign = edge.OutwardSign,
-                    OwnerId = edge.OwnerId
+                    cutIntervals.Add(new Interval1D
+                    {
+                        From = overlapFrom,
+                        To = overlapTo
+                    });
+                }
+            }
+
+            if (cutIntervals.Count == 0)
+                return new List<Line> { newLine };
+
+            List<Interval1D> mergedCuts = MergeIntervals(cutIntervals);
+            List<Interval1D> remainingIntervals = SubtractIntervals(
+                new Interval1D { From = newFrom, To = newTo },
+                mergedCuts);
+
+            List<Line> result = new List<Line>();
+            foreach (Interval1D interval in remainingIntervals)
+            {
+                if (interval.To - interval.From <= tol)
+                    continue;
+
+                XYZ rp0 = new XYZ(
+                    dir.X * interval.From + normal.X * newOffset,
+                    dir.Y * interval.From + normal.Y * newOffset,
+                    newZ);
+
+                XYZ rp1 = new XYZ(
+                    dir.X * interval.To + normal.X * newOffset,
+                    dir.Y * interval.To + normal.Y * newOffset,
+                    newZ);
+
+                if (rp0.DistanceTo(rp1) > tol)
+                    result.Add(Line.CreateBound(rp0, rp1));
+            }
+
+            return result;
+        }
+
+        private static List<Interval1D> MergeIntervals(List<Interval1D> intervals)
+        {
+            const double tol = 1e-6;
+            List<Interval1D> result = new List<Interval1D>();
+
+            if (intervals == null || intervals.Count == 0)
+                return result;
+
+            List<Interval1D> ordered = intervals
+                .Where(x => x != null && x.To - x.From > tol)
+                .OrderBy(x => x.From)
+                .ThenBy(x => x.To)
+                .ToList();
+
+            if (ordered.Count == 0)
+                return result;
+
+            double curFrom = ordered[0].From;
+            double curTo = ordered[0].To;
+
+            for (int i = 1; i < ordered.Count; i++)
+            {
+                Interval1D next = ordered[i];
+
+                if (next.From <= curTo + tol)
+                {
+                    curTo = Math.Max(curTo, next.To);
+                }
+                else
+                {
+                    result.Add(new Interval1D { From = curFrom, To = curTo });
+                    curFrom = next.From;
+                    curTo = next.To;
+                }
+            }
+
+            result.Add(new Interval1D { From = curFrom, To = curTo });
+            return result;
+        }
+
+        private static List<Interval1D> SubtractIntervals(Interval1D source, List<Interval1D> cuts)
+        {
+            const double tol = 1e-6;
+            List<Interval1D> result = new List<Interval1D>();
+
+            if (source == null || source.To - source.From <= tol)
+                return result;
+
+            if (cuts == null || cuts.Count == 0)
+            {
+                result.Add(source);
+                return result;
+            }
+
+            double cursor = source.From;
+
+            foreach (Interval1D cut in cuts)
+            {
+                if (cut == null || cut.To - cut.From <= tol)
+                    continue;
+
+                if (cut.To <= source.From + tol)
+                    continue;
+
+                if (cut.From >= source.To - tol)
+                    break;
+
+                double cutFrom = Math.Max(source.From, cut.From);
+                double cutTo = Math.Min(source.To, cut.To);
+
+                if (cutFrom > cursor + tol)
+                {
+                    result.Add(new Interval1D
+                    {
+                        From = cursor,
+                        To = cutFrom
+                    });
+                }
+
+                cursor = Math.Max(cursor, cutTo);
+            }
+
+            if (cursor < source.To - tol)
+            {
+                result.Add(new Interval1D
+                {
+                    From = cursor,
+                    To = source.To
                 });
             }
 
             return result;
         }
 
-        private static List<Line> MergeAxisAlignedLines(List<Line> lines)
+        private static List<Line> MergeCollinearLines(List<Line> lines)
         {
             const double tol = 1e-6;
 
-            List<AxisLineData> horizontal = new List<AxisLineData>();
-            List<AxisLineData> vertical = new List<AxisLineData>();
-            List<Line> other = new List<Line>();
+            List<GenericAxisLineData> data = new List<GenericAxisLineData>();
 
             foreach (Line line in lines)
             {
-                if (line == null)
+                if (line == null || line.Length <= tol)
                     continue;
 
                 XYZ p0 = line.GetEndPoint(0);
                 XYZ p1 = line.GetEndPoint(1);
 
-                if (Math.Abs(p0.Y - p1.Y) < tol)
-                {
-                    double y = RoundTol(p0.Y, tol);
-                    double z = RoundTol((p0.Z + p1.Z) * 0.5, tol);
-                    double from = Math.Min(p0.X, p1.X);
-                    double to = Math.Max(p0.X, p1.X);
+                XYZ dir = Normalize2D(p1 - p0);
+                if (dir == null)
+                    continue;
 
-                    horizontal.Add(new AxisLineData
-                    {
-                        Orientation = AxisOrientation.Horizontal,
-                        Coord = y,
-                        Z = z,
-                        From = from,
-                        To = to
-                    });
-                }
-                else if (Math.Abs(p0.X - p1.X) < tol)
-                {
-                    double x = RoundTol(p0.X, tol);
-                    double z = RoundTol((p0.Z + p1.Z) * 0.5, tol);
-                    double from = Math.Min(p0.Y, p1.Y);
-                    double to = Math.Max(p0.Y, p1.Y);
+                dir = CanonicalizeDirection(dir);
 
-                    vertical.Add(new AxisLineData
-                    {
-                        Orientation = AxisOrientation.Vertical,
-                        Coord = x,
-                        Z = z,
-                        From = from,
-                        To = to
-                    });
-                }
-                else
+                XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+                double offset = Dot2D(p0, normal);
+                double z = 0.5 * (p0.Z + p1.Z);
+
+                double t0 = Dot2D(p0, dir);
+                double t1 = Dot2D(p1, dir);
+
+                double from = Math.Min(t0, t1);
+                double to = Math.Max(t0, t1);
+
+                data.Add(new GenericAxisLineData
                 {
-                    other.Add(line);
-                }
+                    Dir = dir,
+                    Normal = normal,
+                    Offset = offset,
+                    Z = z,
+                    From = from,
+                    To = to
+                });
             }
 
-            List<Line> result = new List<Line>();
-            result.AddRange(MergeAxisGroup(horizontal));
-            result.AddRange(MergeAxisGroup(vertical));
-            result.AddRange(other);
-
-            return result;
-        }
-
-        private static List<Line> MergeAxisGroup(List<AxisLineData> items)
-        {
-            const double tol = 1e-6;
-            List<Line> result = new List<Line>();
-
-            var grouped = items
-                .GroupBy(x => new AxisGroupKey(x.Orientation, x.Coord, x.Z, tol))
+            var groups = data
+                .GroupBy(x => new GenericAxisGroupKey(x.Dir, x.Offset, x.Z, tol))
                 .ToList();
 
-            foreach (var group in grouped)
+            List<Line> result = new List<Line>();
+
+            foreach (var group in groups)
             {
-                List<AxisLineData> ordered = group
+                List<GenericAxisLineData> ordered = group
                     .OrderBy(x => x.From)
                     .ThenBy(x => x.To)
                     .ToList();
@@ -837,94 +1070,141 @@ namespace KPLN_Tools.ExecutableCommand
 
                 for (int i = 1; i < ordered.Count; i++)
                 {
-                    AxisLineData next = ordered[i];
-
+                    GenericAxisLineData next = ordered[i];
                     if (next.From <= curTo + tol)
                     {
                         curTo = Math.Max(curTo, next.To);
                     }
                     else
                     {
-                        result.Add(BuildAxisLine(group.Key.Orientation, group.Key.Coord, group.Key.Z, curFrom, curTo));
+                        result.Add(BuildGenericAxisLine(group.Key.Dir, group.Key.Offset, group.Key.Z, curFrom, curTo));
                         curFrom = next.From;
                         curTo = next.To;
                     }
                 }
 
-                result.Add(BuildAxisLine(group.Key.Orientation, group.Key.Coord, group.Key.Z, curFrom, curTo));
+                result.Add(BuildGenericAxisLine(group.Key.Dir, group.Key.Offset, group.Key.Z, curFrom, curTo));
             }
 
             return result;
         }
 
-        private static Line BuildAxisLine(AxisOrientation orientation, double coord, double z, double from, double to)
+        private static Line BuildGenericAxisLine(XYZ dir, double offset, double z, double from, double to)
         {
-            if (orientation == AxisOrientation.Horizontal)
-            {
-                XYZ p0 = new XYZ(from, coord, z);
-                XYZ p1 = new XYZ(to, coord, z);
-                return Line.CreateBound(p0, p1);
-            }
-            else
-            {
-                XYZ p0 = new XYZ(coord, from, z);
-                XYZ p1 = new XYZ(coord, to, z);
-                return Line.CreateBound(p0, p1);
-            }
+            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+
+            XYZ p0 = new XYZ(
+                dir.X * from + normal.X * offset,
+                dir.Y * from + normal.Y * offset,
+                z);
+
+            XYZ p1 = new XYZ(
+                dir.X * to + normal.X * offset,
+                dir.Y * to + normal.Y * offset,
+                z);
+
+            return Line.CreateBound(p0, p1);
         }
 
-        private static double GetSignedAreaXY(CurveLoop loop)
+        private static bool TryIntersectInfiniteLines2D(XYZ p1, XYZ d1, XYZ p2, XYZ d2, out XYZ intersection)
         {
-            if (loop == null)
+            const double tol = 1e-12;
+
+            intersection = null;
+            double cross = Cross2D(d1, d2);
+            if (Math.Abs(cross) < tol)
+                return false;
+
+            XYZ delta = p2 - p1;
+            double t = Cross2D(delta, d2) / cross;
+
+            intersection = new XYZ(
+                p1.X + d1.X * t,
+                p1.Y + d1.Y * t,
+                0);
+
+            return true;
+        }
+
+        private static bool PointOnSegment2D(XYZ p, XYZ a, XYZ b, double tol)
+        {
+            double ab = Distance2D(a, b);
+            double ap = Distance2D(a, p);
+            double pb = Distance2D(p, b);
+            return Math.Abs((ap + pb) - ab) <= tol;
+        }
+
+        private static bool AreCollinear2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, double tol)
+        {
+            XYZ ad = Normalize2D(a1 - a0);
+            XYZ bd = Normalize2D(b1 - b0);
+
+            if (ad == null || bd == null)
+                return false;
+
+            if (Math.Abs(Cross2D(ad, bd)) > tol)
+                return false;
+
+            if (Math.Abs(Cross2D(b0 - a0, ad)) > tol)
+                return false;
+
+            return true;
+        }
+
+        private static XYZ Normalize2D(XYZ v)
+        {
+            double len = Math.Sqrt(v.X * v.X + v.Y * v.Y);
+            if (len < 1e-12)
+                return null;
+
+            return new XYZ(v.X / len, v.Y / len, 0);
+        }
+
+        private static XYZ CanonicalizeDirection(XYZ dir)
+        {
+            if (dir == null)
+                return null;
+
+            if (dir.X < -1e-9)
+                return new XYZ(-dir.X, -dir.Y, 0);
+
+            if (Math.Abs(dir.X) < 1e-9 && dir.Y < -1e-9)
+                return new XYZ(-dir.X, -dir.Y, 0);
+
+            return new XYZ(dir.X, dir.Y, 0);
+        }
+
+        private static double Dot2D(XYZ a, XYZ b)
+        {
+            return a.X * b.X + a.Y * b.Y;
+        }
+
+        private static double Cross2D(XYZ a, XYZ b)
+        {
+            return a.X * b.Y - a.Y * b.X;
+        }
+
+        private static double Distance2D(XYZ a, XYZ b)
+        {
+            double dx = a.X - b.X;
+            double dy = a.Y - b.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        private static double GetSignedAreaXY(List<XYZ> pts)
+        {
+            if (pts == null || pts.Count < 3)
                 return 0.0;
-
-            List<XYZ> pts = new List<XYZ>();
-
-            foreach (Curve c in loop)
-            {
-                if (c == null)
-                    continue;
-
-                XYZ p = c.GetEndPoint(0);
-                if (pts.Count == 0 || !IsAlmostEqual(pts[pts.Count - 1], p))
-                    pts.Add(p);
-            }
-
-            if (pts.Count < 3)
-                return 0.0;
-
-            if (!IsAlmostEqual(pts[0], pts[pts.Count - 1]))
-                pts.Add(pts[0]);
 
             double area2 = 0.0;
-            for (int i = 0; i < pts.Count - 1; i++)
+            for (int i = 0; i < pts.Count; i++)
             {
                 XYZ a = pts[i];
-                XYZ b = pts[i + 1];
+                XYZ b = pts[(i + 1) % pts.Count];
                 area2 += (a.X * b.Y) - (b.X * a.Y);
             }
 
             return area2 * 0.5;
-        }
-
-        private static int GetSign(double value)
-        {
-            if (value > 1e-9) return 1;
-            if (value < -1e-9) return -1;
-            return 0;
-        }
-
-        private static bool IsAlmostEqual(XYZ a, XYZ b, double tol = 1e-9)
-        {
-            if (a == null || b == null)
-                return false;
-
-            return a.DistanceTo(b) < tol;
-        }
-
-        private static double RoundTol(double value, double tol)
-        {
-            return Math.Round(value / tol) * tol;
         }
 
         private static long GetElementIdValue(ElementId id)
@@ -945,77 +1225,71 @@ namespace KPLN_Tools.ExecutableCommand
 #endif
         }
 
-        private enum AxisOrientation
+        private static double RoundTol(double value, double tol)
         {
-            Horizontal,
-            Vertical
+            return Math.Round(value / tol) * tol;
         }
 
-        private class AxisRoomEdge
+        private class OffsetLine2D
         {
-            public AxisOrientation Orientation { get; set; }
-            public double Coord { get; set; }
+            public XYZ P0 { get; set; }
+            public XYZ P1 { get; set; }
+            public XYZ Dir { get; set; }
             public double Z { get; set; }
+        }
+
+        private class ExistingWallLineInfo
+        {
+            public ElementId WallId { get; set; }
+            public XYZ P0 { get; set; }
+            public XYZ P1 { get; set; }
+            public XYZ Dir { get; set; }
+            public double Z { get; set; }
+        }
+
+        private class Interval1D
+        {
             public double From { get; set; }
             public double To { get; set; }
-            public int OutwardSign { get; set; }
-            public long OwnerId { get; set; }
-
-            public double Length
-            {
-                get { return To - From; }
-            }
-
-            public AxisRoomEdge Clone()
-            {
-                return new AxisRoomEdge
-                {
-                    Orientation = Orientation,
-                    Coord = Coord,
-                    Z = Z,
-                    From = From,
-                    To = To,
-                    OutwardSign = OutwardSign,
-                    OwnerId = OwnerId
-                };
-            }
         }
 
-        private class AxisLineData
+        private class GenericAxisLineData
         {
-            public AxisOrientation Orientation { get; set; }
-            public double Coord { get; set; }
+            public XYZ Dir { get; set; }
+            public XYZ Normal { get; set; }
+            public double Offset { get; set; }
             public double Z { get; set; }
             public double From { get; set; }
             public double To { get; set; }
         }
 
-        private class AxisGroupKey : IEquatable<AxisGroupKey>
+        private class GenericAxisGroupKey : IEquatable<GenericAxisGroupKey>
         {
-            public AxisOrientation Orientation { get; private set; }
-            public double Coord { get; private set; }
+            public XYZ Dir { get; private set; }
+            public double Offset { get; private set; }
             public double Z { get; private set; }
 
-            public AxisGroupKey(AxisOrientation orientation, double coord, double z, double tol)
+            public GenericAxisGroupKey(XYZ dir, double offset, double z, double tol)
             {
-                Orientation = orientation;
-                Coord = RoundTol(coord, tol);
+                Dir = new XYZ(RoundTol(dir.X, tol), RoundTol(dir.Y, tol), 0);
+                Offset = RoundTol(offset, tol);
                 Z = RoundTol(z, tol);
             }
 
-            public bool Equals(AxisGroupKey other)
+            public bool Equals(GenericAxisGroupKey other)
             {
                 if (other == null)
                     return false;
 
-                return Orientation == other.Orientation
-                    && Math.Abs(Coord - other.Coord) < 1e-9
+                return Math.Abs(Dir.X - other.Dir.X) < 1e-9
+                    && Math.Abs(Dir.Y - other.Dir.Y) < 1e-9
+                    && Math.Abs(Offset - other.Offset) < 1e-9
                     && Math.Abs(Z - other.Z) < 1e-9;
             }
 
             public override bool Equals(object obj)
             {
-                return Equals(obj as AxisGroupKey);
+                return Equals(obj as GenericAxisGroupKey);
             }
 
             public override int GetHashCode()
@@ -1023,8 +1297,9 @@ namespace KPLN_Tools.ExecutableCommand
                 unchecked
                 {
                     int hash = 17;
-                    hash = hash * 23 + Orientation.GetHashCode();
-                    hash = hash * 23 + Coord.GetHashCode();
+                    hash = hash * 23 + Dir.X.GetHashCode();
+                    hash = hash * 23 + Dir.Y.GetHashCode();
+                    hash = hash * 23 + Offset.GetHashCode();
                     hash = hash * 23 + Z.GetHashCode();
                     return hash;
                 }
