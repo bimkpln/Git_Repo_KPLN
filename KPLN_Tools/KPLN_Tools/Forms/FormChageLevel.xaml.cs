@@ -117,6 +117,20 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        private static long GetElementIdValue(ElementId id)
+        {
+            if (id == null || id == ElementId.InvalidElementId)
+            {
+                return -1;
+            }
+
+#if Revit2024 || Debug2024
+            return id.Value;
+#else
+    return id.IntegerValue;
+#endif
+        }
+
         private class OffsetValues
         {
             public bool HasFirstOffset;
@@ -126,7 +140,7 @@ namespace KPLN_Tools.Forms
         private class FailedElementInfo
         {
             public string CategoryName { get; set; }
-            public int ElementId { get; set; }
+            public long ElementId { get; set; }
             public string Reason { get; set; }
         }
 
@@ -395,10 +409,10 @@ namespace KPLN_Tools.Forms
 
             StringBuilder sb = new StringBuilder();
 
-            foreach (Element element in _currentLevelElements.OrderBy(x => x.Id.IntegerValue))
+            foreach (Element element in _currentLevelElements.OrderBy(x => GetElementIdValue(x.Id)))
             {
                 string categoryName = element.Category != null ? element.Category.Name : "<без категории>";
-                sb.AppendLine("ID: " + element.Id.IntegerValue + "; Категория: " + categoryName + "; Имя: " + element.Name);
+                sb.AppendLine("ID: " + GetElementIdValue(element.Id) + "; Категория: " + categoryName + "; Имя: " + element.Name);
             }
 
             ElementList.Document.Blocks.Add(new Paragraph(new Run(sb.ToString())));
@@ -585,7 +599,7 @@ namespace KPLN_Tools.Forms
                         failedItems.Add(new FailedElementInfo
                         {
                             CategoryName = "Неизвестная категория",
-                            ElementId = element != null ? element.Id.IntegerValue : -1,
+                            ElementId = element != null ? GetElementIdValue(element.Id) : -1,
                             Reason = "Элемент не найден или отсутствует категория."
                         });
                         continue;
@@ -624,7 +638,7 @@ namespace KPLN_Tools.Forms
                             failedItems.Add(new FailedElementInfo
                             {
                                 CategoryName = element.Category.Name,
-                                ElementId = element.Id.IntegerValue,
+                                ElementId = GetElementIdValue(element.Id),
                                 Reason = failReason
                             });
                         }
@@ -634,7 +648,7 @@ namespace KPLN_Tools.Forms
                         failedItems.Add(new FailedElementInfo
                         {
                             CategoryName = element.Category.Name,
-                            ElementId = element.Id.IntegerValue,
+                            ElementId = GetElementIdValue(element.Id),
                             Reason = "Исключение: " + ex.Message
                         });
                     }
@@ -995,7 +1009,7 @@ namespace KPLN_Tools.Forms
 
                 foreach (IGrouping<string, FailedElementInfo> reasonGroup in categoryGroup.GroupBy(x => x.Reason))
                 {
-                    List<int> ids = reasonGroup
+                    List<long> ids = reasonGroup
                         .Select(x => x.ElementId)
                         .Distinct()
                         .OrderBy(x => x)
@@ -1006,6 +1020,7 @@ namespace KPLN_Tools.Forms
                     sb.AppendLine();
                 }
 
+                sb.AppendLine();
                 sb.AppendLine();
             }
 
