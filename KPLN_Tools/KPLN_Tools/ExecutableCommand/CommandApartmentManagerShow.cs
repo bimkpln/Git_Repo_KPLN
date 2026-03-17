@@ -51,13 +51,6 @@ namespace KPLN_Tools.ExecutableCommand
 
                     var preset = wnd.ApartmentPresetData;
 
-                    WallType wallType = FindWallTypeByName(doc, preset.WallType);
-                    if (wallType == null)
-                    {
-                        TaskDialog.Show("Ошибка", "Не найден тип стены: " + preset.WallType);
-                        return Result.Failed;
-                    }
-
                     List<FamilyInstance> apartmentInstances = GetPlacedApartmentInstancesOnLevel(doc, floorPlan.GenLevel);
                     if (apartmentInstances.Count == 0)
                     {
@@ -65,91 +58,155 @@ namespace KPLN_Tools.ExecutableCommand
                         return Result.Cancelled;
                     }
 
-                    List<CurveLoop> roomLoops = new List<CurveLoop>();
                     List<string> debugMessages = new List<string>();
-
-                    foreach (FamilyInstance apartmentFi in apartmentInstances)
-                    {
-                        List<FamilyInstance> roomInstances = FindRoomSubComponents(doc, apartmentFi);
-                        if (roomInstances.Count == 0)
-                        {
-                            debugMessages.Add("Не найдены вложенные экземпляры 'Помещение' у экземпляра Id=" + GetElementIdValue(apartmentFi.Id));
-                            continue;
-                        }
-
-                        foreach (FamilyInstance roomFi in roomInstances)
-                        {
-                            try
-                            {
-                                CurveLoop roomLoop = BuildRoomLoopFromInstance(roomFi);
-                                roomLoops.Add(roomLoop);
-                            }
-                            catch (Exception exRoom)
-                            {
-                                debugMessages.Add("Ошибка обработки вложенного помещения Id=" + GetElementIdValue(roomFi.Id) + ": " + exRoom.Message);
-                            }
-                        }
-                    }
-
-                    if (roomLoops.Count == 0)
-                    {
-                        string debugText = debugMessages.Count > 0
-                            ? "\n\n" + string.Join("\n", debugMessages)
-                            : "";
-                        TaskDialog.Show("Apartment Manager", "Не удалось получить ни одного контура помещений." + debugText);
-                        return Result.Cancelled;
-                    }
-
-                    List<Line> wallAxisLines = BuildClosedWallAxisLinesFromRooms(roomLoops, wallType.Width, debugMessages);
-                    if (wallAxisLines.Count == 0)
-                    {
-                        string debugText = debugMessages.Count > 0
-                            ? "\n\n" + string.Join("\n", debugMessages)
-                            : "";
-                        TaskDialog.Show("Apartment Manager", "Не удалось вычислить оси стен." + debugText);
-                        return Result.Cancelled;
-                    }
+                    List<PreparedApartmentWalls> preparedApartments = new List<PreparedApartmentWalls>();
 
                     double connectTol = ConvertMmToInternal(150);
                     List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, floorPlan.GenLevel.Id);
 
-                    List<Line> preparedAxisLines = SnapNewLinesToExistingWalls(wallAxisLines, existingWalls, connectTol);
-                    preparedAxisLines = MergeCollinearLines(preparedAxisLines);
-                    preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls);
-                    preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+                    WallType preferredWallType = null;
+                    if (preset != null && !string.IsNullOrWhiteSpace(preset.WallType) && preset.WallType != "Не выбрано")
+                        preferredWallType = FindWallTypeByName(doc, preset.WallType);
 
-                    if (preparedAxisLines.Count == 0)
+                    int roomLoopsCount = 0;
+
+                    foreach (FamilyInstance apartmentFi in apartmentInstances)
+                    {
+                        try
+                        {
+                            double apartmentWallThicknessInternal = GetApartmentWallThickness(apartmentFi);
+                            int apartmentWallThicknessMm = (int)Math.Round(ConvertInternalToMm(apartmentWallThicknessInternal));
+
+                            if (apartmentWallThicknessMm <= 0)
+                            {
+                                debugMessages.Add(
+                                    "У квартиры Id=" + GetElementIdValue(apartmentFi.Id) +
+                                    " параметр 'Стены_Толщина' имеет некорректное значение.");
+                                continue;
+                            }
+
+                            WallType matchedWallType = FindWallTypeByThickness(doc, apartmentWallThicknessMm, preferredWallType);
+                            if (matchedWallType == null)
+                            {
+                                debugMessages.Add(
+                                    "Для квартиры Id=" + GetElementIdValue(apartmentFi.Id) +
+                                    " не найден тип стены с толщиной " + apartmentWallThicknessMm + " мм.");
+                                continue;
+                            }
+
+                            List<FamilyInstance> roomInstances = FindRoomSubComponents(doc, apartmentFi);
+                            if (roomInstances.Count == 0)
+                            {
+                                debugMessages.Add(
+                                    "Не найдены вложенные экземпляры 'Помещение' у экземпляра Id=" +
+                                    GetElementIdValue(apartmentFi.Id));
+                                continue;
+                            }
+
+                            List<CurveLoop> apartmentRoomLoops = new List<CurveLoop>();
+
+                            foreach (FamilyInstance roomFi in roomInstances)
+                            {
+                                try
+                                {
+                                    CurveLoop roomLoop = BuildRoomLoopFromInstance(roomFi);
+                                    apartmentRoomLoops.Add(roomLoop);
+                                    roomLoopsCount++;
+                                }
+                                catch (Exception exRoom)
+                                {
+                                    debugMessages.Add(
+                                        "Ошибка обработки вложенного помещения Id=" +
+                                        GetElementIdValue(roomFi.Id) + ": " + exRoom.Message);
+                                }
+                            }
+
+                            if (apartmentRoomLoops.Count == 0)
+                                continue;
+
+                            List<Line> wallAxisLines = BuildClosedWallAxisLinesFromRooms(
+                                apartmentRoomLoops,
+                                apartmentWallThicknessInternal,
+                                debugMessages);
+
+                            if (wallAxisLines.Count == 0)
+                            {
+                                debugMessages.Add(
+                                    "Для квартиры Id=" + GetElementIdValue(apartmentFi.Id) +
+                                    " не удалось вычислить оси стен.");
+                                continue;
+                            }
+
+                            List<Line> preparedAxisLines = SnapNewLinesToExistingWalls(wallAxisLines, existingWalls, connectTol);
+                            preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+                            preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls);
+                            preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+
+                            if (preparedAxisLines.Count == 0)
+                            {
+                                debugMessages.Add(
+                                    "Для квартиры Id=" + GetElementIdValue(apartmentFi.Id) +
+                                    " все вычисленные оси перекрыты существующими стенами.");
+                                continue;
+                            }
+
+                            preparedApartments.Add(new PreparedApartmentWalls
+                            {
+                                ApartmentId = apartmentFi.Id,
+                                WallType = matchedWallType,
+                                ThicknessMm = apartmentWallThicknessMm,
+                                AxisLines = preparedAxisLines
+                            });
+                        }
+                        catch (Exception exApartment)
+                        {
+                            debugMessages.Add(
+                                "Ошибка обработки квартиры Id=" +
+                                GetElementIdValue(apartmentFi.Id) + ": " + exApartment.Message);
+                        }
+                    }
+
+                    if (preparedApartments.Count == 0)
                     {
                         string debugText = debugMessages.Count > 0
                             ? "\n\n" + string.Join("\n", debugMessages)
                             : "";
-                        TaskDialog.Show("Apartment Manager", "Все вычисленные оси уже перекрыты существующими стенами. Новые стены не созданы." + debugText);
+                        TaskDialog.Show("Apartment Manager", "Не удалось подготовить ни одной стены." + debugText);
                         return Result.Cancelled;
                     }
 
                     double wallHeightInternal = ConvertMmToInternal(preset.WallHeight);
 
                     int createdWalls = 0;
+                    int preparedAxisCount = 0;
+
                     using (Transaction t = new Transaction(doc, "KPLN - Построение стен по помещениям"))
                     {
                         t.Start();
 
-                        foreach (Line axis in preparedAxisLines)
+                        foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
                         {
-                            if (axis == null || axis.Length < 1e-6)
+                            if (apartmentWalls == null || apartmentWalls.WallType == null || apartmentWalls.AxisLines == null)
                                 continue;
 
-                            Wall.Create(
-                                doc,
-                                axis,
-                                wallType.Id,
-                                floorPlan.GenLevel.Id,
-                                wallHeightInternal,
-                                0,
-                                false,
-                                false);
+                            foreach (Line axis in apartmentWalls.AxisLines)
+                            {
+                                if (axis == null || axis.Length < 1e-6)
+                                    continue;
 
-                            createdWalls++;
+                                Wall.Create(
+                                    doc,
+                                    axis,
+                                    apartmentWalls.WallType.Id,
+                                    floorPlan.GenLevel.Id,
+                                    wallHeightInternal,
+                                    0,
+                                    false,
+                                    false);
+
+                                createdWalls++;
+                                preparedAxisCount++;
+                            }
                         }
 
                         t.Commit();
@@ -158,8 +215,9 @@ namespace KPLN_Tools.ExecutableCommand
                     string report =
                         "Построение завершено.\n" +
                         "Экземпляров квартир: " + apartmentInstances.Count + "\n" +
-                        "Контуров помещений: " + roomLoops.Count + "\n" +
-                        "Стеновых осей после подготовки: " + preparedAxisLines.Count + "\n" +
+                        "Контуров помещений: " + roomLoopsCount + "\n" +
+                        "Подготовлено наборов стен: " + preparedApartments.Count + "\n" +
+                        "Стеновых осей после подготовки: " + preparedAxisCount + "\n" +
                         "Создано стен: " + createdWalls + "\n" +
                         "Найдено существующих стен на уровне: " + existingWalls.Count;
 
@@ -521,6 +579,26 @@ namespace KPLN_Tools.ExecutableCommand
             throw new Exception("Не найден параметр длины: " + string.Join(", ", paramNames));
         }
 
+        private static double GetApartmentWallThickness(FamilyInstance apartmentFi)
+        {
+            if (apartmentFi == null)
+                throw new ArgumentNullException("apartmentFi");
+
+            Parameter p = apartmentFi.LookupParameter("Стены_Толщина");
+            if (p != null && p.StorageType == StorageType.Double)
+                return p.AsDouble();
+
+            Element typeElem = apartmentFi.Document.GetElement(apartmentFi.GetTypeId());
+            if (typeElem != null)
+            {
+                p = typeElem.LookupParameter("Стены_Толщина");
+                if (p != null && p.StorageType == StorageType.Double)
+                    return p.AsDouble();
+            }
+
+            throw new Exception("Не найден параметр 'Стены_Толщина' у экземпляра или типа семейства квартиры.");
+        }
+
         private static WallType FindWallTypeByName(Document doc, string wallTypeName)
         {
             List<WallType> allWallTypes = new FilteredElementCollector(doc)
@@ -547,6 +625,68 @@ namespace KPLN_Tools.ExecutableCommand
                 return contains;
 
             return null;
+        }
+
+        private static WallType FindWallTypeByThickness(Document doc, int thicknessMm, WallType preferredWallType = null)
+        {
+            if (preferredWallType != null)
+            {
+                int preferredThickness;
+                if (TryGetThicknessFromWallTypeName(preferredWallType.Name, out preferredThickness) &&
+                    preferredThickness == thicknessMm)
+                {
+                    return preferredWallType;
+                }
+            }
+
+            List<WallType> allWallTypes = new FilteredElementCollector(doc)
+                .OfClass(typeof(WallType))
+                .Cast<WallType>()
+                .ToList();
+
+            foreach (WallType wt in allWallTypes)
+            {
+                if (wt == null || string.IsNullOrWhiteSpace(wt.Name))
+                    continue;
+
+                int parsedThickness;
+                if (!TryGetThicknessFromWallTypeName(wt.Name, out parsedThickness))
+                    continue;
+
+                if (parsedThickness == thicknessMm)
+                    return wt;
+            }
+
+            return null;
+        }
+
+        private static bool TryGetThicknessFromWallTypeName(string wallTypeName, out int thicknessMm)
+        {
+            thicknessMm = 0;
+
+            if (string.IsNullOrWhiteSpace(wallTypeName))
+                return false;
+
+            string[] parts = wallTypeName
+                .Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToArray();
+
+            if (parts.Length == 0)
+                return false;
+
+            for (int i = parts.Length - 1; i >= 0; i--)
+            {
+                int value;
+                if (int.TryParse(parts[i], out value))
+                {
+                    thicknessMm = value;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static List<Line> BuildClosedWallAxisLinesFromRooms(List<CurveLoop> roomLoops, double wallWidth, List<string> debugMessages)
@@ -1225,9 +1365,26 @@ namespace KPLN_Tools.ExecutableCommand
 #endif
         }
 
+        private static double ConvertInternalToMm(double valueInternal)
+        {
+#if Revit2024 || Revit2023 || Debug2024 || Debug2023
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.Millimeters);
+#else
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_MILLIMETERS);
+#endif
+        }
+
         private static double RoundTol(double value, double tol)
         {
             return Math.Round(value / tol) * tol;
+        }
+
+        private class PreparedApartmentWalls
+        {
+            public ElementId ApartmentId { get; set; }
+            public WallType WallType { get; set; }
+            public int ThicknessMm { get; set; }
+            public List<Line> AxisLines { get; set; }
         }
 
         private class OffsetLine2D
