@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -442,7 +443,8 @@ namespace KPLN_Looker
 
             #region Утсановка переменных, привязаных к виду
             // Имя файла
-            _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+            if (!doc.IsFamilyDocument)
+                _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
 
 
             // Проект КПЛН
@@ -724,11 +726,13 @@ namespace KPLN_Looker
             string familyName = args.FamilyName;
             string familyPath = args.FamilyPath;
 
-            if (_currentMonitoredDocFilePath_ExceptARKon == null
+            // Анализ файла на предмет мониторинга. ВАЖНО: Использовать кэш не безопасно, ну и такие процедуры редко происходят, поэтому - приемлемо
+            string currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(prjDoc);
+            if (currentMonitoredDocFilePath_ExceptARKon == null
                 // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                || _currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                || currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                 // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                || _currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                || currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
                 return;
 
             // Игнор семейств от BimStep
@@ -760,7 +764,8 @@ namespace KPLN_Looker
                     throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
             }
 
-            UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X (из папки проекта, если она есть)");
+            UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только из папок X:\\BIM\\3_Семейства\\. " +
+                "При этом запрещено использовать архивные семейства, а семейства Самолета - можно использовать только для проекта СЕТ. ");
             if (!(bool)userVerify.ShowDialog())
             {
                 TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке семейства отказано!");
@@ -795,6 +800,11 @@ namespace KPLN_Looker
             #region Локальный отлов по пути семейства для проектов
             if (!string.IsNullOrEmpty(familyPath))
             {
+                // Отлов ЛЮБЫХ архивных семейств
+                if (familyPath.ToLower().Contains("архив"))
+                    return true;
+
+
                 // Уточнение для ЛОКАЛЬНЫХ ПРОЕКТОВ
                 bool isSMLT = doc.Title.Contains("СЕТ_1");
                 if (isSMLT)
@@ -812,6 +822,7 @@ namespace KPLN_Looker
                     else
                         return true;
                 }
+
 
                 // Уточнение для ЛОКАЛЬНЫХ СЕМЕЙСТВ
                 if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета"))
