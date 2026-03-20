@@ -18,23 +18,50 @@ using System.Drawing;
 
 namespace KPLN_Tools.Forms
 {
+    public interface IApartmentManagerExternalController
+    {
+        void RequestPlaceApartment(int apartmentId);
+        void RequestConvertTo3D(ApartmentPresetData presetData);
+        void RequestOpenApartmentPresets(ApartmentPresetData presetData);
+    }
+
     public class ApartmentPresetData
     {
+        public string SelectedPlanName { get; set; }
+
+        public string LowerConstraint { get; set; }
+        public string UpperConstraint { get; set; }
+
+        public int BaseOffset { get; set; }
+
         public int WallHeight { get; set; }
-        public string WallType { get; set; }
+
+        public Dictionary<int, string> WallTypeByThickness { get; set; }
+
         public string EntryDoor { get; set; }
         public string BathroomDoor { get; set; }
         public string RoomDoor { get; set; }
+
+        public Dictionary<string, string> DoorsByRoomCategory { get; set; }
 
         public ApartmentPresetData Clone()
         {
             return new ApartmentPresetData
             {
+                SelectedPlanName = SelectedPlanName,
+                LowerConstraint = LowerConstraint,
+                UpperConstraint = UpperConstraint,
+                BaseOffset = BaseOffset,
                 WallHeight = WallHeight,
-                WallType = WallType,
+                WallTypeByThickness = WallTypeByThickness != null
+                    ? new Dictionary<int, string>(WallTypeByThickness)
+                    : new Dictionary<int, string>(),
                 EntryDoor = EntryDoor,
                 BathroomDoor = BathroomDoor,
-                RoomDoor = RoomDoor
+                RoomDoor = RoomDoor,
+                DoorsByRoomCategory = DoorsByRoomCategory != null
+                    ? new Dictionary<string, string>(DoorsByRoomCategory)
+                    : new Dictionary<string, string>()
             };
         }
     }
@@ -44,22 +71,35 @@ namespace KPLN_Tools.Forms
         public int SelectedApartmentId { get; private set; }
         public int _nDep;
 
+        private readonly IApartmentManagerExternalController _externalController;
+
         public ApartmentPresetData ApartmentPresetData { get; private set; }
         public bool ConvertTo3DRequested { get; private set; }
 
-        public ApartmentManagerWindow(int nDep)
+        public ApartmentManagerWindow(
+            int nDep,
+            IApartmentManagerExternalController externalController,
+            ApartmentPresetData presetData = null)
         {
             InitializeComponent();
             _nDep = nDep;
+            _externalController = externalController;
 
-            ApartmentPresetData = new ApartmentPresetData
-            {
-                WallHeight = 3000,
-                WallType = "Не выбрано",
-                EntryDoor = "Не выбрано",
-                BathroomDoor = "Не выбрано",
-                RoomDoor = "Не выбрано"
-            };
+            ApartmentPresetData = presetData != null
+                ? presetData.Clone()
+                : new ApartmentPresetData
+                {
+                    SelectedPlanName = "",
+                    LowerConstraint = "",
+                    UpperConstraint = "Неприсоединённая",
+                    BaseOffset = 0,
+                    WallHeight = 3000,
+                    WallTypeByThickness = new Dictionary<int, string>(),
+                    EntryDoor = "Не выбрано",
+                    BathroomDoor = "Не выбрано",
+                    RoomDoor = "Не выбрано",
+                    DoorsByRoomCategory = new Dictionary<string, string>()
+                };
 
             ApartmentManagerVm vm = new ApartmentManagerVm(_nDep);
             vm.ItemPicked += Vm_ItemPicked;
@@ -70,34 +110,50 @@ namespace KPLN_Tools.Forms
             DataContext = vm;
         }
 
+        public void SetApartmentPresetData(ApartmentPresetData data)
+        {
+            ApartmentPresetData = data != null ? data.Clone() : null;
+        }
+
         private void Vm_ItemPicked(int id)
         {
             SelectedApartmentId = id;
-            DialogResult = true;
-            Close();
+
+            if (_externalController == null)
+                return;
+
+            WindowState = WindowState.Minimized;
+            _externalController.RequestPlaceApartment(id);
         }
 
         private void Vm_RequestClose()
         {
-            DialogResult = false;
             Close();
         }
 
         private void Vm_ApartmentPresetsRequested()
         {
-            var wnd = new ApartmentPresetsWindow(ApartmentPresetData);
-            wnd.Owner = this;
+            if (_externalController == null)
+                return;
 
-            bool? res = wnd.ShowDialog();
-            if (res == true)
-                ApartmentPresetData = wnd.ResultPresetData;
+            _externalController.RequestOpenApartmentPresets(
+                ApartmentPresetData != null
+                    ? ApartmentPresetData.Clone()
+                    : null);
         }
 
         private void Vm_ConvertTo3DRequested()
         {
             ConvertTo3DRequested = true;
-            DialogResult = true;
-            Close();
+
+            if (_externalController == null)
+                return;
+
+            WindowState = WindowState.Minimized;
+            _externalController.RequestConvertTo3D(
+                ApartmentPresetData != null
+                    ? ApartmentPresetData.Clone()
+                    : null);
         }
     }
 
@@ -340,7 +396,6 @@ namespace KPLN_Tools.Forms
                         "SELECT ID, FPATH " +
                         "FROM Main " +
                         "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
-
                     using (var r = cmd.ExecuteReader())
                     {
                         while (r.Read())
