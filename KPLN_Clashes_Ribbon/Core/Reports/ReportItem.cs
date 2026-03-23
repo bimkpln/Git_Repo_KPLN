@@ -303,6 +303,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 if (SubElements.Count != 0)
                 {
                     sb.Append(string.Join(",", SubElements.Select(se => se.Element_1_Id)));
+                    sb.Append(",");
                     sb.Append(string.Join(",", SubElements.Select(se => se.Element_2_Id)));
                 }
                 else
