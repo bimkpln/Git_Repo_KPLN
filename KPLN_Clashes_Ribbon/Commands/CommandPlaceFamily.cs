@@ -182,8 +182,19 @@ namespace KPLN_Clashes_Ribbon.Commands
             ////if (!docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
             ////    docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
 
+
+            // Проверка есть открытый док в списке с ошибками
+            bool isElemFromOpenDoc = riArr.All(subRI => doc.Title.Contains(subRI.Element_1_DocName) || doc.Title.Contains(subRI.Element_2_DocName));
+            if (!isElemFromOpenDoc)
+            {
+                TaskDialog.Show("Внимание!",
+                    "Проверь имя файлов, участвующих в отчёте. Твой файл не попадает в их список.\n" +
+                    "ВАЖНО: Коллизии нужно искать только в моделях, указанных в отчёте.\n" +
+                    "ВАЖНО: Точки пересечения всё равно появятся, но если ошибка ложная - напиши Куцко Тимофею");
+            }
+
+
             // Создание новых
-            // Метка, что хотя бы один элемент был удален
             bool elemsDeleted = false;
             bool elemsNotInOpenFile = true;
             foreach (ReportItem subRI in riArr)
@@ -209,9 +220,8 @@ namespace KPLN_Clashes_Ribbon.Commands
             {
                 TaskDialog.Show("Внимание!",
                     "Элементы отсутсвуют в открытом проекте - скорее всего это элементы не относятся к вашей модели.\n" +
-                    "ВАЖНО: Внимательно прочитай имя отчета - оно должно содержать аббревиатуру твоего раздела");
-
-                return null;
+                    "ВАЖНО: Внимательно прочитай имя отчета - оно должно содержать аббревиатуру твоего раздела\n" +
+                    "ВАЖНО: Точка пересечения всё равно появится, чтобы избежать пропуска перемоделированных элементов");
             }
 
             if (elemsDeleted)

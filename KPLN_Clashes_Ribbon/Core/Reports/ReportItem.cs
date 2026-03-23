@@ -8,6 +8,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
@@ -298,10 +299,21 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
+                StringBuilder sb = new StringBuilder();
                 if (SubElements.Count != 0)
-                    return string.Join(",", SubElements.Select(se => se.Element_1_Id));
+                {
+                    sb.Append(string.Join(",", SubElements.Select(se => se.Element_1_Id)));
+                    sb.Append(string.Join(",", SubElements.Select(se => se.Element_2_Id)));
+                }
+                else
+                {
+                    sb.Append(Element_1_Id.ToString());
+                    sb.Append(",");
+                    sb.Append(Element_2_Id.ToString());
+                }
+                
 
-                return Element_1_Id.ToString();
+                return sb.ToString();
             }
         }
 

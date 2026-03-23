@@ -206,6 +206,15 @@ namespace KPLN_Clashes_Ribbon.Forms
         }
 
         /// <summary>
+        /// Суммирование всех вызываемых элементов по кнопке
+        /// </summary>
+        private void SelectIdElements(object sender, RoutedEventArgs e)
+        {
+            ReportItem report = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
+            SelectIds(sender, report);
+        }
+
+        /// <summary>
         /// Разделение вызываемых элементов по кнопке для конфликта №1
         /// </summary>
         private void SelectIdElement_1(object sender, RoutedEventArgs e)
@@ -223,10 +232,36 @@ namespace KPLN_Clashes_Ribbon.Forms
             SelectId(sender, report.Element_2_Info);
         }
 
+        /// <summary>
+        /// Выбор по списку id
+        /// </summary>
+        private void SelectIds(object sender, ReportItem report)
+        {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            var ids = report.GroupElementIds
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(strId => int.Parse(strId));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CmdZoomSelectElems<int>(ids));
+#else
+            var ids = report.GroupElementIds
+                .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(strId => long.Parse(strId));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CmdZoomSelectElems<long>(ids));
+#endif
+        }
+
+        /// <summary>
+        /// Выбор по одиночному id
+        /// </summary>
         private void SelectId(object sender, string elInfo)
         {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
             if (int.TryParse((sender as System.Windows.Controls.Button).Content.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int id))
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandZoomSelectElement(id, elInfo));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CmdZoomSelectElems<int>(id, elInfo));
+#else
+            if (long.TryParse((sender as System.Windows.Controls.Button).Content.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out long id))
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CmdZoomSelectElems<long>(id, elInfo));
+#endif
             else
                 throw new Exception("Проблемы с отчетом: параметр id не парсится");
         }

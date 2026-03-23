@@ -9,73 +9,88 @@ using System.Linq;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {
-    public class CommandZoomSelectElement : IExecutableCommand
+    public class CmdZoomSelectElems<TId> : IExecutableCommand
+        where TId : struct, IConvertible
     {
-#if Debug2020 || Revit2020 || Debug2023 || Revit2023
-        private readonly int _id;
-#else
-        private readonly long _id;
-#endif
+        private readonly TId[] _ids;
+        private readonly string[] _elsInfo;
 
-        private readonly string _elInfo;
-
-        public CommandZoomSelectElement(int id, string elInfo)
+        public CmdZoomSelectElems(IEnumerable<TId> ids)
         {
-            _id = id;
-            _elInfo = elInfo;
+            _ids = ids?.ToArray() ?? Array.Empty<TId>();
         }
 
+        public CmdZoomSelectElems(TId id, string elInfo)
+        {
+            _ids = new[] { id };
+            _elsInfo = new[] { elInfo ?? string.Empty };
+        }
 
         public Result Execute(UIApplication app)
         {
             UIDocument uiDoc = app.ActiveUIDocument;
             if (uiDoc == null)
                 return Result.Cancelled;
+            
+            Document doc = app.ActiveUIDocument.Document;
 
             try
             {
-                Document doc = app.ActiveUIDocument.Document;
-                Element element = doc.GetElement(new ElementId(_id));
-                Transaction t = new Transaction(doc, "KPLN_Приблизить");
-
-                if (!ElementCheckErrorFromInfoParse(doc, element))
+                // Клик по одиночному ID - изоляция, зуммирование и выделение в модели (с пред проверкой)
+                if (_ids.Length < 2 && _elsInfo.Length < 2)
                 {
-                    t.Start();
-                    if (element != null)
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    Element elem = doc.GetElement(new ElementId(Convert.ToInt32(_ids.FirstOrDefault())));
+#else
+                    Element elem = doc.GetElement(new ElementId(Convert.ToInt64(_ids.FirstOrDefault())));
+#endif
+                    List<string> infosList = _elsInfo.FirstOrDefault().Split('➜').ToList();
+
+
+                    Transaction t = new Transaction(doc, "KPLN_Приблизить");
+                    if (!ElementCheckErrorFromInfoParse(doc, elem, infosList))
                     {
-                        if (app.ActiveUIDocument.ActiveView is View3D activeView)
-                            ZoomTools.ZoomElement(element.get_BoundingBox(null), app.ActiveUIDocument, activeView);
+                        t.Start();
+                        if (elem != null)
+                        {
+                            if (app.ActiveUIDocument.ActiveView is View3D activeView)
+                                ZoomTools.ZoomElement(elem.get_BoundingBox(null), app.ActiveUIDocument, activeView);
 
-                        app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId> { element.Id });
+                            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId> { elem.Id });
+                        }
+                        else
+                            TaskDialog.Show("Внимание!", 
+                                "Данный элемент не найден! Либо это элемент из связи, либо элемент был удален/замоделирован заново, что привело к удалению/замене id.\n\n" +
+                                "ВАЖНО: Метку пересечения всё равно можно поставить, но ТОЛЬКО если она относится к открытому файлу и ТОЛЬКО на месте коллизии из отчёта");
+                        t.Commit();
                     }
-                    else
-                        TaskDialog.Show("Внимание!", 
-                            "Данный элемент не найден! Либо это элемент из связи, либо элемент был удален/замоделирован заново, что привело к удалению/замене id.\n\n" +
-                            "ВАЖНО: Метку пересечения всё равно можно поставить, но ТОЛЬКО если она относится к открытому файлу и ТОЛЬКО на месте коллизии из отчёта");
-                    t.Commit();
-
-                    return Result.Succeeded;
                 }
+                // Клик по коллекции ID - выделение в модели (без проверки на наличие)
+                else
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    app.ActiveUIDocument.Selection.SetElementIds(_ids.Select(id => new ElementId(Convert.ToInt32(id))).ToArray());
+#else
+                    app.ActiveUIDocument.Selection.SetElementIds(_ids.Select(id => new ElementId(Convert.ToInt64(id))).ToArray());
+#endif
+                
+                return Result.Succeeded;
+                
             }
             catch (Exception ex)
             {
                 HtmlOutput.PrintError(ex);
                 return Result.Cancelled;
             }
-
-            return Result.Cancelled;
         }
 
         /// <summary>
         /// Проверка элемента из отчета на вложенность в другой проект
         /// </summary>
         /// <returns>Да - элемент из связи; Нет - элемент из открытого проекта</returns>
-        private bool ElementCheckErrorFromInfoParse(Document doc, Element element)
+        private bool ElementCheckErrorFromInfoParse(Document doc, Element element, List<string> infosList)
         {
             if (element == null)
                 return false;
-
-            List<string> infosList = _elInfo.Split('➜').ToList();
 
             // Тонкий отлов линков в отчете, при условии, что отчет идет в формате: xxx.nwc➜xxy.rvt (nwc всегда основной файл, rvt - это уже линк)
             string rvtLinkFileName = infosList.Where(i => i.ToLower().Contains(".rvt")).FirstOrDefault();
