@@ -143,6 +143,32 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "http://moodle/");
 
+
+
+
+
+
+
+            PushButtonData movingElementsInLevel = CreateBtnData(
+                "Перемещение элементов на новый уровень",
+                "Перемещение элементов на новый уровень",
+                "Плагин для перемещения элементов на новый уровень с сохранением их позиции",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandMovingElementsInLevel).FullName,
+                "KPLN_Tools.Imagens.changeElementsInLevelSmall.png",
+                "KPLN_Tools.Imagens.changeElementsInLevelSmall.png",
+                "http://moodle/");
+
+
+
+
+
+
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData(
                 CommandDimensionHelper.PluginName,
@@ -228,6 +254,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
+            sharedPullDownBtn.AddPushButton(movingElementsInLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(ws_Links);
 
