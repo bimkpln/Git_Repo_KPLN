@@ -9,6 +9,7 @@ using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
+using KPLN_Loader.Core.Entities;
 using KPLN_Looker.Comparers;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
@@ -25,11 +26,6 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {        
-        /// <summary>
-        /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
-        /// </summary>
-        private static DBUser[] _arKonFileSubscribersFromBIM;
-
         /// <summary>
         /// Кэширование текущего пути мониторингового проекта (ЗА исключением файлов концепций)
         /// </summary>
@@ -83,14 +79,7 @@ namespace KPLN_Looker
         /// </summary>
         private static readonly Dictionary<string, Room[]> _lastDocRooms = new Dictionary<string, Room[]>();
 
-        public Module()
-        {
-            List<DBUser> bimManager = DBMainService.UserDbService.GetDBUsers_BIMManager().ToList();
-            List<DBUser> arBimCoord = DBMainService.UserDbService.GetDBUsers_BIMARCoord().ToList();
-            arBimCoord.AddRange(bimManager);
-
-            _arKonFileSubscribersFromBIM = arBimCoord.ToArray();
-        }
+        public Module() { }
 
         /// <summary>
         /// Указатель на окно ревит
@@ -407,14 +396,12 @@ namespace KPLN_Looker
             }
             else
             {
-                TaskDialog td = new TaskDialog("ВНИМАНИЕ")
-                {
-                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
-                    MainInstruction = "Вы работаете в незарегистрированном проекте. Скинь скрин в BIM-отдел",
-                    FooterText = $"Специалисту BIM-отдела: файл - {fileFullName}",
-                    CommonButtons = TaskDialogCommonButtons.Ok,
-                };
-                td.Show();
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта стадии П/Р.\n" +
+                        $"Имя файла: [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{fileFullName}[/b].");
             }
             #endregion
         }
@@ -547,8 +534,6 @@ namespace KPLN_Looker
         {
             Document doc = args.Document;
             if (doc == null) return;
-
-            ARKonFileSendMsg(doc);
 
 #if REVIT
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
@@ -779,8 +764,6 @@ namespace KPLN_Looker
         private static void OnDocumentSaved(object sender, DocumentSavedEventArgs args)
         {
             Document doc = args.Document;
-
-            ARKonFileSendMsg(doc);
         }
 
         /// <summary>
@@ -906,8 +889,12 @@ namespace KPLN_Looker
                 {
                     if (r != null && r.IsValidObject)
                         return r.Id;
-
-                    return new ElementId(-1);
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    var errId = -1;
+#else
+                    long errId = -1;
+#endif
+                    return new ElementId(errId);
                 }), ElementIdEqualityComparer.Instance);
             
             
@@ -1176,68 +1163,6 @@ namespace KPLN_Looker
 
             if (clearTaskMsg != string.Empty)
                 Print($"Ошибка при очистке старых резервных копий: {clearTaskMsg}", MessageType.Error);
-        }
-
-        /// <summary>
-        /// Анализ файлов Концепций КПЛН и оповещение о создании новых проектов и моделей внутри проектов
-        /// </summary>
-        private static void ARKonFileSendMsg(Document doc)
-        {
-            // Если это не концепция АР - в игнор
-            if (MonitoredDocFilePath(doc) == null
-                || MonitoredDocFilePath_ExceptARKon(doc) != null)
-                return;
-
-            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
-            if (CurrentDBProject == null)
-            {
-                string centralPathForUser = fileFullName.Replace("\\\\stinproject.local\\project", "Y:");
-                foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
-                {
-                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                        dbUser,
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта.\n" +
-                        $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{centralPathForUser}[/b].",
-                        "Y");
-                }
-
-                return;
-            }
-
-            // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
-            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, CurrentDBProject, prjDBSubDepartment);
-            if (dBDocument == null)
-            {
-                foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
-                {
-                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                        dbUser,
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{CurrentDBProject.Name}_{CurrentDBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
-                        $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{fileFullName}[/b].",
-                        "Y");
-                }
-
-                // Создаю, если не нашел
-                dBDocument = new DBDocument()
-                {
-                    CentralPath = fileFullName,
-                    ProjectId = CurrentDBProject.Id,
-                    SubDepartmentId = prjDBSubDepartment.Id,
-                    LastChangedUserId = DBMainService.CurrentDBUser.Id,
-                    LastChangedData = DBMainService.CurrentTimeForDB(),
-                    IsClosed = false,
-                };
-
-                DBMainService.DocDbService.CreateDBDocument(dBDocument);
-            }
         }
 
         /// <summary>
