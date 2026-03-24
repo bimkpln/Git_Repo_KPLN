@@ -218,6 +218,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\IDHelper.cs" />
+    <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
@@ -235,6 +236,9 @@
     </Compile>
     <Compile Include="Forms\EvacuationRoutesDialog.xaml.cs">
       <DependentUpon>EvacuationRoutesDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormChangeElementInLevel.xaml.cs">
+      <DependentUpon>FormChangeElementInLevel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
@@ -444,6 +448,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\FormChangeElementInLevel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -479,6 +487,8 @@
     <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
+    <EmbeddedResource Include="Imagens\changeElementsInLevelBig.png" />
+    <EmbeddedResource Include="Imagens\changeElementsInLevelSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
