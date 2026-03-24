@@ -1398,10 +1398,10 @@ namespace KPLN_Tools.ExecutableCommand
             List<string> lines = new List<string>();
             foreach (SkippedApartmentWallsInfo item in grouped)
             {
-                lines.Add("ID 2D-семейства = " + GetElementIdValue(item.ApartmentId) + " — не отрисовано стен: " + item.SkippedWallsCount);
+                lines.Add("ID [" + GetElementIdValue(item.ApartmentId) + "] - стен не отрисовано: " + item.SkippedWallsCount);
             }
 
-            return "\n\nНе отрисованы стены из-за пересечений/наложений с внешними стенами:\n" + string.Join("\n", lines);
+            return "\n\nНе отрисованы элементы до 2D семействам:\n" + string.Join("\n", lines);
         }
 
         /// <summary>
@@ -1862,15 +1862,20 @@ namespace KPLN_Tools.ExecutableCommand
             return false;
         }
 
+
+
+
         /// <summary>
         /// Проверить запрещённое пересечение осей двух сегментов.
         /// Простое касание концами допускается.
+        /// Коллинеарное касание без реального перекрытия тоже допускается.
         /// </summary>
         private static bool HasForbiddenAxisIntersection2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, double tol)
         {
             if (a0 == null || a1 == null || b0 == null || b1 == null)
                 return false;
 
+            // Коллинеарный случай
             if (AreCollinear2D(a0, a1, b0, b1, tol))
             {
                 XYZ dir = Normalize2D(a1 - a0);
@@ -1889,8 +1894,11 @@ namespace KPLN_Tools.ExecutableCommand
 
                 double overlapFrom = Math.Max(aFrom, bFrom);
                 double overlapTo = Math.Min(aTo, bTo);
+                double overlapLen = overlapTo - overlapFrom;
 
-                return (overlapTo - overlapFrom) > tol;
+                // Только реальное перекрытие по длине считаем конфликтом.
+                // Простое касание или микроскопический overlap в пределах допуска пропускаем.
+                return overlapLen > tol * 10.0;
             }
 
             XYZ intersection;
@@ -1905,14 +1913,24 @@ namespace KPLN_Tools.ExecutableCommand
                 Distance2D(intersection, b0) <= tol ||
                 Distance2D(intersection, b1) <= tol;
 
-            if (isEndpointOfA && isEndpointOfB)
+            // ВАЖНО:
+            // Любое примыкание в конец хотя бы одного сегмента считаем допустимым.
+            // Это покрывает:
+            // - стык конец-в-конец
+            // - Т-образное примыкание
+            if (isEndpointOfA || isEndpointOfB)
                 return false;
 
+            // Запрещаем только "настоящее" пересечение внутри тел/осей.
             return true;
         }
 
+
+
         /// <summary>
         /// Проверить, накладываются ли две параллельные стены своими телами.
+        /// ВАЖНО: простое касание граней НЕ считается наложением.
+        /// Конфликтом считается только реальное взаимное проникновение тел стен.
         /// </summary>
         private static bool HasParallelWallBodyOverlap(Line candidate, double candidateThicknessInternal, ExistingWallLineInfo existingWall, double tol)
         {
@@ -1945,7 +1963,10 @@ namespace KPLN_Tools.ExecutableCommand
 
             double halfSumThickness = (candidateThicknessInternal + existingThicknessInternal) / 2.0;
 
-            if (axisDistance > halfSumThickness + tol)
+            // Если стены только касаются гранями, axisDistance == halfSumThickness.
+            // Это допустимый случай и не должен считаться конфликтом.
+            double penetrationDepth = halfSumThickness - axisDistance;
+            if (penetrationDepth <= tol)
                 return false;
 
             double aT0 = Dot2D(a0, aDir);
