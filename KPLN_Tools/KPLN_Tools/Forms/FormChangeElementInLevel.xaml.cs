@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.DB.Plumbing;
+using KPLN_Tools.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -282,7 +283,7 @@ namespace KPLN_Tools.Forms
             }
 
             return result
-                .OrderBy(x => x.IntegerValue)
+                .OrderBy(x => IDHelper.ElIdInt(x))
                 .ToList();
         }
 
@@ -685,7 +686,7 @@ namespace KPLN_Tools.Forms
             foreach (Group g in groups)
             {
                 currentOperation++;
-                ReportProgress(progress, currentOperation, totalOperations, "Обработка группы ID: " + g.Id.IntegerValue);
+                ReportProgress(progress, currentOperation, totalOperations, "Обработка группы ID: " + IDHelper.ElIdInt(g.Id));
                 ProcessGroup(doc, g, targetLevel, report);
             }
 
@@ -695,14 +696,14 @@ namespace KPLN_Tools.Forms
                     continue;
 
                 currentOperation++;
-                ReportProgress(progress, currentOperation, totalOperations, "Обработка MEP-компонента ID: " + component[0].Id.IntegerValue);
+                ReportProgress(progress, currentOperation, totalOperations, "Обработка MEP-компонента ID: " + IDHelper.ElIdInt(component[0].Id));
                 ProcessMepComponent(doc, component, targetLevel, report);
             }
 
             foreach (Element e in singles)
             {
                 currentOperation++;
-                ReportProgress(progress, currentOperation, totalOperations, "Обработка элемента ID: " + e.Id.IntegerValue);
+                ReportProgress(progress, currentOperation, totalOperations, "Обработка элемента ID: " + IDHelper.ElIdInt(e.Id));
                 ProcessSingleElement(doc, e, targetLevel, report);
             }
 
@@ -750,7 +751,7 @@ namespace KPLN_Tools.Forms
             }
 
             return result
-                .OrderBy(x => x.IntegerValue)
+                .OrderBy(x => IDHelper.ElIdInt(x))
                 .ToList();
         }
 
@@ -794,7 +795,7 @@ namespace KPLN_Tools.Forms
             TransferReportItem rootItem = report.GetOrCreateMainItem(group, doc);
             rootItem.ClearMessages();
 
-            using (Transaction tx = new Transaction(doc, "Перенос группы " + group.Id.IntegerValue))
+            using (Transaction tx = new Transaction(doc, "Перенос группы " + IDHelper.ElIdInt(group.Id)))
             {
                 TransferFailuresPreprocessor pre = new TransferFailuresPreprocessor(rootItem);
                 tx.Start();
@@ -898,7 +899,7 @@ namespace KPLN_Tools.Forms
             TransferReportItem item = report.GetOrCreateMainItem(e, doc);
             item.ClearMessages();
 
-            using (Transaction tx = new Transaction(doc, "Перенос элемента " + e.Id.IntegerValue))
+            using (Transaction tx = new Transaction(doc, "Перенос элемента " + IDHelper.ElIdInt(e.Id)))
             {
                 TransferFailuresPreprocessor pre = new TransferFailuresPreprocessor(item);
                 tx.Start();
@@ -992,7 +993,7 @@ namespace KPLN_Tools.Forms
                 items.Add(item);
             }
 
-            int rootId = component[0].Id.IntegerValue;
+            int rootId = IDHelper.ElIdInt(component[0].Id);
 
             using (Transaction tx = new Transaction(doc, "Перенос MEP-компонента " + rootId))
             {
@@ -1068,7 +1069,13 @@ namespace KPLN_Tools.Forms
 
                     foreach (TransferReportItem item in items)
                     {
+
+
+#if !Debug2024 && !Revit2024
                         Element committed = doc.GetElement(new ElementId(item.Id));
+#else
+                        Element committed = doc.GetElement(new ElementId((long)item.Id));
+#endif
                         string validationError;
 
                         if (!ValidateElementMovedToLevel(doc, committed, targetLevel, out validationError))
@@ -1171,7 +1178,7 @@ namespace KPLN_Tools.Forms
             if (actualLevelId != targetLevel.Id)
             {
                 Level actualLevel = doc.GetElement(actualLevelId) as Level;
-                string actualName = actualLevel != null ? actualLevel.Name : ("ID=" + actualLevelId.IntegerValue);
+                string actualName = actualLevel != null ? actualLevel.Name : ("ID=" + IDHelper.ElIdInt(actualLevelId));
                 errorText = "Элемент не оказался на целевом уровне. Фактический уровень: " + actualName + ".";
                 return false;
             }
@@ -1206,7 +1213,7 @@ namespace KPLN_Tools.Forms
             if (actualLevelId != targetLevel.Id)
             {
                 Level actualLevel = doc.GetElement(actualLevelId) as Level;
-                string actualName = actualLevel != null ? actualLevel.Name : ("ID=" + actualLevelId.IntegerValue);
+                string actualName = actualLevel != null ? actualLevel.Name : ("ID=" + IDHelper.ElIdInt(actualLevelId));
                 errorText = "Группа не оказалась на целевом уровне. Фактический уровень группы: " + actualName + ".";
                 return false;
             }
@@ -1927,9 +1934,12 @@ namespace KPLN_Tools.Forms
 
         private string BuildConnectionKey(ElementId aId, XYZ a, ElementId bId, XYZ b)
         {
-            string left = aId.IntegerValue < bId.IntegerValue
-                ? aId.IntegerValue + "|" + RoundPoint(a) + "|" + bId.IntegerValue + "|" + RoundPoint(b)
-                : bId.IntegerValue + "|" + RoundPoint(b) + "|" + aId.IntegerValue + "|" + RoundPoint(a);
+            int aVal = IDHelper.ElIdInt(aId);
+            int bVal = IDHelper.ElIdInt(bId);
+
+            string left = aVal < bVal
+                ? aVal + "|" + RoundPoint(a) + "|" + bVal + "|" + RoundPoint(b)
+                : bVal + "|" + RoundPoint(b) + "|" + aVal + "|" + RoundPoint(a);
 
             return left;
         }
@@ -1952,7 +1962,7 @@ namespace KPLN_Tools.Forms
 
             try
             {
-                bic = (BuiltInCategory)cat.Id.IntegerValue;
+                bic = (BuiltInCategory)IDHelper.ElIdInt(cat.Id);
                 return Enum.IsDefined(typeof(BuiltInCategory), bic);
             }
             catch
@@ -2036,7 +2046,7 @@ namespace KPLN_Tools.Forms
             if (element == null)
                 throw new ArgumentNullException("element");
 
-            int key = element.Id.IntegerValue;
+            int key = IDHelper.ElIdInt(element.Id);
             TransferReportItem item;
             if (_mainItems.TryGetValue(key, out item))
                 return item;
@@ -2291,7 +2301,7 @@ namespace KPLN_Tools.Forms
 
         private void FillFromElement(Element element, Document doc)
         {
-            Id = element != null ? element.Id.IntegerValue : 0;
+            Id = element != null ? IDHelper.ElIdInt(element.Id) : 0;
             ElementName = ElementNamingHelper.GetElementName(element, doc);
 
             LevelParameterDescriptor descriptor = LevelParameterInspector.Inspect(element);
@@ -2857,7 +2867,7 @@ namespace KPLN_Tools.Forms
         public ElementDisplayItem(Element element, Document doc)
         {
             ElementId = element.Id;
-            Id = element.Id.IntegerValue;
+            Id = IDHelper.ElIdInt(element.Id);
             Name = ElementNamingHelper.GetElementName(element, doc);
             MainText = Id + " - " + Name;
             GroupSuffix = GetGroupInfo(element, doc);
@@ -2880,10 +2890,10 @@ namespace KPLN_Tools.Forms
 
             Group group = doc.GetElement(element.GroupId) as Group;
             if (group == null)
-                return " [Группа: <не найдена>, ID = " + element.GroupId.IntegerValue + "]";
+                return " [Группа: <не найдена>, ID = " + IDHelper.ElIdInt(element.GroupId) + "]";
 
             string groupName = string.IsNullOrWhiteSpace(group.Name) ? "(без названия)" : group.Name;
-            return " [Группа: " + groupName + ", ID = " + group.Id.IntegerValue + "]";
+            return " [Группа: " + groupName + ", ID = " + IDHelper.ElIdInt(group.Id) + "]";
         }
     }
 
@@ -2896,12 +2906,12 @@ namespace KPLN_Tools.Forms
             if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
                 return false;
 
-            return x.IntegerValue == y.IntegerValue;
+            return IDHelper.ElIdInt(x) == IDHelper.ElIdInt(y);
         }
 
         public int GetHashCode(ElementId obj)
         {
-            return obj != null ? obj.IntegerValue : 0;
+            return obj != null ? IDHelper.ElIdInt(obj) : 0;
         }
     }
 
