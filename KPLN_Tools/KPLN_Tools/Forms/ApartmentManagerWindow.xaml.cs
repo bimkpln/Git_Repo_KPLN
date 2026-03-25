@@ -25,6 +25,7 @@ namespace KPLN_Tools.Forms
         void RequestOpenApartmentPresets(ApartmentPresetData presetData);
     }
 
+    /// Данные пресета для дальнейших операций с квартирой. Используются при открытии преднастроек и при конвертации в 3D.
     public class ApartmentPresetData
     {
         public string SelectedPlanName { get; set; }
@@ -33,7 +34,6 @@ namespace KPLN_Tools.Forms
         public string UpperConstraint { get; set; }
 
         public int BaseOffset { get; set; }
-
         public int WallHeight { get; set; }
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
@@ -44,6 +44,7 @@ namespace KPLN_Tools.Forms
 
         public Dictionary<string, string> DoorsByRoomCategory { get; set; }
 
+        /// Создание полной копии объекта, чтобы внешние вызовы не работали по той же ссылке.
         public ApartmentPresetData Clone()
         {
             return new ApartmentPresetData
@@ -68,12 +69,15 @@ namespace KPLN_Tools.Forms
 
     public partial class ApartmentManagerWindow : Window
     {
-        public int SelectedApartmentId { get; private set; }
+        /// Номер отдела пользователя.
         public int _nDep;
-
+        /// Внешний контроллер, который выполняет действия вне окна.
         private readonly IApartmentManagerExternalController _externalController;
-
+        /// ID выбранной квартиры.
+        public int SelectedApartmentId { get; private set; }
+        /// Текущие данные пресета квартиры.
         public ApartmentPresetData ApartmentPresetData { get; private set; }
+        /// Флаг запроса на конвертацию в 3D.
         public bool ConvertTo3DRequested { get; private set; }
 
         public ApartmentManagerWindow(
@@ -82,6 +86,7 @@ namespace KPLN_Tools.Forms
             ApartmentPresetData presetData = null)
         {
             InitializeComponent();
+
             _nDep = nDep;
             _externalController = externalController;
 
@@ -102,6 +107,7 @@ namespace KPLN_Tools.Forms
                 };
 
             ApartmentManagerVm vm = new ApartmentManagerVm(_nDep);
+
             vm.ItemPicked += Vm_ItemPicked;
             vm.RequestClose += Vm_RequestClose;
             vm.ApartmentPresetsRequested += Vm_ApartmentPresetsRequested;
@@ -110,11 +116,13 @@ namespace KPLN_Tools.Forms
             DataContext = vm;
         }
 
+        /// Обновление текущих данных пресета извне. Хранится именно копия, а не исходная ссылка.
         public void SetApartmentPresetData(ApartmentPresetData data)
         {
             ApartmentPresetData = data != null ? data.Clone() : null;
         }
 
+        /// Обработка выбора квартиры. Окно запоминает ID и передаёт запрос наружу.
         private void Vm_ItemPicked(int id)
         {
             SelectedApartmentId = id;
@@ -126,11 +134,7 @@ namespace KPLN_Tools.Forms
             _externalController.RequestPlaceApartment(id);
         }
 
-        private void Vm_RequestClose()
-        {
-            Close();
-        }
-
+        /// Запрос на открытие окна преднастроек квартир. Наружу уходит копия текущего пресета.
         private void Vm_ApartmentPresetsRequested()
         {
             if (_externalController == null)
@@ -142,6 +146,7 @@ namespace KPLN_Tools.Forms
                     : null);
         }
 
+        /// Запрос на конвертацию в 3D. Окно ставит флаг и передаёт действие наружу.
         private void Vm_ConvertTo3DRequested()
         {
             ConvertTo3DRequested = true;
@@ -155,23 +160,44 @@ namespace KPLN_Tools.Forms
                     ? ApartmentPresetData.Clone()
                     : null);
         }
+
+        /// Закрытие окна по запросу из VM.
+        private void Vm_RequestClose()
+        {
+            Close();
+        }
     }
 
+    /// <summary>
+    /// ViewModel главного окна.
+    /// Здесь хранится список типов квартир, список элементов выбранного типа, команды интерфейса и вся логика работы с БД.
+    /// </summary>
     internal class ApartmentManagerVm : INotifyPropertyChanged
     {
+        /// Путь к SQLite-базе с квартирами.
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
+        /// Папка, из которой берутся .rfa-файлы для синхронизации с БД.
         private const string RfaFolderPath = @"Z:\Отдел BIM\Туленинов Роман\aManager";
 
-        public event Action RequestClose;
+        /// Сигнал, что пользователь выбрал квартиру. Передаётся ID.
         public event Action<int> ItemPicked;
+        /// Сигнал на открытие окна преднастроек.
         public event Action ApartmentPresetsRequested;
+        /// Сигнал на запуск конвертации в 3D.
         public event Action ConvertTo3DRequested;
+        /// Сигнал на закрытие окна.
+        public event Action RequestClose;
 
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        /// Признак "особого" режима для отдела BIM.
         public bool IsDep8 { get; private set; }
 
+        /// Коллекция типов квартир для левого списка.
         public ObservableCollection<ApartmentTypeVm> ApartmentTypes { get; private set; }
-
         private ApartmentTypeVm _selectedType;
+
+        /// Выбранный тип квартиры. При смене автоматически подгружается список элементов.
         public ApartmentTypeVm SelectedType
         {
             get { return _selectedType; }
@@ -186,11 +212,20 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Команда выбора карточки квартиры.
         public ICommand PickItemCommand { get; private set; }
-        public ICommand CloseCommand { get; private set; }
+        /// Команда загрузки/обновления картинки для квартиры.
         public ICommand UploadImageCommand { get; private set; }
+        /// Команда открытия окна преднастроек.
         public ICommand OpenApartmentPresetsCommand { get; private set; }
+        /// Команда запуска конвертации в 3D.
         public ICommand ConvertTo3DCommand { get; private set; }
+        /// Команда закрытия окна.
+        public ICommand CloseCommand { get; private set; }
+
+        /// <summary>
+        /// Команда синхронизации БД с .rfa-файлами.
+        /// </summary>
         public ICommand UpdateDbCommand { get; private set; }
 
         public ApartmentManagerVm(int nDep)
@@ -209,16 +244,16 @@ namespace KPLN_Tools.Forms
             LoadTypes();
         }
 
-        private void OnOpenApartmentPresets()
-        {
-            ApartmentPresetsRequested?.Invoke();
-        }
+        /// Проброс события открытия преднастроек наружу.
+        private void OnOpenApartmentPresets()  { ApartmentPresetsRequested?.Invoke(); }
 
+        /// Проброс события конвертации в 3D наружу.
         private void OnConvertTo3D()
         {
             ConvertTo3DRequested?.Invoke();
         }
 
+        /// Загружает из БД список уникальных типов квартир.
         private void LoadTypes()
         {
             ApartmentTypes.Clear();
@@ -262,6 +297,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Загружает планировки для выбранного типа квартиры. Использует поле PIC как источник изображения-превью.
         private void LoadItems()
         {
             if (SelectedType == null)
@@ -313,6 +349,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Обновление изображения для выбранной квартиры. Доступно только для отдела BIM.
         private void OnUploadImage(ApartmentItemVm item)
         {
             if (item == null || !IsDep8)
@@ -365,6 +402,44 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Преобразует массив байт в WPF ImageSource. Если картинка битая или не читается — возвращает null.
+        private static ImageSource BytesToImage(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0)
+                return null;
+
+            try
+            {
+                using (var ms = new MemoryStream(bytes))
+                {
+                    var img = new BitmapImage();
+                    img.BeginInit();
+                    img.CacheOption = BitmapCacheOption.OnLoad;
+                    img.StreamSource = ms;
+                    img.EndInit();
+                    img.Freeze();
+                    return img;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// Открывает SQLite-соединение в режиме чтения или чтения/записи.
+        private static SQLiteConnection OpenConnection(string dbPath, bool readOnly)
+        {
+            string cs = readOnly
+                ? "Data Source=" + dbPath + ";Version=3;Read Only=True;"
+                : "Data Source=" + dbPath + ";Version=3;";
+
+            var con = new SQLiteConnection(cs);
+            con.Open();
+            return con;
+        }
+
+        /// Синхронизирует БД с папкой .rfa-файлов:
         private void OnUpdateDb(Window ownerWindow)
         {
             if (!IsDep8)
@@ -396,6 +471,7 @@ namespace KPLN_Tools.Forms
                         "SELECT ID, FPATH " +
                         "FROM Main " +
                         "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
+
                     using (var r = cmd.ExecuteReader())
                     {
                         while (r.Read())
@@ -530,9 +606,11 @@ namespace KPLN_Tools.Forms
                 }
 
                 string message = "";
+
                 if (deletedNames.Count > 0)
                 {
                     message += "Удалено из БД: " + deletedNames.Count;
+
                     if (deletedNames.Count <= 20)
                         message += "\n" + string.Join("\n", deletedNames);
                 }
@@ -553,17 +631,16 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        private static SQLiteConnection OpenConnection(string dbPath, bool readOnly)
+        /// Обработка выбора карточки квартиры.
+        private void OnPick(ApartmentItemVm item)
         {
-            string cs = readOnly
-                ? "Data Source=" + dbPath + ";Version=3;Read Only=True;"
-                : "Data Source=" + dbPath + ";Version=3;";
+            if (item == null)
+                return;
 
-            var con = new SQLiteConnection(cs);
-            con.Open();
-            return con;
+            ItemPicked?.Invoke(item.Id);
         }
 
+        /// Нормализует обозначение типа квартиры
         private static string NormalizeAtype(string s)
         {
             if (string.IsNullOrWhiteSpace(s))
@@ -575,55 +652,30 @@ namespace KPLN_Tools.Forms
             return s;
         }
 
-        private static ImageSource BytesToImage(byte[] bytes)
-        {
-            if (bytes == null || bytes.Length == 0)
-                return null;
-
-            try
-            {
-                using (var ms = new MemoryStream(bytes))
-                {
-                    var img = new BitmapImage();
-                    img.BeginInit();
-                    img.CacheOption = BitmapCacheOption.OnLoad;
-                    img.StreamSource = ms;
-                    img.EndInit();
-                    img.Freeze();
-                    return img;
-                }
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private void OnPick(ApartmentItemVm item)
-        {
-            if (item == null)
-                return;
-
-            ItemPicked?.Invoke(item.Id);
-        }
-
-        private void OnClose()
-        {
-            RequestClose?.Invoke();
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string p = null)
         {
             var h = PropertyChanged;
             if (h != null)
                 h(this, new PropertyChangedEventArgs(p));
         }
+
+        /// Обработка закрытия.
+        private void OnClose()
+        {
+            RequestClose?.Invoke();
+        }
     }
 
+
+
+
+    /// <summary>
+    /// VM типа квартиры для левого списка. Содержит имя типа и коллекцию его элементов.
+    /// </summary>
     internal class ApartmentTypeVm
     {
         public string Name { get; set; }
+
         public ObservableCollection<ApartmentItemVm> Items { get; private set; }
 
         public ApartmentTypeVm()
@@ -632,12 +684,16 @@ namespace KPLN_Tools.Forms
         }
     }
 
+    /// <summary>
+    /// VM карточки квартиры. Содержит ID, заголовок и превью-картинку.
+    /// </summary>
     internal class ApartmentItemVm : INotifyPropertyChanged
     {
         public int Id { get; set; }
         public string Title { get; set; }
 
         private ImageSource _preview;
+
         public ImageSource Preview
         {
             get { return _preview; }
@@ -649,6 +705,7 @@ namespace KPLN_Tools.Forms
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
         private void OnPropertyChanged([CallerMemberName] string p = null)
         {
             var h = PropertyChanged;
@@ -657,6 +714,9 @@ namespace KPLN_Tools.Forms
         }
     }
 
+    /// <summary>
+    /// VM элемента, который предлагается импортировать в БД. Хранит путь к файлу, имя, выбранный тип и превью.
+    /// </summary>
     public class ApartmentImportItemVm : INotifyPropertyChanged
     {
         public string FilePath { get; set; }
@@ -685,6 +745,7 @@ namespace KPLN_Tools.Forms
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
+
         private void OnPropertyChanged([CallerMemberName] string p = null)
         {
             var h = PropertyChanged;
@@ -693,6 +754,9 @@ namespace KPLN_Tools.Forms
         }
     }
 
+    /// <summary>
+    /// Простая команда без параметра. Всегда доступна для выполнения.
+    /// </summary>
     internal class RelayCommand : ICommand
     {
         private readonly Action _execute;
@@ -702,11 +766,22 @@ namespace KPLN_Tools.Forms
             _execute = e;
         }
 
-        public bool CanExecute(object p) { return true; }
-        public void Execute(object p) { _execute(); }
+        public bool CanExecute(object p)
+        {
+            return true;
+        }
+
+        public void Execute(object p)
+        {
+            _execute();
+        }
+
         public event EventHandler CanExecuteChanged;
     }
 
+    /// <summary>
+    /// Простая команда с параметром. В текущей реализации, если параметр null, команда просто ничего не делает.
+    /// </summary>
     internal class RelayCommand<T> : ICommand
     {
         private readonly Action<T> _execute;
@@ -716,7 +791,10 @@ namespace KPLN_Tools.Forms
             _execute = e;
         }
 
-        public bool CanExecute(object p) { return true; }
+        public bool CanExecute(object p)
+        {
+            return true;
+        }
 
         public void Execute(object p)
         {
@@ -729,6 +807,7 @@ namespace KPLN_Tools.Forms
         public event EventHandler CanExecuteChanged;
     }
 
+    /// Конвертер для управления видимостью по null/not null. Нужен в XAML для показа картинки или текстовой заглушки.
     public class NullToVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -750,8 +829,12 @@ namespace KPLN_Tools.Forms
         }
     }
 
+    /// <summary>
+    /// Вспомогательный класс для получения shell-preview и иконок файлов. Используется при импорте новых .rfa-элементов в БД.
+    /// </summary>
     internal static class ShellPreviewHelper
     {
+        /// Получает превью как ImageSource для показа в WPF.
         public static ImageSource GetShellPreviewImage(string filePath)
         {
             try
@@ -777,6 +860,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Получает превью файла в виде массива байт PNG. Сначала пытается взять shell-thumbnail, если не получилось — берёт ассоциированную иконку файла.
         public static byte[] GetShellPreviewBytes(string filePath)
         {
             Bitmap bmp = null;
@@ -804,6 +888,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Возвращает bitmap ассоциированной системной иконки файла.
         private static Bitmap GetAssociatedIconBitmap(string filePath)
         {
             try
@@ -823,6 +908,7 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        /// Получает thumbnail через Windows Shell API.
         private static Bitmap GetShellThumbnail(string filePath, int size)
         {
             IShellItemImageFactory factory = null;
@@ -874,6 +960,7 @@ namespace KPLN_Tools.Forms
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
 
+        /// COM-интерфейс Windows Shell для получения изображения элемента.
         [ComImport]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
         [Guid("BCC18B79-BA16-442F-80C4-8A59C30C463B")]
@@ -882,6 +969,7 @@ namespace KPLN_Tools.Forms
             void GetImage(SIZE size, SIIGBF flags, out IntPtr phbm);
         }
 
+        /// Структура размера для Shell API.
         [StructLayout(LayoutKind.Sequential)]
         private struct SIZE
         {
@@ -889,6 +977,7 @@ namespace KPLN_Tools.Forms
             public int cy;
         }
 
+        /// Флаги получения изображения из Windows Shell.
         [Flags]
         private enum SIIGBF
         {

@@ -14,16 +14,12 @@ using System.Windows.Threading;
 
 namespace KPLN_Tools.ExecutableCommand
 {
-    /// <summary>
-    /// Команда открытия основного окна Apartment Manager.
-    /// 1. Проверить, не открыто ли уже окно.
-    /// 2. Если окно открыто — просто показать и активировать его.
-    /// 3. Если окна нет — создать контроллер, окно и связать их между собой.
-    /// </summary>
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandApartmentManagerShow : IExternalCommand
     {
+
         private static ApartmentManagerWindow _window;
         private static ApartmentManagerExternalController _controller;
 
@@ -43,7 +39,9 @@ namespace KPLN_Tools.ExecutableCommand
                 _window = new ApartmentManagerWindow(DBWorkerService.CurrentDBUserSubDepartment.Id, _controller);
                 _controller.AttachWindow(_window);
                 _window.Closed += OnWindowClosed;
+
                 new WindowInteropHelper(_window).Owner = uiapp.MainWindowHandle;
+
                 _window.Show();
                 _window.Activate();
 
@@ -56,9 +54,7 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        /// <summary>
-        /// Показать уже существующее окно и вернуть ему фокус.
-        /// </summary>
+        /// Повторно показывает уже созданное окно и переводит его в активное состояние.
         private static void ShowAndActivateExistingWindow()
         {
             if (_window == null)
@@ -71,15 +67,12 @@ namespace KPLN_Tools.ExecutableCommand
                 _window.WindowState = WindowState.Normal;
 
             _window.Activate();
-
             _window.Topmost = true;
             _window.Topmost = false;
             _window.Focus();
         }
 
-        /// <summary>
-        /// Очистка ссылок после закрытия окна.
-        /// </summary>
+        /// Сбрасывает ссылки на окно и контроллер после закрытия окна.
         private static void OnWindowClosed(object sender, EventArgs e)
         {
             if (_controller != null)
@@ -91,7 +84,7 @@ namespace KPLN_Tools.ExecutableCommand
     }
 
     /// <summary>
-    /// Контроллер-посредник между WPF-окном и ExternalEvent.
+    /// Внешний контроллер, который подготавливает запрос и поднимает ExternalEvent.
     /// </summary>
     internal class ApartmentManagerExternalController : IApartmentManagerExternalController
     {
@@ -104,43 +97,31 @@ namespace KPLN_Tools.ExecutableCommand
             _externalEvent = ExternalEvent.Create(_handler);
         }
 
-        /// <summary>
-        /// Привязка окна к хендлеру.
-        /// </summary>
         public void AttachWindow(ApartmentManagerWindow window)
         {
             _handler.AttachWindow(window);
         }
 
-        /// <summary>
-        /// Отвязка окна от хендлера.
-        /// </summary>
         public void DetachWindow()
         {
             _handler.DetachWindow();
         }
 
-        /// <summary>
-        /// Запрос на размещение 2D-семейства квартиры.
-        /// </summary>
+        /// Подготавливает запрос на размещение 2D-квартиры.
         public void RequestPlaceApartment(int apartmentId)
         {
             _handler.PreparePlaceApartment(apartmentId);
             _externalEvent.Raise();
         }
 
-        /// <summary>
-        /// Запрос на конвертацию 2D-квартир в 3D-стены.
-        /// </summary>
+        /// Подготавливает запрос на построение 3D по выбранным преднастройкам.
         public void RequestConvertTo3D(ApartmentPresetData presetData)
         {
             _handler.PrepareConvertTo3D(presetData);
             _externalEvent.Raise();
         }
 
-        /// <summary>
-        /// Запрос на открытие окна пресетов.
-        /// </summary>
+        /// Подготавливает запрос на открытие окна преднастроек.
         public void RequestOpenApartmentPresets(ApartmentPresetData presetData)
         {
             _handler.PrepareOpenApartmentPresets(presetData);
@@ -149,83 +130,27 @@ namespace KPLN_Tools.ExecutableCommand
     }
 
     /// <summary>
-    /// Хендлер ExternalEvent.
+    /// Основной обработчик внешних событий Revit.
+    /// Здесь сосредоточена вся логика размещения 2D, подготовки 3D и работы с преднастройками.
     /// </summary>
     internal class ApartmentManagerExternalHandler : IExternalEventHandler
     {
-        /// <summary>
-        /// Тип запроса, который должен быть выполнен при очередном Execute().
-        /// </summary>
-        private enum RequestType
-        {
-            None,
-            PlaceApartment,
-            ConvertTo3D,
-            OpenApartmentPresets
-        }
-
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string ApartmentInstanceMarker = "[KPLN_APT_INSTANCE]";
 
-        private RequestType _requestType = RequestType.None;
-        private int _requestedApartmentId;
-        private ApartmentPresetData _requestedPresetData;
         private ApartmentManagerWindow _window;
-
         public string GetName()
         {
-            return "KPLN Apartment Manager External Event";
+            return "KPLN. Менеджер квартир";
         }
-
-        /// <summary>
-        /// Привязка окна к хендлеру.
-        /// </summary>
         public void AttachWindow(ApartmentManagerWindow window)
         {
             _window = window;
         }
-
-        /// <summary>
-        /// Отвязка окна от хендлера.
-        /// </summary>
         public void DetachWindow()
         {
             _window = null;
         }
-
-        /// <summary>
-        /// Подготовить запрос на размещение квартиры.
-        /// </summary>
-        public void PreparePlaceApartment(int apartmentId)
-        {
-            _requestType = RequestType.PlaceApartment;
-            _requestedApartmentId = apartmentId;
-            _requestedPresetData = null;
-        }
-
-        /// <summary>
-        /// Подготовить запрос на построение 3D-стен.
-        /// </summary>
-        public void PrepareConvertTo3D(ApartmentPresetData presetData)
-        {
-            _requestType = RequestType.ConvertTo3D;
-            _requestedApartmentId = 0;
-            _requestedPresetData = presetData != null ? presetData.Clone() : null;
-        }
-
-        /// <summary>
-        /// Подготовить запрос на открытие окна пресетов.
-        /// </summary>
-        public void PrepareOpenApartmentPresets(ApartmentPresetData presetData)
-        {
-            _requestType = RequestType.OpenApartmentPresets;
-            _requestedApartmentId = 0;
-            _requestedPresetData = presetData != null ? presetData.Clone() : null;
-        }
-
-        /// <summary>
-        /// Возвращает фокус окну Apartment Manager после завершения внешнего события.
-        /// </summary>
         private void RestoreWindow()
         {
             if (_window == null)
@@ -254,40 +179,7 @@ namespace KPLN_Tools.ExecutableCommand
             }), DispatcherPriority.Background);
         }
 
-        /// <summary>
-        /// Подготовленный набор осей стен для одной квартиры.
-        /// </summary>
-        private class PreparedApartmentWalls
-        {
-            public ElementId ApartmentId { get; set; }
-            public WallType WallType { get; set; }
-            public int ThicknessMm { get; set; }
-            public List<Line> AxisLines { get; set; }
-        }
-
-        /// <summary>
-        /// Информация о пропущенных стенах квартиры.
-        /// </summary>
-        private class SkippedApartmentWallsInfo
-        {
-            public ElementId ApartmentId { get; set; }
-            public int SkippedWallsCount { get; set; }
-        }
-
-        /// <summary>
-        /// Смещённая 2D-линия для построения offset-контура.
-        /// </summary>
-        private class OffsetLine2D
-        {
-            public XYZ P0 { get; set; }
-            public XYZ P1 { get; set; }
-            public XYZ Dir { get; set; }
-            public double Z { get; set; }
-        }
-
-        /// <summary>
-        /// Геометрическое представление существующей стены как осевой линии.
-        /// </summary>
+        /// Данные по уже существующей стене проекта.
         private class ExistingWallLineInfo
         {
             public ElementId WallId { get; set; }
@@ -298,19 +190,39 @@ namespace KPLN_Tools.ExecutableCommand
             public double ThicknessInternal { get; set; }
         }
 
-        /// <summary>
-        /// Одномерный интервал.
-        /// Используется при вычитании перекрывающихся участков линий.
-        /// </summary>
+        /// Подготовленные данные по стенам одной квартиры.
+        private class PreparedApartmentWalls
+        {
+            public ElementId ApartmentId { get; set; }
+            public WallType WallType { get; set; }
+            public int ThicknessMm { get; set; }
+            public List<Line> AxisLines { get; set; }
+        }
+
+        /// Информация о количестве пропущенных стен по квартире.
+        private class SkippedApartmentWallsInfo
+        {
+            public ElementId ApartmentId { get; set; }
+            public int SkippedWallsCount { get; set; }
+        }
+
+        /// Смещённая 2D-линия, используемая при построении замкнутого контура.
+        private class OffsetLine2D
+        {
+            public XYZ P0 { get; set; }
+            public XYZ P1 { get; set; }
+            public XYZ Dir { get; set; }
+            public double Z { get; set; }
+        }
+
+        /// Интервал на одномерной оси.
         private class Interval1D
         {
             public double From { get; set; }
             public double To { get; set; }
         }
 
-        /// <summary>
-        /// Нормализованное представление осевой линии для группировки.
-        /// </summary>
+        /// Нормализованные данные осевой линии для группировки и объединения.
         private class GenericAxisLineData
         {
             public XYZ Dir { get; set; }
@@ -321,9 +233,7 @@ namespace KPLN_Tools.ExecutableCommand
             public double To { get; set; }
         }
 
-        /// <summary>
-        /// Ключ группировки коллинеарных линий.
-        /// </summary>
+        /// Ключ группировки осевых линий.
         private class GenericAxisGroupKey : IEquatable<GenericAxisGroupKey>
         {
             public XYZ Dir { get; private set; }
@@ -368,50 +278,49 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        /// <summary>
-        /// Округлить значение до заданного допуска.
-        /// </summary>
-        private static double RoundTol(double value, double tol)
+        /// Подготовленные данные по одной двери для последующей установки.
+        private class PreparedDoorPlacement
         {
-            return Math.Round(value / tol) * tol;
+            public ElementId ApartmentId { get; set; }
+            public ElementId Door2DId { get; set; }
+
+            public string RoomCategory { get; set; }
+            public int DoorWidthMm { get; set; }
+
+            public string SelectedDoorTypeName { get; set; }
+            public FamilySymbol DoorSymbol { get; set; }
+
+            public XYZ InsertPoint { get; set; }
         }
 
-        /// <summary>
-        /// Унифицированный доступ к числовому значению ElementId.
-        /// </summary>
-        private static long GetElementIdValue(ElementId id)
+        /// Подготовленные данные по дверям одной квартиры.
+        private class PreparedApartmentDoors
         {
-#if Revit2024 || Debug2024
-            return id.Value;
-#else
-            return id.IntegerValue;
-#endif
+            public ElementId ApartmentId { get; set; }
+            public List<PreparedDoorPlacement> Doors { get; set; }
+
+            public PreparedApartmentDoors()
+            {
+                Doors = new List<PreparedDoorPlacement>();
+            }
         }
 
-        /// <summary>
-        /// Перевести миллиметры во внутренние единицы Revit.
-        /// </summary>
-        private static double ConvertMmToInternal(int valueMm)
+        /// Тип запроса, который должен выполнить обработчик.
+        private enum RequestType
         {
-#if Revit2024 || Revit2023 || Debug2024 || Debug2023
-            return UnitUtils.ConvertToInternalUnits(valueMm, UnitTypeId.Millimeters);
-#else
-            return UnitUtils.ConvertToInternalUnits(valueMm, DisplayUnitType.DUT_MILLIMETERS);
-#endif
+            None,
+            PlaceApartment,
+            ConvertTo3D,
+            OpenApartmentPresets
         }
 
-        /// <summary>
-        /// Перевести внутренние единицы Revit в миллиметры.
-        /// </summary>
-        private static double ConvertInternalToMm(double valueInternal)
-        {
-#if Revit2024 || Revit2023 || Debug2024 || Debug2023
-            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.Millimeters);
-#else
-            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_MILLIMETERS);
-#endif
-        }
-
+        /// Текущий тип запроса к обработчику.
+        private RequestType _requestType = RequestType.None;
+        /// Идентификатор квартиры для запроса размещения.
+        private int _requestedApartmentId;
+        /// Преднастройка для построения 3D или открытия окна преднастроек.
+        private ApartmentPresetData _requestedPresetData;
+      
         public void Execute(UIApplication app)
         {
             try
@@ -446,9 +355,7 @@ namespace KPLN_Tools.ExecutableCommand
                         break;
                 }
             }
-            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
-            {
-            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException) { }
             catch (Exception ex)
             {
                 TaskDialog.Show("Ошибка", ex.ToString());
@@ -463,15 +370,122 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        /// <summary>
-        /// Открыть модальное окно пресетов поверх главного окна Apartment Manager.
-        /// </summary>
+        /// Подготавливает запрос на размещение квартиры.
+        public void PreparePlaceApartment(int apartmentId)
+        {
+            _requestType = RequestType.PlaceApartment;
+            _requestedApartmentId = apartmentId;
+            _requestedPresetData = null;
+        }
+
+        /// Подготавливает запрос на построение 3D по преднастройке.
+        public void PrepareConvertTo3D(ApartmentPresetData presetData)
+        {
+            _requestType = RequestType.ConvertTo3D;
+            _requestedApartmentId = 0;
+            _requestedPresetData = presetData != null ? presetData.Clone() : null;
+        }
+
+        /// Подготавливает запрос на открытие окна преднастроек.
+        public void PrepareOpenApartmentPresets(ApartmentPresetData presetData)
+        {
+            _requestType = RequestType.OpenApartmentPresets;
+            _requestedApartmentId = 0;
+            _requestedPresetData = presetData != null ? presetData.Clone() : null;
+        }
+
+        /// SQL. Открывает соединение с SQLite.
+        private static SQLiteConnection OpenConnection(string dbPath, bool readOnly)
+        {
+            string cs = readOnly
+                ? ("Data Source=" + dbPath + ";Version=3;Read Only=True;")
+                : ("Data Source=" + dbPath + ";Version=3;");
+
+            SQLiteConnection con = new SQLiteConnection(cs);
+            con.Open();
+            return con;
+        }
+
+        /// SQL. Возвращает путь к 2D-семейство по ID из базы данных
+        private static string GetFamilyPathById(int id)
+        {
+            if (!File.Exists(DbPath))
+                throw new FileNotFoundException("Не найдена база данных", DbPath);
+
+            using (SQLiteConnection con = OpenConnection(DbPath, true))
+            using (SQLiteCommand cmd = con.CreateCommand())
+            {
+                cmd.CommandText = "SELECT FPATH FROM Main WHERE ID = @id LIMIT 1;";
+                cmd.Parameters.AddWithValue("@id", id);
+
+                object result = cmd.ExecuteScalar();
+                if (result == null || result == DBNull.Value)
+                    return null;
+
+                return result.ToString().Trim();
+            }
+        }
+
+        /// Унифицированный доступ к числовому значению ElementId для разных версий Revit.
+        private static long GetElementIdValue(ElementId id)
+        {
+#if Revit2024 || Debug2024
+            return id.Value;
+#else
+            return id.IntegerValue;
+#endif
+        }
+        /// Переводит миллиметры во внутренние единицы Revit.
+        private static double ConvertMmToInternal(int valueMm)
+        {
+#if Revit2024 || Revit2023 || Debug2024 || Debug2023
+            return UnitUtils.ConvertToInternalUnits(valueMm, UnitTypeId.Millimeters);
+#else
+            return UnitUtils.ConvertToInternalUnits(valueMm, DisplayUnitType.DUT_MILLIMETERS);
+#endif
+        }
+        /// Переводит внутренние единицы Revit в миллиметры.
+        private static double ConvertInternalToMm(double valueInternal)
+        {
+#if Revit2024 || Revit2023 || Debug2024 || Debug2023
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.Millimeters);
+#else
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_MILLIMETERS);
+#endif
+        }
+
+        /// Выполняет округление по заданному допуску.
+        private static double RoundTol(double value, double tol)
+        {
+            return Math.Round(value / tol) * tol;
+        }
+
+        /// Возвращает уровень экземпляра семейства
+        private static ElementId GetInstanceLevelId(FamilyInstance fi)
+        {
+            if (fi == null)
+                return ElementId.InvalidElementId;
+
+            Parameter p =
+                fi.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM) ??
+                fi.get_Parameter(BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM);
+
+            if (p != null && p.StorageType == StorageType.ElementId)
+                return p.AsElementId();
+
+            if (fi.LevelId != ElementId.InvalidElementId)
+                return fi.LevelId;
+
+            return ElementId.InvalidElementId;
+        }
+
+        /// Открывает окно преднастроек и передаёт туда контекст активного плана.
         private void ExecuteOpenApartmentPresets(UIDocument uidoc, Document doc, ApartmentPresetData currentPreset)
         {
             ViewPlan activeFloorPlan = doc.ActiveView as ViewPlan;
             if (activeFloorPlan == null || activeFloorPlan.ViewType != ViewType.FloorPlan)
             {
-                TaskDialog.Show("Apartment Manager", "Перед открытием преднастроек откройте план этажа.");
+                TaskDialog.Show("KPLN. Менеджер квартир", "Перед открытием преднастроек откройте план этажа.");
                 return;
             }
 
@@ -482,7 +496,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             _window.Dispatcher.Invoke(new Action(() =>
             {
-                var wnd = new ApartmentPresetsWindow(
+                ApartmentPresetsWindow wnd = new ApartmentPresetsWindow(
                     currentPreset != null ? currentPreset.Clone() : new ApartmentPresetData(),
                     context);
 
@@ -494,20 +508,14 @@ namespace KPLN_Tools.ExecutableCommand
             }));
         }
 
-        /// <summary>
-        /// Собрать контекст для окна пресетов.
-        /// </summary>
+        /// Собирает полный контекст для окна преднастроек по всем доступным планам этажей.
         private ApartmentPresetWindowContext BuildPresetWindowContext(Document doc, ViewPlan activeFloorPlan)
         {
             ApartmentPresetWindowContext context = new ApartmentPresetWindowContext();
 
             List<ViewPlan> plans = new FilteredElementCollector(doc)
-                .OfClass(typeof(ViewPlan))
-                .Cast<ViewPlan>()
-                .Where(x => !x.IsTemplate && x.ViewType == ViewType.FloorPlan && x.GenLevel != null)
-                .OrderBy(x => x.Id != activeFloorPlan.Id)
-                .ThenBy(x => x.Name)
-                .ToList();
+                .OfClass(typeof(ViewPlan)).Cast<ViewPlan>().Where(x => !x.IsTemplate && x.ViewType == ViewType.FloorPlan && x.GenLevel != null)
+                .OrderBy(x => x.Id != activeFloorPlan.Id).ThenBy(x => x.Name).ToList();
 
             foreach (ViewPlan plan in plans)
             {
@@ -522,15 +530,16 @@ namespace KPLN_Tools.ExecutableCommand
                 if (option.RoomCategories == null || option.RoomCategories.Count == 0)
                     option.RoomCategories = new List<string> { "Помещение" };
 
+                option.DoorRequirements = BuildDoorRequirementsForPlan(doc, plan);
+                option.DoorTypeOptionsByRequirementKey = BuildDoorTypeOptionsByRequirementForPlan(doc, option.DoorRequirements);
+
                 context.Plans.Add(option);
             }
 
             return context;
         }
 
-        /// <summary>
-        /// Текст для окна пресетов по привязке к нижнему уровню стен.
-        /// </summary>
+        /// Формирует текст ограничения по уже размещённым 2D-квартирам на плане.
         private string BuildLowerConstraintTextForPlan(Document doc, ViewPlan plan)
         {
             if (plan == null)
@@ -559,112 +568,29 @@ namespace KPLN_Tools.ExecutableCommand
             return string.Join(", ", levelNames.OrderBy(x => x));
         }
 
-        /// <summary>
-        /// Собрать список уникальных толщин стен квартир на плане.
-        /// </summary>
-        private List<int> BuildWallThicknessesForPlan(Document doc, ViewPlan plan)
+        /// Находит целевой план этажа либо по имени из преднастройки, либо по активному виду.
+        private static ViewPlan FindTargetFloorPlan(Document doc, string selectedPlanName)
         {
-            HashSet<int> result = new HashSet<int>();
+            List<ViewPlan> plans = new FilteredElementCollector(doc).OfClass(typeof(ViewPlan)).Cast<ViewPlan>()
+                .Where(x => !x.IsTemplate && x.ViewType == ViewType.FloorPlan && x.GenLevel != null).ToList();
 
-            if (plan == null)
-                return new List<int>();
-
-            List<FamilyInstance> apartmentsOnPlan = GetPlacedApartmentInstancesForPlan(doc, plan);
-            if (apartmentsOnPlan.Count == 0)
-                return new List<int>();
-
-            foreach (FamilyInstance fi in apartmentsOnPlan)
+            if (!string.IsNullOrWhiteSpace(selectedPlanName))
             {
-                double thicknessInternal;
-                if (!TryGetApartmentWallThickness(fi, out thicknessInternal))
-                    continue;
+                ViewPlan selected = plans.FirstOrDefault(x =>
+                    string.Equals(x.Name, selectedPlanName, StringComparison.OrdinalIgnoreCase));
 
-                int thicknessMm = (int)Math.Round(ConvertInternalToMm(thicknessInternal));
-                if (thicknessMm > 0)
-                    result.Add(thicknessMm);
+                if (selected != null)
+                    return selected;
             }
 
-            return result.OrderBy(x => x).ToList();
+            ViewPlan activePlan = doc.ActiveView as ViewPlan;
+            if (activePlan != null && !activePlan.IsTemplate && activePlan.ViewType == ViewType.FloorPlan && activePlan.GenLevel != null)
+                return activePlan;
+
+            return null;
         }
 
-        /// <summary>
-        /// Для каждой толщины стены собрать список доступных типов стен из проекта.
-        /// </summary>
-        private Dictionary<int, List<string>> BuildWallTypeOptionsByThicknessForPlan(Document doc, ViewPlan plan)
-        {
-            Dictionary<int, List<string>> result = new Dictionary<int, List<string>>();
-
-            List<int> thicknesses = BuildWallThicknessesForPlan(doc, plan);
-            if (thicknesses.Count == 0)
-                return result;
-
-            List<WallType> allWallTypes = new FilteredElementCollector(doc)
-                .OfClass(typeof(WallType))
-                .Cast<WallType>()
-                .ToList();
-
-            foreach (int thicknessMm in thicknesses)
-            {
-                List<string> matchedNames = new List<string>();
-
-                foreach (WallType wt in allWallTypes)
-                {
-                    if (wt == null || string.IsNullOrWhiteSpace(wt.Name))
-                        continue;
-
-                    int wallTypeThicknessMm;
-                    if (!TryGetWallTypeThicknessMm(wt, out wallTypeThicknessMm))
-                        continue;
-
-                    if (wallTypeThicknessMm == thicknessMm)
-                        matchedNames.Add(wt.Name);
-                }
-
-                result[thicknessMm] = matchedNames
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(x => x)
-                    .ToList();
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Попытка получить толщину типа стены в миллиметрах.
-        /// </summary>
-        private static bool TryGetWallTypeThicknessMm(WallType wallType, out int thicknessMm)
-        {
-            thicknessMm = 0;
-
-            if (wallType == null)
-                return false;
-
-            Parameter p = wallType.LookupParameter("Толщина");
-            if (p != null && p.StorageType == StorageType.Double)
-            {
-                thicknessMm = (int)Math.Round(ConvertInternalToMm(p.AsDouble()));
-                return thicknessMm > 0;
-            }
-
-            try
-            {
-                double width = wallType.Width;
-                if (width > 0)
-                {
-                    thicknessMm = (int)Math.Round(ConvertInternalToMm(width));
-                    return thicknessMm > 0;
-                }
-            }
-            catch
-            {
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Собрать список категорий помещений по вложенным комнатам квартир на плане.
-        /// </summary>
+        /// Собирает категории помещений, найденных во вложенных элементах квартир на плане.
         private List<string> BuildRoomCategoriesForPlan(Document doc, ViewPlan plan)
         {
             HashSet<string> result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -695,19 +621,21 @@ namespace KPLN_Tools.ExecutableCommand
             return result.OrderBy(x => x).ToList();
         }
 
-        /// <summary>
-        /// Получить все квартиры Apartment Manager на заданном уровне.
-        /// </summary>
-        private static List<FamilyInstance> GetPlacedApartmentInstancesOnLevel(Document doc, Level level)
+        /// Возвращает все ранее размещённые квартиры, относящиеся к конкретному плану.
+        private static List<FamilyInstance> GetPlacedApartmentInstancesForPlan(Document doc, ViewPlan plan)
         {
             List<FamilyInstance> result = new List<FamilyInstance>();
 
-            IEnumerable<FamilyInstance> instances = new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance))
-                .Cast<FamilyInstance>();
+            if (doc == null || plan == null)
+                return result;
+
+            IEnumerable<FamilyInstance> instances = new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance)).Cast<FamilyInstance>();
 
             foreach (FamilyInstance fi in instances)
             {
+                if (fi == null)
+                    continue;
+
                 Parameter pComment = fi.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
                 if (pComment == null)
                     continue;
@@ -719,57 +647,66 @@ namespace KPLN_Tools.ExecutableCommand
                 if (!comment.Contains(ApartmentInstanceMarker))
                     continue;
 
-                ElementId levelId = GetInstanceLevelId(fi);
-                if (levelId == ElementId.InvalidElementId)
-                    continue;
+                bool belongsToPlan = false;
 
-                if (levelId == level.Id)
+                if (fi.OwnerViewId != ElementId.InvalidElementId && fi.OwnerViewId == plan.Id)
+                    belongsToPlan = true;
+
+                if (!belongsToPlan && plan.GenLevel != null)
+                {
+                    ElementId levelId = GetInstanceLevelId(fi);
+                    if (levelId != ElementId.InvalidElementId && levelId == plan.GenLevel.Id)
+                        belongsToPlan = true;
+                }
+
+                if (belongsToPlan)
                     result.Add(fi);
             }
 
             return result;
         }
 
-        /// <summary>
-        /// Безопасно попытаться получить толщину стены квартиры.
-        /// </summary>
-        private static bool TryGetApartmentWallThickness(FamilyInstance apartmentFi, out double thicknessInternal)
+        /// Находит вложенные помещения внутри экземпляра квартиры.
+        private static List<FamilyInstance> FindRoomSubComponents(Document doc, FamilyInstance apartmentInstance)
         {
-            thicknessInternal = 0;
+            List<FamilyInstance> result = new List<FamilyInstance>();
+            if (apartmentInstance == null)
+                return result;
 
-            if (apartmentFi == null)
-                return false;
+            ICollection<ElementId> subIds = apartmentInstance.GetSubComponentIds();
+            if (subIds == null || subIds.Count == 0)
+                return result;
 
-            Parameter p = apartmentFi.LookupParameter("Стены_Толщина");
-            if (p == null)
-                p = apartmentFi.LookupParameter("Стены толщина");
-
-            if (p != null && p.StorageType == StorageType.Double)
+            foreach (ElementId subId in subIds)
             {
-                thicknessInternal = p.AsDouble();
-                return true;
-            }
+                FamilyInstance subFi = doc.GetElement(subId) as FamilyInstance;
+                if (subFi == null)
+                    continue;
 
-            Element typeElem = apartmentFi.Document.GetElement(apartmentFi.GetTypeId());
-            if (typeElem != null)
-            {
-                p = typeElem.LookupParameter("Стены_Толщина");
-                if (p == null)
-                    p = typeElem.LookupParameter("Стены толщина");
+                string familyName = "";
+                string typeName = "";
 
-                if (p != null && p.StorageType == StorageType.Double)
+                if (subFi.Symbol != null)
                 {
-                    thicknessInternal = p.AsDouble();
-                    return true;
+                    typeName = subFi.Symbol.Name ?? "";
+                    if (subFi.Symbol.Family != null)
+                        familyName = subFi.Symbol.Family.Name ?? "";
                 }
+
+                Category cat = subFi.Category;
+
+                bool byFamily = familyName.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool byType = typeName.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
+                bool byCategory = cat != null && cat.Name.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (byFamily || byType || byCategory)
+                    result.Add(subFi);
             }
 
-            return false;
+            return result;
         }
 
-        /// <summary>
-        /// Попытка получить человекочитаемую категорию помещения.
-        /// </summary>
+        /// Возвращает подпись категории помещения по параметрам или имени семейства.
         private static string GetRoomCategoryLabel(FamilyInstance roomFi)
         {
             if (roomFi == null)
@@ -807,163 +744,510 @@ namespace KPLN_Tools.ExecutableCommand
             return "Помещение";
         }
 
-        /// <summary>
-        /// Предварительная валидация пресета перед построением 3D.
-        /// </summary>
-        private bool ValidatePresetBeforeConvertTo3D(Document doc, ApartmentPresetData preset, out string validationMessage)
+        /// Возвращает все ранее размещённые квартиры, относящиеся к заданному уровню.
+        private static List<FamilyInstance> GetPlacedApartmentInstancesOnLevel(Document doc, Level level)
         {
-            validationMessage = "";
+            List<FamilyInstance> result = new List<FamilyInstance>();
 
-            ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
+            IEnumerable<FamilyInstance> instances = new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance)).Cast<FamilyInstance>();
+
+            foreach (FamilyInstance fi in instances)
             {
-                SelectedPlanName = "",
-                LowerConstraint = "",
-                UpperConstraint = "Неприсоединённая",
-                BaseOffset = 0,
-                WallHeight = 3000,
-                WallTypeByThickness = new Dictionary<int, string>(),
-                EntryDoor = "Не выбрано",
-                BathroomDoor = "Не выбрано",
-                RoomDoor = "Не выбрано",
-                DoorsByRoomCategory = new Dictionary<string, string>()
-            };
+                Parameter pComment = fi.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+                if (pComment == null)
+                    continue;
 
-            List<string> problems = new List<string>();
+                string comment = pComment.AsString();
+                if (string.IsNullOrWhiteSpace(comment))
+                    continue;
 
-            if (effectivePreset.WallHeight <= 0)
-                problems.Add("Не указана неприсоединённая высота стены.");
+                if (!comment.Contains(ApartmentInstanceMarker))
+                    continue;
 
-            ViewPlan targetPlan = FindTargetFloorPlan(doc, effectivePreset.SelectedPlanName);
-            if (targetPlan == null)
-            {
-                problems.Add("Не удалось определить план для построения стен.");
-            }
-            else
-            {
-                List<int> requiredThicknesses = BuildWallThicknessesForPlan(doc, targetPlan);
+                ElementId levelId = GetInstanceLevelId(fi);
+                if (levelId == ElementId.InvalidElementId)
+                    continue;
 
-                if (requiredThicknesses.Count == 0)
-                {
-                    problems.Add("На выбранном плане не найдено ни одного размещённого 2D-семейства квартиры.");
-                }
-                else
-                {
-                    foreach (int thickness in requiredThicknesses.OrderBy(x => x))
-                    {
-                        string selectedWallType = GetSelectedWallTypeNameForThickness(effectivePreset, thickness);
-
-                        if (string.IsNullOrWhiteSpace(selectedWallType) ||
-                            string.Equals(selectedWallType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
-                        {
-                            problems.Add("Не выбран тип стены для толщины " + thickness + " мм.");
-                            continue;
-                        }
-
-                        WallType matchedWallType = FindWallTypeByExactSelectionAndThickness(doc, selectedWallType, thickness);
-                        if (matchedWallType == null)
-                        {
-                            problems.Add("Для толщины " + thickness + " мм выбран тип стены '" + selectedWallType + "', но такой тип не найден в проекте.");
-                        }
-                    }
-                }
+                if (levelId == level.Id)
+                    result.Add(fi);
             }
 
-            if (problems.Count > 0)
+            return result;
+        }
+
+        /// СТЕНЫ (2D). Возвращает набор толщин стен, найденных в размещённых квартирах на плане.
+        private List<int> BuildWallThicknessesForPlan(Document doc, ViewPlan plan)
+        {
+            HashSet<int> result = new HashSet<int>();
+
+            if (plan == null)
+                return new List<int>();
+
+            List<FamilyInstance> apartmentsOnPlan = GetPlacedApartmentInstancesForPlan(doc, plan);
+            if (apartmentsOnPlan.Count == 0)
+                return new List<int>();
+
+            foreach (FamilyInstance fi in apartmentsOnPlan)
             {
-                validationMessage = "Невозможно выполнить построение 3D.\nНеобходимо заполнить/исправить:\n- " + string.Join("\n- ", problems);
+                double thicknessInternal;
+                if (!TryGetApartmentWallThickness(fi, out thicknessInternal))
+                    continue;
+
+                int thicknessMm = (int)Math.Round(ConvertInternalToMm(thicknessInternal));
+                if (thicknessMm > 0)
+                    result.Add(thicknessMm);
+            }
+
+            return result.OrderBy(x => x).ToList();
+        }
+
+        /// СТЕНЫ (2D). Пытается получить толщину стены квартиры из параметра экземпляра или типа.
+        private static bool TryGetApartmentWallThickness(FamilyInstance apartmentFi, out double thicknessInternal)
+        {
+            thicknessInternal = 0;
+
+            if (apartmentFi == null)
                 return false;
-            }
 
-            return true;
-        }
+            Parameter p = apartmentFi.LookupParameter("Стены_Толщина");
+            if (p == null)
+                p = apartmentFi.LookupParameter("Стены толщина");
 
-        /// <summary>
-        /// Найти целевой план: по имени из пресета, иначе активный план.
-        /// </summary>
-        private static ViewPlan FindTargetFloorPlan(Document doc, string selectedPlanName)
-        {
-            List<ViewPlan> plans = new FilteredElementCollector(doc)
-                .OfClass(typeof(ViewPlan))
-                .Cast<ViewPlan>()
-                .Where(x => !x.IsTemplate && x.ViewType == ViewType.FloorPlan && x.GenLevel != null)
-                .ToList();
-
-            if (!string.IsNullOrWhiteSpace(selectedPlanName))
+            if (p != null && p.StorageType == StorageType.Double)
             {
-                ViewPlan selected = plans.FirstOrDefault(x =>
-                    string.Equals(x.Name, selectedPlanName, StringComparison.OrdinalIgnoreCase));
-
-                if (selected != null)
-                    return selected;
+                thicknessInternal = p.AsDouble();
+                return true;
             }
 
-            ViewPlan activePlan = doc.ActiveView as ViewPlan;
-            if (activePlan != null && !activePlan.IsTemplate && activePlan.ViewType == ViewType.FloorPlan && activePlan.GenLevel != null)
-                return activePlan;
+            Element typeElem = apartmentFi.Document.GetElement(apartmentFi.GetTypeId());
+            if (typeElem != null)
+            {
+                p = typeElem.LookupParameter("Стены_Толщина");
+                if (p == null)
+                    p = typeElem.LookupParameter("Стены толщина");
 
-            return null;
+                if (p != null && p.StorageType == StorageType.Double)
+                {
+                    thicknessInternal = p.AsDouble();
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        /// <summary>
-        /// Получить выбранное имя типа стены для конкретной толщины из пресета.
-        /// </summary>
-        private static string GetSelectedWallTypeNameForThickness(ApartmentPresetData preset, int thicknessMm)
+        /// СТЕНЫ (2D). Возвращает толщину стены квартиры из параметра экземпляра или типа 2D-семейства.
+        private static double GetApartmentWallThickness(FamilyInstance apartmentFi)
         {
-            if (preset == null || preset.WallTypeByThickness == null || preset.WallTypeByThickness.Count == 0)
-                return null;
+            if (apartmentFi == null)
+                throw new ArgumentNullException("apartmentFi");
 
-            string value;
-            if (preset.WallTypeByThickness.TryGetValue(thicknessMm, out value))
-                return value;
+            Parameter p = apartmentFi.LookupParameter("Стены_Толщина");
+            if (p == null)
+                p = apartmentFi.LookupParameter("Стены толщина");
 
-            return null;
+            if (p != null && p.StorageType == StorageType.Double)
+                return p.AsDouble();
+
+            Element typeElem = apartmentFi.Document.GetElement(apartmentFi.GetTypeId());
+            if (typeElem != null)
+            {
+                p = typeElem.LookupParameter("Стены_Толщина");
+                if (p == null)
+                    p = typeElem.LookupParameter("Стены толщина");
+
+                if (p != null && p.StorageType == StorageType.Double)
+                    return p.AsDouble();
+            }
+
+            throw new Exception("Не найден параметр 'Стены_Толщина' у экземпляра или типа семейства квартиры.");
         }
 
-        /// <summary>
-        /// Найти тип стены строго по имени и толщине.
-        /// </summary>
-        private static WallType FindWallTypeByExactSelectionAndThickness(Document doc, string selectedWallTypeName, int thicknessMm)
+        /// СТЕНЫ (2D - 3D). Для каждой толщины стены подбирает подходящие типы стен проекта.
+        private Dictionary<int, List<string>> BuildWallTypeOptionsByThicknessForPlan(Document doc, ViewPlan plan)
         {
-            if (doc == null || string.IsNullOrWhiteSpace(selectedWallTypeName))
-                return null;
+            Dictionary<int, List<string>> result = new Dictionary<int, List<string>>();
+
+            List<int> thicknesses = BuildWallThicknessesForPlan(doc, plan);
+            if (thicknesses.Count == 0)
+                return result;
 
             List<WallType> allWallTypes = new FilteredElementCollector(doc)
                 .OfClass(typeof(WallType))
                 .Cast<WallType>()
                 .ToList();
 
-            WallType exact = allWallTypes.FirstOrDefault(x => string.Equals(x.Name, selectedWallTypeName, StringComparison.OrdinalIgnoreCase));
-
-            if (exact != null)
+            foreach (int thicknessMm in thicknesses)
             {
-                int exactThicknessMm;
-                if (TryGetWallTypeThicknessMm(exact, out exactThicknessMm) && exactThicknessMm == thicknessMm)
-                    return exact;
+                List<string> matchedNames = new List<string>();
+
+                foreach (WallType wt in allWallTypes)
+                {
+                    if (wt == null || string.IsNullOrWhiteSpace(wt.Name))
+                        continue;
+
+                    int wallTypeThicknessMm;
+                    if (!TryGetWallTypeThicknessMm(wt, out wallTypeThicknessMm))
+                        continue;
+
+                    if (wallTypeThicknessMm == thicknessMm)
+                        matchedNames.Add(wt.Name);
+                }
+
+                result[thicknessMm] = matchedNames.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
             }
 
-            foreach (WallType wt in allWallTypes)
+            return result;
+        }
+
+        /// СТЕНЫ (3D). Пытается получить толщину типа стены в миллиметрах.
+        private static bool TryGetWallTypeThicknessMm(WallType wallType, out int thicknessMm)
+        {
+            thicknessMm = 0;
+
+            if (wallType == null)
+                return false;
+
+            Parameter p = wallType.LookupParameter("Толщина");
+            if (p != null && p.StorageType == StorageType.Double)
             {
-                if (wt == null || !string.Equals(wt.Name, selectedWallTypeName, StringComparison.OrdinalIgnoreCase))
+                thicknessMm = (int)Math.Round(ConvertInternalToMm(p.AsDouble()));
+                return thicknessMm > 0;
+            }
+
+            try
+            {
+                double width = wallType.Width;
+                if (width > 0)
+                {
+                    thicknessMm = (int)Math.Round(ConvertInternalToMm(width));
+                    return thicknessMm > 0;
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        /// ДВЕРИ (2D). Собирает требования по дверям из всех квартир, размещённых на плане.
+        private List<ApartmentDoorRequirementOption> BuildDoorRequirementsForPlan(Document doc, ViewPlan plan)
+        {
+            Dictionary<string, ApartmentDoorRequirementOption> result =
+                new Dictionary<string, ApartmentDoorRequirementOption>(StringComparer.OrdinalIgnoreCase);
+
+            if (plan == null || plan.GenLevel == null)
+                return new List<ApartmentDoorRequirementOption>();
+
+            List<FamilyInstance> apartments = GetPlacedApartmentInstancesOnLevel(doc, plan.GenLevel);
+
+            foreach (FamilyInstance apartment in apartments)
+            {
+                List<FamilyInstance> doors = FindDoorSubComponentsRecursive(doc, apartment);
+
+                foreach (FamilyInstance doorFi in doors)
+                {
+                    string doorTypeName2D = Get2DDoorTypeName(doorFi);
+                    if (string.IsNullOrWhiteSpace(doorTypeName2D))
+                        continue;
+
+                    int widthMm;
+                    if (!TryGetDoorWidthMmFrom2DTypeName(doorTypeName2D, out widthMm))
+                        continue;
+
+                    if (widthMm <= 0)
+                        continue;
+
+                    string key = ApartmentDoorRequirementOption.BuildKey(doorTypeName2D, widthMm);
+                    if (!result.ContainsKey(key))
+                    {
+                        result.Add(key, new ApartmentDoorRequirementOption
+                        {
+                            DoorTypeName2D = doorTypeName2D,
+                            WidthMm = widthMm
+                        });
+                    }
+                }
+            }
+
+            return result.Values.OrderBy(x => x.WidthMm).ThenBy(x => x.DoorTypeName2D).ToList();
+        }
+
+        /// ДВЕРИ (2D). Рекурсивно находит все вложенные двери в структуре семейства квартиры.
+        private static List<FamilyInstance> FindDoorSubComponentsRecursive(Document doc, FamilyInstance root)
+        {
+            List<FamilyInstance> result = new List<FamilyInstance>();
+            if (doc == null || root == null)
+                return result;
+
+            HashSet<long> visited = new HashSet<long>();
+            CollectNestedDoorsRecursive(doc, root, result, visited);
+
+            return result;
+        }
+
+        /// ДВЕРИ (2D). Рекурсивно обходит вложенные элементы и собирает двери.
+        private static void CollectNestedDoorsRecursive(Document doc, FamilyInstance current, List<FamilyInstance> result, HashSet<long> visited)
+        {
+            if (doc == null || current == null)
+                return;
+
+            long currentId = GetElementIdValue(current.Id);
+            if (visited.Contains(currentId))
+                return;
+
+            visited.Add(currentId);
+
+            ICollection<ElementId> subIds = current.GetSubComponentIds();
+            if (subIds == null || subIds.Count == 0)
+                return;
+
+            foreach (ElementId subId in subIds)
+            {
+                FamilyInstance subFi = doc.GetElement(subId) as FamilyInstance;
+                if (subFi == null)
                     continue;
 
-                int wallTypeThicknessMm;
-                if (!TryGetWallTypeThicknessMm(wt, out wallTypeThicknessMm))
+                if (IsDoorLikeFamilyInstance(subFi))
+                    result.Add(subFi);
+
+                CollectNestedDoorsRecursive(doc, subFi, result, visited);
+            }
+        }
+
+        /// ДВЕРИ (2D). Определяет, похож ли экземпляр семейства на дверь.
+        private static bool IsDoorLikeFamilyInstance(FamilyInstance fi)
+        {
+            if (fi == null)
+                return false;
+
+            string familyName = "";
+            string typeName = "";
+            string categoryName = "";
+
+            if (fi.Symbol != null)
+            {
+                typeName = fi.Symbol.Name ?? "";
+                if (fi.Symbol.Family != null)
+                    familyName = fi.Symbol.Family.Name ?? "";
+            }
+
+            if (fi.Category != null)
+                categoryName = fi.Category.Name ?? "";
+
+            bool isGenericModel =
+                string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(categoryName, "Обобщённые модели", StringComparison.OrdinalIgnoreCase);
+
+            bool isDoorFamily =
+                string.Equals(familyName, "Дверь", StringComparison.OrdinalIgnoreCase);
+
+            bool isDoorLikeByName =
+                familyName.IndexOf("Двер", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                typeName.IndexOf("Двер", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            return (isGenericModel && isDoorFamily) || isDoorLikeByName;
+        }
+
+        /// ДВЕРИ (2D). Возвращает имя типа 2D-двери.
+        private static string Get2DDoorTypeName(FamilyInstance doorFi)
+        {
+            if (doorFi == null)
+                return null;
+
+            if (doorFi.Symbol != null && !string.IsNullOrWhiteSpace(doorFi.Symbol.Name))
+                return doorFi.Symbol.Name.Trim();
+
+            Element typeElem = doorFi.Document.GetElement(doorFi.GetTypeId());
+            if (typeElem != null && !string.IsNullOrWhiteSpace(typeElem.Name))
+                return typeElem.Name.Trim();
+
+            return null;
+        }
+
+
+        /// ДВЕРИ (2D). Пытается определить ширину двери в миллиметрах по имени типа 2D-двери.
+        private static bool TryGetDoorWidthMmFrom2DTypeName(string typeName, out int widthMm)
+        {
+            widthMm = 0;
+
+            if (string.IsNullOrWhiteSpace(typeName))
+                return false;
+
+            string normalized = typeName.Trim();
+
+            int parsed;
+            if (int.TryParse(normalized, out parsed))
+            {
+                widthMm = parsed;
+                return widthMm > 0;
+            }
+
+            string firstToken = normalized
+                .Split(new[] { ' ', 'x', 'X', 'х', 'Х', '-', '_', '/', '\\', '(', ')', '[', ']' }, StringSplitOptions.RemoveEmptyEntries)
+                .FirstOrDefault();
+
+            if (!string.IsNullOrWhiteSpace(firstToken) && int.TryParse(firstToken, out parsed))
+            {
+                widthMm = parsed;
+                return widthMm > 0;
+            }
+
+            return false;
+        }
+
+        /// ДВЕРИ (2D - 3D). Для каждого требования по двери подбирает подходящие типы дверей проекта.
+        private Dictionary<string, List<string>> BuildDoorTypeOptionsByRequirementForPlan(Document doc, List<ApartmentDoorRequirementOption> requirements)
+        {
+            Dictionary<string, List<string>> result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            if (requirements == null || requirements.Count == 0)
+                return result;
+
+            List<FamilySymbol> doorTypes = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Doors).OfClass(typeof(FamilySymbol)).Cast<FamilySymbol>().ToList();
+
+            foreach (ApartmentDoorRequirementOption requirement in requirements)
+            {
+                if (requirement == null || string.IsNullOrWhiteSpace(requirement.DoorTypeName2D) || requirement.WidthMm <= 0)
                     continue;
 
-                if (wallTypeThicknessMm == thicknessMm)
-                    return wt;
+                List<string> matched = new List<string>();
+
+                foreach (FamilySymbol symbol in doorTypes)
+                {
+                    int widthMm;
+                    if (!TryGetProjectDoorTypeWidthMm(symbol, out widthMm))
+                        continue;
+
+                    if (widthMm != requirement.WidthMm)
+                        continue;
+
+                    string displayName = BuildDoorTypeDisplayName(symbol);
+                    if (!string.IsNullOrWhiteSpace(displayName))
+                        matched.Add(displayName);
+                }
+
+                result[requirement.Key] = matched.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
+            }
+
+            return result;
+        }
+
+        /// ДВЕРИ (2D - 3D). Пытается получить ширину типа двери проекта в миллиметрах.
+        private static bool TryGetProjectDoorTypeWidthMm(FamilySymbol symbol, out int widthMm)
+        {
+            widthMm = 0;
+            if (symbol == null)
+                return false;
+
+            double widthInternal;
+            if (TryGetLengthParamFromElementOrType(symbol, out widthInternal, "Ширина", "Width"))
+            {
+                widthMm = (int)Math.Round(ConvertInternalToMm(widthInternal));
+                return widthMm > 0;
+            }
+
+            Parameter builtInParam = symbol.get_Parameter(BuiltInParameter.DOOR_WIDTH);
+            if (builtInParam != null && builtInParam.StorageType == StorageType.Double)
+            {
+                widthMm = (int)Math.Round(ConvertInternalToMm(builtInParam.AsDouble()));
+                return widthMm > 0;
+            }
+
+            return false;
+        }
+
+        /// ДВЕРИ (2D - 3D). Пытается получить параметр длины сначала из экземпляра, затем из его типа.
+        private static bool TryGetLengthParamFromElementOrType(Element e, out double valueInternal, params string[] paramNames)
+        {
+            valueInternal = 0;
+            if (e == null)
+                return false;
+
+            foreach (string paramName in paramNames)
+            {
+                Parameter p = e.LookupParameter(paramName);
+                if (p != null && p.StorageType == StorageType.Double)
+                {
+                    valueInternal = p.AsDouble();
+                    return true;
+                }
+            }
+
+            Element typeElem = null;
+            if (e.Document != null)
+            {
+                ElementId typeId = e.GetTypeId();
+                if (typeId != ElementId.InvalidElementId)
+                    typeElem = e.Document.GetElement(typeId);
+            }
+
+            if (typeElem != null)
+            {
+                foreach (string paramName in paramNames)
+                {
+                    Parameter p = typeElem.LookupParameter(paramName);
+                    if (p != null && p.StorageType == StorageType.Double)
+                    {
+                        valueInternal = p.AsDouble();
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// ДВЕРИ (2D - 3D). Формирует отображаемое имя типа двери проекта.
+        private static string BuildDoorTypeDisplayName(FamilySymbol symbol)
+        {
+            if (symbol == null)
+                return null;
+
+            string familyName = symbol.Family != null ? symbol.Family.Name ?? "" : "";
+            string typeName = symbol.Name ?? "";
+
+            if (!string.IsNullOrWhiteSpace(familyName) && !string.IsNullOrWhiteSpace(typeName))
+                return familyName + " - " + typeName;
+
+            if (!string.IsNullOrWhiteSpace(typeName))
+                return typeName;
+
+            return familyName;
+        }
+
+        /// ДВЕРИ (2D - 3D). Ищет тип двери проекта по отображаемому имени и ширине.
+        private static FamilySymbol FindDoorSymbolByDisplayNameAndWidth(Document doc, string displayName, int widthMm)
+        {
+            if (doc == null || string.IsNullOrWhiteSpace(displayName))
+                return null;
+
+            List<FamilySymbol> doorTypes = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Doors)
+                .OfClass(typeof(FamilySymbol))
+                .Cast<FamilySymbol>()
+                .ToList();
+
+            foreach (FamilySymbol symbol in doorTypes)
+            {
+                string currentName = BuildDoorTypeDisplayName(symbol);
+                if (!string.Equals(currentName, displayName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                int symbolWidthMm;
+                if (!TryGetProjectDoorTypeWidthMm(symbol, out symbolWidthMm))
+                    continue;
+
+                if (symbolWidthMm == widthMm)
+                    return symbol;
             }
 
             return null;
         }
 
-        ////////////////////////////////////////////
-        ////////////////////////////////////////////  ПОСТАНОВКА 2D-СЕМЕЙСТВА
-        ////////////////////////////////////////////
-
-        /// <summary>
-        /// Размещение 2D-семейства квартиры на активном плане.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 2D. Размещает выбранное 2D-семейство квартиры на активном плане этажа.
         private void ExecutePlaceApartment(UIDocument uidoc, Document doc, int id)
         {
             ViewPlan floorPlan = doc.ActiveView as ViewPlan;
@@ -1016,52 +1300,12 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        /// <summary>
-        /// Получить путь к семейству квартиры из SQLite-базы по ID.
-        /// </summary>
-        private static string GetFamilyPathById(int id)
-        {
-            if (!File.Exists(DbPath))
-                throw new FileNotFoundException("Не найдена база данных", DbPath);
-
-            using (var con = OpenConnection(DbPath, true))
-            using (var cmd = con.CreateCommand())
-            {
-                cmd.CommandText = "SELECT FPATH FROM Main WHERE ID = @id LIMIT 1;";
-                cmd.Parameters.AddWithValue("@id", id);
-
-                object result = cmd.ExecuteScalar();
-                if (result == null || result == DBNull.Value)
-                    return null;
-
-                return result.ToString().Trim();
-            }
-        }
-
-        /// <summary>
-        /// Открыть SQLite-подключение.
-        /// </summary>
-        private static SQLiteConnection OpenConnection(string dbPath, bool readOnly)
-        {
-            string cs = readOnly
-                ? ("Data Source=" + dbPath + ";Version=3;Read Only=True;")
-                : ("Data Source=" + dbPath + ";Version=3;");
-
-            SQLiteConnection con = new SQLiteConnection(cs);
-            con.Open();
-            return con;
-        }
-
-        /// <summary>
-        /// Найти семейство в документе или загрузить его из файла.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 2D. Загружает 2D-семейство в проект либо возвращает уже загруженное семейство с тем же именем.
         private static Family LoadOrFindFamily(Document doc, string familyPath)
         {
             string familyName = Path.GetFileNameWithoutExtension(familyPath);
 
-            Family existingFamily = new FilteredElementCollector(doc)
-                .OfClass(typeof(Family))
-                .Cast<Family>()
+            Family existingFamily = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>()
                 .FirstOrDefault(f => string.Equals(f.Name, familyName, StringComparison.OrdinalIgnoreCase));
 
             if (existingFamily != null)
@@ -1073,17 +1317,13 @@ namespace KPLN_Tools.ExecutableCommand
             if (loaded && loadedFamily != null)
                 return loadedFamily;
 
-            existingFamily = new FilteredElementCollector(doc)
-                .OfClass(typeof(Family))
-                .Cast<Family>()
+            existingFamily = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>()
                 .FirstOrDefault(f => string.Equals(f.Name, familyName, StringComparison.OrdinalIgnoreCase));
 
             return existingFamily;
         }
 
-        /// <summary>
-        /// Получить первый типоразмер семейства.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 2D. Возвращает первый доступный тип 2D-семейства.
         private static FamilySymbol GetFirstFamilySymbol(Document doc, Family family)
         {
             ISet<ElementId> symbolIds = family.GetFamilySymbolIds();
@@ -1094,9 +1334,7 @@ namespace KPLN_Tools.ExecutableCommand
             return doc.GetElement(firstId) as FamilySymbol;
         }
 
-        /// <summary>
-        /// Разместить семейство на плане с учётом его типа размещения.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 2D. Размещает экземпляр 2D-семейства в зависимости от типа размещения.
         private static FamilyInstance PlaceFamilyInstance(Document doc, ViewPlan floorPlan, FamilySymbol symbol, XYZ point)
         {
             FamilyPlacementType placementType = symbol.Family.FamilyPlacementType;
@@ -1124,9 +1362,7 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        /// <summary>
-        /// Добавить текст в комментарий элемента.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 2D. Дописывает указанный текст в параметр комментария экземпляра 2D-семейства.
         private static void AppendComment(Element e, string textToAppend)
         {
             if (e == null || string.IsNullOrWhiteSpace(textToAppend))
@@ -1150,13 +1386,74 @@ namespace KPLN_Tools.ExecutableCommand
             p.Set(oldValue + " " + textToAppend);
         }
 
-        ////////////////////////////////////////////
-        //////////////////////////////////////////// ПРЕВРАЩЕНИЕ 2D-СЕМЕЙСТВ В СТЕНЫ И ДВЕРИ
-        ////////////////////////////////////////////
+        /// РАЗМЕЩЕНИЕ 3D. Проверяет, что преднастройка достаточна для запуска построения 3D.
+        private bool ValidatePresetBeforeConvertTo3D(Document doc, ApartmentPresetData preset, out string validationMessage)
+        {
+            validationMessage = "";
 
-        /// <summary>
-        /// Построение 3D-стен и дверей по размещённым 2D-квартирам.
-        /// </summary>
+            ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
+            {
+                SelectedPlanName = "",
+                LowerConstraint = "",
+                UpperConstraint = "Неприсоединённая",
+                BaseOffset = 0,
+                WallHeight = 3000,
+                WallTypeByThickness = new Dictionary<int, string>(),
+                EntryDoor = "Не выбрано",
+                BathroomDoor = "Не выбрано",
+                RoomDoor = "Не выбрано",
+                DoorsByRoomCategory = new Dictionary<string, string>()
+            };
+
+            List<string> problems = new List<string>();
+
+            if (effectivePreset.WallHeight <= 0)
+                problems.Add("Не указана неприсоединённая высота стены.");
+
+            ViewPlan targetPlan = FindTargetFloorPlan(doc, effectivePreset.SelectedPlanName);
+            if (targetPlan == null)
+            {
+                problems.Add("Не удалось определить план для построения стен.");
+            }
+            else
+            {
+                List<int> requiredThicknesses = BuildWallThicknessesForPlan(doc, targetPlan);
+
+                if (requiredThicknesses.Count == 0)
+                {
+                    problems.Add("На выбранном плане не найдено ни одного размещённого 2D-семейства квартиры.");
+                }
+                else
+                {
+                    foreach (int thickness in requiredThicknesses.OrderBy(x => x))
+                    {
+                        string selectedWallType = GetSelectedWallTypeNameForThickness(effectivePreset, thickness);
+
+                        if (string.IsNullOrWhiteSpace(selectedWallType) || string.Equals(selectedWallType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
+                        {
+                            problems.Add("Не выбран тип стены для толщины " + thickness + " мм.");
+                            continue;
+                        }
+
+                        WallType matchedWallType = FindWallTypeByExactSelectionAndThickness(doc, selectedWallType, thickness);
+                        if (matchedWallType == null)
+                        {
+                            problems.Add("Для толщины " + thickness + " мм выбран тип стены '" + selectedWallType + "', но такой тип не найден в проекте.");
+                        }
+                    }
+                }
+            }
+
+            if (problems.Count > 0)
+            {
+                validationMessage = "Невозможно выполнить построение 3D.\nНеобходимо заполнить/исправить:\n- " + string.Join("\n- ", problems);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. Выполняет подготовку и построение стен, дверей и помеещний по ранее размещённым 2D-квартирам.
         private void ExecuteConvertTo3D(Document doc, ApartmentPresetData preset)
         {
             ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
@@ -1198,20 +1495,18 @@ namespace KPLN_Tools.ExecutableCommand
             List<FamilyInstance> apartmentInstances = GetPlacedApartmentInstancesForPlan(doc, targetPlan);
             if (apartmentInstances.Count == 0)
             {
-                TaskDialog.Show("Apartment Manager", "На выбранном плане не найдено ранее размещённых экземпляров квартир.");
+                TaskDialog.Show("KPLN. Менеджер квартир", "На выбранном плане не найдено ранее размещённых экземпляров квартир.");
                 return;
             }
 
             List<string> debugMessages = new List<string>();
             List<PreparedApartmentWalls> preparedApartments = new List<PreparedApartmentWalls>();
             List<SkippedApartmentWallsInfo> skippedWallsInfos = new List<SkippedApartmentWallsInfo>();
+            List<PreparedApartmentDoors> preparedDoorsByApartment = new List<PreparedApartmentDoors>();
 
             double connectTol = ConvertMmToInternal(150);
             double intersectionTol = ConvertMmToInternal(10);
 
-            // ВАЖНО:
-            // сравниваем только с уже существующими стенами уровня.
-            // новые внутренние стены между собой НЕ сравниваем специально.
             List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, targetPlan.GenLevel.Id);
 
             foreach (FamilyInstance apartmentFi in apartmentInstances)
@@ -1318,6 +1613,9 @@ namespace KPLN_Tools.ExecutableCommand
                         ThicknessMm = apartmentWallThicknessMm,
                         AxisLines = finalAxisLines
                     });
+
+                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages);
+                    preparedDoorsByApartment.Add(preparedDoors);
                 }
                 catch (Exception exApartment)
                 {
@@ -1330,9 +1628,7 @@ namespace KPLN_Tools.ExecutableCommand
                 string debugText = debugMessages.Count > 0 ? "\n\n" + string.Join("\n", debugMessages) : "";
                 string skippedText = BuildSkippedWallsReport(skippedWallsInfos);
 
-                TaskDialog.Show(
-                    "Apartment Manager",
-                    "Не удалось подготовить ни одной стены." + skippedText + debugText);
+                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось подготовить ни одной стены." + skippedText + debugText);
 
                 return;
             }
@@ -1340,7 +1636,7 @@ namespace KPLN_Tools.ExecutableCommand
             double baseOffsetInternal = ConvertMmToInternal(effectivePreset.BaseOffset);
             double wallHeightInternal = ConvertMmToInternal(effectivePreset.WallHeight > 0 ? effectivePreset.WallHeight : 3000);
 
-            using (Transaction t = new Transaction(doc, "KPLN - Построение стен по помещениям"))
+            using (Transaction t = new Transaction(doc, "KPLN. Построение стен по помещениям"))
             {
                 t.Start();
 
@@ -1349,6 +1645,8 @@ namespace KPLN_Tools.ExecutableCommand
                     if (apartmentWalls == null || apartmentWalls.WallType == null || apartmentWalls.AxisLines == null)
                         continue;
 
+                    List<Wall> createdWallsForApartment = new List<Wall>();
+
                     foreach (Line axis in apartmentWalls.AxisLines)
                     {
                         if (axis == null || axis.Length < 1e-6)
@@ -1356,17 +1654,27 @@ namespace KPLN_Tools.ExecutableCommand
 
                         Wall wall = Wall.Create(doc, axis, apartmentWalls.WallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
                         ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
+
+                        createdWallsForApartment.Add(wall);
+                    }
+
+                    PreparedApartmentDoors apartmentDoors = preparedDoorsByApartment
+                        .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
+
+                    if (apartmentDoors != null && apartmentDoors.Doors != null && apartmentDoors.Doors.Count > 0)
+                    {
+                        // Логику установки дверей реализуем позже.
                     }
                 }
 
                 t.Commit();
             }
 
-            string report =
-                "Построение завершено.\n\n" +
-                "План: " + targetPlan.Name + "\n" +
-                "Экземпляров квартир найдено: " + apartmentInstances.Count + "\n" +
-                "Экземпляров квартир обработано: " + preparedApartments.Count + "\n";
+            int preparedDoorCount = preparedDoorsByApartment.Where(x => x != null && x.Doors != null).Sum(x => x.Doors.Count);
+
+            string report = "Построение завершено.\n\n" + "План: " + targetPlan.Name + "\n" +
+                "Экземпляров квартир обработано: " + preparedApartments.Count + " из " + apartmentInstances.Count + "\n" +
+                "Подготовлено дверей (без установки): " + preparedDoorCount + "\n";
 
             report += BuildSkippedWallsReport(skippedWallsInfos);
 
@@ -1376,9 +1684,7 @@ namespace KPLN_Tools.ExecutableCommand
             TaskDialog.Show("ConvertTo3D", report);
         }
 
-        /// <summary>
-        /// Сформировать текст отчёта по стенам, которые не были построены из-за пересечений/наложений.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 3D. Формирует текстовый отчёт по пропущенным стенам.
         private static string BuildSkippedWallsReport(List<SkippedApartmentWallsInfo> skippedWallsInfos)
         {
             if (skippedWallsInfos == null || skippedWallsInfos.Count == 0)
@@ -1404,18 +1710,13 @@ namespace KPLN_Tools.ExecutableCommand
             return "\n\nНе отрисованы элементы до 2D семействам:\n" + string.Join("\n", lines);
         }
 
-        /// <summary>
-        /// Определить базовый уровень стены.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 3D. ПРОВЕРКА УРОВНЯ ДЛЯ СТЕН. Определяет базовый уровень для построения стен.
         private static Level ResolveBaseLevelForPreset(Document doc, ApartmentPresetData preset, ViewPlan targetPlan)
         {
             if (preset != null && !string.IsNullOrWhiteSpace(preset.LowerConstraint))
             {
-                string[] parts = preset.LowerConstraint
-                    .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(x => x.Trim())
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .ToArray();
+                string[] parts = preset.LowerConstraint.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
 
                 foreach (string levelName in parts)
                 {
@@ -1431,9 +1732,7 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
-        /// <summary>
-        /// Определить верхний уровень стены.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 3D. ПРОВЕРКА УРОВНЯ ДЛЯ СТЕН. Определяет верхний уровень для стены. Если выбрано "Неприсоединённая" - возвращается NULL.
         private static Level ResolveTopLevelForPreset(Document doc, ApartmentPresetData preset)
         {
             if (preset == null)
@@ -1448,100 +1747,67 @@ namespace KPLN_Tools.ExecutableCommand
             return FindLevelByName(doc, preset.UpperConstraint.Trim());
         }
 
-        /// <summary>
-        /// Найти уровень по имени.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 3D. ПРОВЕРКА УРОВНЯ ДЛЯ СТЕН. Ищет уровень по имени.
         private static Level FindLevelByName(Document doc, string levelName)
         {
             if (doc == null || string.IsNullOrWhiteSpace(levelName))
                 return null;
 
-            return new FilteredElementCollector(doc)
-                .OfClass(typeof(Level))
-                .Cast<Level>()
+            return new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>()
                 .FirstOrDefault(x => string.Equals(x.Name, levelName, StringComparison.OrdinalIgnoreCase));
         }
 
-        /// <summary>
-        /// Собрать все ранее размещённые Apartment Manager квартиры для конкретного плана.
-        /// </summary>
-        private static List<FamilyInstance> GetPlacedApartmentInstancesForPlan(Document doc, ViewPlan plan)
+        /// РАЗМЕЩЕНИЕ 3D. ПРОВЕРКА ПРИ ПОСТРОЕНИИ СТЕН. Возвращает выбранное имя типа стены для заданной толщины.
+        private static string GetSelectedWallTypeNameForThickness(ApartmentPresetData preset, int thicknessMm)
         {
-            List<FamilyInstance> result = new List<FamilyInstance>();
+            if (preset == null || preset.WallTypeByThickness == null || preset.WallTypeByThickness.Count == 0)
+                return null;
 
-            if (doc == null || plan == null)
-                return result;
+            string value;
+            if (preset.WallTypeByThickness.TryGetValue(thicknessMm, out value))
+                return value;
 
-            IEnumerable<FamilyInstance> instances = new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance))
-                .Cast<FamilyInstance>();
+            return null;
+        }
 
-            foreach (FamilyInstance fi in instances)
+        /// РАЗМЕЩЕНИЕ 3D. ПРОВЕРКА ПРИ ПОСТРОЕНИИ СТЕН. Ищет тип стены по имени и точному совпадению толщины.
+        private static WallType FindWallTypeByExactSelectionAndThickness(Document doc, string selectedWallTypeName, int thicknessMm)
+        {
+            if (doc == null || string.IsNullOrWhiteSpace(selectedWallTypeName))
+                return null;
+
+            List<WallType> allWallTypes = new FilteredElementCollector(doc).OfClass(typeof(WallType)).Cast<WallType>().ToList();
+            WallType exact = allWallTypes.FirstOrDefault(x => string.Equals(x.Name, selectedWallTypeName, StringComparison.OrdinalIgnoreCase));
+
+            if (exact != null)
             {
-                if (fi == null)
-                    continue;
-
-                Parameter pComment = fi.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
-                if (pComment == null)
-                    continue;
-
-                string comment = pComment.AsString();
-                if (string.IsNullOrWhiteSpace(comment))
-                    continue;
-
-                if (!comment.Contains(ApartmentInstanceMarker))
-                    continue;
-
-                bool belongsToPlan = false;
-
-                if (fi.OwnerViewId != ElementId.InvalidElementId && fi.OwnerViewId == plan.Id)
-                    belongsToPlan = true;
-
-                if (!belongsToPlan && plan.GenLevel != null)
-                {
-                    ElementId levelId = GetInstanceLevelId(fi);
-                    if (levelId != ElementId.InvalidElementId && levelId == plan.GenLevel.Id)
-                        belongsToPlan = true;
-                }
-
-                if (belongsToPlan)
-                    result.Add(fi);
+                int exactThicknessMm;
+                if (TryGetWallTypeThicknessMm(exact, out exactThicknessMm) && exactThicknessMm == thicknessMm)
+                    return exact;
             }
 
-            return result;
+            foreach (WallType wt in allWallTypes)
+            {
+                if (wt == null || !string.Equals(wt.Name, selectedWallTypeName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                int wallTypeThicknessMm;
+                if (!TryGetWallTypeThicknessMm(wt, out wallTypeThicknessMm))
+                    continue;
+
+                if (wallTypeThicknessMm == thicknessMm)
+                    return wt;
+            }
+
+            return null;
         }
 
-        /// <summary>
-        /// Попытка определить уровень экземпляра семейства.
-        /// </summary>
-        private static ElementId GetInstanceLevelId(FamilyInstance fi)
-        {
-            if (fi == null)
-                return ElementId.InvalidElementId;
-
-            Parameter p =
-                fi.get_Parameter(BuiltInParameter.FAMILY_LEVEL_PARAM) ??
-                fi.get_Parameter(BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM);
-
-            if (p != null && p.StorageType == StorageType.ElementId)
-                return p.AsElementId();
-
-            if (fi.LevelId != ElementId.InvalidElementId)
-                return fi.LevelId;
-
-            return ElementId.InvalidElementId;
-        }
-
-        /// <summary>
-        /// Собрать осевые линии уже существующих стен на заданном уровне.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 3D. СТЕНЫ. Возвращает осевые линии уже существующих стен на указанном уровне.
         private static List<ExistingWallLineInfo> GetExistingWallLinesOnLevel(Document doc, ElementId levelId)
         {
             List<ExistingWallLineInfo> result = new List<ExistingWallLineInfo>();
 
-            IEnumerable<Wall> walls = new FilteredElementCollector(doc)
-                .OfClass(typeof(Wall))
-                .Cast<Wall>();
+            IEnumerable<Wall> walls = new FilteredElementCollector(doc).OfClass(typeof(Wall)).Cast<Wall>();
 
             foreach (Wall wall in walls)
             {
@@ -1589,80 +1855,123 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Получить толщину стен у 2D-квартиры.
-        /// </summary>
-        private static double GetApartmentWallThickness(FamilyInstance apartmentFi)
+        /// РАЗМЕЩЕНИЕ 3D. СТЕНЫ. Применяет к созданной стене параметры из преднастройки.
+        private static void ApplyWallPresetParameters(Wall wall, Level baseLevel, Level topLevel, double baseOffsetInternal, double unconnectedHeightInternal)
         {
-            if (apartmentFi == null)
-                throw new ArgumentNullException("apartmentFi");
+            if (wall == null)
+                return;
 
-            Parameter p = apartmentFi.LookupParameter("Стены_Толщина");
-            if (p == null)
-                p = apartmentFi.LookupParameter("Стены толщина");
+            Parameter pBaseConstraint = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT);
+            if (pBaseConstraint != null && !pBaseConstraint.IsReadOnly && baseLevel != null)
+                pBaseConstraint.Set(baseLevel.Id);
 
-            if (p != null && p.StorageType == StorageType.Double)
-                return p.AsDouble();
+            Parameter pBaseOffset = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET);
+            if (pBaseOffset != null && !pBaseOffset.IsReadOnly)
+                pBaseOffset.Set(baseOffsetInternal);
 
-            Element typeElem = apartmentFi.Document.GetElement(apartmentFi.GetTypeId());
-            if (typeElem != null)
+            Parameter pTopConstraint = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE);
+            Parameter pUnconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM);
+
+            if (topLevel != null)
             {
-                p = typeElem.LookupParameter("Стены_Толщина");
-                if (p == null)
-                    p = typeElem.LookupParameter("Стены толщина");
-
-                if (p != null && p.StorageType == StorageType.Double)
-                    return p.AsDouble();
+                if (pTopConstraint != null && !pTopConstraint.IsReadOnly)
+                    pTopConstraint.Set(topLevel.Id);
             }
-
-            throw new Exception("Не найден параметр 'Стены_Толщина' у экземпляра или типа семейства квартиры.");
+            else
+            {
+                if (pUnconnectedHeight != null && !pUnconnectedHeight.IsReadOnly)
+                    pUnconnectedHeight.Set(unconnectedHeightInternal);
+            }
         }
 
-        /// <summary>
-        /// Найти вложенные семейства, которые трактуются как помещения.
-        /// </summary>
-        private static List<FamilyInstance> FindRoomSubComponents(Document doc, FamilyInstance apartmentInstance)
+        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Подготавливает список дверей квартиры для будущей установки.
+        private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages)
         {
-            List<FamilyInstance> result = new List<FamilyInstance>();
-            if (apartmentInstance == null)
+            PreparedApartmentDoors result = new PreparedApartmentDoors();
+            result.ApartmentId = apartmentFi.Id;
+
+            if (apartmentFi == null)
                 return result;
 
-            ICollection<ElementId> subIds = apartmentInstance.GetSubComponentIds();
-            if (subIds == null || subIds.Count == 0)
-                return result;
+            List<FamilyInstance> door2DInstances = FindDoorSubComponentsRecursive(doc, apartmentFi);
 
-            foreach (ElementId subId in subIds)
+            foreach (FamilyInstance door2D in door2DInstances)
             {
-                FamilyInstance subFi = doc.GetElement(subId) as FamilyInstance;
-                if (subFi == null)
-                    continue;
-
-                string familyName = "";
-                string typeName = "";
-
-                if (subFi.Symbol != null)
+                string doorTypeName2D = Get2DDoorTypeName(door2D);
+                if (string.IsNullOrWhiteSpace(doorTypeName2D))
                 {
-                    typeName = subFi.Symbol.Name ?? "";
-                    if (subFi.Symbol.Family != null)
-                        familyName = subFi.Symbol.Family.Name ?? "";
+                    debugMessages.Add("Не удалось определить типоразмер 2D-двери ID = " + GetElementIdValue(door2D.Id));
+                    continue;
                 }
 
-                Category cat = subFi.Category;
+                int widthMm;
+                if (!TryGetDoorWidthMmFrom2DTypeName(doorTypeName2D, out widthMm))
+                {
+                    debugMessages.Add("Не удалось определить ширину 2D-двери по типоразмеру '" + doorTypeName2D + "', ID = " + GetElementIdValue(door2D.Id));
+                    continue;
+                }
 
-                bool byFamily = familyName.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
-                bool byType = typeName.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
-                bool byCategory = cat != null && cat.Name.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0;
+                string presetKey = ApartmentDoorRequirementOption.BuildKey(doorTypeName2D, widthMm);
 
-                if (byFamily || byType || byCategory)
-                    result.Add(subFi);
+                string selectedDoorTypeName = null;
+                if (preset != null && preset.DoorsByRoomCategory != null)
+                    preset.DoorsByRoomCategory.TryGetValue(presetKey, out selectedDoorTypeName);
+
+                if (string.IsNullOrWhiteSpace(selectedDoorTypeName) ||
+                    string.Equals(selectedDoorTypeName, "Не выбрано", StringComparison.OrdinalIgnoreCase))
+                {
+                    debugMessages.Add("Для двери 2D-типа '" + doorTypeName2D + "' не выбран тип двери проекта.");
+                    continue;
+                }
+
+                FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm);
+                if (matchedDoorSymbol == null)
+                {
+                    debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + widthMm + " мм.");
+                    continue;
+                }
+
+                XYZ insertPoint = GetFamilyInstanceOrigin(door2D);
+                if (insertPoint == null)
+                {
+                    debugMessages.Add("Не удалось определить точку вставки 2D-двери ID = " + GetElementIdValue(door2D.Id));
+                    continue;
+                }
+
+                result.Doors.Add(new PreparedDoorPlacement
+                {
+                    ApartmentId = apartmentFi.Id,
+                    Door2DId = door2D.Id,
+                    RoomCategory = doorTypeName2D,
+                    DoorWidthMm = widthMm,
+                    SelectedDoorTypeName = selectedDoorTypeName,
+                    DoorSymbol = matchedDoorSymbol,
+                    InsertPoint = insertPoint
+                });
             }
 
             return result;
         }
 
-        /// <summary>
-        /// Построить прямоугольный контур помещения по вложенному экземпляру.
-        /// </summary>
+        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Возвращает точку вставки экземпляра семейства двери (сначала используется Transform, затем LocationPoint).
+        private static XYZ GetFamilyInstanceOrigin(FamilyInstance fi)
+        {
+            if (fi == null)
+                return null;
+
+            Transform tr = fi.GetTransform();
+            if (tr != null)
+                return tr.Origin;
+
+            LocationPoint lp = fi.Location as LocationPoint;
+            if (lp != null)
+                return lp.Point;
+
+            return null;
+        }
+
+        #region ГЕОМЕТРИЯ ПОМЕЩЕНИЙ И ПОСТРОЕНИЕ ОСЕЙ
+        /// Строит прямоугольный контур помещения по вложенному экземпляру.
         private static CurveLoop BuildRoomLoopFromInstance(FamilyInstance roomFi)
         {
             if (roomFi == null)
@@ -1692,9 +2001,7 @@ namespace KPLN_Tools.ExecutableCommand
             return CurveLoop.Create(profile);
         }
 
-        /// <summary>
-        /// Получить обязательный параметр длины у экземпляра или его типа.
-        /// </summary>
+        /// Возвращает обязательный параметр длины из экземпляра или типа.
         private static double GetRequiredLengthParam(Element e, params string[] paramNames)
         {
             foreach (string paramName in paramNames)
@@ -1725,337 +2032,7 @@ namespace KPLN_Tools.ExecutableCommand
             throw new Exception("Не найден параметр: " + string.Join(", ", paramNames));
         }
 
-        /// <summary>
-        /// Привязать все новые линии к ближайшим существующим стенам в пределах допуска.
-        /// </summary>
-        private static List<Line> SnapNewLinesToExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls, double snapTol)
-        {
-            List<Line> result = new List<Line>();
-
-            foreach (Line line in newLines)
-            {
-                if (line == null || line.Length < 1e-9)
-                    continue;
-
-                Line snapped = SnapSingleLineToExistingWalls(line, existingWalls, snapTol);
-                if (snapped != null && snapped.Length > 1e-9)
-                    result.Add(snapped);
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Привязать оба конца одной новой линии к существующим стенам.
-        /// </summary>
-        private static Line SnapSingleLineToExistingWalls(Line line, List<ExistingWallLineInfo> existingWalls, double snapTol)
-        {
-            XYZ p0 = line.GetEndPoint(0);
-            XYZ p1 = line.GetEndPoint(1);
-            XYZ dir = Normalize2D(p1 - p0);
-
-            if (dir == null)
-                return line;
-
-            XYZ newP0 = SnapEndpointToExistingWalls(p0, new XYZ(-dir.X, -dir.Y, 0), line, existingWalls, snapTol);
-            XYZ newP1 = SnapEndpointToExistingWalls(p1, dir, line, existingWalls, snapTol);
-
-            if (newP0.DistanceTo(newP1) < 1e-9)
-                return null;
-
-            return Line.CreateBound(newP0, newP1);
-        }
-
-        /// <summary>
-        /// Привязать один конец линии к существующей стене.
-        /// </summary>
-        private static XYZ SnapEndpointToExistingWalls(XYZ endpoint, XYZ extensionDir, Line sourceLine, List<ExistingWallLineInfo> existingWalls, double snapTol)
-        {
-            const double tol = 1e-9;
-
-            XYZ bestPoint = endpoint;
-            double bestDist = double.MaxValue;
-
-            XYZ sourceP0 = sourceLine.GetEndPoint(0);
-            XYZ sourceP1 = sourceLine.GetEndPoint(1);
-            XYZ sourceDir = Normalize2D(sourceP1 - sourceP0);
-
-            if (sourceDir == null)
-                return endpoint;
-
-            foreach (ExistingWallLineInfo ex in existingWalls)
-            {
-                if (Math.Abs(ex.Z - endpoint.Z) > snapTol)
-                    continue;
-
-                XYZ inter;
-                if (TryIntersectInfiniteLines2D(endpoint, extensionDir, ex.P0, ex.Dir, out inter))
-                {
-                    if (PointOnSegment2D(inter, ex.P0, ex.P1, snapTol))
-                    {
-                        XYZ delta = inter - endpoint;
-                        double along = Dot2D(delta, extensionDir);
-                        double dist = Distance2D(endpoint, inter);
-
-                        if (along >= -tol && dist <= snapTol && dist < bestDist)
-                        {
-                            bestDist = dist;
-                            bestPoint = new XYZ(inter.X, inter.Y, endpoint.Z);
-                        }
-                    }
-                }
-
-                if (AreCollinear2D(sourceP0, sourceP1, ex.P0, ex.P1, snapTol))
-                {
-                    XYZ[] candidates = new XYZ[] { ex.P0, ex.P1 };
-
-                    foreach (XYZ c in candidates)
-                    {
-                        XYZ delta = c - endpoint;
-                        double along = Dot2D(delta, extensionDir);
-                        double dist = Distance2D(endpoint, c);
-
-                        if (along >= -tol && dist <= snapTol && dist < bestDist)
-                        {
-                            bestDist = dist;
-                            bestPoint = new XYZ(c.X, c.Y, endpoint.Z);
-                        }
-                    }
-                }
-            }
-
-            return bestPoint;
-        }
-
-        /// <summary>
-        /// Проверить, конфликтует ли новая стена с уже существующими внешними стенами.
-        /// </summary>
-        private static bool IntersectsExistingWalls(Line candidate, double candidateThicknessInternal, List<ExistingWallLineInfo> existingWalls, double tol)
-        {
-            if (candidate == null || existingWalls == null || existingWalls.Count == 0)
-                return false;
-
-            XYZ a0 = candidate.GetEndPoint(0);
-            XYZ a1 = candidate.GetEndPoint(1);
-            XYZ aDir = Normalize2D(a1 - a0);
-
-            if (aDir == null)
-                return false;
-
-            double aZ = 0.5 * (a0.Z + a1.Z);
-
-            foreach (ExistingWallLineInfo ex in existingWalls)
-            {
-                if (ex == null)
-                    continue;
-
-                if (Math.Abs(ex.Z - aZ) > tol)
-                    continue;
-
-                if (HasForbiddenAxisIntersection2D(a0, a1, ex.P0, ex.P1, tol))
-                    return true;
-
-                if (HasParallelWallBodyOverlap(candidate, candidateThicknessInternal, ex, tol))
-                    return true;
-            }
-
-            return false;
-        }
-
-
-
-
-        /// <summary>
-        /// Проверить запрещённое пересечение осей двух сегментов.
-        /// Простое касание концами допускается.
-        /// Коллинеарное касание без реального перекрытия тоже допускается.
-        /// </summary>
-        private static bool HasForbiddenAxisIntersection2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, double tol)
-        {
-            if (a0 == null || a1 == null || b0 == null || b1 == null)
-                return false;
-
-            // Коллинеарный случай
-            if (AreCollinear2D(a0, a1, b0, b1, tol))
-            {
-                XYZ dir = Normalize2D(a1 - a0);
-                if (dir == null)
-                    return false;
-
-                double aT0 = Dot2D(a0, dir);
-                double aT1 = Dot2D(a1, dir);
-                double bT0 = Dot2D(b0, dir);
-                double bT1 = Dot2D(b1, dir);
-
-                double aFrom = Math.Min(aT0, aT1);
-                double aTo = Math.Max(aT0, aT1);
-                double bFrom = Math.Min(bT0, bT1);
-                double bTo = Math.Max(bT0, bT1);
-
-                double overlapFrom = Math.Max(aFrom, bFrom);
-                double overlapTo = Math.Min(aTo, bTo);
-                double overlapLen = overlapTo - overlapFrom;
-
-                // Только реальное перекрытие по длине считаем конфликтом.
-                // Простое касание или микроскопический overlap в пределах допуска пропускаем.
-                return overlapLen > tol * 10.0;
-            }
-
-            XYZ intersection;
-            if (!TryIntersectSegments2D(a0, a1, b0, b1, out intersection, tol))
-                return false;
-
-            bool isEndpointOfA =
-                Distance2D(intersection, a0) <= tol ||
-                Distance2D(intersection, a1) <= tol;
-
-            bool isEndpointOfB =
-                Distance2D(intersection, b0) <= tol ||
-                Distance2D(intersection, b1) <= tol;
-
-            // ВАЖНО:
-            // Любое примыкание в конец хотя бы одного сегмента считаем допустимым.
-            // Это покрывает:
-            // - стык конец-в-конец
-            // - Т-образное примыкание
-            if (isEndpointOfA || isEndpointOfB)
-                return false;
-
-            // Запрещаем только "настоящее" пересечение внутри тел/осей.
-            return true;
-        }
-
-
-
-        /// <summary>
-        /// Проверить, накладываются ли две параллельные стены своими телами.
-        /// ВАЖНО: простое касание граней НЕ считается наложением.
-        /// Конфликтом считается только реальное взаимное проникновение тел стен.
-        /// </summary>
-        private static bool HasParallelWallBodyOverlap(Line candidate, double candidateThicknessInternal, ExistingWallLineInfo existingWall, double tol)
-        {
-            if (candidate == null || existingWall == null)
-                return false;
-
-            XYZ a0 = candidate.GetEndPoint(0);
-            XYZ a1 = candidate.GetEndPoint(1);
-
-            XYZ aDir = Normalize2D(a1 - a0);
-            XYZ bDir = CanonicalizeDirection(existingWall.Dir);
-
-            if (aDir == null || bDir == null)
-                return false;
-
-            aDir = CanonicalizeDirection(aDir);
-
-            if (Math.Abs(Cross2D(aDir, bDir)) > tol)
-                return false;
-
-            XYZ normal = new XYZ(-aDir.Y, aDir.X, 0);
-
-            double aOffset = Dot2D(a0, normal);
-            double bOffset = Dot2D(existingWall.P0, normal);
-            double axisDistance = Math.Abs(aOffset - bOffset);
-
-            double existingThicknessInternal = existingWall.ThicknessInternal > 0
-                ? existingWall.ThicknessInternal
-                : 0;
-
-            double halfSumThickness = (candidateThicknessInternal + existingThicknessInternal) / 2.0;
-
-            // Если стены только касаются гранями, axisDistance == halfSumThickness.
-            // Это допустимый случай и не должен считаться конфликтом.
-            double penetrationDepth = halfSumThickness - axisDistance;
-            if (penetrationDepth <= tol)
-                return false;
-
-            double aT0 = Dot2D(a0, aDir);
-            double aT1 = Dot2D(a1, aDir);
-            double aFrom = Math.Min(aT0, aT1);
-            double aTo = Math.Max(aT0, aT1);
-
-            double bT0 = Dot2D(existingWall.P0, aDir);
-            double bT1 = Dot2D(existingWall.P1, aDir);
-            double bFrom = Math.Min(bT0, bT1);
-            double bTo = Math.Max(bT0, bT1);
-
-            double overlapFrom = Math.Max(aFrom, bFrom);
-            double overlapTo = Math.Min(aTo, bTo);
-
-            return (overlapTo - overlapFrom) > tol;
-        }
-
-        /// <summary>
-        /// Пересечение двух 2D-отрезков.
-        /// </summary>
-        private static bool TryIntersectSegments2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, out XYZ intersection, double tol)
-        {
-            intersection = null;
-
-            XYZ ad = Normalize2D(a1 - a0);
-            XYZ bd = Normalize2D(b1 - b0);
-
-            if (ad == null || bd == null)
-                return false;
-
-            XYZ inter;
-            if (!TryIntersectInfiniteLines2D(a0, ad, b0, bd, out inter))
-                return false;
-
-            if (!PointOnSegment2D(inter, a0, a1, tol))
-                return false;
-
-            if (!PointOnSegment2D(inter, b0, b1, tol))
-                return false;
-
-            intersection = inter;
-            return true;
-        }
-
-        /// <summary>
-        /// Расстояние между двумя точками в плоскости XY.
-        /// </summary>
-        private static double Distance2D(XYZ a, XYZ b)
-        {
-            double dx = a.X - b.X;
-            double dy = a.Y - b.Y;
-            return Math.Sqrt(dx * dx + dy * dy);
-        }
-
-        /// <summary>
-        /// Проверить, лежит ли точка на отрезке в 2D.
-        /// </summary>
-        private static bool PointOnSegment2D(XYZ p, XYZ a, XYZ b, double tol)
-        {
-            double ab = Distance2D(a, b);
-            double ap = Distance2D(a, p);
-            double pb = Distance2D(p, b);
-            return Math.Abs((ap + pb) - ab) <= tol;
-        }
-
-        /// <summary>
-        /// Проверить, лежат ли два отрезка на одной бесконечной прямой в 2D.
-        /// </summary>
-        private static bool AreCollinear2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, double tol)
-        {
-            XYZ ad = Normalize2D(a1 - a0);
-            XYZ bd = Normalize2D(b1 - b0);
-
-            if (ad == null || bd == null)
-                return false;
-
-            if (Math.Abs(Cross2D(ad, bd)) > tol)
-                return false;
-
-            if (Math.Abs(Cross2D(b0 - a0, ad)) > tol)
-                return false;
-
-            return true;
-        }
-
-        /// <summary>
-        /// Построить замкнутые оси стен по наборам контуров помещений.
-        /// </summary>
+        /// Строит оси стен по списку помещений.
         private static List<Line> BuildClosedWallAxisLinesFromRooms(List<CurveLoop> roomLoops, double wallWidth, List<string> debugMessages)
         {
             List<Line> result = new List<Line>();
@@ -2077,9 +2054,7 @@ namespace KPLN_Tools.ExecutableCommand
             return MergeCollinearLines(result);
         }
 
-        /// <summary>
-        /// Построить смещённый наружу замкнутый контур.
-        /// </summary>
+        /// Строит смещённый наружу замкнутый контур.
         private static List<Line> BuildOffsetClosedLoop(CurveLoop loop, double offset)
         {
             const double tol = 1e-9;
@@ -2152,9 +2127,7 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Вытащить упорядоченные вершины из последовательности линий.
-        /// </summary>
+        /// Извлекает вершины контура из упорядоченного списка линий.
         private static List<XYZ> ExtractOrderedVertices(List<Line> lines)
         {
             const double tol = 1e-6;
@@ -2176,9 +2149,7 @@ namespace KPLN_Tools.ExecutableCommand
             return pts;
         }
 
-        /// <summary>
-        /// Подписанная площадь полигона в XY.
-        /// </summary>
+        /// Возвращает ориентированную площадь полигона в плоскости XY.
         private static double GetSignedAreaXY(List<XYZ> pts)
         {
             if (pts == null || pts.Count < 3)
@@ -2196,52 +2167,7 @@ namespace KPLN_Tools.ExecutableCommand
             return area2 * 0.5;
         }
 
-        /// <summary>
-        /// Нормализовать вектор в плоскости XY.
-        /// </summary>
-        private static XYZ Normalize2D(XYZ v)
-        {
-            double len = Math.Sqrt(v.X * v.X + v.Y * v.Y);
-            if (len < 1e-12)
-                return null;
-
-            return new XYZ(v.X / len, v.Y / len, 0);
-        }
-
-        /// <summary>
-        /// Пересечение двух бесконечных 2D-прямых.
-        /// </summary>
-        private static bool TryIntersectInfiniteLines2D(XYZ p1, XYZ d1, XYZ p2, XYZ d2, out XYZ intersection)
-        {
-            const double tol = 1e-12;
-            intersection = null;
-
-            double cross = Cross2D(d1, d2);
-            if (Math.Abs(cross) < tol)
-                return false;
-
-            XYZ delta = p2 - p1;
-            double t = Cross2D(delta, d2) / cross;
-
-            intersection = new XYZ(
-                p1.X + d1.X * t,
-                p1.Y + d1.Y * t,
-                0);
-
-            return true;
-        }
-
-        /// <summary>
-        /// Псевдоскалярное произведение в 2D.
-        /// </summary>
-        private static double Cross2D(XYZ a, XYZ b)
-        {
-            return a.X * b.Y - a.Y * b.X;
-        }
-
-        /// <summary>
-        /// Склеить коллинеарные линии в более длинные сегменты.
-        /// </summary>
+        /// Объединяет коллинеарные и соприкасающиеся линии в более длинные сегменты.
         private static List<Line> MergeCollinearLines(List<Line> lines)
         {
             const double tol = 1e-6;
@@ -2278,10 +2204,10 @@ namespace KPLN_Tools.ExecutableCommand
                 });
             }
 
-            var groups = data.GroupBy(x => new GenericAxisGroupKey(x.Dir, x.Offset, x.Z, tol)).ToList();
+            List<IGrouping<GenericAxisGroupKey, GenericAxisLineData>> groups = data.GroupBy(x => new GenericAxisGroupKey(x.Dir, x.Offset, x.Z, tol)).ToList();
             List<Line> result = new List<Line>();
 
-            foreach (var group in groups)
+            foreach (IGrouping<GenericAxisGroupKey, GenericAxisLineData> group in groups)
             {
                 List<GenericAxisLineData> ordered = group.OrderBy(x => x.From).ThenBy(x => x.To).ToList();
 
@@ -2313,34 +2239,7 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Привести направление к каноническому виду.
-        /// </summary>
-        private static XYZ CanonicalizeDirection(XYZ dir)
-        {
-            if (dir == null)
-                return null;
-
-            if (dir.X < -1e-9)
-                return new XYZ(-dir.X, -dir.Y, 0);
-
-            if (Math.Abs(dir.X) < 1e-9 && dir.Y < -1e-9)
-                return new XYZ(-dir.X, -dir.Y, 0);
-
-            return new XYZ(dir.X, dir.Y, 0);
-        }
-
-        /// <summary>
-        /// Скалярное произведение в 2D.
-        /// </summary>
-        private static double Dot2D(XYZ a, XYZ b)
-        {
-            return a.X * b.X + a.Y * b.Y;
-        }
-
-        /// <summary>
-        /// Построить линию из параметрического представления.
-        /// </summary>
+        /// Строит осевую линию по нормализованным параметрам.
         private static Line BuildGenericAxisLine(XYZ dir, double offset, double z, double from, double to)
         {
             XYZ normal = new XYZ(-dir.Y, dir.X, 0);
@@ -2351,9 +2250,103 @@ namespace KPLN_Tools.ExecutableCommand
             return Line.CreateBound(p0, p1);
         }
 
-        /// <summary>
-        /// Удалить участки новых осей, которые уже перекрыты существующими стенами.
-        /// </summary>
+        /// Привязывает новые оси к ближайшим существующим стенам.
+        private static List<Line> SnapNewLinesToExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls, double snapTol)
+        {
+            List<Line> result = new List<Line>();
+
+            foreach (Line line in newLines)
+            {
+                if (line == null || line.Length < 1e-9)
+                    continue;
+
+                Line snapped = SnapSingleLineToExistingWalls(line, existingWalls, snapTol);
+                if (snapped != null && snapped.Length > 1e-9)
+                    result.Add(snapped);
+            }
+
+            return result;
+        }
+
+        /// Привязывает одну новую ось к существующим стенам.
+        private static Line SnapSingleLineToExistingWalls(Line line, List<ExistingWallLineInfo> existingWalls, double snapTol)
+        {
+            XYZ p0 = line.GetEndPoint(0);
+            XYZ p1 = line.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+
+            if (dir == null)
+                return line;
+
+            XYZ newP0 = SnapEndpointToExistingWalls(p0, new XYZ(-dir.X, -dir.Y, 0), line, existingWalls, snapTol);
+            XYZ newP1 = SnapEndpointToExistingWalls(p1, dir, line, existingWalls, snapTol);
+
+            if (newP0.DistanceTo(newP1) < 1e-9)
+                return null;
+
+            return Line.CreateBound(newP0, newP1);
+        }
+
+        /// Привязывает один конец новой линии к существующим стенам.
+        private static XYZ SnapEndpointToExistingWalls(XYZ endpoint, XYZ extensionDir, Line sourceLine, List<ExistingWallLineInfo> existingWalls, double snapTol)
+        {
+            const double tol = 1e-9;
+
+            XYZ bestPoint = endpoint;
+            double bestDist = double.MaxValue;
+
+            XYZ sourceP0 = sourceLine.GetEndPoint(0);
+            XYZ sourceP1 = sourceLine.GetEndPoint(1);
+            XYZ sourceDir = Normalize2D(sourceP1 - sourceP0);
+
+            if (sourceDir == null)
+                return endpoint;
+
+            foreach (ExistingWallLineInfo ex in existingWalls)
+            {
+                if (Math.Abs(ex.Z - endpoint.Z) > snapTol)
+                    continue;
+
+                XYZ inter;
+                if (TryIntersectInfiniteLines2D(endpoint, extensionDir, ex.P0, ex.Dir, out inter))
+                {
+                    if (PointOnSegment2D(inter, ex.P0, ex.P1, snapTol))
+                    {
+                        XYZ delta = inter - endpoint;
+                        double along = Dot2D(delta, extensionDir);
+                        double dist = Distance2D(endpoint, inter);
+
+                        if (along >= -tol && dist <= snapTol && dist < bestDist)
+                        {
+                            bestDist = dist;
+                            bestPoint = new XYZ(inter.X, inter.Y, endpoint.Z);
+                        }
+                    }
+                }
+
+                if (AreCollinear2D(sourceP0, sourceP1, ex.P0, ex.P1, snapTol))
+                {
+                    XYZ[] candidates = new XYZ[] { ex.P0, ex.P1 };
+
+                    foreach (XYZ c in candidates)
+                    {
+                        XYZ delta = c - endpoint;
+                        double along = Dot2D(delta, extensionDir);
+                        double dist = Distance2D(endpoint, c);
+
+                        if (along >= -tol && dist <= snapTol && dist < bestDist)
+                        {
+                            bestDist = dist;
+                            bestPoint = new XYZ(c.X, c.Y, endpoint.Z);
+                        }
+                    }
+                }
+            }
+
+            return bestPoint;
+        }
+
+        /// Удаляет из новых осей участки, совпадающие с существующими стенами.
         private static List<Line> RemoveSegmentsOverlappingExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls)
         {
             const double tol = 1e-6;
@@ -2376,9 +2369,7 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Вычесть из одной новой линии все перекрывающиеся существующие стены.
-        /// </summary>
+        /// Вычитает из одной новой линии все участки, уже занятые существующими стенами.
         private static List<Line> SubtractExistingWallsFromNewLine(Line newLine, List<ExistingWallLineInfo> existingWalls)
         {
             const double tol = 1e-6;
@@ -2465,9 +2456,7 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Склеить пересекающиеся и соприкасающиеся интервалы.
-        /// </summary>
+        /// Объединяет пересекающиеся или соприкасающиеся интервалы.
         private static List<Interval1D> MergeIntervals(List<Interval1D> intervals)
         {
             const double tol = 1e-6;
@@ -2508,9 +2497,7 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Вычесть из исходного интервала список вырезаемых интервалов.
-        /// </summary>
+        /// Вычитает список интервалов из исходного интервала.
         private static List<Interval1D> SubtractIntervals(Interval1D source, List<Interval1D> cuts)
         {
             const double tol = 1e-6;
@@ -2565,35 +2552,256 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        /// <summary>
-        /// Применить к стене параметры из пресета.
-        /// </summary>
-        private static void ApplyWallPresetParameters(Wall wall, Level baseLevel, Level topLevel, double baseOffsetInternal, double unconnectedHeightInternal)
+        /// Проверяет, пересекается ли новая ось с существующими стенами.
+        private static bool IntersectsExistingWalls(Line candidate, double candidateThicknessInternal, List<ExistingWallLineInfo> existingWalls, double tol)
         {
-            if (wall == null)
-                return;
+            if (candidate == null || existingWalls == null || existingWalls.Count == 0)
+                return false;
 
-            Parameter pBaseConstraint = wall.get_Parameter(BuiltInParameter.WALL_BASE_CONSTRAINT);
-            if (pBaseConstraint != null && !pBaseConstraint.IsReadOnly && baseLevel != null)
-                pBaseConstraint.Set(baseLevel.Id);
+            XYZ a0 = candidate.GetEndPoint(0);
+            XYZ a1 = candidate.GetEndPoint(1);
+            XYZ aDir = Normalize2D(a1 - a0);
 
-            Parameter pBaseOffset = wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET);
-            if (pBaseOffset != null && !pBaseOffset.IsReadOnly)
-                pBaseOffset.Set(baseOffsetInternal);
+            if (aDir == null)
+                return false;
 
-            Parameter pTopConstraint = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE);
-            Parameter pUnconnectedHeight = wall.get_Parameter(BuiltInParameter.WALL_USER_HEIGHT_PARAM);
+            double aZ = 0.5 * (a0.Z + a1.Z);
 
-            if (topLevel != null)
+            foreach (ExistingWallLineInfo ex in existingWalls)
             {
-                if (pTopConstraint != null && !pTopConstraint.IsReadOnly)
-                    pTopConstraint.Set(topLevel.Id);
+                if (ex == null)
+                    continue;
+
+                if (Math.Abs(ex.Z - aZ) > tol)
+                    continue;
+
+                if (HasForbiddenAxisIntersection2D(a0, a1, ex.P0, ex.P1, tol))
+                    return true;
+
+                if (HasParallelWallBodyOverlap(candidate, candidateThicknessInternal, ex, tol))
+                    return true;
             }
-            else
-            {
-                if (pUnconnectedHeight != null && !pUnconnectedHeight.IsReadOnly)
-                    pUnconnectedHeight.Set(unconnectedHeightInternal);
-            }
+
+            return false;
         }
+
+        /// Проверяет запрещённое пересечение двух осей в 2D.
+        private static bool HasForbiddenAxisIntersection2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, double tol)
+        {
+            if (a0 == null || a1 == null || b0 == null || b1 == null)
+                return false;
+
+            if (AreCollinear2D(a0, a1, b0, b1, tol))
+            {
+                XYZ dir = Normalize2D(a1 - a0);
+                if (dir == null)
+                    return false;
+
+                double aT0 = Dot2D(a0, dir);
+                double aT1 = Dot2D(a1, dir);
+                double bT0 = Dot2D(b0, dir);
+                double bT1 = Dot2D(b1, dir);
+
+                double aFrom = Math.Min(aT0, aT1);
+                double aTo = Math.Max(aT0, aT1);
+                double bFrom = Math.Min(bT0, bT1);
+                double bTo = Math.Max(bT0, bT1);
+
+                double overlapFrom = Math.Max(aFrom, bFrom);
+                double overlapTo = Math.Min(aTo, bTo);
+                double overlapLen = overlapTo - overlapFrom;
+
+                return overlapLen > tol * 10.0;
+            }
+
+            XYZ intersection;
+            if (!TryIntersectSegments2D(a0, a1, b0, b1, out intersection, tol))
+                return false;
+
+            bool isEndpointOfA =
+                Distance2D(intersection, a0) <= tol ||
+                Distance2D(intersection, a1) <= tol;
+
+            bool isEndpointOfB =
+                Distance2D(intersection, b0) <= tol ||
+                Distance2D(intersection, b1) <= tol;
+
+            if (isEndpointOfA || isEndpointOfB)
+                return false;
+
+            return true;
+        }
+
+        /// Проверяет наложение тел параллельных стен.
+        private static bool HasParallelWallBodyOverlap(Line candidate, double candidateThicknessInternal, ExistingWallLineInfo existingWall, double tol)
+        {
+            if (candidate == null || existingWall == null)
+                return false;
+
+            XYZ a0 = candidate.GetEndPoint(0);
+            XYZ a1 = candidate.GetEndPoint(1);
+
+            XYZ aDir = Normalize2D(a1 - a0);
+            XYZ bDir = CanonicalizeDirection(existingWall.Dir);
+
+            if (aDir == null || bDir == null)
+                return false;
+
+            aDir = CanonicalizeDirection(aDir);
+
+            if (Math.Abs(Cross2D(aDir, bDir)) > tol)
+                return false;
+
+            XYZ normal = new XYZ(-aDir.Y, aDir.X, 0);
+
+            double aOffset = Dot2D(a0, normal);
+            double bOffset = Dot2D(existingWall.P0, normal);
+            double axisDistance = Math.Abs(aOffset - bOffset);
+
+            double existingThicknessInternal = existingWall.ThicknessInternal > 0
+                ? existingWall.ThicknessInternal
+                : 0;
+
+            double halfSumThickness = (candidateThicknessInternal + existingThicknessInternal) / 2.0;
+
+            double penetrationDepth = halfSumThickness - axisDistance;
+            if (penetrationDepth <= tol)
+                return false;
+
+            double aT0 = Dot2D(a0, aDir);
+            double aT1 = Dot2D(a1, aDir);
+            double aFrom = Math.Min(aT0, aT1);
+            double aTo = Math.Max(aT0, aT1);
+
+            double bT0 = Dot2D(existingWall.P0, aDir);
+            double bT1 = Dot2D(existingWall.P1, aDir);
+            double bFrom = Math.Min(bT0, bT1);
+            double bTo = Math.Max(bT0, bT1);
+
+            double overlapFrom = Math.Max(aFrom, bFrom);
+            double overlapTo = Math.Min(aTo, bTo);
+
+            return (overlapTo - overlapFrom) > tol;
+        }
+
+        /// Нормализует вектор в плоскости XY.
+        private static XYZ Normalize2D(XYZ v)
+        {
+            double len = Math.Sqrt(v.X * v.X + v.Y * v.Y);
+            if (len < 1e-12)
+                return null;
+
+            return new XYZ(v.X / len, v.Y / len, 0);
+        }
+
+        /// Приводит направление к каноническому виду, чтобы одинаковые направления сравнивались одинаково.
+        private static XYZ CanonicalizeDirection(XYZ dir)
+        {
+            if (dir == null)
+                return null;
+
+            if (dir.X < -1e-9)
+                return new XYZ(-dir.X, -dir.Y, 0);
+
+            if (Math.Abs(dir.X) < 1e-9 && dir.Y < -1e-9)
+                return new XYZ(-dir.X, -dir.Y, 0);
+
+            return new XYZ(dir.X, dir.Y, 0);
+        }
+
+        /// Возвращает скалярное произведение в XY.
+        private static double Dot2D(XYZ a, XYZ b)
+        {
+            return a.X * b.X + a.Y * b.Y;
+        }
+
+        /// Возвращает псевдоскалярное векторное произведение в XY.
+        private static double Cross2D(XYZ a, XYZ b)
+        {
+            return a.X * b.Y - a.Y * b.X;
+        }
+
+        /// Возвращает расстояние между двумя точками в XY.
+        private static double Distance2D(XYZ a, XYZ b)
+        {
+            double dx = a.X - b.X;
+            double dy = a.Y - b.Y;
+            return Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        /// Проверяет, лежит ли точка на отрезке в XY.
+        private static bool PointOnSegment2D(XYZ p, XYZ a, XYZ b, double tol)
+        {
+            double ab = Distance2D(a, b);
+            double ap = Distance2D(a, p);
+            double pb = Distance2D(p, b);
+            return Math.Abs((ap + pb) - ab) <= tol;
+        }
+
+        /// Проверяет коллинеарность двух отрезков в XY.
+        private static bool AreCollinear2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, double tol)
+        {
+            XYZ ad = Normalize2D(a1 - a0);
+            XYZ bd = Normalize2D(b1 - b0);
+
+            if (ad == null || bd == null)
+                return false;
+
+            if (Math.Abs(Cross2D(ad, bd)) > tol)
+                return false;
+
+            if (Math.Abs(Cross2D(b0 - a0, ad)) > tol)
+                return false;
+
+            return true;
+        }
+
+        /// Пытается найти точку пересечения двух бесконечных линий в XY.
+        private static bool TryIntersectInfiniteLines2D(XYZ p1, XYZ d1, XYZ p2, XYZ d2, out XYZ intersection)
+        {
+            const double tol = 1e-12;
+            intersection = null;
+
+            double cross = Cross2D(d1, d2);
+            if (Math.Abs(cross) < tol)
+                return false;
+
+            XYZ delta = p2 - p1;
+            double t = Cross2D(delta, d2) / cross;
+
+            intersection = new XYZ(
+                p1.X + d1.X * t,
+                p1.Y + d1.Y * t,
+                0);
+
+            return true;
+        }
+
+        /// Пытается найти точку пересечения двух конечных отрезков в XY.
+        private static bool TryIntersectSegments2D(XYZ a0, XYZ a1, XYZ b0, XYZ b1, out XYZ intersection, double tol)
+        {
+            intersection = null;
+
+            XYZ ad = Normalize2D(a1 - a0);
+            XYZ bd = Normalize2D(b1 - b0);
+
+            if (ad == null || bd == null)
+                return false;
+
+            XYZ inter;
+            if (!TryIntersectInfiniteLines2D(a0, ad, b0, bd, out inter))
+                return false;
+
+            if (!PointOnSegment2D(inter, a0, a1, tol))
+                return false;
+
+            if (!PointOnSegment2D(inter, b0, b1, tol))
+                return false;
+
+            intersection = inter;
+            return true;
+        }
+
+        #endregion
     }
 }
