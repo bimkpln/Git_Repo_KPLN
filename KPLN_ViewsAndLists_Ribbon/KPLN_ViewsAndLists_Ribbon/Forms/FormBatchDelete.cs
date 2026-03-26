@@ -10,15 +10,11 @@ as long as you credit the author by linking back and license your new creations 
 This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
+
 #region Usings
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 #endregion
 
@@ -30,7 +26,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public List<string> Items
         {
             get { return m_items; }
-            set { m_items = value; }
+            set { m_items = value ?? new List<string>(); }
+        }
+
+        private List<string> m_unusedItems = new List<string>();
+        public List<string> UnusedItems
+        {
+            get { return m_unusedItems; }
+            set { m_unusedItems = value ?? new List<string>(); }
         }
 
         private List<string> m_checkedItems = new List<string>();
@@ -46,9 +49,18 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void FormBatchDelete_Load(object sender, EventArgs e)
         {
-            string[] lines = m_items.ToArray();
-            //checkedListBox1.Items.AddRange(lines);
-            listBox1.Items.AddRange(lines);
+            UpdateList();
+        }
+
+        private void UpdateList()
+        {
+            listBox1.Items.Clear();
+
+            List<string> source = checkBoxUnusedOnly.Checked
+                ? m_unusedItems
+                : m_items;
+
+            listBox1.Items.AddRange(source.OrderBy(x => x).ToArray());
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
@@ -59,14 +71,20 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void btnOk_Click(object sender, EventArgs e)
         {
-            foreach(object item in listBox1.SelectedItems)
+            m_checkedItems.Clear();
+
+            foreach (object item in listBox1.SelectedItems)
             {
                 m_checkedItems.Add(item.ToString());
             }
 
-
             this.DialogResult = DialogResult.OK;
             this.Close();
+        }
+
+        private void checkBoxUnusedOnly_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateList();
         }
     }
 }
