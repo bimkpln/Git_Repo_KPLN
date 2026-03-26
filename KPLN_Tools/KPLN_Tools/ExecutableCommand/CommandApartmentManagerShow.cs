@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
@@ -14,7 +15,6 @@ using System.Windows.Threading;
 
 namespace KPLN_Tools.ExecutableCommand
 {
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class CommandApartmentManagerShow : IExternalCommand
@@ -137,6 +137,7 @@ namespace KPLN_Tools.ExecutableCommand
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string ApartmentInstanceMarker = "[KPLN_APT_INSTANCE]";
+        private const bool DebugDeletePlaced2DApartmentAfterConvert = false;
 
         private ApartmentManagerWindow _window;
         public string GetName()
@@ -179,6 +180,27 @@ namespace KPLN_Tools.ExecutableCommand
             }), DispatcherPriority.Background);
         }
 
+        // Класс загрузки семейства
+        private class ApartmentFamilyLoadOptions : IFamilyLoadOptions
+        {
+            public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
+            {
+                overwriteParameterValues = false;
+                return true;
+            }
+
+            public bool OnSharedFamilyFound(
+                Family sharedFamily,
+                bool familyInUse,
+                out FamilySource source,
+                out bool overwriteParameterValues)
+            {
+                source = FamilySource.Family;
+                overwriteParameterValues = false;
+                return true;
+            }
+        }
+
         /// Данные по уже существующей стене проекта.
         private class ExistingWallLineInfo
         {
@@ -199,11 +221,13 @@ namespace KPLN_Tools.ExecutableCommand
             public List<Line> AxisLines { get; set; }
         }
 
-        /// Информация о количестве пропущенных стен по квартире.
+        /// Информация о количестве пропущенных помещений, стен и дверей по квартире.
         private class SkippedApartmentWallsInfo
         {
             public ElementId ApartmentId { get; set; }
+            public int SkippedRoomsCount { get; set; }
             public int SkippedWallsCount { get; set; }
+            public int SkippedDoorsCount { get; set; }
         }
 
         /// Смещённая 2D-линия, используемая при построении замкнутого контура.
@@ -278,6 +302,25 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+        /// Данные по помещению внутри документа семейства квартиры.
+        private class FamilyRoomMarker
+        {
+            public string RoomCategory { get; set; }
+            public Transform LocalTransform { get; set; }
+            public double WidthInternal { get; set; }
+            public double DepthInternal { get; set; }
+        }
+
+        /// Кандидат двери, найденный внутри документа семейства квартиры.
+        private class FamilyDoorMarker
+        {
+            public string DoorTypeName2D { get; set; }
+            public int DoorWidthMm { get; set; }
+            public XYZ LocalPoint { get; set; }
+            public string RoomCategory { get; set; }
+            public string Comment { get; set; }
+        }
+
         /// Подготовленные данные по одной двери для последующей установки.
         private class PreparedDoorPlacement
         {
@@ -302,6 +345,26 @@ namespace KPLN_Tools.ExecutableCommand
             public PreparedApartmentDoors()
             {
                 Doors = new List<PreparedDoorPlacement>();
+            }
+        }
+
+        /// Подготовленные данные по одному помещению для последующего размещения.
+        private class PreparedRoomPlacement
+        {
+            public ElementId ApartmentId { get; set; }
+            public string RoomName { get; set; }
+            public XYZ InsertPoint { get; set; }
+        }
+
+        /// Подготовленные данные по помещениям одной квартиры.
+        private class PreparedApartmentRooms
+        {
+            public ElementId ApartmentId { get; set; }
+            public List<PreparedRoomPlacement> Rooms { get; set; }
+
+            public PreparedApartmentRooms()
+            {
+                Rooms = new List<PreparedRoomPlacement>();
             }
         }
 
@@ -426,6 +489,49 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+        // Метод получения реального имени семейства из .rfa
+        private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
+        {
+            if (projectDoc == null)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(familyPath) || !File.Exists(familyPath))
+                return null;
+
+            Document familyDoc = null;
+
+            try
+            {
+                familyDoc = projectDoc.Application.OpenDocumentFile(familyPath);
+
+                Family family = new FilteredElementCollector(familyDoc)
+                    .OfClass(typeof(Family))
+                    .Cast<Family>()
+                    .FirstOrDefault();
+
+                if (family != null && !string.IsNullOrWhiteSpace(family.Name))
+                    return family.Name.Trim();
+            }
+            catch
+            {
+            }
+            finally
+            {
+                if (familyDoc != null)
+                {
+                    try
+                    {
+                        familyDoc.Close(false);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            return null;
+        }
+
         /// Унифицированный доступ к числовому значению ElementId для разных версий Revit.
         private static long GetElementIdValue(ElementId id)
         {
@@ -479,6 +585,50 @@ namespace KPLN_Tools.ExecutableCommand
             return ElementId.InvalidElementId;
         }
 
+        /// Возвращает комментарий экземпляра или его типа.
+        private static string GetCommentsValue(Element e)
+        {
+            if (e == null)
+                return null;
+
+            Parameter p =
+                e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS) ??
+                e.LookupParameter("Комментарии") ??
+                e.LookupParameter("Комментарий");
+
+            if (p != null)
+            {
+                string value = p.AsString();
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value.Trim();
+            }
+
+            Element typeElem = null;
+            if (e.Document != null)
+            {
+                ElementId typeId = e.GetTypeId();
+                if (typeId != ElementId.InvalidElementId)
+                    typeElem = e.Document.GetElement(typeId);
+            }
+
+            if (typeElem != null)
+            {
+                p =
+                    typeElem.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS) ??
+                    typeElem.LookupParameter("Комментарии") ??
+                    typeElem.LookupParameter("Комментарий");
+
+                if (p != null)
+                {
+                    string value = p.AsString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                        return value.Trim();
+                }
+            }
+
+            return null;
+        }
+
         /// Открывает окно преднастроек и передаёт туда контекст активного плана.
         private void ExecuteOpenApartmentPresets(UIDocument uidoc, Document doc, ApartmentPresetData currentPreset)
         {
@@ -508,35 +658,60 @@ namespace KPLN_Tools.ExecutableCommand
             }));
         }
 
-        /// Собирает полный контекст для окна преднастроек по всем доступным планам этажей.
+        /// Собирает контекст для окна преднастроек. Тяжёлые данные по плану грузятся лениво: только для выбранного плана.
         private ApartmentPresetWindowContext BuildPresetWindowContext(Document doc, ViewPlan activeFloorPlan)
         {
             ApartmentPresetWindowContext context = new ApartmentPresetWindowContext();
 
-            List<ViewPlan> plans = new FilteredElementCollector(doc)
-                .OfClass(typeof(ViewPlan)).Cast<ViewPlan>().Where(x => !x.IsTemplate && x.ViewType == ViewType.FloorPlan && x.GenLevel != null)
-                .OrderBy(x => x.Id != activeFloorPlan.Id).ThenBy(x => x.Name).ToList();
+            List<ViewPlan> plans = new FilteredElementCollector(doc).OfClass(typeof(ViewPlan)).Cast<ViewPlan>()
+                .Where(x => !x.IsTemplate && x.ViewType == ViewType.FloorPlan && x.GenLevel != null).OrderBy(x => x.Id != activeFloorPlan.Id).ThenBy(x => x.Name).ToList();
 
             foreach (ViewPlan plan in plans)
             {
-                ApartmentPlanPresetOption option = new ApartmentPlanPresetOption();
-                option.PlanName = plan.Name;
-                option.LowerConstraintText = BuildLowerConstraintTextForPlan(doc, plan);
-                option.UpperConstraintText = "Неприсоединённая";
-                option.WallThicknesses = BuildWallThicknessesForPlan(doc, plan);
-                option.WallTypeOptionsByThickness = BuildWallTypeOptionsByThicknessForPlan(doc, plan);
-                option.RoomCategories = BuildRoomCategoriesForPlan(doc, plan);
-
-                if (option.RoomCategories == null || option.RoomCategories.Count == 0)
-                    option.RoomCategories = new List<string> { "Помещение" };
-
-                option.DoorRequirements = BuildDoorRequirementsForPlan(doc, plan);
-                option.DoorTypeOptionsByRequirementKey = BuildDoorTypeOptionsByRequirementForPlan(doc, option.DoorRequirements);
-
-                context.Plans.Add(option);
+                context.Plans.Add(new ApartmentPlanPresetOption
+                {
+                    PlanName = plan.Name,
+                    IsResolved = false
+                });
             }
 
+            context.ResolvePlanData = delegate (string planName)
+            {
+                return BuildResolvedPlanPresetOption(doc, planName);
+            };
+
             return context;
+        }
+
+        /// Полностью собирает данные только по одному выбранному плану.
+        private ApartmentPlanPresetOption BuildResolvedPlanPresetOption(Document doc, string planName)
+        {
+            ApartmentPlanPresetOption option = new ApartmentPlanPresetOption();
+            option.PlanName = planName;
+            option.IsResolved = true;
+
+            ViewPlan plan = FindTargetFloorPlan(doc, planName);
+            if (plan == null)
+            {
+                option.LowerConstraintText = "";
+                option.UpperConstraintText = "Неприсоединённая";
+                option.RoomCategories = new List<string> { "Помещение" };
+                return option;
+            }
+
+            option.LowerConstraintText = BuildLowerConstraintTextForPlan(doc, plan);
+            option.UpperConstraintText = "Неприсоединённая";
+            option.WallThicknesses = BuildWallThicknessesForPlan(doc, plan);
+            option.WallTypeOptionsByThickness = BuildWallTypeOptionsByThicknessForPlan(doc, plan);
+            option.RoomCategories = BuildRoomCategoriesForPlan(doc, plan);
+
+            if (option.RoomCategories == null || option.RoomCategories.Count == 0)
+                option.RoomCategories = new List<string> { "Помещение" };
+
+            option.DoorRequirements = BuildDoorRequirementsForPlan(doc, plan);
+            option.DoorTypeOptionsByRequirementKey = BuildDoorTypeOptionsByRequirementForPlan(doc, option.DoorRequirements);
+
+            return option;
         }
 
         /// Формирует текст ограничения по уже размещённым 2D-квартирам на плане.
@@ -872,10 +1047,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (thicknesses.Count == 0)
                 return result;
 
-            List<WallType> allWallTypes = new FilteredElementCollector(doc)
-                .OfClass(typeof(WallType))
-                .Cast<WallType>()
-                .ToList();
+            List<WallType> allWallTypes = new FilteredElementCollector(doc).OfClass(typeof(WallType)).Cast<WallType>().ToList();
 
             foreach (int thicknessMm in thicknesses)
             {
@@ -924,67 +1096,190 @@ namespace KPLN_Tools.ExecutableCommand
                     return thicknessMm > 0;
                 }
             }
-            catch
-            {
-            }
+            catch { }
 
             return false;
         }
 
-        /// ДВЕРИ (2D). Собирает требования по дверям из всех квартир, размещённых на плане.
+        /// ДВЕРИ (2D). Собирает требования по дверям из документа семейства квартиры. Дверь привязывается к помещению по её локальной точке внутри семейства.
         private List<ApartmentDoorRequirementOption> BuildDoorRequirementsForPlan(Document doc, ViewPlan plan)
         {
             Dictionary<string, ApartmentDoorRequirementOption> result =
                 new Dictionary<string, ApartmentDoorRequirementOption>(StringComparer.OrdinalIgnoreCase);
 
-            if (plan == null || plan.GenLevel == null)
+            if (doc == null || plan == null)
                 return new List<ApartmentDoorRequirementOption>();
 
-            List<FamilyInstance> apartments = GetPlacedApartmentInstancesOnLevel(doc, plan.GenLevel);
+            List<FamilyInstance> apartments = GetPlacedApartmentInstancesForPlan(doc, plan);
+            if (apartments.Count == 0)
+                return new List<ApartmentDoorRequirementOption>();
 
-            foreach (FamilyInstance apartment in apartments)
+            HashSet<string> processedApartmentFamilies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (FamilyInstance apartmentFi in apartments)
             {
-                List<FamilyInstance> doors = FindDoorSubComponentsRecursive(doc, apartment);
+                if (apartmentFi == null || apartmentFi.Symbol == null || apartmentFi.Symbol.Family == null)
+                    continue;
 
-                foreach (FamilyInstance doorFi in doors)
+                Family apartmentFamily = apartmentFi.Symbol.Family;
+                string apartmentFamilyKey = apartmentFamily.Name ?? "";
+                if (string.IsNullOrWhiteSpace(apartmentFamilyKey))
+                    apartmentFamilyKey = GetElementIdValue(apartmentFamily.Id).ToString();
+
+                if (processedApartmentFamilies.Contains(apartmentFamilyKey))
+                    continue;
+
+                processedApartmentFamilies.Add(apartmentFamilyKey);
+
+                List<FamilyRoomMarker> rooms = new List<FamilyRoomMarker>();
+                List<FamilyDoorMarker> doors = new List<FamilyDoorMarker>();
+                HashSet<string> visitedFamilies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                CollectApartmentFamilyMarkersRecursive(
+                    doc,
+                    apartmentFamily,
+                    Transform.Identity,
+                    rooms,
+                    doors,
+                    visitedFamilies);
+
+                foreach (FamilyDoorMarker door in doors)
                 {
-                    string doorTypeName2D = Get2DDoorTypeName(doorFi);
-                    if (string.IsNullOrWhiteSpace(doorTypeName2D))
-                        continue;
+                    string roomCategory = !string.IsNullOrWhiteSpace(door.RoomCategory)
+                        ? door.RoomCategory.Trim()
+                        : "-";
 
-                    int widthMm;
-                    if (!TryGetDoorWidthMmFrom2DTypeName(doorTypeName2D, out widthMm))
-                        continue;
+                    string key = ApartmentDoorRequirementOption.BuildKey(roomCategory, door.DoorTypeName2D, door.DoorWidthMm);
 
-                    if (widthMm <= 0)
-                        continue;
-
-                    string key = ApartmentDoorRequirementOption.BuildKey(doorTypeName2D, widthMm);
                     if (!result.ContainsKey(key))
                     {
                         result.Add(key, new ApartmentDoorRequirementOption
                         {
-                            DoorTypeName2D = doorTypeName2D,
-                            WidthMm = widthMm
+                            RoomCategory = roomCategory,
+                            DoorTypeName2D = door.DoorTypeName2D,
+                            WidthMm = door.DoorWidthMm
                         });
                     }
                 }
             }
 
-            return result.Values.OrderBy(x => x.WidthMm).ThenBy(x => x.DoorTypeName2D).ToList();
+            return result.Values.OrderBy(x => x.RoomCategory).ThenBy(x => x.WidthMm).ThenBy(x => x.DoorTypeName2D).ToList();
         }
 
-        /// ДВЕРИ (2D). Рекурсивно находит все вложенные двери в структуре семейства квартиры.
-        private static List<FamilyInstance> FindDoorSubComponentsRecursive(Document doc, FamilyInstance root)
+        /// Рекурсивно собирает помещения и двери из документа семейства квартиры.
+        private static void CollectApartmentFamilyMarkersRecursive(Document ownerDoc, Family family, Transform accumulatedLocalTransform,
+            List<FamilyRoomMarker> rooms, List<FamilyDoorMarker> doors, HashSet<string> visitedFamilies)
         {
-            List<FamilyInstance> result = new List<FamilyInstance>();
-            if (doc == null || root == null)
-                return result;
+            if (ownerDoc == null || family == null || accumulatedLocalTransform == null ||
+                rooms == null || doors == null || visitedFamilies == null)
+                return;
 
-            HashSet<long> visited = new HashSet<long>();
-            CollectNestedDoorsRecursive(doc, root, result, visited);
+            string familyKey = family.Name ?? "";
+            if (string.IsNullOrWhiteSpace(familyKey))
+                familyKey = GetElementIdValue(family.Id).ToString();
 
-            return result;
+            if (visitedFamilies.Contains(familyKey))
+                return;
+
+            visitedFamilies.Add(familyKey);
+
+            Document familyDoc = null;
+
+            try
+            {
+                familyDoc = ownerDoc.EditFamily(family);
+
+                List<FamilyInstance> nestedInstances = new FilteredElementCollector(familyDoc).OfClass(typeof(FamilyInstance)).Cast<FamilyInstance>().ToList();
+
+                foreach (FamilyInstance fi in nestedInstances)
+                {
+                    string familyName = "";
+                    string typeName = "";
+                    string categoryName = "";
+
+                    if (fi.Symbol != null)
+                    {
+                        typeName = fi.Symbol.Name ?? "";
+                        if (fi.Symbol.Family != null)
+                            familyName = fi.Symbol.Family.Name ?? "";
+                    }
+
+                    if (fi.Category != null)
+                        categoryName = fi.Category.Name ?? "";
+
+                    Transform localTransform = fi.GetTransform();
+                    if (localTransform == null)
+                        localTransform = Transform.Identity;
+
+                    Transform currentLocalTransform = accumulatedLocalTransform.Multiply(localTransform);
+
+                    bool isRoomLike =
+                        familyName.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        typeName.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (fi.Category != null && fi.Category.Name.IndexOf("Помещение", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                    if (isRoomLike)
+                    {
+                        try
+                        {
+                            double width = GetRequiredLengthParam(fi, "Ширина", "Width");
+                            double depth = GetRequiredLengthParam(fi, "Глубина", "Depth");
+
+                            rooms.Add(new FamilyRoomMarker
+                            {
+                                RoomCategory = GetRoomCategoryLabel(fi),
+                                LocalTransform = currentLocalTransform,
+                                WidthInternal = width,
+                                DepthInternal = depth
+                            });
+                        }
+                        catch { }
+                    }
+
+                    bool isGenericModel =
+                        string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(categoryName, "Обобщённые модели", StringComparison.OrdinalIgnoreCase);
+
+                    bool isDoorFamily =
+                        string.Equals(familyName, "Дверь", StringComparison.OrdinalIgnoreCase);
+
+                    if (isGenericModel && isDoorFamily)
+                    {
+                        int widthMm;
+                        if (TryGetDoorWidthMmFrom2DTypeName(typeName, out widthMm) && widthMm > 0)
+                        {
+                            string commentValue = GetCommentsValue(fi);
+
+                            doors.Add(new FamilyDoorMarker
+                            {
+                                DoorTypeName2D = typeName,
+                                DoorWidthMm = widthMm,
+                                LocalPoint = currentLocalTransform.Origin,
+                                Comment = commentValue,
+                                RoomCategory = !string.IsNullOrWhiteSpace(commentValue) ? commentValue : null
+                            });
+                        }
+                    }
+
+                    Family nestedFamily = fi.Symbol != null ? fi.Symbol.Family : null;
+                    if (nestedFamily != null)
+                    {
+                        CollectApartmentFamilyMarkersRecursive(familyDoc, nestedFamily, currentLocalTransform, rooms, doors, visitedFamilies);
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                if (familyDoc != null)
+                {
+                    try
+                    {
+                        familyDoc.Close(false);
+                    }
+                    catch { }
+                }
+            }
         }
 
         /// ДВЕРИ (2D). Рекурсивно обходит вложенные элементы и собирает двери.
@@ -1049,23 +1344,6 @@ namespace KPLN_Tools.ExecutableCommand
 
             return (isGenericModel && isDoorFamily) || isDoorLikeByName;
         }
-
-        /// ДВЕРИ (2D). Возвращает имя типа 2D-двери.
-        private static string Get2DDoorTypeName(FamilyInstance doorFi)
-        {
-            if (doorFi == null)
-                return null;
-
-            if (doorFi.Symbol != null && !string.IsNullOrWhiteSpace(doorFi.Symbol.Name))
-                return doorFi.Symbol.Name.Trim();
-
-            Element typeElem = doorFi.Document.GetElement(doorFi.GetTypeId());
-            if (typeElem != null && !string.IsNullOrWhiteSpace(typeElem.Name))
-                return typeElem.Name.Trim();
-
-            return null;
-        }
-
 
         /// ДВЕРИ (2D). Пытается определить ширину двери в миллиметрах по имени типа 2D-двери.
         private static bool TryGetDoorWidthMmFrom2DTypeName(string typeName, out int widthMm)
@@ -1224,11 +1502,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (doc == null || string.IsNullOrWhiteSpace(displayName))
                 return null;
 
-            List<FamilySymbol> doorTypes = new FilteredElementCollector(doc)
-                .OfCategory(BuiltInCategory.OST_Doors)
-                .OfClass(typeof(FamilySymbol))
-                .Cast<FamilySymbol>()
-                .ToList();
+            List<FamilySymbol> doorTypes = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Doors).OfClass(typeof(FamilySymbol)).Cast<FamilySymbol>().ToList();
 
             foreach (FamilySymbol symbol in doorTypes)
             {
@@ -1303,24 +1577,70 @@ namespace KPLN_Tools.ExecutableCommand
         /// РАЗМЕЩЕНИЕ 2D. Загружает 2D-семейство в проект либо возвращает уже загруженное семейство с тем же именем.
         private static Family LoadOrFindFamily(Document doc, string familyPath)
         {
-            string familyName = Path.GetFileNameWithoutExtension(familyPath);
+            if (doc == null)
+                throw new ArgumentNullException("doc");
 
-            Family existingFamily = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>()
-                .FirstOrDefault(f => string.Equals(f.Name, familyName, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(familyPath))
+                throw new ArgumentException("Не указан путь к семейству.", "familyPath");
 
-            if (existingFamily != null)
-                return existingFamily;
+            if (!File.Exists(familyPath))
+                throw new FileNotFoundException("Файл семейства не найден.", familyPath);
 
-            Family loadedFamily;
-            bool loaded = doc.LoadFamily(familyPath, out loadedFamily);
+            string realFamilyName = GetFamilyNameFromFile(doc, familyPath);
+            string fileFamilyName = Path.GetFileNameWithoutExtension(familyPath);
 
-            if (loaded && loadedFamily != null)
-                return loadedFamily;
+            List<Family> existingFamilies = new FilteredElementCollector(doc)
+                .OfClass(typeof(Family))
+                .Cast<Family>()
+                .ToList();
 
-            existingFamily = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>()
-                .FirstOrDefault(f => string.Equals(f.Name, familyName, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(realFamilyName))
+            {
+                Family existingByRealName = existingFamilies.FirstOrDefault(f =>
+                    string.Equals(f.Name, realFamilyName, StringComparison.OrdinalIgnoreCase));
 
-            return existingFamily;
+                if (existingByRealName != null)
+                    return existingByRealName;
+            }
+
+            Family existingByFileName = existingFamilies.FirstOrDefault(f =>
+                string.Equals(f.Name, fileFamilyName, StringComparison.OrdinalIgnoreCase));
+
+            if (existingByFileName != null)
+                return existingByFileName;
+
+            Family loadedFamily = null;
+
+            try
+            {
+                bool loaded = doc.LoadFamily(familyPath, new ApartmentFamilyLoadOptions(), out loadedFamily);
+
+                if (loaded && loadedFamily != null)
+                    return loadedFamily;
+            }
+            catch { }
+
+            existingFamilies = new FilteredElementCollector(doc)
+                .OfClass(typeof(Family))
+                .Cast<Family>()
+                .ToList();
+
+            if (!string.IsNullOrWhiteSpace(realFamilyName))
+            {
+                Family existingAfterLoadByRealName = existingFamilies.FirstOrDefault(f =>
+                    string.Equals(f.Name, realFamilyName, StringComparison.OrdinalIgnoreCase));
+
+                if (existingAfterLoadByRealName != null)
+                    return existingAfterLoadByRealName;
+            }
+
+            Family existingAfterLoadByFileName = existingFamilies.FirstOrDefault(f =>
+                string.Equals(f.Name, fileFamilyName, StringComparison.OrdinalIgnoreCase));
+
+            if (existingAfterLoadByFileName != null)
+                return existingAfterLoadByFileName;
+
+            return null;
         }
 
         /// РАЗМЕЩЕНИЕ 2D. Возвращает первый доступный тип 2D-семейства.
@@ -1405,15 +1725,16 @@ namespace KPLN_Tools.ExecutableCommand
                 DoorsByRoomCategory = new Dictionary<string, string>()
             };
 
-            List<string> problems = new List<string>();
+            List<string> notFilled = new List<string>();
+            List<string> otherProblems = new List<string>();
 
             if (effectivePreset.WallHeight <= 0)
-                problems.Add("Не указана неприсоединённая высота стены.");
+                notFilled.Add("Неприсоединённая высота стены");
 
             ViewPlan targetPlan = FindTargetFloorPlan(doc, effectivePreset.SelectedPlanName);
             if (targetPlan == null)
             {
-                problems.Add("Не удалось определить план для построения стен.");
+                otherProblems.Add("Не удалось определить план для построения стен.");
             }
             else
             {
@@ -1421,7 +1742,7 @@ namespace KPLN_Tools.ExecutableCommand
 
                 if (requiredThicknesses.Count == 0)
                 {
-                    problems.Add("На выбранном плане не найдено ни одного размещённого 2D-семейства квартиры.");
+                    otherProblems.Add("На выбранном плане не найдено ни одного размещённого 2D-семейства квартиры.");
                 }
                 else
                 {
@@ -1429,31 +1750,105 @@ namespace KPLN_Tools.ExecutableCommand
                     {
                         string selectedWallType = GetSelectedWallTypeNameForThickness(effectivePreset, thickness);
 
-                        if (string.IsNullOrWhiteSpace(selectedWallType) || string.Equals(selectedWallType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
+                        if (string.IsNullOrWhiteSpace(selectedWallType) ||
+                            string.Equals(selectedWallType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
                         {
-                            problems.Add("Не выбран тип стены для толщины " + thickness + " мм.");
+                            notFilled.Add("Стена (" + thickness + ")");
                             continue;
                         }
 
                         WallType matchedWallType = FindWallTypeByExactSelectionAndThickness(doc, selectedWallType, thickness);
                         if (matchedWallType == null)
                         {
-                            problems.Add("Для толщины " + thickness + " мм выбран тип стены '" + selectedWallType + "', но такой тип не найден в проекте.");
+                            otherProblems.Add(
+                                "Для толщины " + thickness + " мм выбран тип стены '" + selectedWallType + "', но такой тип не найден в проекте.");
+                        }
+                    }
+                }
+
+                List<ApartmentDoorRequirementOption> doorRequirements = BuildDoorRequirementsForPlan(doc, targetPlan);
+
+                if (doorRequirements.Count > 0)
+                {
+                    foreach (ApartmentDoorRequirementOption req in doorRequirements
+                        .Where(x => x != null)
+                        .OrderBy(x => x.RoomCategory)
+                        .ThenBy(x => x.WidthMm)
+                        .ThenBy(x => x.DoorTypeName2D))
+                    {
+                        string selectedDoorTypeName = null;
+
+                        if (effectivePreset.DoorsByRoomCategory != null)
+                            effectivePreset.DoorsByRoomCategory.TryGetValue(req.Key, out selectedDoorTypeName);
+
+                        if (string.IsNullOrWhiteSpace(selectedDoorTypeName) ||
+                            string.Equals(selectedDoorTypeName, "Не выбрано", StringComparison.OrdinalIgnoreCase))
+                        {
+                            notFilled.Add("Дверь [" + req.RoomCategory + "] (" + req.WidthMm + ")");
+                            continue;
+                        }
+
+                        FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, req.WidthMm);
+                        if (matchedDoorSymbol == null)
+                        {
+                            otherProblems.Add(
+                                "Для категории '" + req.RoomCategory +
+                                "', ширины " + req.WidthMm +
+                                " мм выбран тип двери '" + selectedDoorTypeName +
+                                "', но такой тип не найден в проекте.");
                         }
                     }
                 }
             }
 
-            if (problems.Count > 0)
+            if (notFilled.Count > 0 || otherProblems.Count > 0)
             {
-                validationMessage = "Невозможно выполнить построение 3D.\nНеобходимо заполнить/исправить:\n- " + string.Join("\n- ", problems);
+                List<string> parts = new List<string>();
+                parts.Add("Невозможно выполнить построение 3D.");
+
+                if (notFilled.Count > 0)
+                {
+                    parts.Add("");
+                    parts.Add("Не заполнено:");
+                    parts.Add("- " + string.Join("\n- ", notFilled.Distinct().ToList()));
+                }
+
+                if (otherProblems.Count > 0)
+                {
+                    parts.Add("");
+                    parts.Add("Ошибки:");
+                    parts.Add("- " + string.Join("\n- ", otherProblems.Distinct().ToList()));
+                }
+
+                validationMessage = string.Join("\n", parts);
                 return false;
             }
 
             return true;
         }
 
-        /// РАЗМЕЩЕНИЕ 3D. Выполняет подготовку и построение стен, дверей и помеещний по ранее размещённым 2D-квартирам.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// РАЗМЕЩЕНИЕ 3D. Выполняет подготовку и построение стен, дверей и помещений по ранее размещённым 2D-квартирам.
         private void ExecuteConvertTo3D(Document doc, ApartmentPresetData preset)
         {
             ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
@@ -1503,6 +1898,7 @@ namespace KPLN_Tools.ExecutableCommand
             List<PreparedApartmentWalls> preparedApartments = new List<PreparedApartmentWalls>();
             List<SkippedApartmentWallsInfo> skippedWallsInfos = new List<SkippedApartmentWallsInfo>();
             List<PreparedApartmentDoors> preparedDoorsByApartment = new List<PreparedApartmentDoors>();
+            List<PreparedApartmentRooms> preparedRoomsByApartment = new List<PreparedApartmentRooms>();
 
             double connectTol = ConvertMmToInternal(150);
             double intersectionTol = ConvertMmToInternal(10);
@@ -1596,7 +1992,9 @@ namespace KPLN_Tools.ExecutableCommand
                         skippedWallsInfos.Add(new SkippedApartmentWallsInfo
                         {
                             ApartmentId = apartmentFi.Id,
-                            SkippedWallsCount = skippedByIntersectionCount
+                            SkippedRoomsCount = 0,
+                            SkippedWallsCount = skippedByIntersectionCount,
+                            SkippedDoorsCount = 0
                         });
                     }
 
@@ -1616,6 +2014,9 @@ namespace KPLN_Tools.ExecutableCommand
 
                     PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages);
                     preparedDoorsByApartment.Add(preparedDoors);
+
+                    PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(doc, apartmentFi, debugMessages);
+                    preparedRoomsByApartment.Add(preparedRooms);
                 }
                 catch (Exception exApartment)
                 {
@@ -1625,16 +2026,26 @@ namespace KPLN_Tools.ExecutableCommand
 
             if (preparedApartments.Count == 0)
             {
-                string debugText = debugMessages.Count > 0 ? "\n\n" + string.Join("\n", debugMessages) : "";
-                string skippedText = BuildSkippedWallsReport(skippedWallsInfos);
-
-                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось подготовить ни одной стены." + skippedText + debugText);
-
+                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось подготовить ни одной стены.");
                 return;
             }
 
             double baseOffsetInternal = ConvertMmToInternal(effectivePreset.BaseOffset);
             double wallHeightInternal = ConvertMmToInternal(effectivePreset.WallHeight > 0 ? effectivePreset.WallHeight : 3000);
+
+            int totalDoorsPlanned = preparedDoorsByApartment
+                .Where(x => x != null && x.Doors != null)
+                .Sum(x => x.Doors.Count);
+
+            int installedDoorsCount = 0;
+
+            int totalRoomsPlanned = preparedRoomsByApartment
+                .Where(x => x != null && x.Rooms != null)
+                .Sum(x => x.Rooms.Count);
+
+            int createdRoomsCount = 0;
+
+            List<ElementId> apartmentIdsToDeleteAfterCommit = new List<ElementId>();
 
             using (Transaction t = new Transaction(doc, "KPLN. Построение стен по помещениям"))
             {
@@ -1663,28 +2074,423 @@ namespace KPLN_Tools.ExecutableCommand
 
                     if (apartmentDoors != null && apartmentDoors.Doors != null && apartmentDoors.Doors.Count > 0)
                     {
-                        // Логику установки дверей реализуем позже.
+                        int installedDoorsForApartment = PlaceDoorsForApartment(doc, apartmentDoors, createdWallsForApartment, baseLevel);
+
+                        installedDoorsCount += installedDoorsForApartment;
+
+                        int skippedDoorsForApartment = apartmentDoors.Doors.Count - installedDoorsForApartment;
+                        if (skippedDoorsForApartment > 0)
+                        {
+                            skippedWallsInfos.Add(new SkippedApartmentWallsInfo
+                            {
+                                ApartmentId = apartmentWalls.ApartmentId,
+                                SkippedRoomsCount = 0,
+                                SkippedWallsCount = 0,
+                                SkippedDoorsCount = skippedDoorsForApartment
+                            });
+                        }
+                    }
+
+                    doc.Regenerate();
+
+                    PreparedApartmentRooms apartmentRooms = preparedRoomsByApartment
+                        .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
+
+                    if (apartmentRooms != null && apartmentRooms.Rooms != null && apartmentRooms.Rooms.Count > 0)
+                    {
+                        int createdRoomsForApartment = PlaceRoomsForApartment(doc, apartmentRooms, targetPlan.GenLevel);
+
+                        createdRoomsCount += createdRoomsForApartment;
+
+                        int skippedRoomsForApartment = apartmentRooms.Rooms.Count - createdRoomsForApartment;
+                        if (skippedRoomsForApartment > 0)
+                        {
+                            skippedWallsInfos.Add(new SkippedApartmentWallsInfo
+                            {
+                                ApartmentId = apartmentWalls.ApartmentId,
+                                SkippedRoomsCount = skippedRoomsForApartment,
+                                SkippedWallsCount = 0,
+                                SkippedDoorsCount = 0
+                            });
+                        }
+                    }
+
+                    if (DebugDeletePlaced2DApartmentAfterConvert)
+                    {
+                        bool hasCreatedAnythingForApartment = createdWallsForApartment.Count > 0;
+
+                        if (hasCreatedAnythingForApartment &&
+                            apartmentWalls.ApartmentId != null &&
+                            apartmentWalls.ApartmentId != ElementId.InvalidElementId)
+                        {
+                            apartmentIdsToDeleteAfterCommit.Add(apartmentWalls.ApartmentId);
+                        }
                     }
                 }
 
                 t.Commit();
             }
 
-            int preparedDoorCount = preparedDoorsByApartment.Where(x => x != null && x.Doors != null).Sum(x => x.Doors.Count);
+            if (DebugDeletePlaced2DApartmentAfterConvert && apartmentIdsToDeleteAfterCommit.Count > 0)
+            {
+                using (Transaction tDelete = new Transaction(doc, "DEBUG. Удаление 2D-подложек квартир"))
+                {
+                    tDelete.Start();
 
-            string report = "Построение завершено.\n\n" + "План: " + targetPlan.Name + "\n" +
+                    HashSet<long> deletedIds = new HashSet<long>();
+
+                    foreach (ElementId apartmentId in apartmentIdsToDeleteAfterCommit)
+                    {
+                        if (apartmentId == null || apartmentId == ElementId.InvalidElementId)
+                            continue;
+
+                        long idValue = GetElementIdValue(apartmentId);
+                        if (deletedIds.Contains(idValue))
+                            continue;
+
+                        deletedIds.Add(idValue);
+                        TryDeleteSource2DApartmentInstance(doc, apartmentId, debugMessages);
+                    }
+
+                    tDelete.Commit();
+                }
+            }
+
+            string report =
+                "Построение завершено.\n\n" +
+                "План: " + targetPlan.Name + "\n" +
                 "Экземпляров квартир обработано: " + preparedApartments.Count + " из " + apartmentInstances.Count + "\n" +
-                "Подготовлено дверей (без установки): " + preparedDoorCount + "\n";
+                "Помещений создано: " + createdRoomsCount + " из " + totalRoomsPlanned + "\n" +
+                "Дверей установлено: " + installedDoorsCount + " из " + totalDoorsPlanned;
 
             report += BuildSkippedWallsReport(skippedWallsInfos);
 
-            if (debugMessages.Count > 0)
-                report += "\n\nЗамечания:\n" + string.Join("\n", debugMessages);
-
-            TaskDialog.Show("ConvertTo3D", report);
+            TaskDialog.Show("KPLN. Менеджер квартир", report);
         }
 
-        /// РАЗМЕЩЕНИЕ 3D. Формирует текстовый отчёт по пропущенным стенам.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /// РАЗМЕЩЕНИЕ 3D. Выполняет подготовку и построение стен, дверей и помещений по ранее размещённым 2D-квартирам.
+        private void ExecuteConvertTo3DOld(Document doc, ApartmentPresetData preset)
+        {
+            ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
+            {
+                SelectedPlanName = "",
+                LowerConstraint = "",
+                UpperConstraint = "Неприсоединённая",
+                BaseOffset = 0,
+                WallHeight = 3000,
+                WallTypeByThickness = new Dictionary<int, string>(),
+                EntryDoor = "Не выбрано",
+                BathroomDoor = "Не выбрано",
+                RoomDoor = "Не выбрано",
+                DoorsByRoomCategory = new Dictionary<string, string>()
+            };
+
+            ViewPlan targetPlan = FindTargetFloorPlan(doc, effectivePreset.SelectedPlanName);
+            if (targetPlan == null)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось определить план для построения.");
+                return;
+            }
+
+            if (targetPlan.GenLevel == null)
+            {
+                TaskDialog.Show("Ошибка", "У выбранного плана не определён уровень.");
+                return;
+            }
+
+            Level baseLevel = ResolveBaseLevelForPreset(doc, effectivePreset, targetPlan);
+            Level topLevel = ResolveTopLevelForPreset(doc, effectivePreset);
+
+            if (baseLevel == null)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось определить зависимость снизу.");
+                return;
+            }
+
+            List<FamilyInstance> apartmentInstances = GetPlacedApartmentInstancesForPlan(doc, targetPlan);
+            if (apartmentInstances.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "На выбранном плане не найдено ранее размещённых экземпляров квартир.");
+                return;
+            }
+
+            List<string> debugMessages = new List<string>();
+            List<PreparedApartmentWalls> preparedApartments = new List<PreparedApartmentWalls>();
+            List<SkippedApartmentWallsInfo> skippedWallsInfos = new List<SkippedApartmentWallsInfo>();
+            List<PreparedApartmentDoors> preparedDoorsByApartment = new List<PreparedApartmentDoors>();
+            List<PreparedApartmentRooms> preparedRoomsByApartment = new List<PreparedApartmentRooms>();
+            double connectTol = ConvertMmToInternal(150);
+            double intersectionTol = ConvertMmToInternal(10);
+
+            List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, targetPlan.GenLevel.Id);
+
+            foreach (FamilyInstance apartmentFi in apartmentInstances)
+            {
+                try
+                {
+                    double apartmentWallThicknessInternal = GetApartmentWallThickness(apartmentFi);
+                    int apartmentWallThicknessMm = (int)Math.Round(ConvertInternalToMm(apartmentWallThicknessInternal));
+
+                    if (apartmentWallThicknessMm <= 0)
+                    {
+                        debugMessages.Add("У квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " параметр 'Стены_Толщина' имеет некорректное значение.");
+                        continue;
+                    }
+
+                    string selectedWallTypeName = GetSelectedWallTypeNameForThickness(effectivePreset, apartmentWallThicknessMm);
+                    WallType matchedWallType = FindWallTypeByExactSelectionAndThickness(doc, selectedWallTypeName, apartmentWallThicknessMm);
+
+                    if (matchedWallType == null)
+                    {
+                        debugMessages.Add("Для квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не найден тип стены '" + selectedWallTypeName + "' с толщиной " + apartmentWallThicknessMm + " мм.");
+                        continue;
+                    }
+
+                    List<FamilyInstance> roomInstances = FindRoomSubComponents(doc, apartmentFi);
+                    if (roomInstances.Count == 0)
+                    {
+                        debugMessages.Add("Не найдены вложенные экземпляры 'Помещение' у экземпляра ID = " + GetElementIdValue(apartmentFi.Id));
+                        continue;
+                    }
+
+                    List<CurveLoop> apartmentRoomLoops = new List<CurveLoop>();
+
+                    foreach (FamilyInstance roomFi in roomInstances)
+                    {
+                        try
+                        {
+                            CurveLoop roomLoop = BuildRoomLoopFromInstance(roomFi);
+                            apartmentRoomLoops.Add(roomLoop);
+                        }
+                        catch (Exception exRoom)
+                        {
+                            debugMessages.Add("Ошибка обработки вложенного помещения ID = " + GetElementIdValue(roomFi.Id) + ": " + exRoom.Message);
+                        }
+                    }
+
+                    if (apartmentRoomLoops.Count == 0)
+                        continue;
+
+                    List<Line> wallAxisLines = BuildClosedWallAxisLinesFromRooms(apartmentRoomLoops, apartmentWallThicknessInternal, debugMessages);
+                    if (wallAxisLines.Count == 0)
+                    {
+                        debugMessages.Add("Для квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не удалось вычислить оси стен.");
+                        continue;
+                    }
+
+                    List<Line> preparedAxisLines = SnapNewLinesToExistingWalls(wallAxisLines, existingWalls, connectTol);
+                    preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+                    preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls);
+                    preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+
+                    if (preparedAxisLines.Count == 0)
+                    {
+                        debugMessages.Add("Для квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " все вычисленные оси перекрыты существующими стенами.");
+                        continue;
+                    }
+
+                    int skippedByIntersectionCount = 0;
+                    List<Line> finalAxisLines = new List<Line>();
+
+                    foreach (Line axis in preparedAxisLines)
+                    {
+                        if (axis == null || axis.Length < 1e-6)
+                            continue;
+
+                        if (IntersectsExistingWalls(axis, apartmentWallThicknessInternal, existingWalls, intersectionTol))
+                        {
+                            skippedByIntersectionCount++;
+                            continue;
+                        }
+
+                        finalAxisLines.Add(axis);
+                    }
+
+                    if (skippedByIntersectionCount > 0)
+                    {
+                        skippedWallsInfos.Add(new SkippedApartmentWallsInfo
+                        {
+                            ApartmentId = apartmentFi.Id,
+                            SkippedRoomsCount = 0,
+                            SkippedWallsCount = skippedByIntersectionCount,
+                            SkippedDoorsCount = 0
+                        });
+                    }
+
+                    if (finalAxisLines.Count == 0)
+                    {
+                        debugMessages.Add("Для квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " все подготовленные оси стен пересекаются или накладываются на внешние стены и были пропущены.");
+                        continue;
+                    }
+
+                    preparedApartments.Add(new PreparedApartmentWalls
+                    {
+                        ApartmentId = apartmentFi.Id,
+                        WallType = matchedWallType,
+                        ThicknessMm = apartmentWallThicknessMm,
+                        AxisLines = finalAxisLines
+                    });
+
+                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages);
+                    preparedDoorsByApartment.Add(preparedDoors);
+                    PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(doc, apartmentFi, debugMessages);
+                    preparedRoomsByApartment.Add(preparedRooms);
+                }
+                catch (Exception exApartment)
+                {
+                    debugMessages.Add("Ошибка обработки квартиры ID = " + GetElementIdValue(apartmentFi.Id) + ": " + exApartment.Message);
+                }
+            }
+
+            if (preparedApartments.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось подготовить ни одной стены.");
+                return;
+            }
+
+            double baseOffsetInternal = ConvertMmToInternal(effectivePreset.BaseOffset);
+            double wallHeightInternal = ConvertMmToInternal(effectivePreset.WallHeight > 0 ? effectivePreset.WallHeight : 3000);
+            int totalDoorsPlanned = preparedDoorsByApartment.Where(x => x != null && x.Doors != null).Sum(x => x.Doors.Count);
+            int installedDoorsCount = 0;
+            int totalRoomsPlanned = preparedRoomsByApartment.Where(x => x != null && x.Rooms != null).Sum(x => x.Rooms.Count);
+            int createdRoomsCount = 0;
+
+            using (Transaction t = new Transaction(doc, "KPLN. Построение стен по помещениям"))
+            {
+                t.Start();
+
+                foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
+                {
+                    if (apartmentWalls == null || apartmentWalls.WallType == null || apartmentWalls.AxisLines == null)
+                        continue;
+
+                    List<Wall> createdWallsForApartment = new List<Wall>();
+
+                    foreach (Line axis in apartmentWalls.AxisLines)
+                    {
+                        if (axis == null || axis.Length < 1e-6)
+                            continue;
+
+                        Wall wall = Wall.Create(doc, axis, apartmentWalls.WallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
+                        ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
+
+                        createdWallsForApartment.Add(wall);
+                    }
+
+                    PreparedApartmentDoors apartmentDoors = preparedDoorsByApartment.FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
+
+                    if (apartmentDoors != null && apartmentDoors.Doors != null && apartmentDoors.Doors.Count > 0)
+                    {
+                        int installedDoorsForApartment = PlaceDoorsForApartment(doc, apartmentDoors, createdWallsForApartment, baseLevel);
+
+                        installedDoorsCount += installedDoorsForApartment;
+
+                        int skippedDoorsForApartment = apartmentDoors.Doors.Count - installedDoorsForApartment;
+                        if (skippedDoorsForApartment > 0)
+                        {
+                            skippedWallsInfos.Add(new SkippedApartmentWallsInfo
+                            {
+                                ApartmentId = apartmentWalls.ApartmentId,
+                                SkippedRoomsCount = 0,
+                                SkippedWallsCount = 0,
+                                SkippedDoorsCount = skippedDoorsForApartment
+                            });
+                        }
+                    }
+
+                    PreparedApartmentRooms apartmentRooms = preparedRoomsByApartment.FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
+
+                    if (apartmentRooms != null && apartmentRooms.Rooms != null && apartmentRooms.Rooms.Count > 0)
+                    {
+                        int createdRoomsForApartment = PlaceRoomsForApartment(doc, apartmentRooms, targetPlan.GenLevel);
+
+                        createdRoomsCount += createdRoomsForApartment;
+
+                        int skippedRoomsForApartment = apartmentRooms.Rooms.Count - createdRoomsForApartment;
+                        if (skippedRoomsForApartment > 0)
+                        {
+                            skippedWallsInfos.Add(new SkippedApartmentWallsInfo
+                            {
+                                ApartmentId = apartmentWalls.ApartmentId,
+                                SkippedRoomsCount = skippedRoomsForApartment,                                
+                                SkippedWallsCount = 0,
+                                SkippedDoorsCount = 0
+                            });
+                        }
+                    }
+
+                    if (DebugDeletePlaced2DApartmentAfterConvert)
+                    {
+                        TryDeleteSource2DApartmentInstance(doc, apartmentWalls.ApartmentId, debugMessages);
+                    }
+                }
+
+                t.Commit();
+            }
+
+            string report = "Построение завершено.\n\n" + "План: " + targetPlan.Name + "\n" + "Экземпляров квартир обработано: " + preparedApartments.Count + " из " + apartmentInstances.Count + "\n" +
+                "Помещений создано: " + createdRoomsCount + " из " + totalRoomsPlanned + "\n" + "Дверей установлено: " + installedDoorsCount + " из " + totalDoorsPlanned;
+
+            report += BuildSkippedWallsReport(skippedWallsInfos);
+
+            TaskDialog.Show("KPLN. Менеджер квартир", report);
+        }
+
+
+
+
+
+
+
+
+
+
+        /// РАЗМЕЩЕНИЕ 3D. Удаляет исходный 2D-экземпляр квартиры после успешного построения.
+        private static bool TryDeleteSource2DApartmentInstance(Document doc, ElementId apartmentId, List<string> debugMessages)
+        {
+            if (doc == null || apartmentId == null || apartmentId == ElementId.InvalidElementId)
+                return false;
+
+            try
+            {
+                Element element = doc.GetElement(apartmentId);
+                if (element == null)
+                    return false;
+
+                doc.Delete(apartmentId);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось удалить 2D-квартиру ID = " + GetElementIdValue(apartmentId) + ": " + ex.Message);
+
+                return false;
+            }
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. Формирует текстовый отчёт по не созданным элементам.
         private static string BuildSkippedWallsReport(List<SkippedApartmentWallsInfo> skippedWallsInfos)
         {
             if (skippedWallsInfos == null || skippedWallsInfos.Count == 0)
@@ -1696,18 +2502,160 @@ namespace KPLN_Tools.ExecutableCommand
                 .Select(g => new SkippedApartmentWallsInfo
                 {
                     ApartmentId = g.First().ApartmentId,
-                    SkippedWallsCount = g.Sum(x => x.SkippedWallsCount)
+                    SkippedRoomsCount = g.Sum(x => x.SkippedRoomsCount),
+                    SkippedWallsCount = g.Sum(x => x.SkippedWallsCount),
+                    SkippedDoorsCount = g.Sum(x => x.SkippedDoorsCount)
                 })
+                .Where(x => x.SkippedRoomsCount > 0 || x.SkippedWallsCount > 0 || x.SkippedDoorsCount > 0)
                 .OrderBy(x => GetElementIdValue(x.ApartmentId))
                 .ToList();
 
+            if (grouped.Count == 0)
+                return "";
+
             List<string> lines = new List<string>();
+            lines.Add("");
+            lines.Add("Не создано:");
+
             foreach (SkippedApartmentWallsInfo item in grouped)
             {
-                lines.Add("ID [" + GetElementIdValue(item.ApartmentId) + "] - стен не отрисовано: " + item.SkippedWallsCount);
+                lines.Add("ID [" + GetElementIdValue(item.ApartmentId) + "]");
+
+                if (item.SkippedRoomsCount > 0)
+                    lines.Add("- " + item.SkippedRoomsCount + " x Помещения");
+
+                if (item.SkippedWallsCount > 0)
+                    lines.Add("- " + item.SkippedWallsCount + " x Стены");
+
+                if (item.SkippedDoorsCount > 0)
+                    lines.Add("- " + item.SkippedDoorsCount + " x Двери");
             }
 
-            return "\n\nНе отрисованы элементы до 2D семействам:\n" + string.Join("\n", lines);
+            return "\n" + string.Join("\n", lines);
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Устанавливает двери квартиры в ближайшие созданные стены по точкам 2D-дверей. Возвращает количество успешно установленных дверей.
+        private int PlaceDoorsForApartment(
+            Document doc,
+            PreparedApartmentDoors apartmentDoors,
+            List<Wall> createdWallsForApartment,
+            Level baseLevel)
+        {
+            if (doc == null || apartmentDoors == null || createdWallsForApartment == null || baseLevel == null)
+                return 0;
+
+            if (apartmentDoors.Doors == null || apartmentDoors.Doors.Count == 0)
+                return 0;
+
+            int installedCount = 0;
+            double maxDistanceToWallAxis = ConvertMmToInternal(500);
+
+            foreach (PreparedDoorPlacement preparedDoor in apartmentDoors.Doors)
+            {
+                if (preparedDoor == null || preparedDoor.DoorSymbol == null || preparedDoor.InsertPoint == null)
+                    continue;
+
+                Wall hostWall;
+                XYZ projectedPoint;
+                double distanceToWallAxis;
+
+                bool foundHost = TryFindBestHostWallForDoor(preparedDoor.InsertPoint, createdWallsForApartment, maxDistanceToWallAxis, 
+                    out hostWall, out projectedPoint, out distanceToWallAxis);
+
+                if (!foundHost || hostWall == null || projectedPoint == null)
+                    continue;
+
+                if (!preparedDoor.DoorSymbol.IsActive)
+                {
+                    preparedDoor.DoorSymbol.Activate();
+                    doc.Regenerate();
+                }
+
+                FamilyInstance createdDoor = doc.Create.NewFamilyInstance(projectedPoint, preparedDoor.DoorSymbol, hostWall, baseLevel,
+                    Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+                if (createdDoor != null)
+                    installedCount++;
+            }
+
+            return installedCount;
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Ищет лучшую стену для двери по ближайшей проекции точки на ось стены.
+        private bool TryFindBestHostWallForDoor(XYZ doorPoint, List<Wall> candidateWalls, double maxDistanceToWallAxis, out Wall bestWall, out XYZ bestProjectedPoint, out double bestDistance)
+        {
+            bestWall = null;
+            bestProjectedPoint = null;
+            bestDistance = double.MaxValue;
+
+            if (doorPoint == null || candidateWalls == null || candidateWalls.Count == 0)
+                return false;
+
+            foreach (Wall wall in candidateWalls)
+            {
+                if (wall == null)
+                    continue;
+
+                LocationCurve lc = wall.Location as LocationCurve;
+                if (lc == null)
+                    continue;
+
+                Line wallLine = lc.Curve as Line;
+                if (wallLine == null || wallLine.Length < 1e-9)
+                    continue;
+
+                XYZ projectedPoint;
+                double distance;
+
+                if (!TryProjectPointToSegment2D(doorPoint, wallLine, out projectedPoint, out distance))
+                    continue;
+
+                if (distance > maxDistanceToWallAxis)
+                    continue;
+
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestWall = wall;
+                    bestProjectedPoint = projectedPoint;
+                }
+            }
+
+            return bestWall != null && bestProjectedPoint != null;
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Проецирует точку на конечный отрезок в XY. Возвращает точку проекции и расстояние от исходной точки до оси.
+        private bool TryProjectPointToSegment2D(XYZ point, Line segment, out XYZ projectedPoint, out double distance)
+        {
+            projectedPoint = null;
+            distance = double.MaxValue;
+
+            if (point == null || segment == null)
+                return false;
+
+            XYZ a = segment.GetEndPoint(0);
+            XYZ b = segment.GetEndPoint(1);
+            XYZ ab = b - a;
+
+            double len2 = ab.X * ab.X + ab.Y * ab.Y;
+            if (len2 < 1e-12)
+                return false;
+
+            double t = ((point.X - a.X) * ab.X + (point.Y - a.Y) * ab.Y) / len2;
+
+            if (t < 0.0)
+                t = 0.0;
+            else if (t > 1.0)
+                t = 1.0;
+
+            double x = a.X + ab.X * t;
+            double y = a.Y + ab.Y * t;
+            double z = a.Z + (b.Z - a.Z) * t;
+
+            projectedPoint = new XYZ(x, y, z);
+            distance = Distance2D(point, projectedPoint);
+
+            return true;
         }
 
         /// РАЗМЕЩЕНИЕ 3D. ПРОВЕРКА УРОВНЯ ДЛЯ СТЕН. Определяет базовый уровень для построения стен.
@@ -1884,34 +2832,32 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Подготавливает список дверей квартиры для будущей установки.
+        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Подготавливает список дверей квартиры по той же логике, что используется в преднастройках.
         private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages)
         {
             PreparedApartmentDoors result = new PreparedApartmentDoors();
-            result.ApartmentId = apartmentFi.Id;
+            result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
 
-            if (apartmentFi == null)
+            if (doc == null || apartmentFi == null || apartmentFi.Symbol == null || apartmentFi.Symbol.Family == null)
                 return result;
 
-            List<FamilyInstance> door2DInstances = FindDoorSubComponentsRecursive(doc, apartmentFi);
+            Transform apartmentTransform = apartmentFi.GetTransform();
+            if (apartmentTransform == null)
+                apartmentTransform = Transform.Identity;
 
-            foreach (FamilyInstance door2D in door2DInstances)
+            List<FamilyRoomMarker> rooms = new List<FamilyRoomMarker>();
+            List<FamilyDoorMarker> doors = new List<FamilyDoorMarker>();
+            HashSet<string> visitedFamilies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            CollectApartmentFamilyMarkersRecursive(doc, apartmentFi.Symbol.Family, Transform.Identity, rooms, doors, visitedFamilies);
+
+            foreach (FamilyDoorMarker door in doors)
             {
-                string doorTypeName2D = Get2DDoorTypeName(door2D);
-                if (string.IsNullOrWhiteSpace(doorTypeName2D))
-                {
-                    debugMessages.Add("Не удалось определить типоразмер 2D-двери ID = " + GetElementIdValue(door2D.Id));
-                    continue;
-                }
+                string roomCategory = !string.IsNullOrWhiteSpace(door.RoomCategory)
+                    ? door.RoomCategory.Trim()
+                    : "-";
 
-                int widthMm;
-                if (!TryGetDoorWidthMmFrom2DTypeName(doorTypeName2D, out widthMm))
-                {
-                    debugMessages.Add("Не удалось определить ширину 2D-двери по типоразмеру '" + doorTypeName2D + "', ID = " + GetElementIdValue(door2D.Id));
-                    continue;
-                }
-
-                string presetKey = ApartmentDoorRequirementOption.BuildKey(doorTypeName2D, widthMm);
+                string presetKey = ApartmentDoorRequirementOption.BuildKey(roomCategory, door.DoorTypeName2D, door.DoorWidthMm);
 
                 string selectedDoorTypeName = null;
                 if (preset != null && preset.DoorsByRoomCategory != null)
@@ -1920,54 +2866,141 @@ namespace KPLN_Tools.ExecutableCommand
                 if (string.IsNullOrWhiteSpace(selectedDoorTypeName) ||
                     string.Equals(selectedDoorTypeName, "Не выбрано", StringComparison.OrdinalIgnoreCase))
                 {
-                    debugMessages.Add("Для двери 2D-типа '" + doorTypeName2D + "' не выбран тип двери проекта.");
+                    debugMessages.Add("Для двери [" + roomCategory + "] (" + door.DoorWidthMm + ") не выбран тип двери проекта.");
                     continue;
                 }
 
-                FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm);
+                FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, door.DoorWidthMm);
                 if (matchedDoorSymbol == null)
                 {
-                    debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + widthMm + " мм.");
+                    debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + door.DoorWidthMm + " мм.");
                     continue;
                 }
 
-                XYZ insertPoint = GetFamilyInstanceOrigin(door2D);
-                if (insertPoint == null)
-                {
-                    debugMessages.Add("Не удалось определить точку вставки 2D-двери ID = " + GetElementIdValue(door2D.Id));
-                    continue;
-                }
+                XYZ insertPointInProject = apartmentTransform.OfPoint(door.LocalPoint);
 
                 result.Doors.Add(new PreparedDoorPlacement
                 {
                     ApartmentId = apartmentFi.Id,
-                    Door2DId = door2D.Id,
-                    RoomCategory = doorTypeName2D,
-                    DoorWidthMm = widthMm,
+                    Door2DId = ElementId.InvalidElementId,
+                    RoomCategory = roomCategory,
+                    DoorWidthMm = door.DoorWidthMm,
                     SelectedDoorTypeName = selectedDoorTypeName,
                     DoorSymbol = matchedDoorSymbol,
-                    InsertPoint = insertPoint
+                    InsertPoint = insertPointInProject
                 });
             }
 
             return result;
         }
 
-        /// РАЗМЕЩЕНИЕ 3D. ДВЕРИ. Возвращает точку вставки экземпляра семейства двери (сначала используется Transform, затем LocationPoint).
-        private static XYZ GetFamilyInstanceOrigin(FamilyInstance fi)
+        /// РАЗМЕЩЕНИЕ 3D. ПОМЕЩЕНИЯ. Подготавливает список помещений квартиры по вложенным 2D-помещениям.
+        private PreparedApartmentRooms PrepareRoomsForApartment(Document doc, FamilyInstance apartmentFi, List<string> debugMessages)
         {
-            if (fi == null)
-                return null;
+            PreparedApartmentRooms result = new PreparedApartmentRooms();
+            result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
 
-            Transform tr = fi.GetTransform();
-            if (tr != null)
-                return tr.Origin;
+            if (doc == null || apartmentFi == null || apartmentFi.Symbol == null || apartmentFi.Symbol.Family == null)
+                return result;
 
-            LocationPoint lp = fi.Location as LocationPoint;
-            if (lp != null)
-                return lp.Point;
+            Transform apartmentTransform = apartmentFi.GetTransform();
+            if (apartmentTransform == null)
+                apartmentTransform = Transform.Identity;
 
-            return null;
+            List<FamilyRoomMarker> rooms = new List<FamilyRoomMarker>();
+            List<FamilyDoorMarker> doors = new List<FamilyDoorMarker>();
+            HashSet<string> visitedFamilies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            CollectApartmentFamilyMarkersRecursive(doc, apartmentFi.Symbol.Family, Transform.Identity, rooms, doors, visitedFamilies);
+
+            foreach (FamilyRoomMarker room in rooms)
+            {
+                if (room == null || room.LocalTransform == null)
+                    continue;
+
+                string roomName = !string.IsNullOrWhiteSpace(room.RoomCategory)
+                    ? room.RoomCategory.Trim()
+                    : "Помещение";
+
+                XYZ insertPointInProject = apartmentTransform.OfPoint(room.LocalTransform.Origin);
+
+                result.Rooms.Add(new PreparedRoomPlacement
+                {
+                    ApartmentId = apartmentFi.Id,
+                    RoomName = roomName,
+                    InsertPoint = insertPointInProject
+                });
+            }
+
+            return result;
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. ПОМЕЩЕНИЯ. Проверяет, существует ли уже помещение на заданной точке уровня.
+        private static bool HasRoomAtPoint(Document doc, Level level, XYZ point)
+        {
+            if (doc == null || level == null || point == null)
+                return false;
+
+            List<Room> rooms = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Rooms).WhereElementIsNotElementType()
+                .Cast<Room>().Where(x => x != null && x.LevelId == level.Id && x.Area > 0).ToList();
+
+            foreach (Room room in rooms)
+            {
+                try
+                {
+                    if (room.IsPointInRoom(point))
+                        return true;
+                }
+                catch { }
+            }
+
+            return false;
+        }
+
+        /// РАЗМЕЩЕНИЕ 3D. ПОМЕЩЕНИЯ. Размещает помещения квартиры по подготовленным точкам. Возвращает количество успешно созданных помещений.
+        private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel)
+        {
+            if (doc == null || apartmentRooms == null || roomLevel == null)
+                return 0;
+
+            if (apartmentRooms.Rooms == null || apartmentRooms.Rooms.Count == 0)
+                return 0;
+
+            int createdCount = 0;
+
+            foreach (PreparedRoomPlacement preparedRoom in apartmentRooms.Rooms)
+            {
+                if (preparedRoom == null || preparedRoom.InsertPoint == null)
+                    continue;
+
+                try
+                {
+                    XYZ roomPoint = new XYZ(
+                        preparedRoom.InsertPoint.X,
+                        preparedRoom.InsertPoint.Y,
+                        roomLevel.Elevation + ConvertMmToInternal(100));
+
+                    if (HasRoomAtPoint(doc, roomLevel, roomPoint))
+                        continue;
+
+                    UV roomUv = new UV(preparedRoom.InsertPoint.X, preparedRoom.InsertPoint.Y);
+
+                    Room createdRoom = doc.Create.NewRoom(roomLevel, roomUv);
+                    if (createdRoom == null)
+                        continue;
+
+                    Parameter roomNameParam = createdRoom.get_Parameter(BuiltInParameter.ROOM_NAME);
+                    if (roomNameParam != null && !roomNameParam.IsReadOnly && !string.IsNullOrWhiteSpace(preparedRoom.RoomName))
+                        roomNameParam.Set(preparedRoom.RoomName);
+
+                    createdCount++;
+                }
+                catch
+                {
+                }
+            }
+
+            return createdCount;
         }
 
         #region ГЕОМЕТРИЯ ПОМЕЩЕНИЙ И ПОСТРОЕНИЕ ОСЕЙ
@@ -2465,11 +3498,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (intervals == null || intervals.Count == 0)
                 return result;
 
-            List<Interval1D> ordered = intervals
-                .Where(x => x != null && x.To - x.From > tol)
-                .OrderBy(x => x.From)
-                .ThenBy(x => x.To)
-                .ToList();
+            List<Interval1D> ordered = intervals.Where(x => x != null && x.To - x.From > tol).OrderBy(x => x.From).ThenBy(x => x.To).ToList();
 
             if (ordered.Count == 0)
                 return result;

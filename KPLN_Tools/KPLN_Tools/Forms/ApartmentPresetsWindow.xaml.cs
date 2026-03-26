@@ -14,6 +14,8 @@ namespace KPLN_Tools.Forms
     {
         public List<ApartmentPlanPresetOption> Plans { get; set; }
 
+        public Func<string, ApartmentPlanPresetOption> ResolvePlanData { get; set; }
+
         public ApartmentPresetWindowContext()
         {
             Plans = new List<ApartmentPlanPresetOption>();
@@ -43,6 +45,8 @@ namespace KPLN_Tools.Forms
         public List<ApartmentDoorRequirementOption> DoorRequirements { get; set; }
         public Dictionary<string, List<string>> DoorTypeOptionsByRequirementKey { get; set; }
 
+        public bool IsResolved { get; set; }
+
         public ApartmentPlanPresetOption()
         {
             WallThicknesses = new List<int>();
@@ -54,24 +58,36 @@ namespace KPLN_Tools.Forms
             DoorTypeOptionsByRequirementKey = new Dictionary<string, List<string>>();
 
             UpperConstraintText = "Неприсоединённая";
+            IsResolved = false;
         }
     }
 
     /// Описание требования к двери для конкретного плана. Ключ строится по имени 2D-типа двери и её ширине.
     public class ApartmentDoorRequirementOption
     {
+        public string RoomCategory { get; set; }
+
         public string DoorTypeName2D { get; set; }
 
         public int WidthMm { get; set; }
 
         public string Key
         {
-            get { return BuildKey(DoorTypeName2D, WidthMm); }
+            get { return BuildKey(RoomCategory, DoorTypeName2D, WidthMm); }
         }
 
-        public static string BuildKey(string doorTypeName2D, int widthMm)
+        public string DisplayLabel
         {
-            return (doorTypeName2D ?? "") + "|" + widthMm;
+            get
+            {
+                string room = string.IsNullOrWhiteSpace(RoomCategory) ? "Без помещения" : RoomCategory;
+                return "Дверь [" + room + "] (" + WidthMm + ")";
+            }
+        }
+
+        public static string BuildKey(string roomCategory, string doorTypeName2D, int widthMm)
+        {
+            return (roomCategory ?? "") + "|" + (doorTypeName2D ?? "") + "|" + widthMm;
         }
     }
 
@@ -100,6 +116,7 @@ namespace KPLN_Tools.Forms
 
         /// Имя 2D-типа двери, если строка относится к двери.
         public string DoorTypeName2D { get; set; }
+        public string RoomCategory { get; set; }
 
         /// Ширина двери в мм, если строка относится к двери.
         public int? DoorWidthMm { get; set; }
@@ -112,7 +129,8 @@ namespace KPLN_Tools.Forms
                 if (Kind == PresetSelectionKind.WallType)
                     return "Тип стены (" + (ThicknessMm.HasValue ? ThicknessMm.Value.ToString() : Key) + " мм)";
 
-                return "Дверь (" + (DoorTypeName2D ?? "") + ")";
+                string room = string.IsNullOrWhiteSpace(RoomCategory) ? "Без помещения" : RoomCategory;
+                return "Дверь [" + room + "] (" + (DoorWidthMm.HasValue ? DoorWidthMm.Value.ToString() : DoorTypeName2D ?? "") + ")";
             }
         }
 
@@ -235,6 +253,7 @@ namespace KPLN_Tools.Forms
                 if (_selectedPlan != value)
                 {
                     _selectedPlan = value;
+                    EnsureSelectedPlanResolved();
                     OnPropertyChanged();
                     RefreshPlanDependentFields();
                 }
@@ -338,6 +357,31 @@ namespace KPLN_Tools.Forms
             }
         }
 
+        private void EnsureSelectedPlanResolved()
+        {
+            if (_selectedPlan == null)
+                return;
+
+            if (_selectedPlan.IsResolved)
+                return;
+
+            if (_context == null || _context.ResolvePlanData == null)
+                return;
+
+            ApartmentPlanPresetOption resolved = _context.ResolvePlanData(_selectedPlan.PlanName);
+            if (resolved == null)
+                return;
+
+            _selectedPlan.LowerConstraintText = resolved.LowerConstraintText;
+            _selectedPlan.UpperConstraintText = resolved.UpperConstraintText;
+            _selectedPlan.WallThicknesses = resolved.WallThicknesses ?? new List<int>();
+            _selectedPlan.WallTypeOptionsByThickness = resolved.WallTypeOptionsByThickness ?? new Dictionary<int, List<string>>();
+            _selectedPlan.RoomCategories = resolved.RoomCategories ?? new List<string>();
+            _selectedPlan.DoorRequirements = resolved.DoorRequirements ?? new List<ApartmentDoorRequirementOption>();
+            _selectedPlan.DoorTypeOptionsByRequirementKey = resolved.DoorTypeOptionsByRequirementKey ?? new Dictionary<string, List<string>>();
+            _selectedPlan.IsResolved = true;
+        }
+
         /// Полностью обновляет все данные, зависящие от выбранного плана:
         /// - тексты зависимостей;
         /// - список назначений по стенам;
@@ -415,16 +459,19 @@ namespace KPLN_Tools.Forms
 
             foreach (ApartmentDoorRequirementOption requirement in requirements
                 .Where(x => x != null && !string.IsNullOrWhiteSpace(x.DoorTypeName2D) && x.WidthMm > 0)
-                .GroupBy(x => ApartmentDoorRequirementOption.BuildKey(x.DoorTypeName2D, x.WidthMm))
+                .GroupBy(x => ApartmentDoorRequirementOption.BuildKey(x.RoomCategory, x.DoorTypeName2D, x.WidthMm))
                 .Select(x => x.First())
-                .OrderBy(x => x.DoorTypeName2D))
+                .OrderBy(x => x.RoomCategory)
+                .ThenBy(x => x.WidthMm)
+                .ThenBy(x => x.DoorTypeName2D))
             {
-                string key = ApartmentDoorRequirementOption.BuildKey(requirement.DoorTypeName2D, requirement.WidthMm);
+                string key = ApartmentDoorRequirementOption.BuildKey(requirement.RoomCategory, requirement.DoorTypeName2D, requirement.WidthMm);
 
                 PresetSelectionVm vm = new PresetSelectionVm
                 {
                     Kind = PresetSelectionKind.Door,
                     Key = key,
+                    RoomCategory = requirement.RoomCategory,
                     DoorTypeName2D = requirement.DoorTypeName2D,
                     DoorWidthMm = requirement.WidthMm
                 };
