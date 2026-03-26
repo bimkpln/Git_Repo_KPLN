@@ -12,7 +12,6 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
     [Autodesk.Revit.Attributes.Transaction(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     [Autodesk.Revit.Attributes.Regeneration(Autodesk.Revit.Attributes.RegenerationOption.Manual)]
     [Autodesk.Revit.Attributes.Journaling(Autodesk.Revit.Attributes.JournalingMode.NoCommandData)]
-
     class ExtCmdBatchDelete : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
@@ -26,17 +25,50 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                     .Cast<ParameterFilterElement>()
                     .ToList();
 
-                List<string> filterNames = filters.Select(x => x.Name).ToList();
-                filterNames.Sort();
+                List<Autodesk.Revit.DB.View> views = new FilteredElementCollector(doc)
+                    .OfClass(typeof(Autodesk.Revit.DB.View))
+                    .Cast<Autodesk.Revit.DB.View>()
+                    .Where(v => !v.IsTemplate || v.IsTemplate) 
+                    .ToList();
+
+                HashSet<ElementId> usedFilterIds = new HashSet<ElementId>();
+                foreach (Autodesk.Revit.DB.View view in views)
+                {
+                    try
+                    {
+                        ICollection<ElementId> viewFilterIds = view.GetFilters();
+
+                        foreach (ElementId id in viewFilterIds)
+                        {
+                            usedFilterIds.Add(id);
+                        }
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                List<string> filterNames = filters
+                    .Select(x => x.Name)
+                    .OrderBy(x => x)
+                    .ToList();
+
+                List<string> unusedFilterNames = filters
+                    .Where(x => !usedFilterIds.Contains(x.Id))
+                    .Select(x => x.Name)
+                    .OrderBy(x => x)
+                    .ToList();
 
                 FormBatchDelete form = new FormBatchDelete
                 {
-                    Items = filterNames
+                    Items = filterNames,
+                    UnusedItems = unusedFilterNames
                 };
 
                 form.ShowDialog();
 
-                if (form.DialogResult != DialogResult.OK) return Result.Cancelled;
+                if (form.DialogResult != DialogResult.OK)
+                    return Result.Cancelled;
 
                 List<string> deleteFilterNames = form.CheckedItems;
 
@@ -44,7 +76,15 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                     .Where(i => deleteFilterNames.Contains(i.Name))
                     .ToList();
 
-                List<ElementId> ids = filtersToDelete.Select(i => i.Id).ToList();
+                List<ElementId> ids = filtersToDelete
+                    .Select(i => i.Id)
+                    .ToList();
+
+                if (ids.Count == 0)
+                {
+                    TaskDialog.Show("Удаление фильтров", "Не выбрано ни одного фильтра для удаления.");
+                    return Result.Cancelled;
+                }
 
                 using (Transaction t = new Transaction(doc))
                 {
@@ -59,13 +99,11 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
                 return Result.Succeeded;
             }
-
             catch (Exception e)
             {
                 PrintError(e, "Произошла ошибка во время запуска скрипта");
                 return Result.Failed;
             }
-
         }
     }
 }
