@@ -673,13 +673,18 @@ namespace KPLN_Looker
                     }
                 }
 
-                // Проект Матросская тишина
+                // Проект Измайловский1
                 bool isIZML1 = doc.PathName.Contains("ИЗМЛ_");
                 if (isIZML1)
                 {
                     if (doc.PathName.Contains("_АР_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
                 }
+
+                // Проект Сочи гостиница Москва
+                bool isSGM = doc.PathName.Contains("СГМ_РД");
+                if (isSGM && doc.PathName.Contains("_АР_"))
+                    RSBackupFile(doc, "Y:\\Общественные здания\\Сочи гостиница Москва\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
             }
             #endregion
 
