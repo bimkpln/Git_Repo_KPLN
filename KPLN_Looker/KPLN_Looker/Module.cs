@@ -398,6 +398,12 @@ namespace KPLN_Looker
             }
             else
             {
+                #if DEBUG
+                // Глушу оповещение своих тестовых проектов (достаточно в режиме дебага, чтобы не нагружать остальных)
+                if (KPLN_Loader.Application.CurrentRevitUser.Id == 1 && _currentMonitoredDocFilePath_ExceptARKon.Contains("04_Модели для теста"))
+                    return;
+                #endif
+
                 BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
