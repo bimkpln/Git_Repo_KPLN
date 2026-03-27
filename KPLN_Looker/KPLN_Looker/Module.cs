@@ -188,6 +188,8 @@ namespace KPLN_Looker
                 && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("rsn"))
 #endif
                 && !fileFullName.EndsWith("rte")
+                // Модели координационных файлов
+                && !fileFullName.ToLower().Contains("координационный")
                 // Офис КПЛН
                 && !fileFullName.ToLower().Contains("16с13"))
                 return fileFullName;
@@ -399,7 +401,7 @@ namespace KPLN_Looker
                 BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
                         $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта стадии П/Р.\n" +
+                        $"Действие: Открыл файл незарегестрированного проекта стадии П/Р.\n" +
                         $"Имя файла: [b]{doc.Title}[/b].\n" +
                         $"Путь к модели: [b]{fileFullName}[/b].");
             }
