@@ -9,7 +9,6 @@ using System.Windows.Input;
 
 namespace KPLN_Tools.Forms
 {
-    /// Контекст окна преднастроек.  Содержит список доступных планов, которые будут показаны в ComboBox.
     public class ApartmentPresetWindowContext
     {
         public List<ApartmentPlanPresetOption> Plans { get; set; }
@@ -22,14 +21,6 @@ namespace KPLN_Tools.Forms
         }
     }
 
-    /// Описание одного доступного плана квартиры.
-    /// Включает в себя:
-    /// - имя плана;
-    /// - текст зависимостей;
-    /// - набор возможных толщин стен;
-    /// - варианты типов стен по толщине;
-    /// - список требований по дверям;
-    /// - варианты типов дверей по ключу требования.
     public class ApartmentPlanPresetOption
     {
         public string PlanName { get; set; }
@@ -62,7 +53,6 @@ namespace KPLN_Tools.Forms
         }
     }
 
-    /// Описание требования к двери для конкретного плана. Ключ строится по имени 2D-типа двери и её ширине.
     public class ApartmentDoorRequirementOption
     {
         public string RoomCategory { get; set; }
@@ -91,37 +81,22 @@ namespace KPLN_Tools.Forms
         }
     }
 
-    /// Тип назначения в списке преднастроек:
     public enum PresetSelectionKind
     {
         WallType,
         Door
     }
 
-    /// <summary>
-    /// VM одной строки в блоке "Выбор типов". Используется как для выбора типа стены, так и для выбора типа двери.
-    /// </summary>
     public class PresetSelectionVm : INotifyPropertyChanged
     {
-        /// Вид назначения: стена или дверь.
         public PresetSelectionKind Kind { get; set; }
 
-        /// Ключ назначения.
-        /// Для стены обычно толщина в текстовом виде,
-        /// для двери — составной ключ DoorTypeName2D|WidthMm.
         public string Key { get; set; }
-
-        /// Толщина стены в мм, если строка относится к типу стены.
         public int? ThicknessMm { get; set; }
-
-        /// Имя 2D-типа двери, если строка относится к двери.
         public string DoorTypeName2D { get; set; }
         public string RoomCategory { get; set; }
-
-        /// Ширина двери в мм, если строка относится к двери.
         public int? DoorWidthMm { get; set; }
 
-        /// Подпись строки для показа в интерфейсе.
         public string Label
         {
             get
@@ -134,11 +109,9 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        /// Доступные варианты выбора для ComboBox.
         public ObservableCollection<string> Options { get; private set; }
         private string _selectedValue;
 
-        /// Выбранное пользователем значение.
         public string SelectedValue
         {
             get { return _selectedValue; }
@@ -167,10 +140,8 @@ namespace KPLN_Tools.Forms
         }
     }
 
-    /// Окно преднастроек квартиры.
     public partial class ApartmentPresetsWindow : Window
     {
-        /// Результат работы окна после успешного сохранения.
         public ApartmentPresetData ResultPresetData { get; private set; }
 
         public ApartmentPresetsWindow(
@@ -186,13 +157,11 @@ namespace KPLN_Tools.Forms
             DataContext = vm;
         }
 
-        /// Разрешаем ввод только цифр в числовые поля.
         private void DigitsOnly_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
         {
             e.Handled = e.Text.Any(x => !char.IsDigit(x));
         }
 
-        /// Запрещаем вставку текста, если в нём есть нецифровые символы.
         private void DigitsOnly_Pasting(object sender, DataObjectPastingEventArgs e)
         {
             if (!e.DataObject.GetDataPresent(typeof(string)))
@@ -206,14 +175,12 @@ namespace KPLN_Tools.Forms
                 e.CancelCommand();
         }
 
-        /// Закрытие окна без сохранения.
         private void Vm_RequestClose()
         {
             DialogResult = false;
             Close();
         }
 
-        /// Закрытие окна с сохранением результата.
         private void Vm_RequestSave(ApartmentPresetData data)
         {
             ResultPresetData = data;
@@ -222,29 +189,18 @@ namespace KPLN_Tools.Forms
         }
     }
 
-    /// ViewModel окна преднастроек квартиры.
-    /// - список планов;
-    /// - выбранный план;
-    /// - отображение зависимостей;
-    /// - формирование динамического списка назначений;
-    /// - сбор результата при сохранении.
     internal class ApartmentPresetsVm : INotifyPropertyChanged
     {
         public event Action RequestClose;
         public event Action<ApartmentPresetData> RequestSave;
         public event PropertyChangedEventHandler PropertyChanged;
 
-        /// Исходные данные пресета. Используются для начальной инициализации значений.
         private readonly ApartmentPresetData _initialData;
-        /// Контекст окна со списком доступных планов и опций.
         private readonly ApartmentPresetWindowContext _context;
-        /// Список доступных планов для выбора.
         public ObservableCollection<ApartmentPlanPresetOption> Plans { get; private set; }
-        /// Динамический список строк выбора: сначала стены, потом двери.
         public ObservableCollection<PresetSelectionVm> Assignments { get; private set; }
         private ApartmentPlanPresetOption _selectedPlan;
 
-        /// Выбранный план. При изменении пересобираются все зависимые поля и назначения.
         public ApartmentPlanPresetOption SelectedPlan
         {
             get { return _selectedPlan; }
@@ -262,7 +218,6 @@ namespace KPLN_Tools.Forms
 
         private string _lowerConstraintText;
 
-        /// Текст нижней зависимости для выбранного плана.
         public string LowerConstraintText
         {
             get { return _lowerConstraintText; }
@@ -278,7 +233,6 @@ namespace KPLN_Tools.Forms
 
         private string _upperConstraintText;
 
-        /// Текст верхней зависимости для выбранного плана.
         public string UpperConstraintText
         {
             get { return _upperConstraintText; }
@@ -294,7 +248,6 @@ namespace KPLN_Tools.Forms
 
         private string _baseOffsetText;
 
-        /// Смещение снизу в текстовом виде. Хранится строкой, потому что связано напрямую с TextBox.
         public string BaseOffsetText
         {
             get { return _baseOffsetText; }
@@ -310,7 +263,6 @@ namespace KPLN_Tools.Forms
 
         private string _wallHeightText;
 
-        /// Неприсоединённая высота в текстовом виде. Хранится строкой, потому что связано напрямую с TextBox.
         public string WallHeightText
         {
             get { return _wallHeightText; }
@@ -324,10 +276,8 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        /// Команда сохранения результата.
         public ICommand SaveCommand { get; private set; }
 
-        /// Команда закрытия окна без сохранения.
         public ICommand CloseCommand { get; private set; }
 
         public ApartmentPresetsVm(ApartmentPresetData currentData, ApartmentPresetWindowContext context)
@@ -382,10 +332,6 @@ namespace KPLN_Tools.Forms
             _selectedPlan.IsResolved = true;
         }
 
-        /// Полностью обновляет все данные, зависящие от выбранного плана:
-        /// - тексты зависимостей;
-        /// - список назначений по стенам;
-        /// - список назначений по дверям.
         private void RefreshPlanDependentFields()
         {
             LowerConstraintText = SelectedPlan != null ? (SelectedPlan.LowerConstraintText ?? "") : "";
@@ -400,7 +346,6 @@ namespace KPLN_Tools.Forms
             OnPropertyChanged(nameof(Assignments));
         }
 
-        /// Формирует строки выбора для типов стен. Каждая уникальная толщина стены превращается в отдельную строку.
         private void AddWallTypeAssignments()
         {
             List<int> thicknesses = SelectedPlan != null && SelectedPlan.WallThicknesses != null ? SelectedPlan.WallThicknesses
@@ -449,7 +394,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        /// Формирует строки выбора для дверей. Каждое уникальное требование двери превращается в отдельную строку.
         private void AddDoorAssignments()
         {
             List<ApartmentDoorRequirementOption> requirements =
@@ -510,7 +454,6 @@ namespace KPLN_Tools.Forms
             }
         }
 
-        /// Собирает результат из текущего состояния интерфейса и передаёт его наружу через событие RequestSave.
         private void OnSave()
         {
             Dictionary<int, string> wallTypeByThickness = Assignments
@@ -542,19 +485,18 @@ namespace KPLN_Tools.Forms
                 EntryDoor = "Не выбрано",
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
-                DoorsByRoomCategory = doorsByRoomCategory
+                DoorsByRoomCategory = doorsByRoomCategory,
+                FamilyPostProcessAction = _initialData != null ? _initialData.FamilyPostProcessAction : ApartmentFamilyPostProcessAction.Leave2D
             };
 
             RequestSave?.Invoke(data);
         }
 
-        /// Закрытие окна без сохранения.
         private void OnClose()
         {
             RequestClose?.Invoke();
         }
 
-        /// Парсинг int из текстового значения с дефолтом.
         private static int ParseInt(string text, int defaultValue = 0)
         {
             int value;

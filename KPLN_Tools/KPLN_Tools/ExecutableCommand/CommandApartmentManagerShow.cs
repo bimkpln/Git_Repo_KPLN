@@ -124,7 +124,6 @@ namespace KPLN_Tools.ExecutableCommand
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string ApartmentInstanceMarker = "[KPLN_APT_INSTANCE]";
-        private const bool DebugDeletePlaced2DApartmentAfterConvert = false;
 
         private ApartmentManagerWindow _window;
 
@@ -205,12 +204,18 @@ namespace KPLN_Tools.ExecutableCommand
             public List<Line> AxisLines { get; set; }
         }
 
-        private class SkippedApartmentWallsInfo
+        private class ApartmentProcessState
         {
             public ElementId ApartmentId { get; set; }
+            public bool HasPreparedWalls { get; set; }
+            public bool HasCreatedWalls { get; set; }
+            public bool HasCreatedRooms { get; set; }
+            public bool HasInstalledDoors { get; set; }
             public int SkippedRoomsCount { get; set; }
             public int SkippedWallsCount { get; set; }
             public int SkippedDoorsCount { get; set; }
+            public bool HasRoomAreaMismatch { get; set; }
+            public bool HasDeletedRoomMismatch { get; set; }
         }
 
         private class OffsetLine2D
@@ -1686,6 +1691,27 @@ namespace KPLN_Tools.ExecutableCommand
             p.Set(oldValue + " " + textToAppend);
         }
 
+        private static void RemoveApartmentInstanceMarker(Element e)
+        {
+            if (e == null)
+                return;
+
+            Parameter p = e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+            if (p == null || p.IsReadOnly)
+                return;
+
+            string oldValue = p.AsString();
+            if (string.IsNullOrWhiteSpace(oldValue) || !oldValue.Contains(ApartmentInstanceMarker))
+                return;
+
+            string newValue = oldValue.Replace(ApartmentInstanceMarker, " ");
+            while (newValue.Contains("  "))
+                newValue = newValue.Replace("  ", " ");
+
+            newValue = newValue.Trim();
+            p.Set(newValue);
+        }
+
         private bool ValidatePresetBeforeConvertTo3D(Document doc, ApartmentPresetData preset, out string validationMessage)
         {
             validationMessage = "";
@@ -1701,7 +1727,8 @@ namespace KPLN_Tools.ExecutableCommand
                 EntryDoor = "Не выбрано",
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
-                DoorsByRoomCategory = new Dictionary<string, string>()
+                DoorsByRoomCategory = new Dictionary<string, string>(),
+                FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Leave2D
             };
 
             List<string> notFilled = new List<string>();
@@ -1819,7 +1846,8 @@ namespace KPLN_Tools.ExecutableCommand
                 EntryDoor = "Не выбрано",
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
-                DoorsByRoomCategory = new Dictionary<string, string>()
+                DoorsByRoomCategory = new Dictionary<string, string>(),
+                FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Leave2D
             };
 
             ViewPlan targetPlan = FindTargetFloorPlan(doc, effectivePreset.SelectedPlanName);
@@ -1853,9 +1881,9 @@ namespace KPLN_Tools.ExecutableCommand
 
             List<string> debugMessages = new List<string>();
             List<PreparedApartmentWalls> preparedApartments = new List<PreparedApartmentWalls>();
-            List<SkippedApartmentWallsInfo> skippedWallsInfos = new List<SkippedApartmentWallsInfo>();
             List<PreparedApartmentDoors> preparedDoorsByApartment = new List<PreparedApartmentDoors>();
             List<PreparedApartmentRooms> preparedRoomsByApartment = new List<PreparedApartmentRooms>();
+            Dictionary<long, ApartmentProcessState> apartmentStates = new Dictionary<long, ApartmentProcessState>();
 
             double connectTol = ConvertMmToInternal(150);
             double intersectionTol = ConvertMmToInternal(10);
@@ -1864,6 +1892,11 @@ namespace KPLN_Tools.ExecutableCommand
 
             foreach (FamilyInstance apartmentFi in apartmentInstances)
             {
+                if (apartmentFi == null)
+                    continue;
+
+                ApartmentProcessState state = GetOrCreateApartmentState(apartmentStates, apartmentFi.Id);
+
                 try
                 {
                     double apartmentWallThicknessInternal = GetApartmentWallThickness(apartmentFi);
@@ -1892,13 +1925,13 @@ namespace KPLN_Tools.ExecutableCommand
                     }
 
                     List<Line> apartmentAxisLines = new List<Line>();
-                    int skippedRoomsForApartment = 0;
-                    int skippedWallsForApartment = 0;
 
                     foreach (FamilyInstance roomFi in roomInstances)
                     {
                         try
                         {
+                            int skippedWallsForApartment = state.SkippedWallsCount;
+
                             List<Line> roomAxisLines = BuildPreparedWallAxisLinesForSingleRoom(
                                 roomFi,
                                 apartmentWallThicknessInternal,
@@ -1908,9 +1941,11 @@ namespace KPLN_Tools.ExecutableCommand
                                 debugMessages,
                                 ref skippedWallsForApartment);
 
+                            state.SkippedWallsCount = skippedWallsForApartment;
+
                             if (roomAxisLines == null || roomAxisLines.Count == 0)
                             {
-                                skippedRoomsForApartment++;
+                                state.SkippedRoomsCount++;
                                 continue;
                             }
 
@@ -1918,7 +1953,7 @@ namespace KPLN_Tools.ExecutableCommand
                         }
                         catch (Exception exRoom)
                         {
-                            skippedRoomsForApartment++;
+                            state.SkippedRoomsCount++;
                             debugMessages.Add("Ошибка обработки вложенного помещения ID = " + GetElementIdValue(roomFi.Id) + ": " + exRoom.Message);
                         }
                     }
@@ -1929,8 +1964,8 @@ namespace KPLN_Tools.ExecutableCommand
 
                     if (apartmentAxisLines.Count == 0)
                     {
-                        if (skippedRoomsForApartment == 0)
-                            skippedRoomsForApartment = roomInstances.Count;
+                        if (state.SkippedRoomsCount == 0)
+                            state.SkippedRoomsCount = roomInstances.Count;
 
                         debugMessages.Add("Для квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " после покомнатной обработки не осталось осей стен.");
                     }
@@ -1943,17 +1978,8 @@ namespace KPLN_Tools.ExecutableCommand
                             ThicknessMm = apartmentWallThicknessMm,
                             AxisLines = apartmentAxisLines
                         });
-                    }
 
-                    if (skippedRoomsForApartment > 0 || skippedWallsForApartment > 0)
-                    {
-                        skippedWallsInfos.Add(new SkippedApartmentWallsInfo
-                        {
-                            ApartmentId = apartmentFi.Id,
-                            SkippedRoomsCount = skippedRoomsForApartment,
-                            SkippedWallsCount = skippedWallsForApartment,
-                            SkippedDoorsCount = 0
-                        });
+                        state.HasPreparedWalls = true;
                     }
 
                     PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages);
@@ -1966,12 +1992,6 @@ namespace KPLN_Tools.ExecutableCommand
                 {
                     debugMessages.Add("Ошибка обработки квартиры ID = " + GetElementIdValue(apartmentFi.Id) + ": " + exApartment.Message);
                 }
-            }
-
-            if (preparedApartments.Count == 0)
-            {
-                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось подготовить ни одной стены.");
-                return;
             }
 
             double baseOffsetInternal = ConvertMmToInternal(effectivePreset.BaseOffset);
@@ -1991,118 +2011,140 @@ namespace KPLN_Tools.ExecutableCommand
             List<RoomAreaMismatchInfo> roomAreaMismatches = new List<RoomAreaMismatchInfo>();
             List<DeletedRoomMismatchInfo> deletedRoomMismatches = new List<DeletedRoomMismatchInfo>();
 
-            List<ElementId> apartmentIdsToDeleteAfterCommit = new List<ElementId>();
+            if (preparedApartments.Count > 0)
+            {
+                using (Transaction t = new Transaction(doc, "KPLN. Построение стен по помещениям"))
+                {
+                    t.Start();
 
-            using (Transaction t = new Transaction(doc, "KPLN. Построение стен по помещениям"))
+                    foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
+                    {
+                        if (apartmentWalls == null || apartmentWalls.WallType == null || apartmentWalls.AxisLines == null)
+                            continue;
+
+                        ApartmentProcessState state = GetOrCreateApartmentState(apartmentStates, apartmentWalls.ApartmentId);
+                        List<Wall> createdWallsForApartment = new List<Wall>();
+
+                        foreach (Line axis in apartmentWalls.AxisLines)
+                        {
+                            if (axis == null || axis.Length < 1e-6)
+                                continue;
+
+                            Wall wall = Wall.Create(doc, axis, apartmentWalls.WallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
+                            ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
+                            createdWallsForApartment.Add(wall);
+                        }
+
+                        if (createdWallsForApartment.Count > 0)
+                            state.HasCreatedWalls = true;
+
+                        PreparedApartmentDoors apartmentDoors = preparedDoorsByApartment
+                            .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
+
+                        if (apartmentDoors != null && apartmentDoors.Doors != null && apartmentDoors.Doors.Count > 0)
+                        {
+                            int installedDoorsForApartment = PlaceDoorsForApartment(doc, apartmentDoors, createdWallsForApartment, baseLevel);
+                            installedDoorsCount += installedDoorsForApartment;
+
+                            if (installedDoorsForApartment > 0)
+                                state.HasInstalledDoors = true;
+
+                            int skippedDoorsForApartment = apartmentDoors.Doors.Count - installedDoorsForApartment;
+                            if (skippedDoorsForApartment > 0)
+                                state.SkippedDoorsCount += skippedDoorsForApartment;
+                        }
+
+                        doc.Regenerate();
+
+                        PreparedApartmentRooms apartmentRooms = preparedRoomsByApartment
+                            .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
+
+                        if (apartmentRooms != null && apartmentRooms.Rooms != null && apartmentRooms.Rooms.Count > 0)
+                        {
+                            int mismatchesBefore = roomAreaMismatches.Count;
+                            int deletedBefore = deletedRoomMismatches.Count;
+
+                            int createdRoomsForApartment = PlaceRoomsForApartment(doc, apartmentRooms, targetPlan.GenLevel, roomAreaMismatches, deletedRoomMismatches, createdWallsForApartment);
+                            createdRoomsCount += createdRoomsForApartment;
+
+                            if (createdRoomsForApartment > 0)
+                                state.HasCreatedRooms = true;
+
+                            int skippedRoomsForApartment = apartmentRooms.Rooms.Count - createdRoomsForApartment;
+                            if (skippedRoomsForApartment > 0)
+                                state.SkippedRoomsCount += skippedRoomsForApartment;
+
+                            if (roomAreaMismatches.Count > mismatchesBefore)
+                                state.HasRoomAreaMismatch = true;
+
+                            if (deletedRoomMismatches.Count > deletedBefore)
+                                state.HasDeletedRoomMismatch = true;
+                        }
+                    }
+
+                    t.Commit();
+                }
+            }
+
+            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, debugMessages);
+
+            List<ApartmentExecutionReportItem> reportItems = BuildExecutionReportItems(apartmentStates, deletedRoomMismatches);
+
+            int processedApartmentsCount = apartmentStates.Count;
+
+            ShowExecutionReportWindow(targetPlan.Name, processedApartmentsCount, apartmentInstances.Count, createdRoomsCount, totalRoomsPlanned,
+                installedDoorsCount, totalDoorsPlanned, reportItems);
+        }
+
+        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages)
+        {
+            if (doc == null || apartmentInstances == null || apartmentInstances.Count == 0)
+                return;
+
+            if (action == ApartmentFamilyPostProcessAction.Leave2D)
+                return;
+
+            string transactionName = action == ApartmentFamilyPostProcessAction.RemoveFromFurtherProcessing
+                ? "KPLN. Снятие метки 2D-квартир"
+                : "KPLN. Удаление 2D-квартир";
+
+            using (Transaction t = new Transaction(doc, transactionName))
             {
                 t.Start();
 
-                foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
+                foreach (FamilyInstance apartmentFi in apartmentInstances)
                 {
-                    if (apartmentWalls == null || apartmentWalls.WallType == null || apartmentWalls.AxisLines == null)
+                    if (apartmentFi == null)
                         continue;
 
-                    List<Wall> createdWallsForApartment = new List<Wall>();
+                    ElementId apartmentId = apartmentFi.Id;
+                    if (apartmentId == ElementId.InvalidElementId)
+                        continue;
 
-                    foreach (Line axis in apartmentWalls.AxisLines)
+                    if (action == ApartmentFamilyPostProcessAction.RemoveFromFurtherProcessing)
                     {
-                        if (axis == null || axis.Length < 1e-6)
+                        Element apartmentElement = doc.GetElement(apartmentId);
+                        if (apartmentElement == null)
                             continue;
 
-                        Wall wall = Wall.Create(doc, axis, apartmentWalls.WallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
-                        ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
-                        createdWallsForApartment.Add(wall);
-                    }
-
-                    PreparedApartmentDoors apartmentDoors = preparedDoorsByApartment
-                        .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
-
-                    if (apartmentDoors != null && apartmentDoors.Doors != null && apartmentDoors.Doors.Count > 0)
-                    {
-                        int installedDoorsForApartment = PlaceDoorsForApartment(doc, apartmentDoors, createdWallsForApartment, baseLevel);
-                        installedDoorsCount += installedDoorsForApartment;
-
-                        int skippedDoorsForApartment = apartmentDoors.Doors.Count - installedDoorsForApartment;
-                        if (skippedDoorsForApartment > 0)
+                        try
                         {
-                            skippedWallsInfos.Add(new SkippedApartmentWallsInfo
-                            {
-                                ApartmentId = apartmentWalls.ApartmentId,
-                                SkippedRoomsCount = 0,
-                                SkippedWallsCount = 0,
-                                SkippedDoorsCount = skippedDoorsForApartment
-                            });
+                            RemoveApartmentInstanceMarker(apartmentElement);
+                        }
+                        catch (Exception ex)
+                        {
+                            if (debugMessages != null)
+                                debugMessages.Add("Не удалось убрать маркер у 2D-квартиры ID = " + GetElementIdValue(apartmentId) + ": " + ex.Message);
                         }
                     }
-
-                    doc.Regenerate();
-
-                    PreparedApartmentRooms apartmentRooms = preparedRoomsByApartment
-                        .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
-
-                    if (apartmentRooms != null && apartmentRooms.Rooms != null && apartmentRooms.Rooms.Count > 0)
+                    else if (action == ApartmentFamilyPostProcessAction.Delete2D)
                     {
-                        int createdRoomsForApartment = PlaceRoomsForApartment(doc, apartmentRooms, targetPlan.GenLevel, roomAreaMismatches, deletedRoomMismatches, createdWallsForApartment);
-                        createdRoomsCount += createdRoomsForApartment;
-
-                        int skippedRoomsForApartment = apartmentRooms.Rooms.Count - createdRoomsForApartment;
-                        if (skippedRoomsForApartment > 0)
-                        {
-                            skippedWallsInfos.Add(new SkippedApartmentWallsInfo
-                            {
-                                ApartmentId = apartmentWalls.ApartmentId,
-                                SkippedRoomsCount = skippedRoomsForApartment,
-                                SkippedWallsCount = 0,
-                                SkippedDoorsCount = 0
-                            });
-                        }
-                    }
-
-                    if (DebugDeletePlaced2DApartmentAfterConvert)
-                    {
-                        bool hasCreatedAnythingForApartment = createdWallsForApartment.Count > 0;
-
-                        if (hasCreatedAnythingForApartment &&
-                            apartmentWalls.ApartmentId != null &&
-                            apartmentWalls.ApartmentId != ElementId.InvalidElementId)
-                        {
-                            apartmentIdsToDeleteAfterCommit.Add(apartmentWalls.ApartmentId);
-                        }
+                        TryDeleteSource2DApartmentInstance(doc, apartmentId, debugMessages);
                     }
                 }
 
                 t.Commit();
             }
-
-            if (DebugDeletePlaced2DApartmentAfterConvert && apartmentIdsToDeleteAfterCommit.Count > 0)
-            {
-                using (Transaction tDelete = new Transaction(doc, "DEBUG. Удаление 2D-подложек квартир"))
-                {
-                    tDelete.Start();
-
-                    HashSet<long> deletedIds = new HashSet<long>();
-
-                    foreach (ElementId apartmentId in apartmentIdsToDeleteAfterCommit)
-                    {
-                        if (apartmentId == null || apartmentId == ElementId.InvalidElementId)
-                            continue;
-
-                        long idValue = GetElementIdValue(apartmentId);
-                        if (deletedIds.Contains(idValue))
-                            continue;
-
-                        deletedIds.Add(idValue);
-                        TryDeleteSource2DApartmentInstance(doc, apartmentId, debugMessages);
-                    }
-
-                    tDelete.Commit();
-                }
-            }
-
-            List<ApartmentExecutionReportItem> reportItems = BuildExecutionReportItems(skippedWallsInfos, roomAreaMismatches, deletedRoomMismatches);
-
-            ShowExecutionReportWindow(targetPlan.Name, preparedApartments.Count, apartmentInstances.Count, createdRoomsCount, totalRoomsPlanned,
-                installedDoorsCount, totalDoorsPlanned, reportItems);
         }
 
         private void ShowExecutionReportWindow(string planName, int processedApartments, int totalApartments, int createdRoomsCount,
@@ -2153,106 +2195,129 @@ namespace KPLN_Tools.ExecutableCommand
             }));
         }
 
-        private static List<ApartmentExecutionReportItem> BuildExecutionReportItems(List<SkippedApartmentWallsInfo> skippedWallsInfos,
-            List<RoomAreaMismatchInfo> roomAreaMismatches, List<DeletedRoomMismatchInfo> deletedRoomMismatches)
+        private static List<ApartmentExecutionReportItem> BuildExecutionReportItems(Dictionary<long, ApartmentProcessState> apartmentStates,
+            List<DeletedRoomMismatchInfo> deletedRoomMismatches)
         {
-            Dictionary<long, ApartmentExecutionReportItem> map =
-                new Dictionary<long, ApartmentExecutionReportItem>();
+            List<ApartmentExecutionReportItem> result = new List<ApartmentExecutionReportItem>();
 
-            if (skippedWallsInfos != null)
+            if (apartmentStates == null || apartmentStates.Count == 0)
+                return result;
+
+            foreach (ApartmentProcessState state in apartmentStates.Values.OrderBy(x => GetElementIdValue(x.ApartmentId)))
             {
-                List<SkippedApartmentWallsInfo> groupedSkipped = skippedWallsInfos
-                    .Where(x => x != null && x.ApartmentId != null)
-                    .GroupBy(x => GetElementIdValue(x.ApartmentId))
-                    .Select(g => new SkippedApartmentWallsInfo
-                    {
-                        ApartmentId = g.First().ApartmentId,
-                        SkippedRoomsCount = g.Sum(x => x.SkippedRoomsCount),
-                        SkippedWallsCount = g.Sum(x => x.SkippedWallsCount),
-                        SkippedDoorsCount = g.Sum(x => x.SkippedDoorsCount)
-                    })
-                    .Where(x => x.SkippedRoomsCount > 0 || x.SkippedWallsCount > 0 || x.SkippedDoorsCount > 0)
-                    .OrderBy(x => GetElementIdValue(x.ApartmentId))
-                    .ToList();
+                if (state == null || state.ApartmentId == null || state.ApartmentId == ElementId.InvalidElementId)
+                    continue;
 
-                foreach (SkippedApartmentWallsInfo item in groupedSkipped)
+                ApartmentExecutionReportItem reportItem = new ApartmentExecutionReportItem
                 {
-                    long apartmentId = GetElementIdValue(item.ApartmentId);
-                    ApartmentExecutionReportItem reportItem = GetOrCreateReportItem(map, apartmentId);
+                    ApartmentId = GetElementIdValue(state.ApartmentId)
+                };
 
-                    if (item.SkippedWallsCount > 0)
+                bool hasSkippedRooms = state.SkippedRoomsCount > 0;
+                bool hasSkippedDoors = state.SkippedDoorsCount > 0;
+                bool hasProblematicDeletedRooms = state.HasDeletedRoomMismatch || state.HasRoomAreaMismatch;
+                bool onlyWallsSkipped = state.SkippedWallsCount > 0 && !hasSkippedRooms && !hasSkippedDoors && !hasProblematicDeletedRooms;
+                bool fullySuccessful = state.SkippedWallsCount == 0 && !hasSkippedRooms && !hasSkippedDoors && !hasProblematicDeletedRooms;
+
+                if (fullySuccessful || onlyWallsSkipped)
+                {
+                    reportItem.Lines.Add(new ApartmentExecutionReportLine
+                    {
+                        Text = "Квартира обработана успешно",
+                        Foreground = System.Windows.Media.Brushes.Green,
+                        FontSize = 14,
+                        FontWeight = FontWeights.SemiBold
+                    });
+                }
+                else
+                {
+                    if (state.SkippedWallsCount > 0 && hasSkippedRooms)
                     {
                         reportItem.Lines.Add(new ApartmentExecutionReportLine
                         {
-                            Text = "Не построено стен: " + item.SkippedWallsCount
+                            Text = "Часть стен не была построена",
+                            Foreground = System.Windows.Media.Brushes.DarkOrange
                         });
                     }
 
-                    if (item.SkippedRoomsCount > 0)
+                    if (hasSkippedRooms)
                     {
                         reportItem.Lines.Add(new ApartmentExecutionReportLine
                         {
-                            Text = "Не построено помещений: " + item.SkippedRoomsCount,
+                            Text = "Не построено помещений: " + state.SkippedRoomsCount,
                             Foreground = System.Windows.Media.Brushes.Red,
                             FontSize = 14,
                             FontWeight = FontWeights.SemiBold
                         });
                     }
 
-                    if (deletedRoomMismatches != null)
-                    {
-                        List<DeletedRoomMismatchInfo> deletedForApartment = deletedRoomMismatches
-                            .Where(x => x != null && x.ApartmentId != null && GetElementIdValue(x.ApartmentId) == apartmentId)
-                            .OrderBy(x => x.RoomName)
-                            .ToList();
-
-                        foreach (DeletedRoomMismatchInfo deletedItem in deletedForApartment)
-                        {
-                            string expectedText = ConvertInternalAreaToSquareMeters(deletedItem.ExpectedAreaInternal).ToString("0.##");
-                            string actualText = ConvertInternalAreaToSquareMeters(deletedItem.ActualAreaInternal).ToString("0.##");
-
-                            reportItem.Lines.Add(new ApartmentExecutionReportLine
-                            {
-                                Text = "-- Не совпавшее помещение: " +
-                                       (string.IsNullOrWhiteSpace(deletedItem.RoomName) ? "Помещение" : deletedItem.RoomName) +
-                                       " | 2D = " + expectedText + " м², 3D = " + actualText + " м²",
-                                Foreground = System.Windows.Media.Brushes.DarkOrange
-                            });
-                        }
-                    }
-
-                    if (item.SkippedDoorsCount > 0)
+                    if (hasSkippedDoors)
                     {
                         reportItem.Lines.Add(new ApartmentExecutionReportLine
                         {
-                            Text = "Не построено дверей: " + item.SkippedDoorsCount,
+                            Text = "Не построено дверей: " + state.SkippedDoorsCount,
                             Foreground = System.Windows.Media.Brushes.Red,
                             FontSize = 14,
                             FontWeight = FontWeights.SemiBold
                         });
                     }
                 }
+
+                if (deletedRoomMismatches != null)
+                {
+                    List<DeletedRoomMismatchInfo> deletedForApartment = deletedRoomMismatches
+                        .Where(x => x != null && x.ApartmentId != null && GetElementIdValue(x.ApartmentId) == reportItem.ApartmentId)
+                        .OrderBy(x => x.RoomName)
+                        .ToList();
+
+                    foreach (DeletedRoomMismatchInfo deletedItem in deletedForApartment)
+                    {
+                        string expectedText = ConvertInternalAreaToSquareMeters(deletedItem.ExpectedAreaInternal).ToString("0.##");
+                        string actualText = ConvertInternalAreaToSquareMeters(deletedItem.ActualAreaInternal).ToString("0.##");
+
+                        reportItem.Lines.Add(new ApartmentExecutionReportLine
+                        {
+                            Text = "-- Не совпавшее помещение: " +
+                                   (string.IsNullOrWhiteSpace(deletedItem.RoomName) ? "Помещение" : deletedItem.RoomName) +
+                                   " | 2D = " + expectedText + " м², 3D = " + actualText + " м²",
+                            Foreground = System.Windows.Media.Brushes.DarkOrange
+                        });
+                    }
+                }
+
+                if (reportItem.Lines.Count == 0)
+                {
+                    reportItem.Lines.Add(new ApartmentExecutionReportLine
+                    {
+                        Text = "Квартира обработана успешно",
+                        Foreground = System.Windows.Media.Brushes.Green,
+                        FontSize = 14,
+                        FontWeight = FontWeights.SemiBold
+                    });
+                }
+
+                result.Add(reportItem);
             }
 
-            return map.Values
-                .OrderBy(x => x.ApartmentId)
-                .ToList();
+            return result;
         }
 
-        private static ApartmentExecutionReportItem GetOrCreateReportItem(Dictionary<long, ApartmentExecutionReportItem> map, long apartmentId)
+        private static ApartmentProcessState GetOrCreateApartmentState(Dictionary<long, ApartmentProcessState> states, ElementId apartmentId)
         {
-            ApartmentExecutionReportItem item;
-            if (!map.TryGetValue(apartmentId, out item))
+            long key = GetElementIdValue(apartmentId);
+            ApartmentProcessState state;
+
+            if (!states.TryGetValue(key, out state))
             {
-                item = new ApartmentExecutionReportItem
+                state = new ApartmentProcessState
                 {
                     ApartmentId = apartmentId
                 };
 
-                map.Add(apartmentId, item);
+                states.Add(key, state);
             }
 
-            return item;
+            return state;
         }
 
         private List<Line> BuildPreparedWallAxisLinesForSingleRoom(FamilyInstance roomFi, double apartmentWallThicknessInternal, List<ExistingWallLineInfo> existingWalls,
@@ -2845,7 +2910,7 @@ namespace KPLN_Tools.ExecutableCommand
             return false;
         }
 
-        private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel, 
+        private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel,
             List<RoomAreaMismatchInfo> roomAreaMismatches, List<DeletedRoomMismatchInfo> deletedRoomMismatches, List<Wall> createdWallsForApartment)
         {
             if (doc == null || apartmentRooms == null || roomLevel == null)
