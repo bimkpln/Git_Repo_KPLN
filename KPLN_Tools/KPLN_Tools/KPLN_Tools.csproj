@@ -230,6 +230,9 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
+    <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
+      <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ApartmentImportWindow.xaml.cs">
       <DependentUpon>ApartmentImportWindow.xaml</DependentUpon>
     </Compile>
@@ -449,6 +452,10 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\ApartmentExecutionReportWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\ApartmentImportWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
