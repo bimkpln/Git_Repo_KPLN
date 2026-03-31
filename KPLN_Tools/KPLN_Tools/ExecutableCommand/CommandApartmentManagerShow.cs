@@ -304,6 +304,20 @@ namespace KPLN_Tools.ExecutableCommand
             public string Comment { get; set; }
         }
 
+        private class DoorTypeMirrorEnsureResult
+        {
+            public bool HasMessage { get; set; }
+            public string Message { get; set; }
+        }
+
+        private enum DoorOpeningMarker
+        {
+            None,
+            Left,
+            Right,
+            RightAlt
+        }
+
         private class PreparedDoorPlacement
         {
             public ElementId ApartmentId { get; set; }
@@ -2770,31 +2784,50 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages)
         {
             PreparedApartmentDoors result = new PreparedApartmentDoors();
             result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
 
-            if (doc == null || apartmentFi == null || apartmentFi.Symbol == null || apartmentFi.Symbol.Family == null)
+            if (doc == null || apartmentFi == null)
                 return result;
 
-            Transform apartmentTransform = apartmentFi.GetTransform();
-            if (apartmentTransform == null)
-                apartmentTransform = Transform.Identity;
+            List<FamilyInstance> doorInstances = FindDoorSubComponentsRecursive(doc, apartmentFi);
 
-            List<FamilyRoomMarker> rooms = new List<FamilyRoomMarker>();
-            List<FamilyDoorMarker> doors = new List<FamilyDoorMarker>();
-            HashSet<string> visitedFamilies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            CollectApartmentFamilyMarkersRecursive(doc, apartmentFi.Symbol.Family, Transform.Identity, rooms, doors, visitedFamilies);
-
-            foreach (FamilyDoorMarker door in doors)
+            foreach (FamilyInstance doorFi in doorInstances)
             {
-                string roomCategory = !string.IsNullOrWhiteSpace(door.RoomCategory)
-                    ? door.RoomCategory.Trim()
-                    : "-";
+                if (doorFi == null)
+                    continue;
 
-                string presetKey = ApartmentDoorRequirementOption.BuildKey(roomCategory, door.DoorTypeName2D, door.DoorWidthMm);
+                string typeName = doorFi.Symbol != null ? doorFi.Symbol.Name ?? "" : "";
+
+                int widthMm;
+                if (!TryGetDoorWidthMmFrom2DTypeName(typeName, out widthMm) || widthMm <= 0)
+                {
+                    if (debugMessages != null)
+                        debugMessages.Add("Не удалось определить ширину 2D-двери у экземпляра ID = " + GetElementIdValue(doorFi.Id));
+                    continue;
+                }
+
+                string roomCategory = GetCommentsValue(doorFi);
+                if (string.IsNullOrWhiteSpace(roomCategory))
+                    roomCategory = "-";
+
+                string presetKey = ApartmentDoorRequirementOption.BuildKey(roomCategory, typeName, widthMm);
 
                 string selectedDoorTypeName = null;
                 if (preset != null && preset.DoorsByRoomCategory != null)
@@ -2803,25 +2836,37 @@ namespace KPLN_Tools.ExecutableCommand
                 if (string.IsNullOrWhiteSpace(selectedDoorTypeName) ||
                     string.Equals(selectedDoorTypeName, "Не выбрано", StringComparison.OrdinalIgnoreCase))
                 {
-                    debugMessages.Add("Для двери [" + roomCategory + "] (" + door.DoorWidthMm + ") не выбран тип двери проекта.");
+                    if (debugMessages != null)
+                        debugMessages.Add("Для двери [" + roomCategory + "] (" + widthMm + ") не выбран тип двери проекта.");
                     continue;
                 }
 
-                FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, door.DoorWidthMm);
+                FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm);
                 if (matchedDoorSymbol == null)
                 {
-                    debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + door.DoorWidthMm + " мм.");
+                    if (debugMessages != null)
+                        debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + widthMm + " мм.");
                     continue;
                 }
 
-                XYZ insertPointInProject = apartmentTransform.OfPoint(door.LocalPoint);
+                DoorTypeMirrorEnsureResult ensureResult = EnsureDoorMirrorTypeExists(doc, matchedDoorSymbol);
+
+                Transform doorTransform = doorFi.GetTransform();
+                if (doorTransform == null)
+                {
+                    if (debugMessages != null)
+                        debugMessages.Add("Не удалось получить Transform для 2D-двери ID = " + GetElementIdValue(doorFi.Id));
+                    continue;
+                }
+
+                XYZ insertPointInProject = doorTransform.Origin;
 
                 result.Doors.Add(new PreparedDoorPlacement
                 {
                     ApartmentId = apartmentFi.Id,
-                    Door2DId = ElementId.InvalidElementId,
+                    Door2DId = doorFi.Id,
                     RoomCategory = roomCategory,
-                    DoorWidthMm = door.DoorWidthMm,
+                    DoorWidthMm = widthMm,
                     SelectedDoorTypeName = selectedDoorTypeName,
                     DoorSymbol = matchedDoorSymbol,
                     InsertPoint = insertPointInProject
@@ -2830,6 +2875,314 @@ namespace KPLN_Tools.ExecutableCommand
 
             return result;
         }
+
+
+
+
+
+
+
+
+
+
+
+
+        private static DoorOpeningMarker GetDoorOpeningMarkerFromTypeName(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+                return DoorOpeningMarker.None;
+
+            string name = typeName.Trim();
+
+            if (name.IndexOf("(Л ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return DoorOpeningMarker.Left;
+
+            if (name.IndexOf("(Пр ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return DoorOpeningMarker.RightAlt;
+
+            if (name.IndexOf("(П ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return DoorOpeningMarker.Right;
+
+            return DoorOpeningMarker.None;
+        }
+
+        private static string ReplaceDoorOpeningMarker(string typeName, DoorOpeningMarker newMarker)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+                return typeName;
+
+            string replacement = "";
+
+            switch (newMarker)
+            {
+                case DoorOpeningMarker.Left:
+                    replacement = "(Л ";
+                    break;
+                case DoorOpeningMarker.Right:
+                    replacement = "(П ";
+                    break;
+                case DoorOpeningMarker.RightAlt:
+                    replacement = "(Пр ";
+                    break;
+                default:
+                    return typeName;
+            }
+
+            string result = typeName;
+
+            if (result.IndexOf("(Л ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ReplaceOrdinalIgnoreCase(result, "(Л ", replacement);
+
+            if (result.IndexOf("(Пр ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ReplaceOrdinalIgnoreCase(result, "(Пр ", replacement);
+
+            if (result.IndexOf("(П ", StringComparison.OrdinalIgnoreCase) >= 0)
+                return ReplaceOrdinalIgnoreCase(result, "(П ", replacement);
+
+            return typeName;
+        }
+
+        private static string ReplaceOrdinalIgnoreCase(string source, string oldValue, string newValue)
+        {
+            int index = source.IndexOf(oldValue, StringComparison.OrdinalIgnoreCase);
+            if (index < 0)
+                return source;
+
+            return source.Substring(0, index) + newValue + source.Substring(index + oldValue.Length);
+        }
+
+        private static Parameter FindDoorLeftOpeningParameter(Element e)
+        {
+            if (e == null)
+                return null;
+
+            Parameter p = e.LookupParameter("КП_О_Левое открывание");
+            if (p != null)
+                return p;
+
+            Element typeElem = null;
+            if (e.Document != null)
+            {
+                ElementId typeId = e.GetTypeId();
+                if (typeId != ElementId.InvalidElementId)
+                    typeElem = e.Document.GetElement(typeId);
+            }
+
+            if (typeElem != null)
+            {
+                p = typeElem.LookupParameter("КП_О_Левое открывание");
+                if (p != null)
+                    return p;
+            }
+
+            return null;
+        }
+
+        private static bool SetYesNoParameter(Parameter p, bool value)
+        {
+            if (p == null || p.IsReadOnly)
+                return false;
+
+            if (p.StorageType != StorageType.Integer)
+                return false;
+
+            p.Set(value ? 1 : 0);
+            return true;
+        }
+
+        private static List<FamilySymbol> GetAllSymbolsOfFamily(Document doc, Family family)
+        {
+            List<FamilySymbol> result = new List<FamilySymbol>();
+            if (doc == null || family == null)
+                return result;
+
+            ISet<ElementId> ids = family.GetFamilySymbolIds();
+            if (ids == null || ids.Count == 0)
+                return result;
+
+            foreach (ElementId id in ids)
+            {
+                FamilySymbol symbol = doc.GetElement(id) as FamilySymbol;
+                if (symbol != null)
+                    result.Add(symbol);
+            }
+
+            return result;
+        }
+
+        private DoorTypeMirrorEnsureResult EnsureDoorMirrorTypeExists(Document doc, FamilySymbol sourceSymbol)
+        {
+            DoorTypeMirrorEnsureResult result = new DoorTypeMirrorEnsureResult();
+
+            if (doc == null || sourceSymbol == null || sourceSymbol.Family == null)
+                return result;
+
+            string sourceTypeName = sourceSymbol.Name ?? "";
+            DoorOpeningMarker marker = GetDoorOpeningMarkerFromTypeName(sourceTypeName);
+
+            if (marker == DoorOpeningMarker.None)
+            {
+                result.HasMessage = true;
+                result.Message =
+                    "Тип двери '" + BuildDoorTypeDisplayName(sourceSymbol) +
+                    "' не содержит маркер Л / П / Пр в имени. Дублирование не выполнялось.";
+                return result;
+            }
+
+            string leftName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.Left);
+            string rightName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.Right);
+
+            Family family = sourceSymbol.Family;
+            List<FamilySymbol> familySymbols = GetAllSymbolsOfFamily(doc, family);
+
+            FamilySymbol existingLeft = familySymbols.FirstOrDefault(x =>
+                string.Equals(x.Name, leftName, StringComparison.OrdinalIgnoreCase));
+
+            FamilySymbol existingRight = familySymbols.FirstOrDefault(x =>
+                string.Equals(x.Name, rightName, StringComparison.OrdinalIgnoreCase));
+
+            if (existingRight == null)
+            {
+                string rightAltName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.RightAlt);
+                existingRight = familySymbols.FirstOrDefault(x =>
+                    string.Equals(x.Name, rightAltName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            bool needCreateLeft = existingLeft == null && (marker == DoorOpeningMarker.Right || marker == DoorOpeningMarker.RightAlt);
+            bool needCreateRight = existingRight == null && marker == DoorOpeningMarker.Left;
+
+            if (!needCreateLeft && !needCreateRight)
+                return result;
+
+            using (Transaction t = new Transaction(doc, "KPLN. Создание парного типа двери"))
+            {
+                t.Start();
+
+                if (needCreateLeft)
+                {
+                    string newTypeName = leftName;
+                    ElementType duplicated = sourceSymbol.Duplicate(newTypeName) as ElementType;
+                    FamilySymbol newSymbol = duplicated as FamilySymbol;
+
+                    if (newSymbol == null)
+                        throw new Exception("Не удалось создать типоразмер '" + newTypeName + "'.");
+
+                    Parameter p = FindDoorLeftOpeningParameter(newSymbol);
+                    if (p == null)
+                        throw new Exception("У нового типа '" + newTypeName + "' не найден параметр 'КП_О_Левое открывание'.");
+
+                    if (!SetYesNoParameter(p, true))
+                        throw new Exception("Не удалось включить параметр 'КП_О_Левое открывание' у типа '" + newTypeName + "'.");
+
+                    result.HasMessage = true;
+                    result.Message =
+                        "Для типа '" + sourceTypeName + "' отсутствовал парный левый тип. " +
+                        "Создан новый тип: '" + newTypeName + "'.";
+                }
+                else if (needCreateRight)
+                {
+                    string newTypeName = rightName;
+                    ElementType duplicated = sourceSymbol.Duplicate(newTypeName) as ElementType;
+                    FamilySymbol newSymbol = duplicated as FamilySymbol;
+
+                    if (newSymbol == null)
+                        throw new Exception("Не удалось создать типоразмер '" + newTypeName + "'.");
+
+                    Parameter p = FindDoorLeftOpeningParameter(newSymbol);
+                    if (p == null)
+                        throw new Exception("У нового типа '" + newTypeName + "' не найден параметр 'КП_О_Левое открывание'.");
+
+                    if (!SetYesNoParameter(p, false))
+                        throw new Exception("Не удалось выключить параметр 'КП_О_Левое открывание' у типа '" + newTypeName + "'.");
+
+                    result.HasMessage = true;
+                    result.Message =
+                        "Для типа '" + sourceTypeName + "' отсутствовал парный правый тип. " +
+                        "Создан новый тип: '" + newTypeName + "'.";
+                }
+
+                t.Commit();
+            }
+
+            return result;
+        }
+
+
+
+
+
+
+
+
+
+
+
+        private static List<FamilyInstance> FindDoorSubComponentsRecursive(Document doc, FamilyInstance rootInstance)
+        {
+            List<FamilyInstance> result = new List<FamilyInstance>();
+            if (doc == null || rootInstance == null)
+                return result;
+
+            CollectDoorSubComponentsRecursive(doc, rootInstance, result);
+            return result;
+        }
+
+        private static void CollectDoorSubComponentsRecursive(Document doc, FamilyInstance current, List<FamilyInstance> result)
+        {
+            if (doc == null || current == null)
+                return;
+
+            ICollection<ElementId> subIds = current.GetSubComponentIds();
+            if (subIds == null || subIds.Count == 0)
+                return;
+
+            foreach (ElementId subId in subIds)
+            {
+                FamilyInstance subFi = doc.GetElement(subId) as FamilyInstance;
+                if (subFi == null)
+                    continue;
+
+                string familyName = "";
+                string typeName = "";
+                string categoryName = "";
+
+                if (subFi.Symbol != null)
+                {
+                    typeName = subFi.Symbol.Name ?? "";
+                    if (subFi.Symbol.Family != null)
+                        familyName = subFi.Symbol.Family.Name ?? "";
+                }
+
+                if (subFi.Category != null)
+                    categoryName = subFi.Category.Name ?? "";
+
+                bool isGenericModel =
+                    string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(categoryName, "Обобщённые модели", StringComparison.OrdinalIgnoreCase);
+
+                bool isDoorFamily =
+                    string.Equals(familyName, "Дверь", StringComparison.OrdinalIgnoreCase);
+
+                if (isGenericModel && isDoorFamily)
+                    result.Add(subFi);
+
+                CollectDoorSubComponentsRecursive(doc, subFi, result);
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         private PreparedApartmentRooms PrepareRoomsForApartment(Document doc, FamilyInstance apartmentFi, List<string> debugMessages)
         {
