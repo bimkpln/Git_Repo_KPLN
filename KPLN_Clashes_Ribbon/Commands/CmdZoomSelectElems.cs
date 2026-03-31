@@ -28,8 +28,8 @@ namespace KPLN_Clashes_Ribbon.Commands
 
         public Result Execute(UIApplication app)
         {
-            UIDocument uiDoc = app.ActiveUIDocument;
-            if (uiDoc == null)
+            UIDocument uidoc = app.ActiveUIDocument;
+            if (uidoc == null)
                 return Result.Cancelled;
             
             Document doc = app.ActiveUIDocument.Document;
@@ -56,7 +56,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                             if (app.ActiveUIDocument.ActiveView is View3D activeView)
                                 ZoomTools.ZoomElement(elem.get_BoundingBox(null), app.ActiveUIDocument, activeView);
 
-                            app.ActiveUIDocument.Selection.SetElementIds(new List<ElementId> { elem.Id });
+                            SelectInDocTools.SelectElemsInDoc(uidoc, new List<ElementId> { elem.Id });
                         }
                         else
                             TaskDialog.Show("Внимание!", 
@@ -68,11 +68,11 @@ namespace KPLN_Clashes_Ribbon.Commands
                 // Клик по коллекции ID - выделение в модели (без проверки на наличие)
                 else
 #if Debug2020 || Revit2020 || Debug2023 || Revit2023
-                    app.ActiveUIDocument.Selection.SetElementIds(_ids.Select(id => new ElementId(Convert.ToInt32(id))).ToArray());
+                    SelectInDocTools.SelectElemsInDoc(uidoc, _ids.Select(id => new ElementId(Convert.ToInt32(id))).ToList());
 #else
-                    app.ActiveUIDocument.Selection.SetElementIds(_ids.Select(id => new ElementId(Convert.ToInt64(id))).ToArray());
+                    SelectInDocTools.SelectElemsInDoc(uidoc, _ids.Select(id => new ElementId(Convert.ToInt64(id))).ToList());
 #endif
-                
+
                 return Result.Succeeded;
                 
             }

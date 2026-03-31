@@ -40,7 +40,7 @@ namespace KPLN_Clashes_Ribbon
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(Commands.CommandShowManager).FullName,
+                typeof(Commands.CmdShowManager).FullName,
                 panel,
                 "icon",
                 "http://moodle/mod/book/view.php?id=502&chapterid=672",

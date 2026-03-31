@@ -1,7 +1,9 @@
-﻿using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Commands;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Clashes_Ribbon.ExternalEventHandler;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_SQLiteWorker;
@@ -36,21 +38,33 @@ namespace KPLN_Clashes_Ribbon.Forms
         private readonly Services.SQLite.SQLiteService_ReportItemsDB _sqliteService_ReportInstanceDB;
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
 
+        private readonly ViewActivatedHandler _viewHandler;
+
         private string _conflictDataTBx = string.Empty;
         private string _idDataTBx = string.Empty;
         private string _conflictMetaDataTBx = string.Empty;
 
-        public ReportForm(ReportManagerForm reportManagerForm, Report report, ReportGroup reportGroup)
+        public ReportForm(ReportManagerForm reportManagerForm, Report report, ReportGroup reportGroup, ViewActivatedHandler viewHandler)
         {
             _reportManagerForm = reportManagerForm;
             _repourtGroup = reportGroup;
             _currentReport = report;
+            _viewHandler = viewHandler;
+
 
             _sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(_currentReport.PathToReportInstance);
 
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
             FilteredInstancesColl = CollectionViewSource.GetDefaultView(ReportInstancesColl);
             FilteredInstancesColl.Filter += FilterForRepItems;
+            
+            
+            _viewHandler.PropertyChanged += (s, e) => FilteredInstancesColl?.Refresh();
+            
+
+            UIApplication uiapp = _viewHandler.CurrnetUIApplication;
+            Document doc = uiapp?.ActiveUIDocument?.Document;
+
 
             if (_repourtGroup.IsEnabled)
             {
@@ -71,11 +85,14 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             InitializeComponent();
 
+
             this.Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
             this.Owner = reportManagerForm;
+            this.OnlyForFileItemsRB.IsChecked = true;
             this.DataContext = this;
 
-            OnClosingActions.Add(new CommandRemoveInstance());
+
+            OnClosingActions.Add(new CmdRemoveFamInst());
             Closing += RemoveOnClose;
         }
 
@@ -93,14 +110,24 @@ namespace KPLN_Clashes_Ribbon.Forms
                     docCheck = true;
                 else
                 {
-                    CommandShowManager.ExtEvent.Raise();
-                    UIApplication uiapp = CommandShowManager.ActiveDocHandler.ResultUIApplication;
+                    UIApplication uiapp = _viewHandler.CurrnetUIApplication;
                     if (uiapp == null || uiapp.ActiveUIDocument == null)
                         docCheck = false;
                     else
                     {
-                        string docTitle = uiapp.ActiveUIDocument.Document.Title;
-                        docCheck = docTitle.Contains(item.Element_1_DocName) || docTitle.Contains(item.Element_2_DocName);
+                        string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(uiapp.ActiveUIDocument.Document);
+                        string docTitle = fileFullName.Split('/').LastOrDefault().Split(new[] {".rvt"}, StringSplitOptions.None).FirstOrDefault();
+                        if (string.IsNullOrEmpty(docTitle))
+                            return true;
+                        
+                        foreach(ReportItem subItem in item.SubElements)
+                        {
+                            if (docTitle.Contains(subItem.Element_1_DocName) || docTitle.Contains(subItem.Element_2_DocName))
+                            {
+                                docCheck = true;
+                                break;
+                            }
+                        }
                     }
                 }
 
@@ -269,7 +296,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void PlacePoint(object sender, RoutedEventArgs args)
         {
             if ((sender as System.Windows.Controls.Button).DataContext is ReportItem report)
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandPlaceFamily(report));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CmdPlaceFamInst(report));
         }
 
         private void StatusFilterCBX_SelectionChanged(object sender, SelectionChangedEventArgs e) => FilteredInstancesColl?.Refresh();

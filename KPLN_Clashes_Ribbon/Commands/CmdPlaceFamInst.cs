@@ -43,13 +43,13 @@ namespace KPLN_Clashes_Ribbon.Commands
         }
     }
 
-    public class CommandPlaceFamily : IExecutableCommand
+    public class CmdPlaceFamInst : IExecutableCommand
     {
         public static readonly string FamilyName = "ClashPoint";
 
         private readonly ReportItem _report;
 
-        public CommandPlaceFamily(ReportItem report)
+        public CmdPlaceFamInst(ReportItem report)
         {
             _report = report;
         }
@@ -89,6 +89,7 @@ namespace KPLN_Clashes_Ribbon.Commands
 
                     // Создание новых
                     FamilyInstance[] resultInst;
+                    // Если субэлементы (группа) - захожу в них
                     if (_report.SubElements.Any())
                     {
                         resultInst = GetClashPoints(uidoc, _report.SubElements.ToArray());
@@ -99,16 +100,17 @@ namespace KPLN_Clashes_Ribbon.Commands
                         ElementId[] firstElemsId = _report.SubElements.Select(subRI => new ElementId(subRI.Element_1_Id)).ToArray();
                         ElementId[] secondElemsId = _report.SubElements.Select(subRI => new ElementId(subRI.Element_2_Id)).ToArray();
                         List<ElementId> elemsId = firstElemsId.Concat(secondElemsId).ToList();
-                        uidoc.Selection.SetElementIds(elemsId);
+
+                        SelectInDocTools.SelectElemsInDoc(uidoc, elemsId);
                     }
+                    // Если "одиночки"
                     else
                     {
                         resultInst = GetClashPoints(uidoc, new ReportItem[1] { _report });
                         if (resultInst == null)
                             return Result.Cancelled;
 
-                        // Выделяю элементы пересечения в модели
-                        uidoc.Selection.SetElementIds(new List<ElementId>
+                        SelectInDocTools.SelectElemsInDoc(uidoc, new List<ElementId>
                         {
                             new ElementId(_report.Element_1_Id),
                             new ElementId(_report.Element_2_Id)

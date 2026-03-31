@@ -102,7 +102,6 @@
                 <RadioButton
                     x:Name="AllItemsRB"
                     GroupName="FileNameFilterGroup"
-                    IsChecked="True"
                     Content="Все замечания"
                     Margin="5"
                     FontWeight="Bold"

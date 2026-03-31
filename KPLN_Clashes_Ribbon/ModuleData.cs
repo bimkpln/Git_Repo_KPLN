@@ -1,4 +1,5 @@
-﻿using KPLN_Loader.Common;
+﻿using Autodesk.Revit.UI;
+using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -22,7 +23,7 @@ namespace KPLN_Clashes_Ribbon
         /// <summary>
         /// Версия Revit, в которой запускается плагин
         /// </summary>
-        public static int RevitVersion {  get; set; }
+        public static int RevitVersion { get; set; }
 
         /// <summary>
         /// Имя модуля
