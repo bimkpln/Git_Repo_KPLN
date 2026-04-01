@@ -89,7 +89,6 @@
 
         <Style x:Key="BottomActionButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="36"/>
-            <Setter Property="MinWidth" Value="170"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -183,15 +182,16 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Button Grid.Column="0" Style="{StaticResource BottomActionButtonStyle}" Content="Обновить БД" Margin="0" Visibility="{Binding IsDep8, Converter={StaticResource BoolToVis}}"
+            <Button Grid.Column="0" Style="{StaticResource BottomActionButtonStyle}" Width="130" Content="Обновить БД" Margin="0" Visibility="{Binding IsDep8, Converter={StaticResource BoolToVis}}"
                     Command="{Binding UpdateDbCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,30,0">
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,70,0">
                     <TextBlock Text="Действие для 2D-семейств после обработки:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
                     <ComboBox Width="350" Height="28" Padding="8 5 2 2" ItemsSource="{Binding FamilyPostProcessActions}" SelectedItem="{Binding SelectedFamilyPostProcessAction}" DisplayMemberPath="Title"/>
                 </StackPanel>
 
+                <Button Style="{StaticResource BottomActionButtonStyle}" Margin="0 15 10 0" Content="Обновить марки" Command="{Binding UpdateApartmentMarksCommand}"/>
                 <Button Style="{StaticResource BottomActionButtonStyle}" Margin="0 15 10 0" Content="Преднастройки квартир" Command="{Binding OpenApartmentPresetsCommand}"/>
                 <Button Style="{StaticResource BottomActionButtonStyle}" Margin="0 15 0 0" Content="Превратить в 3D" Command="{Binding ConvertTo3DCommand}"/>
             </StackPanel>

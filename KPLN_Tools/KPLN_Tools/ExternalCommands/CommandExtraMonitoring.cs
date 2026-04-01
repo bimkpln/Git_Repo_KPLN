@@ -278,10 +278,7 @@ namespace KPLN_Tools.ExternalCommands
 
         /// <summary>
         /// Подготовить коллекцию спец. элементов
-        /// Когда-нибудь - добавят в Revit API возможность забрать элемент из связи, а пока - работаем с геометрией.
-        /// https://forums.autodesk.com/t5/revit-ideas/copy-monitor-api/idi-p/6322737
         /// </summary>
-        [Obsolete]
         private void PreapareMonitorEntityColl(Outline outlineForFilter)
         {
             if (!_monitorLinkEntiteDict.ContainsKey(_currentLink.Id))
@@ -313,11 +310,7 @@ namespace KPLN_Tools.ExternalCommands
 
         /// <summary>
         /// Обновить коллекцию спец. элементов по пересечению с элементом из проекта
-        /// Когда-нибудь - добавят в Revit API возможность забрать элемент из связи, а пока - работаем с геометрией.
-        /// https://forums.autodesk.com/t5/revit-ideas/copy-monitor-api/idi-p/6322737
         /// </summary>
-        /// <returns></returns>
-        [Obsolete]
         private void UpdateMonitorEntityColl(Document doc, Element modelElement, HashSet<Parameter> docElemsParams)
         {
             Solid modelElemSolid = MonitorTool.GetSolidFromElem(modelElement);
