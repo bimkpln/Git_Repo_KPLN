@@ -23,13 +23,14 @@ namespace KPLN_Tools.Forms
         void RequestPlaceApartment(int apartmentId);
         void RequestConvertTo3D(ApartmentPresetData presetData);
         void RequestOpenApartmentPresets(ApartmentPresetData presetData);
+        void RequestUpdateApartmentMarks();
     }
 
     public enum ApartmentFamilyPostProcessAction
     {
-        Leave2D,
-        RemoveFromFurtherProcessing,
-        Delete2D
+        Save2DFamiliesFromUnderlay,
+        Keep2DUnderlay,
+        Delete2DUnderlay
     }
 
     public class ApartmentFamilyPostProcessActionOption
@@ -113,7 +114,7 @@ namespace KPLN_Tools.Forms
                     BathroomDoor = "Не выбрано",
                     RoomDoor = "Не выбрано",
                     DoorsByRoomCategory = new Dictionary<string, string>(),
-                    FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Leave2D
+                    FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
                 };
 
             ApartmentManagerVm vm = new ApartmentManagerVm(_nDep, ApartmentPresetData.FamilyPostProcessAction);
@@ -123,6 +124,7 @@ namespace KPLN_Tools.Forms
             vm.ApartmentPresetsRequested += Vm_ApartmentPresetsRequested;
             vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
             vm.FamilyPostProcessActionChanged += Vm_FamilyPostProcessActionChanged;
+            vm.ApartmentMarksUpdateRequested += Vm_ApartmentMarksUpdateRequested;
 
             DataContext = vm;
         }
@@ -176,6 +178,15 @@ namespace KPLN_Tools.Forms
                     : null);
         }
 
+        private void Vm_ApartmentMarksUpdateRequested()
+        {
+            if (_externalController == null)
+                return;
+
+            WindowState = WindowState.Minimized;
+            _externalController.RequestUpdateApartmentMarks();
+        }
+
         private void Vm_RequestClose()
         {
             Close();
@@ -190,6 +201,7 @@ namespace KPLN_Tools.Forms
         public event Action<int> ItemPicked;
         public event Action ApartmentPresetsRequested;
         public event Action ConvertTo3DRequested;
+        public event Action ApartmentMarksUpdateRequested;
         public event Action<ApartmentFamilyPostProcessAction> FamilyPostProcessActionChanged;
         public event Action RequestClose;
 
@@ -238,8 +250,8 @@ namespace KPLN_Tools.Forms
         public ICommand UploadImageCommand { get; private set; }
         public ICommand OpenApartmentPresetsCommand { get; private set; }
         public ICommand ConvertTo3DCommand { get; private set; }
+        public ICommand UpdateApartmentMarksCommand { get; private set; }
         public ICommand CloseCommand { get; private set; }
-
         public ICommand UpdateDbCommand { get; private set; }
 
         public ApartmentManagerVm(int nDep, ApartmentFamilyPostProcessAction initialPostProcessAction)
@@ -251,18 +263,18 @@ namespace KPLN_Tools.Forms
             {
                 new ApartmentFamilyPostProcessActionOption
                 {
-                    Value = ApartmentFamilyPostProcessAction.Leave2D,
-                    Title = "Оставить 2D-семейства"
+                    Value = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay,
+                    Title = "Сохранить 2D-семейства с подложки"
                 },
                 new ApartmentFamilyPostProcessActionOption
                 {
-                    Value = ApartmentFamilyPostProcessAction.RemoveFromFurtherProcessing,
-                    Title = "Убрать 2D-семейства из дальнейших обработок"
+                    Value = ApartmentFamilyPostProcessAction.Keep2DUnderlay,
+                    Title = "Сохранить 2D-подложку"
                 },
                 new ApartmentFamilyPostProcessActionOption
                 {
-                    Value = ApartmentFamilyPostProcessAction.Delete2D,
-                    Title = "Удалить 2D-семейства"
+                    Value = ApartmentFamilyPostProcessAction.Delete2DUnderlay,
+                    Title = "Полностью удалить 2D-подложку"
                 }
             };
 
@@ -271,6 +283,7 @@ namespace KPLN_Tools.Forms
             UploadImageCommand = new RelayCommand<ApartmentItemVm>(OnUploadImage);
             OpenApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
             ConvertTo3DCommand = new RelayCommand(OnConvertTo3D);
+            UpdateApartmentMarksCommand = new RelayCommand(OnUpdateApartmentMarks);
             UpdateDbCommand = new RelayCommand<Window>(OnUpdateDb);
 
             SelectedFamilyPostProcessAction = FamilyPostProcessActions
@@ -281,6 +294,11 @@ namespace KPLN_Tools.Forms
         }
 
         private void OnOpenApartmentPresets() { ApartmentPresetsRequested?.Invoke(); }
+
+        private void OnUpdateApartmentMarks()
+        {
+            ApartmentMarksUpdateRequested?.Invoke();
+        }
 
         private void OnConvertTo3D()
         {

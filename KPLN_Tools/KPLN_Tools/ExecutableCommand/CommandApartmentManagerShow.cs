@@ -118,6 +118,12 @@ namespace KPLN_Tools.ExecutableCommand
             _handler.PrepareOpenApartmentPresets(presetData);
             _externalEvent.Raise();
         }
+
+        public void RequestUpdateApartmentMarks()
+        {
+            _handler.PrepareUpdateApartmentMarks();
+            _externalEvent.Raise();
+        }
     }
 
     internal class ApartmentManagerExternalHandler : IExternalEventHandler
@@ -327,6 +333,8 @@ namespace KPLN_Tools.ExecutableCommand
             public string SelectedDoorTypeName { get; set; }
             public FamilySymbol DoorSymbol { get; set; }
             public XYZ InsertPoint { get; set; }
+            public FamilyInstance RelatedRoom2D { get; set; }
+            public bool RequiresOppositeDoorTypeAfterWallFlip { get; set; }
         }
 
         private class PreparedApartmentDoors
@@ -380,7 +388,8 @@ namespace KPLN_Tools.ExecutableCommand
             None,
             PlaceApartment,
             ConvertTo3D,
-            OpenApartmentPresets
+            OpenApartmentPresets,
+            UpdateApartmentMarks
         }
 
         private RequestType _requestType = RequestType.None;
@@ -418,6 +427,10 @@ namespace KPLN_Tools.ExecutableCommand
 
                     case RequestType.OpenApartmentPresets:
                         ExecuteOpenApartmentPresets(uidoc, doc, _requestedPresetData);
+                        break;
+
+                    case RequestType.UpdateApartmentMarks:
+                        ExecuteUpdateApartmentMarks(doc);
                         break;
                 }
             }
@@ -457,6 +470,13 @@ namespace KPLN_Tools.ExecutableCommand
             _requestType = RequestType.OpenApartmentPresets;
             _requestedApartmentId = 0;
             _requestedPresetData = presetData != null ? presetData.Clone() : null;
+        }
+
+        public void PrepareUpdateApartmentMarks()
+        {
+            _requestType = RequestType.UpdateApartmentMarks;
+            _requestedApartmentId = 0;
+            _requestedPresetData = null;
         }
 
         private static SQLiteConnection OpenConnection(string dbPath, bool readOnly)
@@ -631,6 +651,151 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return null;
+        }
+
+        private static List<FamilyInstance> GetPlacedApartmentInstancesInDocument(Document doc)
+        {
+            List<FamilyInstance> result = new List<FamilyInstance>();
+
+            if (doc == null)
+                return result;
+
+            IEnumerable<FamilyInstance> instances = new FilteredElementCollector(doc)
+                .OfClass(typeof(FamilyInstance))
+                .Cast<FamilyInstance>();
+
+            foreach (FamilyInstance fi in instances)
+            {
+                if (fi == null)
+                    continue;
+
+                Parameter pComment = fi.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+                if (pComment == null)
+                    continue;
+
+                string comment = pComment.AsString();
+                if (string.IsNullOrWhiteSpace(comment))
+                    continue;
+
+                if (!comment.Contains(ApartmentInstanceMarker))
+                    continue;
+
+                result.Add(fi);
+            }
+
+            return result;
+        }
+
+        private static bool SetApartmentAreaParameterValue(FamilyInstance apartmentFi, string parameterName, double areaInternal, List<string> errors)
+        {
+            if (apartmentFi == null || string.IsNullOrWhiteSpace(parameterName))
+                return false;
+
+            Parameter p = apartmentFi.LookupParameter(parameterName);
+            if (p == null)
+            {
+                if (errors != null)
+                    errors.Add("У квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не найден параметр '" + parameterName + "'.");
+                return false;
+            }
+
+            if (p.IsReadOnly)
+            {
+                if (errors != null)
+                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " доступен только для чтения.");
+                return false;
+            }
+
+            if (p.StorageType != StorageType.Double)
+            {
+                if (errors != null)
+                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " имеет нечисловой тип.");
+                return false;
+            }
+
+            p.Set(areaInternal);
+            return true;
+        }
+
+        private void ExecuteUpdateApartmentMarks(Document doc)
+        {
+            List<FamilyInstance> apartments = GetPlacedApartmentInstancesInDocument(doc);
+
+            if (apartments.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "В проекте не найдено квартир, установленных данным плагином.");
+                return;
+            }
+
+            int updatedCount = 0;
+            int skippedCount = 0;
+            List<string> errors = new List<string>();
+
+            using (Transaction t = new Transaction(doc, "KPLN. Обновить марки квартир"))
+            {
+                t.Start();
+
+                foreach (FamilyInstance apartmentFi in apartments)
+                {
+                    if (apartmentFi == null)
+                        continue;
+
+                    try
+                    {
+                        List<FamilyInstance> roomInstances = FindRoomSubComponents(doc, apartmentFi);
+
+                        double livingAreaInternal = 0.0;
+                        double totalAreaInternal = 0.0;
+
+                        foreach (FamilyInstance roomFi in roomInstances)
+                        {
+                            if (roomFi == null)
+                                continue;
+
+                            double roomAreaInternal;
+                            if (!TryGetAreaParamFromElementOrType(roomFi, out roomAreaInternal, "КП_Р_Площадь", "КП_Р_ПЛОЩАДЬ"))
+                                continue;
+
+                            totalAreaInternal += roomAreaInternal;
+
+                            string roomCategory = GetRoomCategoryLabel(roomFi);
+                            if (string.Equals((roomCategory ?? "").Trim(), "Комната", StringComparison.OrdinalIgnoreCase))
+                                livingAreaInternal += roomAreaInternal;
+                        }
+
+                        bool livingOk = SetApartmentAreaParameterValue(apartmentFi, "КВ_Площадь_Жилая", livingAreaInternal, errors);
+                        bool totalOk = SetApartmentAreaParameterValue(apartmentFi, "КВ_Площадь_Общая", totalAreaInternal, errors);
+
+                        if (livingOk && totalOk)
+                            updatedCount++;
+                        else
+                            skippedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        skippedCount++;
+                        errors.Add("Ошибка у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + ": " + ex.Message);
+                    }
+                }
+
+                t.Commit();
+            }
+
+            string message =
+                "Обработано квартир: " + apartments.Count +
+                "\nОбновлено: " + updatedCount +
+                "\nПропущено: " + skippedCount;
+
+            if (errors.Count > 0)
+            {
+                List<string> shortErrors = errors.Take(15).ToList();
+                message += "\n\nОшибки:\n- " + string.Join("\n- ", shortErrors);
+
+                if (errors.Count > shortErrors.Count)
+                    message += "\n- ...";
+            }
+
+            TaskDialog.Show("KPLN. Менеджер квартир", message);
         }
 
         private void ExecuteOpenApartmentPresets(UIDocument uidoc, Document doc, ApartmentPresetData currentPreset)
@@ -1726,6 +1891,9 @@ namespace KPLN_Tools.ExecutableCommand
             p.Set(newValue);
         }
 
+
+
+
         private bool ValidatePresetBeforeConvertTo3D(Document doc, ApartmentPresetData preset, out string validationMessage)
         {
             validationMessage = "";
@@ -1742,7 +1910,7 @@ namespace KPLN_Tools.ExecutableCommand
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
                 DoorsByRoomCategory = new Dictionary<string, string>(),
-                FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Leave2D
+                FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
             };
 
             List<string> notFilled = new List<string>();
@@ -1847,6 +2015,11 @@ namespace KPLN_Tools.ExecutableCommand
             return true;
         }
 
+
+
+
+
+
         private void ExecuteConvertTo3D(Document doc, ApartmentPresetData preset)
         {
             ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
@@ -1861,7 +2034,7 @@ namespace KPLN_Tools.ExecutableCommand
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
                 DoorsByRoomCategory = new Dictionary<string, string>(),
-                FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Leave2D
+                FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
             };
 
             ViewPlan targetPlan = FindTargetFloorPlan(doc, effectivePreset.SelectedPlanName);
@@ -2049,15 +2222,32 @@ namespace KPLN_Tools.ExecutableCommand
                             createdWallsForApartment.Add(wall);
                         }
 
+
+
+
                         if (createdWallsForApartment.Count > 0)
                             state.HasCreatedWalls = true;
+
+                        doc.Regenerate();
 
                         PreparedApartmentDoors apartmentDoors = preparedDoorsByApartment
                             .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
 
                         if (apartmentDoors != null && apartmentDoors.Doors != null && apartmentDoors.Doors.Count > 0)
                         {
-                            int installedDoorsForApartment = PlaceDoorsForApartment(doc, apartmentDoors, createdWallsForApartment, baseLevel);
+                            CorrectWallDirectionsForApartmentBy2DDoors(
+                                doc,
+                                apartmentDoors,
+                                createdWallsForApartment);
+
+                            doc.Regenerate();
+
+                            int installedDoorsForApartment = PlaceDoorsForApartment(
+                                doc,
+                                apartmentDoors,
+                                createdWallsForApartment,
+                                baseLevel);
+
                             installedDoorsCount += installedDoorsForApartment;
 
                             if (installedDoorsForApartment > 0)
@@ -2069,6 +2259,11 @@ namespace KPLN_Tools.ExecutableCommand
                         }
 
                         doc.Regenerate();
+
+
+
+
+
 
                         PreparedApartmentRooms apartmentRooms = preparedRoomsByApartment
                             .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
@@ -2110,17 +2305,22 @@ namespace KPLN_Tools.ExecutableCommand
                 installedDoorsCount, totalDoorsPlanned, reportItems);
         }
 
+
+
+
+
         private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages)
         {
             if (doc == null || apartmentInstances == null || apartmentInstances.Count == 0)
                 return;
 
-            if (action == ApartmentFamilyPostProcessAction.Leave2D)
+            if (action == ApartmentFamilyPostProcessAction.Keep2DUnderlay)
                 return;
 
-            string transactionName = action == ApartmentFamilyPostProcessAction.RemoveFromFurtherProcessing
-                ? "KPLN. Снятие метки 2D-квартир"
-                : "KPLN. Удаление 2D-квартир";
+            string transactionName =
+                action == ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
+                    ? "KPLN. Сохранение 2D-семейств с подложки"
+                    : "KPLN. Полное удаление 2D-подложки";
 
             using (Transaction t = new Transaction(doc, transactionName))
             {
@@ -2135,23 +2335,23 @@ namespace KPLN_Tools.ExecutableCommand
                     if (apartmentId == ElementId.InvalidElementId)
                         continue;
 
-                    if (action == ApartmentFamilyPostProcessAction.RemoveFromFurtherProcessing)
+                    if (action == ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay)
                     {
-                        Element apartmentElement = doc.GetElement(apartmentId);
-                        if (apartmentElement == null)
-                            continue;
-
                         try
                         {
-                            RemoveApartmentInstanceMarker(apartmentElement);
+                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, debugMessages);
                         }
                         catch (Exception ex)
                         {
                             if (debugMessages != null)
-                                debugMessages.Add("Не удалось убрать маркер у 2D-квартиры ID = " + GetElementIdValue(apartmentId) + ": " + ex.Message);
+                                debugMessages.Add(
+                                    "Не удалось сохранить 2D-семейства из подложки квартиры ID = " +
+                                    GetElementIdValue(apartmentId) + ": " + ex.Message);
                         }
+
+                        TryDeleteSource2DApartmentInstance(doc, apartmentId, debugMessages);
                     }
-                    else if (action == ApartmentFamilyPostProcessAction.Delete2D)
+                    else if (action == ApartmentFamilyPostProcessAction.Delete2DUnderlay)
                     {
                         TryDeleteSource2DApartmentInstance(doc, apartmentId, debugMessages);
                     }
@@ -2160,6 +2360,10 @@ namespace KPLN_Tools.ExecutableCommand
                 t.Commit();
             }
         }
+
+
+
+
 
         private void ShowExecutionReportWindow(string planName, int processedApartments, int totalApartments, int createdRoomsCount,
             int totalRoomsPlanned, int installedDoorsCount, int totalDoorsPlanned, List<ApartmentExecutionReportItem> reportItems)
@@ -2400,6 +2604,223 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+
+
+
+
+
+
+
+
+
+
+
+        private static bool IsFurnitureOrPlumbingCategory(Category category)
+        {
+            if (category == null)
+                return false;
+
+            BuiltInCategory bic;
+            try
+            {
+                bic = (BuiltInCategory)category.Id.IntegerValue;
+            }
+            catch
+            {
+                return false;
+            }
+
+            return bic == BuiltInCategory.OST_Furniture ||
+                   bic == BuiltInCategory.OST_PlumbingFixtures;
+        }
+
+        private static List<FamilyInstance> FindFurnitureAndPlumbingSubComponentsRecursive(Document doc, FamilyInstance rootInstance)
+        {
+            List<FamilyInstance> result = new List<FamilyInstance>();
+            if (doc == null || rootInstance == null)
+                return result;
+
+            CollectFurnitureAndPlumbingSubComponentsRecursive(doc, rootInstance, result);
+            return result;
+        }
+
+        private static void CollectFurnitureAndPlumbingSubComponentsRecursive(Document doc, FamilyInstance current, List<FamilyInstance> result)
+        {
+            if (doc == null || current == null)
+                return;
+
+            ICollection<ElementId> subIds = current.GetSubComponentIds();
+            if (subIds == null || subIds.Count == 0)
+                return;
+
+            foreach (ElementId subId in subIds)
+            {
+                FamilyInstance subFi = doc.GetElement(subId) as FamilyInstance;
+                if (subFi == null)
+                    continue;
+
+                if (IsFurnitureOrPlumbingCategory(subFi.Category))
+                    result.Add(subFi);
+
+                CollectFurnitureAndPlumbingSubComponentsRecursive(doc, subFi, result);
+            }
+        }
+
+        private static Level ResolvePlacementLevelForNestedInstance(Document doc, FamilyInstance nestedFi, FamilyInstance apartmentFi)
+        {
+            if (doc == null)
+                return null;
+
+            ElementId nestedLevelId = GetInstanceLevelId(nestedFi);
+            if (nestedLevelId != ElementId.InvalidElementId)
+            {
+                Level nestedLevel = doc.GetElement(nestedLevelId) as Level;
+                if (nestedLevel != null)
+                    return nestedLevel;
+            }
+
+            ElementId apartmentLevelId = GetInstanceLevelId(apartmentFi);
+            if (apartmentLevelId != ElementId.InvalidElementId)
+            {
+                Level apartmentLevel = doc.GetElement(apartmentLevelId) as Level;
+                if (apartmentLevel != null)
+                    return apartmentLevel;
+            }
+
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(Level))
+                .Cast<Level>()
+                .OrderBy(x => x.Elevation)
+                .FirstOrDefault();
+        }
+
+        private static double GetRotationAngleOnXY(FamilyInstance fi)
+        {
+            if (fi == null)
+                return 0.0;
+
+            Transform tr = fi.GetTransform();
+            if (tr == null)
+                return 0.0;
+
+            XYZ basisX = tr.BasisX;
+            if (basisX == null)
+                return 0.0;
+
+            return Math.Atan2(basisX.Y, basisX.X);
+        }
+
+        private void CopyFurnitureAndPlumbingFromApartmentUnderlay(Document doc, FamilyInstance apartmentFi, List<string> debugMessages)
+        {
+            if (doc == null || apartmentFi == null)
+                return;
+
+            List<FamilyInstance> nestedItems = FindFurnitureAndPlumbingSubComponentsRecursive(doc, apartmentFi);
+            if (nestedItems == null || nestedItems.Count == 0)
+                return;
+
+            foreach (FamilyInstance nestedFi in nestedItems)
+            {
+                if (nestedFi == null)
+                    continue;
+
+                try
+                {
+                    FamilySymbol symbol = nestedFi.Symbol;
+                    if (symbol == null)
+                    {
+                        if (debugMessages != null)
+                            debugMessages.Add("У вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + " не найден тип.");
+                        continue;
+                    }
+
+                    if (!symbol.IsActive)
+                    {
+                        symbol.Activate();
+                        doc.Regenerate();
+                    }
+
+                    Transform tr = nestedFi.GetTransform();
+                    if (tr == null)
+                    {
+                        if (debugMessages != null)
+                            debugMessages.Add("У вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + " не найден Transform.");
+                        continue;
+                    }
+
+                    XYZ insertPoint = tr.Origin;
+                    if (insertPoint == null)
+                        continue;
+
+                    Level level = ResolvePlacementLevelForNestedInstance(doc, nestedFi, apartmentFi);
+                    if (level == null)
+                    {
+                        if (debugMessages != null)
+                            debugMessages.Add("Не найден уровень для вложенного элемента ID = " + GetElementIdValue(nestedFi.Id));
+                        continue;
+                    }
+
+                    FamilyPlacementType placementType = symbol.Family.FamilyPlacementType;
+                    FamilyInstance created = null;
+
+                    switch (placementType)
+                    {
+                        case FamilyPlacementType.ViewBased:
+                            break;
+
+                        case FamilyPlacementType.OneLevelBased:
+                        case FamilyPlacementType.OneLevelBasedHosted:
+                        case FamilyPlacementType.WorkPlaneBased:
+                            created = doc.Create.NewFamilyInstance(
+                                insertPoint,
+                                symbol,
+                                level,
+                                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                            break;
+
+                        default:
+                            created = doc.Create.NewFamilyInstance(
+                                insertPoint,
+                                symbol,
+                                level,
+                                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                            break;
+                    }
+
+                    if (created == null)
+                    {
+                        if (debugMessages != null)
+                            debugMessages.Add("Не удалось создать экземпляр для вложенного элемента ID = " + GetElementIdValue(nestedFi.Id));
+                        continue;
+                    }
+
+                    double angle = GetRotationAngleOnXY(nestedFi);
+                    if (Math.Abs(angle) > 1e-9)
+                    {
+                        Line axis = Line.CreateBound(insertPoint, insertPoint + XYZ.BasisZ);
+                        ElementTransformUtils.RotateElement(doc, created.Id, axis, angle);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (debugMessages != null)
+                        debugMessages.Add("Ошибка копирования вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + ": " + ex.Message);
+                }
+            }
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
         private static void DeleteIsolatedCreatedWalls(Document doc, List<Wall> createdWallsForApartment)
         {
             if (doc == null || createdWallsForApartment == null || createdWallsForApartment.Count == 0)
@@ -2480,6 +2901,174 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+
+        private static XYZ GetRoomCenterPoint(FamilyInstance roomFi)
+        {
+            if (roomFi == null)
+                return null;
+
+            Transform tr = roomFi.GetTransform();
+            if (tr == null)
+                return null;
+
+            return tr.Origin;
+        }
+
+        private static FamilyInstance FindBestMatchingRoomForDoor(
+            FamilyInstance apartmentFi,
+            string roomCategory,
+            XYZ doorPoint,
+            Document doc)
+        {
+            List<FamilyInstance> rooms = FindRoomSubComponents(doc, apartmentFi);
+            if (rooms == null || rooms.Count == 0)
+                return null;
+
+            IEnumerable<FamilyInstance> filteredRooms = rooms;
+
+            if (!string.IsNullOrWhiteSpace(roomCategory) && roomCategory != "-")
+            {
+                List<FamilyInstance> exactRooms = rooms
+                    .Where(x => string.Equals(
+                        GetRoomCategoryLabel(x),
+                        roomCategory,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                if (exactRooms.Count > 0)
+                    filteredRooms = exactRooms;
+            }
+
+            FamilyInstance bestRoom = null;
+            double bestDistance = double.MaxValue;
+
+            foreach (FamilyInstance roomFi in filteredRooms)
+            {
+                XYZ center = GetRoomCenterPoint(roomFi);
+                if (center == null)
+                    continue;
+
+                double dist = Distance2D(center, doorPoint);
+                if (dist < bestDistance)
+                {
+                    bestDistance = dist;
+                    bestRoom = roomFi;
+                }
+            }
+
+            return bestRoom;
+        }
+
+        private static Line GetWallAxisLine(Wall wall)
+        {
+            if (wall == null)
+                return null;
+
+            LocationCurve lc = wall.Location as LocationCurve;
+            if (lc == null)
+                return null;
+
+            return lc.Curve as Line;
+        }
+
+        private static XYZ GetClosestPointOnRoomRectangle(FamilyInstance roomFi, XYZ worldPoint)
+        {
+            if (roomFi == null || worldPoint == null)
+                return null;
+
+            Transform tr = roomFi.GetTransform();
+            if (tr == null)
+                return null;
+
+            Transform inv = tr.Inverse;
+            if (inv == null)
+                return null;
+
+            double width = GetRequiredLengthParam(roomFi, "Ширина", "Width");
+            double depth = GetRequiredLengthParam(roomFi, "Глубина", "Depth");
+
+            double halfW = width / 2.0;
+            double halfD = depth / 2.0;
+
+            XYZ localPoint = inv.OfPoint(worldPoint);
+
+            double clampedX = Math.Max(-halfW, Math.Min(halfW, localPoint.X));
+            double clampedY = Math.Max(-halfD, Math.Min(halfD, localPoint.Y));
+
+            XYZ localClosest = new XYZ(clampedX, clampedY, 0);
+            return tr.OfPoint(localClosest);
+        }
+
+        private void CorrectWallDirectionsForApartmentBy2DDoors(
+            Document doc,
+            PreparedApartmentDoors apartmentDoors,
+            List<Wall> createdWallsForApartment)
+        {
+            if (doc == null || apartmentDoors == null || apartmentDoors.Doors == null || createdWallsForApartment == null)
+                return;
+
+            double maxDistanceToWallAxis = ConvertMmToInternal(500);
+
+            foreach (PreparedDoorPlacement preparedDoor in apartmentDoors.Doors)
+            {
+                preparedDoor.RequiresOppositeDoorTypeAfterWallFlip = false;
+
+                if (preparedDoor == null || preparedDoor.InsertPoint == null || preparedDoor.RelatedRoom2D == null)
+                    continue;
+
+                Wall hostWall;
+                XYZ projectedPoint;
+                double distanceToWallAxis;
+
+                bool foundHost = TryFindBestHostWallForDoor(
+                    preparedDoor.InsertPoint,
+                    createdWallsForApartment,
+                    maxDistanceToWallAxis,
+                    out hostWall,
+                    out projectedPoint,
+                    out distanceToWallAxis);
+
+                if (!foundHost || hostWall == null || projectedPoint == null)
+                    continue;
+
+                Line wallAxis = GetWallAxisLine(hostWall);
+                if (wallAxis == null)
+                    continue;
+
+                XYZ wallDir = Normalize2D(wallAxis.GetEndPoint(1) - wallAxis.GetEndPoint(0));
+                if (wallDir == null)
+                    continue;
+
+                XYZ wallNormal = new XYZ(-wallDir.Y, wallDir.X, 0);
+
+                XYZ roomPoint = GetClosestPointOnRoomRectangle(preparedDoor.RelatedRoom2D, preparedDoor.InsertPoint);
+                if (roomPoint == null)
+                    continue;
+
+                XYZ toRoom = roomPoint - projectedPoint;
+                double sign = Dot2D(toRoom, wallNormal);
+
+
+                if (sign > 0)
+                {
+                    preparedDoor.RequiresOppositeDoorTypeAfterWallFlip = true;
+
+                    LocationCurve lc = hostWall.Location as LocationCurve;
+                    if (lc == null)
+                        continue;
+
+                    Line reversedAxis = Line.CreateBound(
+                        wallAxis.GetEndPoint(1),
+                        wallAxis.GetEndPoint(0));
+
+                    lc.Curve = reversedAxis;
+                }
+            }
+        }
+
+
+
+
         private int PlaceDoorsForApartment(Document doc, PreparedApartmentDoors apartmentDoors, List<Wall> createdWallsForApartment, Level baseLevel)
         {
             if (doc == null || apartmentDoors == null || createdWallsForApartment == null || baseLevel == null)
@@ -2511,15 +3100,23 @@ namespace KPLN_Tools.ExecutableCommand
                 if (!foundHost || hostWall == null || projectedPoint == null)
                     continue;
 
-                if (!preparedDoor.DoorSymbol.IsActive)
+                FamilySymbol symbolToPlace = preparedDoor.DoorSymbol;
+
+                if (preparedDoor.RequiresOppositeDoorTypeAfterWallFlip)
+                    symbolToPlace = GetOppositeDoorSymbol(doc, symbolToPlace);
+
+                if (symbolToPlace == null)
+                    continue;
+
+                if (!symbolToPlace.IsActive)
                 {
-                    preparedDoor.DoorSymbol.Activate();
+                    symbolToPlace.Activate();
                     doc.Regenerate();
                 }
 
                 FamilyInstance createdDoor = doc.Create.NewFamilyInstance(
                     projectedPoint,
-                    preparedDoor.DoorSymbol,
+                    symbolToPlace,
                     hostWall,
                     baseLevel,
                     Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
@@ -2702,6 +3299,39 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
+        private FamilySymbol GetOppositeDoorSymbol(Document doc, FamilySymbol currentSymbol)
+        {
+            if (doc == null || currentSymbol == null || currentSymbol.Family == null)
+                return currentSymbol;
+
+            string currentTypeName = currentSymbol.Name ?? "";
+            DoorOpeningMarker currentMarker = GetDoorOpeningMarkerFromTypeName(currentTypeName);
+
+            if (currentMarker == DoorOpeningMarker.None)
+                return currentSymbol;
+
+            DoorOpeningMarker oppositeMarker =
+                currentMarker == DoorOpeningMarker.Left
+                    ? DoorOpeningMarker.Right
+                    : DoorOpeningMarker.Left;
+
+            string targetTypeName = ReplaceDoorOpeningMarker(currentTypeName, oppositeMarker);
+
+            FamilySymbol result = FindFamilySymbolByTypeName(doc, currentSymbol.Family, targetTypeName);
+            if (result != null)
+                return result;
+
+            if (oppositeMarker == DoorOpeningMarker.Right)
+            {
+                string altRightTypeName = ReplaceDoorOpeningMarker(currentTypeName, DoorOpeningMarker.RightAlt);
+                result = FindFamilySymbolByTypeName(doc, currentSymbol.Family, altRightTypeName);
+                if (result != null)
+                    return result;
+            }
+
+            return currentSymbol;
+        }
+
         private static List<ExistingWallLineInfo> GetExistingWallLinesOnLevel(Document doc, ElementId levelId)
         {
             List<ExistingWallLineInfo> result = new List<ExistingWallLineInfo>();
@@ -2784,20 +3414,6 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages)
         {
             PreparedApartmentDoors result = new PreparedApartmentDoors();
@@ -2841,15 +3457,23 @@ namespace KPLN_Tools.ExecutableCommand
                     continue;
                 }
 
-                FamilySymbol matchedDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm);
-                if (matchedDoorSymbol == null)
+                FamilySymbol baseDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm);
+                if (baseDoorSymbol == null)
                 {
                     if (debugMessages != null)
                         debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + widthMm + " мм.");
                     continue;
                 }
 
-                DoorTypeMirrorEnsureResult ensureResult = EnsureDoorMirrorTypeExists(doc, matchedDoorSymbol);
+                FamilySymbol resolvedDoorSymbol = ResolveDoorSymbolForPlacement(doc, doorFi, baseDoorSymbol, debugMessages);
+                if (resolvedDoorSymbol == null)
+                {
+                    if (debugMessages != null)
+                        debugMessages.Add(
+                            "Не удалось определить итоговый тип 3D-двери для 2D-двери ID = " +
+                            GetElementIdValue(doorFi.Id) + ".");
+                    continue;
+                }
 
                 Transform doorTransform = doorFi.GetTransform();
                 if (doorTransform == null)
@@ -2861,31 +3485,32 @@ namespace KPLN_Tools.ExecutableCommand
 
                 XYZ insertPointInProject = doorTransform.Origin;
 
+                FamilyInstance matchedRoom = FindBestMatchingRoomForDoor(
+                    apartmentFi,
+                    roomCategory,
+                    insertPointInProject,
+                    doc);
+
+                XYZ expectedRoomPoint = matchedRoom != null
+                    ? GetRoomCenterPoint(matchedRoom)
+                    : null;
+
                 result.Doors.Add(new PreparedDoorPlacement
                 {
                     ApartmentId = apartmentFi.Id,
                     Door2DId = doorFi.Id,
                     RoomCategory = roomCategory,
                     DoorWidthMm = widthMm,
-                    SelectedDoorTypeName = selectedDoorTypeName,
-                    DoorSymbol = matchedDoorSymbol,
-                    InsertPoint = insertPointInProject
+                    SelectedDoorTypeName = BuildDoorTypeDisplayName(resolvedDoorSymbol),
+                    DoorSymbol = resolvedDoorSymbol,
+                    InsertPoint = insertPointInProject,
+                    RelatedRoom2D = matchedRoom,
+                    RequiresOppositeDoorTypeAfterWallFlip = false
                 });
             }
 
             return result;
         }
-
-
-
-
-
-
-
-
-
-
-
 
         private static DoorOpeningMarker GetDoorOpeningMarkerFromTypeName(string typeName)
         {
@@ -3010,6 +3635,11 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
+
+
+
+
+
         private DoorTypeMirrorEnsureResult EnsureDoorMirrorTypeExists(Document doc, FamilySymbol sourceSymbol)
         {
             DoorTypeMirrorEnsureResult result = new DoorTypeMirrorEnsureResult();
@@ -3021,16 +3651,11 @@ namespace KPLN_Tools.ExecutableCommand
             DoorOpeningMarker marker = GetDoorOpeningMarkerFromTypeName(sourceTypeName);
 
             if (marker == DoorOpeningMarker.None)
-            {
-                result.HasMessage = true;
-                result.Message =
-                    "Тип двери '" + BuildDoorTypeDisplayName(sourceSymbol) +
-                    "' не содержит маркер Л / П / Пр в имени. Дублирование не выполнялось.";
                 return result;
-            }
 
             string leftName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.Left);
             string rightName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.Right);
+            string rightAltName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.RightAlt);
 
             Family family = sourceSymbol.Family;
             List<FamilySymbol> familySymbols = GetAllSymbolsOfFamily(doc, family);
@@ -3041,20 +3666,16 @@ namespace KPLN_Tools.ExecutableCommand
             FamilySymbol existingRight = familySymbols.FirstOrDefault(x =>
                 string.Equals(x.Name, rightName, StringComparison.OrdinalIgnoreCase));
 
-            if (existingRight == null)
-            {
-                string rightAltName = ReplaceDoorOpeningMarker(sourceTypeName, DoorOpeningMarker.RightAlt);
-                existingRight = familySymbols.FirstOrDefault(x =>
-                    string.Equals(x.Name, rightAltName, StringComparison.OrdinalIgnoreCase));
-            }
+            FamilySymbol existingRightAlt = familySymbols.FirstOrDefault(x =>
+                string.Equals(x.Name, rightAltName, StringComparison.OrdinalIgnoreCase));
 
-            bool needCreateLeft = existingLeft == null && (marker == DoorOpeningMarker.Right || marker == DoorOpeningMarker.RightAlt);
-            bool needCreateRight = existingRight == null && marker == DoorOpeningMarker.Left;
+            bool needCreateLeft = existingLeft == null;
+            bool needCreateRight = existingRight == null && existingRightAlt == null;
 
             if (!needCreateLeft && !needCreateRight)
                 return result;
 
-            using (Transaction t = new Transaction(doc, "KPLN. Создание парного типа двери"))
+            using (Transaction t = new Transaction(doc, "KPLN. Создание парных типов двери"))
             {
                 t.Start();
 
@@ -3076,10 +3697,10 @@ namespace KPLN_Tools.ExecutableCommand
 
                     result.HasMessage = true;
                     result.Message =
-                        "Для типа '" + sourceTypeName + "' отсутствовал парный левый тип. " +
-                        "Создан новый тип: '" + newTypeName + "'.";
+                        "Создан парный левый тип двери: '" + newTypeName + "'.";
                 }
-                else if (needCreateRight)
+
+                if (needCreateRight)
                 {
                     string newTypeName = rightName;
                     ElementType duplicated = sourceSymbol.Duplicate(newTypeName) as ElementType;
@@ -3096,9 +3717,11 @@ namespace KPLN_Tools.ExecutableCommand
                         throw new Exception("Не удалось выключить параметр 'КП_О_Левое открывание' у типа '" + newTypeName + "'.");
 
                     result.HasMessage = true;
-                    result.Message =
-                        "Для типа '" + sourceTypeName + "' отсутствовал парный правый тип. " +
-                        "Создан новый тип: '" + newTypeName + "'.";
+
+                    if (string.IsNullOrWhiteSpace(result.Message))
+                        result.Message = "Создан парный правый тип двери: '" + newTypeName + "'.";
+                    else
+                        result.Message += "\nСоздан парный правый тип двери: '" + newTypeName + "'.";
                 }
 
                 t.Commit();
@@ -3107,14 +3730,229 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
+        private FamilySymbol ResolveDoorSymbolForPlacement(Document doc, FamilyInstance source2DDoor, FamilySymbol baseDoorSymbol, List<string> debugMessages)
+        {
+            if (doc == null || source2DDoor == null || baseDoorSymbol == null)
+                return baseDoorSymbol;
 
+            string baseTypeName = baseDoorSymbol.Name ?? "";
+            DoorOpeningMarker baseMarker = GetDoorOpeningMarkerFromTypeName(baseTypeName);
 
+            if (baseMarker == DoorOpeningMarker.None)
+                return baseDoorSymbol;
 
+            DoorTypeMirrorEnsureResult ensureResult = EnsureDoorMirrorTypeExists(doc, baseDoorSymbol);
+            if (ensureResult != null && ensureResult.HasMessage && debugMessages != null)
+                debugMessages.Add(ensureResult.Message);
 
+            bool faceFlip;
+            bool mirrored;
+            if (!TryGetDoorOrientationFlags(source2DDoor, out faceFlip, out mirrored))
+                return baseDoorSymbol;
 
+            DoorOpeningMarker desiredMarker = ResolveDesiredDoorOpeningMarker(faceFlip, mirrored);
+            if (desiredMarker == DoorOpeningMarker.None)
+                return baseDoorSymbol;
 
+            DoorOpeningMarker normalizedBaseMarker = NormalizeDoorOpeningMarkerForSelection(baseMarker);
+            DoorOpeningMarker normalizedDesiredMarker = NormalizeDoorOpeningMarkerForSelection(desiredMarker);
 
+            if (normalizedBaseMarker == normalizedDesiredMarker)
+                return baseDoorSymbol;
 
+            string desiredTypeName = ReplaceDoorOpeningMarker(baseTypeName, desiredMarker);
+
+            FamilySymbol resolved = FindFamilySymbolByTypeName(doc, baseDoorSymbol.Family, desiredTypeName);
+            if (resolved != null)
+                return resolved;
+
+            if (desiredMarker == DoorOpeningMarker.Right)
+            {
+                string rightAltName = ReplaceDoorOpeningMarker(baseTypeName, DoorOpeningMarker.RightAlt);
+                resolved = FindFamilySymbolByTypeName(doc, baseDoorSymbol.Family, rightAltName);
+                if (resolved != null)
+                    return resolved;
+            }
+
+            if (desiredMarker == DoorOpeningMarker.RightAlt)
+            {
+                string rightName = ReplaceDoorOpeningMarker(baseTypeName, DoorOpeningMarker.Right);
+                resolved = FindFamilySymbolByTypeName(doc, baseDoorSymbol.Family, rightName);
+                if (resolved != null)
+                    return resolved;
+            }
+
+            return baseDoorSymbol;
+        }
+
+        private static bool TryGetDoorOrientationFlags(FamilyInstance doorFi, out bool faceFlip, out bool mirrored)
+        {
+            faceFlip = false;
+            mirrored = false;
+
+            if (doorFi == null)
+                return false;
+
+            bool hasFaceFlip = TryGetYesNoParamFromElementOrType(doorFi, out faceFlip, "faceFlip", "FaceFlip", "Facing Flip", "FacingFlipped");
+            bool hasMirrored = TryGetYesNoParamFromElementOrType(doorFi, out mirrored, "mirrored", "Mirrored");
+
+            if (!hasFaceFlip)
+            {
+                try
+                {
+                    faceFlip = doorFi.FacingFlipped;
+                    hasFaceFlip = true;
+                }
+                catch
+                {
+                }
+            }
+
+            if (!hasMirrored)
+            {
+                try
+                {
+                    mirrored = doorFi.Mirrored;
+                    hasMirrored = true;
+                }
+                catch
+                {
+                }
+            }
+
+            return hasFaceFlip && hasMirrored;
+        }
+
+        private static bool TryGetYesNoParamFromElementOrType(Element e, out bool value, params string[] paramNames)
+        {
+            value = false;
+
+            if (e == null || paramNames == null || paramNames.Length == 0)
+                return false;
+
+            foreach (string paramName in paramNames)
+            {
+                Parameter p = e.LookupParameter(paramName);
+                if (p != null)
+                {
+                    if (p.StorageType == StorageType.Integer)
+                    {
+                        value = p.AsInteger() != 0;
+                        return true;
+                    }
+
+                    if (p.StorageType == StorageType.String)
+                    {
+                        string s = p.AsString();
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            s = s.Trim();
+                            if (string.Equals(s, "true", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(s, "yes", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(s, "1", StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = true;
+                                return true;
+                            }
+
+                            if (string.Equals(s, "false", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(s, "no", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(s, "0", StringComparison.OrdinalIgnoreCase))
+                            {
+                                value = false;
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Element typeElem = null;
+            if (e.Document != null)
+            {
+                ElementId typeId = e.GetTypeId();
+                if (typeId != ElementId.InvalidElementId)
+                    typeElem = e.Document.GetElement(typeId);
+            }
+
+            if (typeElem != null)
+            {
+                foreach (string paramName in paramNames)
+                {
+                    Parameter p = typeElem.LookupParameter(paramName);
+                    if (p != null)
+                    {
+                        if (p.StorageType == StorageType.Integer)
+                        {
+                            value = p.AsInteger() != 0;
+                            return true;
+                        }
+
+                        if (p.StorageType == StorageType.String)
+                        {
+                            string s = p.AsString();
+                            if (!string.IsNullOrWhiteSpace(s))
+                            {
+                                s = s.Trim();
+                                if (string.Equals(s, "true", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(s, "yes", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(s, "1", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    value = true;
+                                    return true;
+                                }
+
+                                if (string.Equals(s, "false", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(s, "no", StringComparison.OrdinalIgnoreCase) ||
+                                    string.Equals(s, "0", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    value = false;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static DoorOpeningMarker ResolveDesiredDoorOpeningMarker(bool faceFlip, bool mirrored)
+        {
+            if (!faceFlip && !mirrored)
+                return DoorOpeningMarker.Left;
+
+            if (faceFlip && mirrored)
+                return DoorOpeningMarker.Left;
+
+            if (faceFlip && !mirrored)
+                return DoorOpeningMarker.Right;
+
+            if (!faceFlip && mirrored)
+                return DoorOpeningMarker.Right;
+
+            return DoorOpeningMarker.None;
+        }
+
+        private static FamilySymbol FindFamilySymbolByTypeName(Document doc, Family family, string typeName)
+        {
+            if (doc == null || family == null || string.IsNullOrWhiteSpace(typeName))
+                return null;
+
+            List<FamilySymbol> symbols = GetAllSymbolsOfFamily(doc, family);
+
+            return symbols.FirstOrDefault(x =>
+                string.Equals(x.Name, typeName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static DoorOpeningMarker NormalizeDoorOpeningMarkerForSelection(DoorOpeningMarker marker)
+        {
+            if (marker == DoorOpeningMarker.RightAlt)
+                return DoorOpeningMarker.Right;
+
+            return marker;
+        }
 
 
         private static List<FamilyInstance> FindDoorSubComponentsRecursive(Document doc, FamilyInstance rootInstance)
@@ -3169,20 +4007,6 @@ namespace KPLN_Tools.ExecutableCommand
                 CollectDoorSubComponentsRecursive(doc, subFi, result);
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         private PreparedApartmentRooms PrepareRoomsForApartment(Document doc, FamilyInstance apartmentFi, List<string> debugMessages)
         {

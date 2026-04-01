@@ -486,7 +486,7 @@ namespace KPLN_Tools.Forms
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
                 DoorsByRoomCategory = doorsByRoomCategory,
-                FamilyPostProcessAction = _initialData != null ? _initialData.FamilyPostProcessAction : ApartmentFamilyPostProcessAction.Leave2D
+                FamilyPostProcessAction = _initialData != null ? _initialData.FamilyPostProcessAction : ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
             };
 
             RequestSave?.Invoke(data);

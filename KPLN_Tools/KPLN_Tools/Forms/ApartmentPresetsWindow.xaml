@@ -22,7 +22,7 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" VerticalAlignment="Center" FontWeight="Bold" Text="Открытый план:"/>
-                <ComboBox Grid.Column="1" ItemsSource="{Binding Plans}" SelectedItem="{Binding SelectedPlan}" DisplayMemberPath="PlanName"/>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding SelectedPlan.PlanName}" TextWrapping="Wrap"/>
             </Grid>
         </GroupBox>
 
