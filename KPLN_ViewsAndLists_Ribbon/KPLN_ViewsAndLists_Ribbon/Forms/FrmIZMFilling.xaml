@@ -113,7 +113,7 @@
                                                     <ColumnDefinition Width="90"/>
                                                     <ColumnDefinition Width="100"/>
                                                     <ColumnDefinition Width="180"/>
-                                                    <ColumnDefinition Width="180"/>
+                                                    <ColumnDefinition Width="220"/>
                                                     <ColumnDefinition Width="120"/>
                                                 </Grid.ColumnDefinitions>
 
@@ -151,7 +151,7 @@
                                                                 <ColumnDefinition Width="90"/>
                                                                 <ColumnDefinition Width="100"/>
                                                                 <ColumnDefinition Width="180"/>
-                                                                <ColumnDefinition Width="180"/>
+                                                                <ColumnDefinition Width="220"/>
                                                                 <ColumnDefinition Width="120"/>
                                                             </Grid.ColumnDefinitions>
 
@@ -199,8 +199,9 @@
 
                                                             <!-- Подпись -->
                                                             <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Padding="2">
-                                                                <TextBox Text="{Binding SignatureText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                         IsEnabled="{Binding HasRevisionSelected}"/>
+                                                                <ComboBox ItemsSource="{Binding AvailableSignatureItems}"
+                                                                          DisplayMemberPath="Name"
+                                                                          SelectedItem="{Binding SelectedSignatureItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                             </Border>
 
                                                             <!-- Дата -->

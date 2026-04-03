@@ -16,6 +16,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
     {
         private readonly Document _doc;
         private readonly Dictionary<int, SheetRowItem> _sheetRowCache = new Dictionary<int, SheetRowItem>();
+        private readonly List<SignatureComboItem> _signatureDefinitions = new List<SignatureComboItem>();
 
         public ObservableCollection<SheetTreeNode> RootNodes { get; private set; }
         public ObservableCollection<SheetRowItem> SheetRows { get; private set; }
@@ -36,6 +37,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             FillRevisionItems();
             FillStatusItems();
+            FillSignatureItems();
             BuildTree();
             RefreshSheetRows();
         }
@@ -54,14 +56,64 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             foreach (Revision revision in revisions)
             {
                 string approvedFor = GetRevisionApprovedForDisplay(revision);
-
-                string displayName =
-                    revision.SequenceNumber.ToString(CultureInfo.InvariantCulture) +
-                    " ИЗМ № " +
-                    approvedFor;
+                string displayName = "Строка " + revision.SequenceNumber.ToString(CultureInfo.InvariantCulture) + ": ИЗМ № " + approvedFor;
 
                 RevisionItems.Add(new RevisionComboItem(revision.Id, displayName, revision.SequenceNumber));
             }
+        }
+
+        private void FillSignatureItems()
+        {
+            _signatureDefinitions.Clear();
+            _signatureDefinitions.Add(new SignatureComboItem(ElementId.InvalidElementId, "*Пусто*"));
+
+            List<FamilySymbol> symbols = new FilteredElementCollector(_doc)
+                .OfClass(typeof(FamilySymbol))
+                .OfCategory(BuiltInCategory.OST_GenericAnnotation)
+                .Cast<FamilySymbol>()
+                .OrderBy(x => GetSignatureDisplayName(x), StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            foreach (FamilySymbol symbol in symbols)
+            {
+                _signatureDefinitions.Add(new SignatureComboItem(symbol.Id, GetSignatureDisplayName(symbol)));
+            }
+        }
+
+        private string GetSignatureDisplayName(FamilySymbol symbol)
+        {
+            if (symbol == null)
+                return string.Empty;
+
+            string familyName = string.Empty;
+
+            try
+            {
+                Parameter familyNameParam = symbol.get_Parameter(BuiltInParameter.SYMBOL_FAMILY_NAME_PARAM);
+                if (familyNameParam != null)
+                    familyName = familyNameParam.AsString();
+            }
+            catch
+            {
+            }
+
+            string typeName = string.Empty;
+
+            try
+            {
+                typeName = symbol.Name;
+            }
+            catch
+            {
+            }
+
+            if (!string.IsNullOrWhiteSpace(familyName) && !string.IsNullOrWhiteSpace(typeName))
+                return familyName + " : " + typeName;
+
+            if (!string.IsNullOrWhiteSpace(typeName))
+                return typeName;
+
+            return symbol.Id.IntegerValue.ToString(CultureInfo.InvariantCulture);
         }
 
         private string GetRevisionApprovedForDisplay(Revision revision)
@@ -264,7 +316,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 }
                 else
                 {
-                    row = new SheetRowItem(_doc, sheet, RevisionItems.ToList());
+                    row = new SheetRowItem(_doc, sheet, RevisionItems.ToList(), _signatureDefinitions);
                     row.DuplicateRevisionDetected += Row_DuplicateRevisionDetected;
                     _sheetRowCache[key] = row;
                 }
@@ -541,6 +593,25 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         }
     }
 
+    internal class SignatureComboItem
+    {
+        public ElementId Id { get; set; }
+        public int IdValue { get; set; }
+        public string Name { get; set; }
+
+        public SignatureComboItem(ElementId id, string name)
+        {
+            Id = id ?? ElementId.InvalidElementId;
+            IdValue = Id.IntegerValue;
+            Name = name ?? string.Empty;
+        }
+
+        public SignatureComboItem Clone()
+        {
+            return new SignatureComboItem(Id, Name);
+        }
+    }
+
     internal class SheetStatusItem
     {
         public int Code { get; set; }
@@ -557,6 +628,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
     {
         private readonly Document _doc;
         private readonly List<RevisionComboItem> _revisionDefinitions;
+        private readonly List<SignatureComboItem> _signatureDefinitions;
         private bool _isSorting;
         private bool _isResettingDuplicateRevision;
         private bool _isRebuildingRevisionUi;
@@ -569,10 +641,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler DuplicateRevisionDetected;
 
-        public SheetRowItem(Document doc, ViewSheet sheet, List<RevisionComboItem> revisionDefinitions)
+        public SheetRowItem(
+            Document doc,
+            ViewSheet sheet,
+            List<RevisionComboItem> revisionDefinitions,
+            List<SignatureComboItem> signatureDefinitions)
         {
             _doc = doc;
             _revisionDefinitions = revisionDefinitions ?? new List<RevisionComboItem>();
+            _signatureDefinitions = signatureDefinitions ?? new List<SignatureComboItem>();
 
             Sheet = sheet;
             SheetNumber = sheet.SheetNumber;
@@ -582,7 +659,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             Lines.CollectionChanged += Lines_CollectionChanged;
 
             for (int i = 1; i <= 4; i++)
-                Lines.Add(new SheetRevisionLine(_doc, i, _revisionDefinitions));
+                Lines.Add(new SheetRevisionLine(_doc, i, _revisionDefinitions, _signatureDefinitions));
 
             SubscribeLines(Lines, true);
             LoadFromSheet();
@@ -672,35 +749,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 .OrderByDescending(x => x.SequenceNumber)
                 .ToList();
 
-            int[] statusDigits = ParseStatusDigits(GetParameterString(Sheet, "Ш.ШифрСтатусЛиста"));
-
             _isSorting = true;
             try
             {
                 for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
-                {
-                    SheetRevisionLine line = Lines[rowIndex];
-                    line.ResetAllData();
-                }
+                    Lines[rowIndex].ResetAllData();
 
                 for (int i = 0; i < revisions.Count && i < Lines.Count; i++)
                     Lines[i].RevisionId = revisions[i].Id;
-
-                for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
-                {
-                    int slotNumberTopDown = rowIndex + 1;
-                    SheetRevisionLine line = Lines[rowIndex];
-                    line.SignatureText = GetParameterString(Sheet, GetSignatureParamName(slotNumberTopDown));
-                }
-
-                for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
-                {
-                    int mirroredSlotNumber = GetMirroredSlotNumber(rowIndex);
-                    SheetRevisionLine line = Lines[rowIndex];
-
-                    line.QuantityText = GetParameterString(Sheet, GetQtyParamName(mirroredSlotNumber));
-                    line.StatusCode = GetStatusCodeBySlotNumber(statusDigits, mirroredSlotNumber);
-                }
             }
             finally
             {
@@ -708,6 +764,26 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             SortLinesByRevisionOrder();
+            LoadStaticColumnsFromSheet();
+            CommitAllRevisionSelections();
+        }
+
+        private void LoadStaticColumnsFromSheet()
+        {
+            int[] statusDigits = ParseStatusDigits(GetParameterString(Sheet, "Ш.ШифрСтатусЛиста"));
+            FamilyInstance titleBlock = GetMainTitleBlock();
+
+            for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
+            {
+                SheetRevisionLine line = Lines[rowIndex];
+                int mirroredSlotNumber = GetMirroredSlotNumber(rowIndex);
+
+                line.QuantityText = GetParameterString(Sheet, GetQtyParamName(mirroredSlotNumber));
+                line.StatusCode = GetStatusCodeBySlotNumber(statusDigits, mirroredSlotNumber);
+
+                int displayNumber = line.DisplayNumber;
+                line.SignatureTypeId = GetSignatureTypeIdFromTitleBlock(titleBlock, displayNumber);
+            }
         }
 
         public void ApplyToSheet()
@@ -717,17 +793,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             List<ElementId> selectedRevisionIds = GetSelectedRevisionIds();
             Sheet.SetAdditionalRevisionIds(selectedRevisionIds);
 
-            List<RevisionSortableState> signatureStates = BuildSignatureStorageStates();
-
-            for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
-            {
-                int slotNumberTopDown = rowIndex + 1;
-                string signature = signatureStates[rowIndex].SignatureText;
-                SetParameterString(Sheet, GetSignatureParamName(slotNumberTopDown), signature);
-            }
-
             // Кол. уч. не трогаем логикой сортировки.
-            // Пишем его строго из текущей строки в соответствующий зеркальный слот.
+            // Пишем его строго из текущей визуальной строки в соответствующий зеркальный слот.
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
             {
                 SheetRevisionLine line = Lines[rowIndex];
@@ -736,7 +803,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 SetParameterString(Sheet, GetQtyParamName(mirroredSlotNumber), line.QuantityText);
             }
 
-            // Лист (статус) тоже автономный и не участвует в перестановке.
+            // Лист (статус) тоже автономный.
             StringBuilder statusBuilder = new StringBuilder();
             for (int slotNumber = 1; slotNumber <= Lines.Count; slotNumber++)
             {
@@ -746,6 +813,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             SetParameterString(Sheet, "Ш.ШифрСтатусЛиста", statusBuilder.ToString());
+
+            // Подпись автономная. Пишем строго в основную надпись по номеру строки 4/3/2/1.
+            FamilyInstance titleBlock = GetMainTitleBlock();
+
+            for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
+            {
+                SheetRevisionLine line = Lines[rowIndex];
+                int displayNumber = line.DisplayNumber;
+                SetSignatureTypeIdToTitleBlock(titleBlock, displayNumber, line.SignatureTypeId);
+            }
         }
 
         public void SortLinesByRevisionOrder()
@@ -758,7 +835,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     .Select((x, index) => new RevisionSortableState
                     {
                         RevisionId = x.RevisionId,
-                        SignatureText = x.SignatureText,
                         SortWeight = GetVisualSortWeight(x),
                         SequenceNumber = GetRevisionSequence(x.RevisionId),
                         OriginalIndex = index
@@ -769,12 +845,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     .ToList();
 
                 // ВАЖНО:
-                // Переставляем ТОЛЬКО revision/signature.
-                // QuantityText и StatusCode вообще не трогаем.
+                // Переставляем ТОЛЬКО revision.
+                // Quantity / Status / Signature не трогаем вообще.
                 for (int i = 0; i < Lines.Count; i++)
                 {
                     RevisionSortableState state = sortedStates[i];
-                    Lines[i].ApplyRevisionState(state.RevisionId, state.SignatureText);
+                    Lines[i].ApplyRevisionState(state.RevisionId);
                 }
             }
             finally
@@ -788,31 +864,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             OnPropertyChanged("Lines");
         }
 
-        private List<RevisionSortableState> BuildSignatureStorageStates()
-        {
-            return Lines
-                .Select((x, index) => new RevisionSortableState
-                {
-                    RevisionId = x.RevisionId,
-                    SignatureText = x.SignatureText,
-                    SortWeight = GetStorageSortWeight(x),
-                    SequenceNumber = GetRevisionSequence(x.RevisionId),
-                    OriginalIndex = index
-                })
-                .OrderBy(x => x.SortWeight)
-                .ThenByDescending(x => x.SequenceNumber)
-                .ThenBy(x => x.OriginalIndex)
-                .ToList();
-        }
-
         private void RebuildRevisionUi()
         {
             _isRebuildingRevisionUi = true;
 
             try
             {
-                // Жестко пересобираем все списки ИЗМ для всех строк,
-                // чтобы комбобоксы не разваливались визуально.
                 foreach (SheetRevisionLine line in Lines)
                     line.RebuildAvailableRevisionItems(_revisionDefinitions);
 
@@ -840,14 +897,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return 0; // пустые сверху
 
             return 1;     // заполненные снизу
-        }
-
-        private int GetStorageSortWeight(SheetRevisionLine line)
-        {
-            if (line == null || !line.HasRevisionSelected)
-                return 1; // при записи пустые в конец
-
-            return 0;     // при записи заполненные в начало
         }
 
         private int GetRevisionSequence(ElementId revisionId)
@@ -895,15 +944,138 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        private string GetSignatureParamName(int slotNumber)
+        private string GetTitleBlockSignatureParamName(int displayNumber)
         {
-            switch (slotNumber)
+            switch (displayNumber)
             {
-                case 1: return "Ш.Подпись1Текст";
-                case 2: return "Ш.Подпись2Текст";
-                case 3: return "Ш.Подпись3Текст";
-                case 4: return "Ш.Подпись4Текст";
+                case 4: return "Изм4 подпись";
+                case 3: return "Изм3 подпись";
+                case 2: return "Изм2 подпись";
+                case 1: return "Изм1 подпись";
                 default: return string.Empty;
+            }
+        }
+
+        private Parameter LookupTitleBlockSignatureParameter(FamilyInstance titleBlock, int displayNumber)
+        {
+            if (titleBlock == null)
+                return null;
+
+            string baseName = GetTitleBlockSignatureParamName(displayNumber);
+            if (string.IsNullOrWhiteSpace(baseName))
+                return null;
+
+            Parameter p = titleBlock.LookupParameter(baseName);
+            if (p != null)
+                return p;
+
+            p = titleBlock.LookupParameter(baseName + "<Типовые аннотации>");
+            if (p != null)
+                return p;
+
+            return null;
+        }
+
+        private FamilyInstance GetMainTitleBlock()
+        {
+            List<FamilyInstance> titleBlocks = new FilteredElementCollector(_doc, Sheet.Id)
+                .OfCategory(BuiltInCategory.OST_TitleBlocks)
+                .WhereElementIsNotElementType()
+                .Cast<FamilyInstance>()
+                .ToList();
+
+            if (titleBlocks.Count == 0)
+                return null;
+
+            FamilyInstance preferred = titleBlocks
+                .FirstOrDefault(x => GetTitleBlockFamilyName(x).StartsWith("020_Основная надпись", StringComparison.CurrentCultureIgnoreCase));
+
+            return preferred ?? titleBlocks.FirstOrDefault();
+        }
+
+        private string GetTitleBlockFamilyName(FamilyInstance titleBlock)
+        {
+            if (titleBlock == null)
+                return string.Empty;
+
+            Element typeElement = _doc.GetElement(titleBlock.GetTypeId());
+            FamilySymbol symbol = typeElement as FamilySymbol;
+            if (symbol == null)
+                return string.Empty;
+
+            try
+            {
+                Parameter p = symbol.get_Parameter(BuiltInParameter.SYMBOL_FAMILY_NAME_PARAM);
+                if (p != null)
+                {
+                    string familyName = p.AsString();
+                    if (!string.IsNullOrWhiteSpace(familyName))
+                        return familyName;
+                }
+            }
+            catch
+            {
+            }
+
+            return string.Empty;
+        }
+
+        private ElementId GetSignatureTypeIdFromTitleBlock(FamilyInstance titleBlock, int displayNumber)
+        {
+            Parameter p = LookupTitleBlockSignatureParameter(titleBlock, displayNumber);
+            if (p == null)
+                return ElementId.InvalidElementId;
+
+            try
+            {
+                if (p.StorageType == StorageType.ElementId)
+                {
+                    ElementId id = p.AsElementId();
+                    return id ?? ElementId.InvalidElementId;
+                }
+
+                if (p.StorageType == StorageType.String)
+                {
+                    string textValue = p.AsString();
+                    SignatureComboItem item = _signatureDefinitions
+                        .FirstOrDefault(x => string.Equals(x.Name, textValue, StringComparison.CurrentCultureIgnoreCase));
+
+                    return item != null ? item.Id : ElementId.InvalidElementId;
+                }
+            }
+            catch
+            {
+            }
+
+            return ElementId.InvalidElementId;
+        }
+
+        private void SetSignatureTypeIdToTitleBlock(FamilyInstance titleBlock, int displayNumber, ElementId signatureTypeId)
+        {
+            Parameter p = LookupTitleBlockSignatureParameter(titleBlock, displayNumber);
+            if (p == null || p.IsReadOnly)
+                return;
+
+            ElementId valueToSet = signatureTypeId ?? ElementId.InvalidElementId;
+
+            try
+            {
+                if (p.StorageType == StorageType.ElementId)
+                {
+                    p.Set(valueToSet);
+                    return;
+                }
+
+                if (p.StorageType == StorageType.String)
+                {
+                    SignatureComboItem item = _signatureDefinitions
+                        .FirstOrDefault(x => x.IdValue == valueToSet.IntegerValue);
+
+                    p.Set(item != null ? item.Name : string.Empty);
+                }
+            }
+            catch
+            {
             }
         }
 
@@ -1038,7 +1210,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private class RevisionSortableState
         {
             public ElementId RevisionId { get; set; }
-            public string SignatureText { get; set; }
             public int SortWeight { get; set; }
             public int SequenceNumber { get; set; }
             public int OriginalIndex { get; set; }
@@ -1056,13 +1227,22 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private string _quantityText;
         private int _statusCode;
         private string _revisionDocNumber;
-        private string _signatureText;
         private string _revisionDate;
+
+        private ElementId _signatureTypeId;
+        private int _signatureTypeIdValue;
+
         private RevisionComboItem _selectedRevisionItem;
+        private SignatureComboItem _selectedSignatureItem;
+
         private bool _isSyncingSelectedItem;
         private bool _ignoreSelectedRevisionItemChanges;
 
+        private bool _isSyncingSelectedSignatureItem;
+        private bool _ignoreSelectedSignatureItemChanges;
+
         public ObservableCollection<RevisionComboItem> AvailableRevisionItems { get; private set; }
+        public ObservableCollection<SignatureComboItem> AvailableSignatureItems { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -1115,6 +1295,28 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        public SignatureComboItem SelectedSignatureItem
+        {
+            get { return _selectedSignatureItem; }
+            set
+            {
+                if (_ignoreSelectedSignatureItemChanges || _isSyncingSelectedSignatureItem)
+                    return;
+
+                if (ReferenceEquals(_selectedSignatureItem, value))
+                    return;
+
+                _selectedSignatureItem = value;
+                OnPropertyChanged("SelectedSignatureItem");
+
+                int newIdValue = value != null
+                    ? value.IdValue
+                    : ElementId.InvalidElementId.IntegerValue;
+
+                ApplySignatureTypeIdInternal(newIdValue, true);
+            }
+        }
+
         public ElementId RevisionId
         {
             get { return _revisionId; }
@@ -1134,6 +1336,28 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             set
             {
                 ApplyRevisionIdInternal(value, true);
+            }
+        }
+
+        public ElementId SignatureTypeId
+        {
+            get { return _signatureTypeId; }
+            set
+            {
+                int newIdValue = value != null
+                    ? value.IntegerValue
+                    : ElementId.InvalidElementId.IntegerValue;
+
+                ApplySignatureTypeIdInternal(newIdValue, true);
+            }
+        }
+
+        public int SignatureTypeIdValue
+        {
+            get { return _signatureTypeIdValue; }
+            set
+            {
+                ApplySignatureTypeIdInternal(value, true);
             }
         }
 
@@ -1178,21 +1402,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        public string SignatureText
-        {
-            get { return _signatureText; }
-            set
-            {
-                string newValue = HasRevisionSelected ? (value ?? string.Empty) : string.Empty;
-
-                if (_signatureText == newValue)
-                    return;
-
-                _signatureText = newValue;
-                OnPropertyChanged("SignatureText");
-            }
-        }
-
         public string RevisionDate
         {
             get { return _revisionDate; }
@@ -1206,7 +1415,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
-        public SheetRevisionLine(Document doc, int displayNumber, List<RevisionComboItem> revisionDefinitions)
+        public SheetRevisionLine(
+            Document doc,
+            int displayNumber,
+            List<RevisionComboItem> revisionDefinitions,
+            List<SignatureComboItem> signatureDefinitions)
         {
             _doc = doc;
             _displayNumber = displayNumber;
@@ -1214,13 +1427,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _revisionId = ElementId.InvalidElementId;
             _revisionIdValue = ElementId.InvalidElementId.IntegerValue;
             _lastCommittedRevisionIdValue = ElementId.InvalidElementId.IntegerValue;
+
+            _signatureTypeId = ElementId.InvalidElementId;
+            _signatureTypeIdValue = ElementId.InvalidElementId.IntegerValue;
+
             _quantityText = string.Empty;
             _statusCode = 0;
             _revisionDocNumber = string.Empty;
-            _signatureText = string.Empty;
             _revisionDate = string.Empty;
 
             AvailableRevisionItems = new ObservableCollection<RevisionComboItem>();
+            AvailableSignatureItems = new ObservableCollection<SignatureComboItem>();
 
             if (revisionDefinitions != null)
             {
@@ -1228,7 +1445,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     AvailableRevisionItems.Add(item.Clone());
             }
 
+            if (signatureDefinitions != null)
+            {
+                foreach (SignatureComboItem item in signatureDefinitions)
+                    AvailableSignatureItems.Add(item.Clone());
+            }
+
             SyncSelectedRevisionItem();
+            SyncSelectedSignatureItem();
         }
 
         public void CommitRevisionSelection()
@@ -1305,6 +1529,25 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        public void SyncSelectedSignatureItem()
+        {
+            _isSyncingSelectedSignatureItem = true;
+            try
+            {
+                SignatureComboItem item = FindSignatureItem(_signatureTypeIdValue);
+
+                if (!ReferenceEquals(_selectedSignatureItem, item))
+                {
+                    _selectedSignatureItem = item;
+                    OnPropertyChanged("SelectedSignatureItem");
+                }
+            }
+            finally
+            {
+                _isSyncingSelectedSignatureItem = false;
+            }
+        }
+
         private RevisionComboItem FindRevisionItem(int idValue)
         {
             foreach (RevisionComboItem item in AvailableRevisionItems)
@@ -1314,6 +1557,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             return null;
+        }
+
+        private SignatureComboItem FindSignatureItem(int idValue)
+        {
+            foreach (SignatureComboItem item in AvailableSignatureItems)
+            {
+                if (item.IdValue == idValue)
+                    return item;
+            }
+
+            return AvailableSignatureItems.FirstOrDefault(x => x.IdValue == ElementId.InvalidElementId.IntegerValue);
         }
 
         private void ApplyRevisionIdInternal(int revisionIdValue, bool raiseEvents)
@@ -1346,6 +1600,30 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        private void ApplySignatureTypeIdInternal(int signatureTypeIdValue, bool raiseEvents)
+        {
+            int normalizedIdValue = NormalizeSignatureTypeIdValue(signatureTypeIdValue);
+
+            if (_signatureTypeIdValue == normalizedIdValue)
+            {
+                SyncSelectedSignatureItem();
+                return;
+            }
+
+            _signatureTypeIdValue = normalizedIdValue;
+            _signatureTypeId = normalizedIdValue == ElementId.InvalidElementId.IntegerValue
+                ? ElementId.InvalidElementId
+                : new ElementId(normalizedIdValue);
+
+            SyncSelectedSignatureItem();
+
+            if (raiseEvents)
+            {
+                OnPropertyChanged("SignatureTypeIdValue");
+                OnPropertyChanged("SignatureTypeId");
+            }
+        }
+
         private int NormalizeRevisionIdValue(int revisionIdValue)
         {
             if (revisionIdValue <= 0)
@@ -1359,6 +1637,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return ElementId.InvalidElementId.IntegerValue;
 
             return revisionIdValue;
+        }
+
+        private int NormalizeSignatureTypeIdValue(int signatureTypeIdValue)
+        {
+            if (signatureTypeIdValue <= 0)
+                return ElementId.InvalidElementId.IntegerValue;
+
+            if (signatureTypeIdValue == ElementId.InvalidElementId.IntegerValue)
+                return ElementId.InvalidElementId.IntegerValue;
+
+            Element e = _doc.GetElement(new ElementId(signatureTypeIdValue));
+            if (e == null)
+                return ElementId.InvalidElementId.IntegerValue;
+
+            return signatureTypeIdValue;
         }
 
         private bool IsValidRevisionId(ElementId revisionId)
@@ -1385,25 +1678,32 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _revisionId = ElementId.InvalidElementId;
             _revisionIdValue = ElementId.InvalidElementId.IntegerValue;
             _lastCommittedRevisionIdValue = ElementId.InvalidElementId.IntegerValue;
+
+            _signatureTypeId = ElementId.InvalidElementId;
+            _signatureTypeIdValue = ElementId.InvalidElementId.IntegerValue;
+
             _quantityText = string.Empty;
             _statusCode = 0;
             _revisionDocNumber = string.Empty;
-            _signatureText = string.Empty;
             _revisionDate = string.Empty;
 
             SyncSelectedRevisionItem();
+            SyncSelectedSignatureItem();
 
             OnPropertyChanged("RevisionIdValue");
             OnPropertyChanged("RevisionId");
             OnPropertyChanged("HasRevisionSelected");
+
+            OnPropertyChanged("SignatureTypeIdValue");
+            OnPropertyChanged("SignatureTypeId");
+
             OnPropertyChanged("QuantityText");
             OnPropertyChanged("StatusCode");
             OnPropertyChanged("RevisionDocNumber");
-            OnPropertyChanged("SignatureText");
             OnPropertyChanged("RevisionDate");
         }
 
-        public void ApplyRevisionState(ElementId revisionId, string signatureText)
+        public void ApplyRevisionState(ElementId revisionId)
         {
             int newIdValue = revisionId != null
                 ? revisionId.IntegerValue
@@ -1420,13 +1720,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             if (!HasRevisionSelected)
             {
-                _signatureText = string.Empty;
                 RevisionDocNumber = string.Empty;
                 RevisionDate = string.Empty;
             }
             else
             {
-                _signatureText = signatureText ?? string.Empty;
                 UpdateRevisionData();
             }
 
@@ -1440,17 +1738,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 OnPropertyChanged("RevisionId");
                 OnPropertyChanged("HasRevisionSelected");
             }
-
-            OnPropertyChanged("SignatureText");
         }
 
         private void ClearRevisionDependentData()
         {
             RevisionDocNumber = string.Empty;
             RevisionDate = string.Empty;
-            _signatureText = string.Empty;
-
-            OnPropertyChanged("SignatureText");
         }
 
         private void UpdateRevisionData()
