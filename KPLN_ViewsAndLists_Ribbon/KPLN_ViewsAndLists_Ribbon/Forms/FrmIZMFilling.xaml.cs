@@ -12,6 +12,29 @@ using System.Windows;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
 {
+    internal static class IDHelper
+    {
+#if !Revit2024 && !Debug2024
+        internal static int InvalidIdInt => ElementId.InvalidElementId.IntegerValue;
+        internal static long InvalidIdValue => ElementId.InvalidElementId.IntegerValue;
+
+        internal static int ElIdInt(ElementId id) => id == null ? InvalidIdInt : id.IntegerValue;
+        internal static long ElIdValue(ElementId id) => id == null ? InvalidIdValue : id.IntegerValue;
+
+        internal static ElementId ToElementId(int id) => new ElementId(id);
+        internal static ElementId ToElementId(long id) => new ElementId((int)id);
+#else
+        internal static int InvalidIdInt => (int)ElementId.InvalidElementId.Value;
+        internal static long InvalidIdValue => ElementId.InvalidElementId.Value;
+
+        internal static int ElIdInt(ElementId id) => id == null ? InvalidIdInt : (int)id.Value;
+        internal static long ElIdValue(ElementId id) => id == null ? InvalidIdValue : id.Value;
+
+        internal static ElementId ToElementId(int id) => new ElementId((long)id);
+        internal static ElementId ToElementId(long id) => new ElementId(id);
+#endif
+    }
+
     internal class FrmIZMFillingViewModel : INotifyPropertyChanged
     {
         private readonly Document _doc;
@@ -111,7 +134,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             if (!string.IsNullOrWhiteSpace(typeName))
                 return typeName;
 
-            return symbol.Id.IntegerValue.ToString(CultureInfo.InvariantCulture);
+            return IDHelper.ElIdInt(symbol.Id).ToString(CultureInfo.InvariantCulture);
         }
 
         private string GetRevisionApprovedForDisplay(Revision revision)
@@ -305,7 +328,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             foreach (ViewSheet sheet in selectedSheets)
             {
-                int key = sheet.Id.IntegerValue;
+                int key = IDHelper.ElIdInt(sheet.Id);
                 SheetRowItem row;
 
                 if (_sheetRowCache.ContainsKey(key))
@@ -375,7 +398,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     return p.AsDouble().ToString(CultureInfo.InvariantCulture);
 
                 if (p.StorageType == StorageType.ElementId)
-                    return p.AsElementId().IntegerValue.ToString(CultureInfo.InvariantCulture);
+                    return IDHelper.ElIdInt(p.AsElementId()).ToString(CultureInfo.InvariantCulture);
             }
             catch
             {
@@ -567,7 +590,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public RevisionComboItem(ElementId id, string name, int sequenceNumber)
         {
             Id = id ?? ElementId.InvalidElementId;
-            IdValue = Id.IntegerValue;
+            IdValue = IDHelper.ElIdInt(Id);
             Name = name;
             SequenceNumber = sequenceNumber;
             _isEnabled = true;
@@ -600,7 +623,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public SignatureComboItem(ElementId id, string name)
         {
             Id = id ?? ElementId.InvalidElementId;
-            IdValue = Id.IntegerValue;
+            IdValue = IDHelper.ElIdInt(Id);
             Name = name ?? string.Empty;
         }
 
@@ -765,7 +788,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             if (revisionId == ElementId.InvalidElementId)
                 return false;
 
-            if (revisionId.IntegerValue <= 0)
+            if (IDHelper.ElIdInt(revisionId) <= 0)
                 return false;
 
             return _doc.GetElement(revisionId) is Revision;
@@ -897,7 +920,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 {
                     HashSet<int> selectedByOtherLines = new HashSet<int>(
                         Lines.Where(x => !ReferenceEquals(x, currentLine) && IsValidRevisionId(x.RevisionId))
-                             .Select(x => x.RevisionId.IntegerValue));
+                             .Select(x => IDHelper.ElIdInt(x.RevisionId)));
 
                     currentLine.ApplyRevisionAvailability(selectedByOtherLines);
                 }
@@ -1089,7 +1112,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 if (p.StorageType == StorageType.String)
                 {
                     SignatureComboItem item = _signatureDefinitions
-                        .FirstOrDefault(x => x.IdValue == valueToSet.IntegerValue);
+                        .FirstOrDefault(x => x.IdValue == IDHelper.ElIdInt(valueToSet));
 
                     p.Set(item != null ? item.Name : string.Empty);
                 }
@@ -1211,7 +1234,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         {
             List<int> ids = Lines
                 .Where(x => IsValidRevisionId(x.RevisionId))
-                .Select(x => x.RevisionId.IntegerValue)
+                .Select(x => IDHelper.ElIdInt(x.RevisionId))
                 .ToList();
 
             return ids.Count != ids.Distinct().Count();
@@ -1242,7 +1265,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     return p.AsDouble().ToString(CultureInfo.InvariantCulture);
 
                 if (p.StorageType == StorageType.ElementId)
-                    return p.AsElementId().IntegerValue.ToString(CultureInfo.InvariantCulture);
+                    return IDHelper.ElIdInt(p.AsElementId()).ToString(CultureInfo.InvariantCulture);
             }
             catch
             {
@@ -1370,7 +1393,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                 int newIdValue = value != null
                     ? value.IdValue
-                    : ElementId.InvalidElementId.IntegerValue;
+                    : IDHelper.InvalidIdInt;
 
                 ApplyRevisionIdInternal(newIdValue, true);
             }
@@ -1392,7 +1415,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                 int newIdValue = value != null
                     ? value.IdValue
-                    : ElementId.InvalidElementId.IntegerValue;
+                    : IDHelper.InvalidIdInt;
 
                 ApplySignatureTypeIdInternal(newIdValue, true);
             }
@@ -1404,8 +1427,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             set
             {
                 int newIdValue = value != null
-                    ? value.IntegerValue
-                    : ElementId.InvalidElementId.IntegerValue;
+                    ? IDHelper.ElIdInt(value)
+                    : IDHelper.InvalidIdInt;
 
                 ApplyRevisionIdInternal(newIdValue, true);
             }
@@ -1426,8 +1449,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             set
             {
                 int newIdValue = value != null
-                    ? value.IntegerValue
-                    : ElementId.InvalidElementId.IntegerValue;
+                    ? IDHelper.ElIdInt(value)
+                    : IDHelper.InvalidIdInt;
 
                 ApplySignatureTypeIdInternal(newIdValue, true);
             }
@@ -1506,11 +1529,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _displayNumber = displayNumber;
 
             _revisionId = ElementId.InvalidElementId;
-            _revisionIdValue = ElementId.InvalidElementId.IntegerValue;
-            _lastCommittedRevisionIdValue = ElementId.InvalidElementId.IntegerValue;
+            _revisionIdValue = IDHelper.InvalidIdInt;
+            _lastCommittedRevisionIdValue = IDHelper.InvalidIdInt;
 
             _signatureTypeId = ElementId.InvalidElementId;
-            _signatureTypeIdValue = ElementId.InvalidElementId.IntegerValue;
+            _signatureTypeIdValue = IDHelper.InvalidIdInt;
 
             _quantityText = string.Empty;
             _statusCode = 0;
@@ -1575,7 +1598,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             foreach (RevisionComboItem item in AvailableRevisionItems)
             {
-                if (item.IdValue == ElementId.InvalidElementId.IntegerValue || item.IdValue <= 0)
+                if (item.IdValue == IDHelper.InvalidIdInt || item.IdValue <= 0)
                 {
                     item.IsEnabled = true;
                     continue;
@@ -1583,7 +1606,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                 bool isCurrentSelection = _revisionId != null &&
                                           _revisionId != ElementId.InvalidElementId &&
-                                          _revisionId.IntegerValue == item.IdValue;
+                                          IDHelper.ElIdInt(_revisionId) == item.IdValue;
 
                 item.IsEnabled = isCurrentSelection || !selectedByOtherLines.Contains(item.IdValue);
             }
@@ -1648,7 +1671,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     return item;
             }
 
-            return AvailableSignatureItems.FirstOrDefault(x => x.IdValue == ElementId.InvalidElementId.IntegerValue);
+            return AvailableSignatureItems.FirstOrDefault(x => x.IdValue == IDHelper.InvalidIdInt);
         }
 
         private void ApplyRevisionIdInternal(int revisionIdValue, bool raiseEvents)
@@ -1662,9 +1685,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             _revisionIdValue = normalizedIdValue;
-            _revisionId = normalizedIdValue == ElementId.InvalidElementId.IntegerValue
+            _revisionId = normalizedIdValue == IDHelper.InvalidIdInt
                 ? ElementId.InvalidElementId
-                : new ElementId(normalizedIdValue);
+                : IDHelper.ToElementId(normalizedIdValue);
 
             if (!HasRevisionSelected)
                 ClearRevisionDependentData();
@@ -1692,9 +1715,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             _signatureTypeIdValue = normalizedIdValue;
-            _signatureTypeId = normalizedIdValue == ElementId.InvalidElementId.IntegerValue
+            _signatureTypeId = normalizedIdValue == IDHelper.InvalidIdInt
                 ? ElementId.InvalidElementId
-                : new ElementId(normalizedIdValue);
+                : IDHelper.ToElementId(normalizedIdValue);
 
             SyncSelectedSignatureItem();
 
@@ -1708,14 +1731,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private int NormalizeRevisionIdValue(int revisionIdValue)
         {
             if (revisionIdValue <= 0)
-                return ElementId.InvalidElementId.IntegerValue;
+                return IDHelper.InvalidIdInt;
 
-            if (revisionIdValue == ElementId.InvalidElementId.IntegerValue)
-                return ElementId.InvalidElementId.IntegerValue;
+            if (revisionIdValue == IDHelper.InvalidIdInt)
+                return IDHelper.InvalidIdInt;
 
-            Revision revision = _doc.GetElement(new ElementId(revisionIdValue)) as Revision;
+            Revision revision = _doc.GetElement(IDHelper.ToElementId(revisionIdValue)) as Revision;
             if (revision == null)
-                return ElementId.InvalidElementId.IntegerValue;
+                return IDHelper.InvalidIdInt;
 
             return revisionIdValue;
         }
@@ -1723,14 +1746,14 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private int NormalizeSignatureTypeIdValue(int signatureTypeIdValue)
         {
             if (signatureTypeIdValue <= 0)
-                return ElementId.InvalidElementId.IntegerValue;
+                return IDHelper.InvalidIdInt;
 
-            if (signatureTypeIdValue == ElementId.InvalidElementId.IntegerValue)
-                return ElementId.InvalidElementId.IntegerValue;
+            if (signatureTypeIdValue == IDHelper.InvalidIdInt)
+                return IDHelper.InvalidIdInt;
 
-            Element e = _doc.GetElement(new ElementId(signatureTypeIdValue));
+            Element e = _doc.GetElement(IDHelper.ToElementId(signatureTypeIdValue));
             if (e == null)
-                return ElementId.InvalidElementId.IntegerValue;
+                return IDHelper.InvalidIdInt;
 
             return signatureTypeIdValue;
         }
@@ -1743,7 +1766,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             if (revisionId == ElementId.InvalidElementId)
                 return false;
 
-            if (revisionId.IntegerValue <= 0)
+            if (IDHelper.ElIdInt(revisionId) <= 0)
                 return false;
 
             return _doc.GetElement(revisionId) is Revision;
@@ -1757,11 +1780,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public void ResetAllData()
         {
             _revisionId = ElementId.InvalidElementId;
-            _revisionIdValue = ElementId.InvalidElementId.IntegerValue;
-            _lastCommittedRevisionIdValue = ElementId.InvalidElementId.IntegerValue;
+            _revisionIdValue = IDHelper.InvalidIdInt;
+            _lastCommittedRevisionIdValue = IDHelper.InvalidIdInt;
 
             _signatureTypeId = ElementId.InvalidElementId;
-            _signatureTypeIdValue = ElementId.InvalidElementId.IntegerValue;
+            _signatureTypeIdValue = IDHelper.InvalidIdInt;
 
             _quantityText = string.Empty;
             _statusCode = 0;
@@ -1787,17 +1810,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public void ApplyRevisionState(ElementId revisionId)
         {
             int newIdValue = revisionId != null
-                ? revisionId.IntegerValue
-                : ElementId.InvalidElementId.IntegerValue;
+                ? IDHelper.ElIdInt(revisionId)
+                : IDHelper.InvalidIdInt;
 
             newIdValue = NormalizeRevisionIdValue(newIdValue);
 
             bool revisionChanged = _revisionIdValue != newIdValue;
 
             _revisionIdValue = newIdValue;
-            _revisionId = newIdValue == ElementId.InvalidElementId.IntegerValue
+            _revisionId = newIdValue == IDHelper.InvalidIdInt
                 ? ElementId.InvalidElementId
-                : new ElementId(newIdValue);
+                : IDHelper.ToElementId(newIdValue);
 
             if (!HasRevisionSelected)
             {
@@ -1847,9 +1870,22 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private string GetRevisionApprovedBy(Revision revision)
         {
+            if (revision == null)
+                return string.Empty;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(revision.IssuedBy))
+                    return revision.IssuedBy;
+            }
+            catch
+            {
+            }
+
             string value = GetParameterString(
                 revision,
                 "Утвердил",
+                "Issued By",
                 "Approved By",
                 "ApprovedBy",
                 "Кем утвержден",
@@ -1910,7 +1946,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     return p.AsDouble().ToString(CultureInfo.InvariantCulture);
 
                 if (p.StorageType == StorageType.ElementId)
-                    return p.AsElementId().IntegerValue.ToString(CultureInfo.InvariantCulture);
+                    return IDHelper.ElIdInt(p.AsElementId()).ToString(CultureInfo.InvariantCulture);
             }
             catch
             {
@@ -1937,7 +1973,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             if (x == null || y == null)
                 return false;
 
-            return x.IntegerValue == y.IntegerValue;
+            return IDHelper.ElIdInt(x) == IDHelper.ElIdInt(y);
         }
 
         public int GetHashCode(ElementId obj)
@@ -1945,7 +1981,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             if (obj == null)
                 return 0;
 
-            return obj.IntegerValue;
+            return IDHelper.ElIdInt(obj);
         }
     }
 
