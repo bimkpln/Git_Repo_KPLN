@@ -1237,6 +1237,134 @@ namespace KPLN_FamilyManager.Forms
             MainArea.Child = root;
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Логирование активности по путям семейств. Для каждого FamilyPath увеличивает Activity на 1, а если записи ещё нет — создаёт её.
+        private static void UpsertFamilyManagerActivity(string dbPath, IEnumerable<string> familyPaths)
+        {
+            var paths = (familyPaths ?? Enumerable.Empty<string>())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (paths.Count == 0)
+                return;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmdUpd = new SQLiteCommand(@"
+            UPDATE FamilyManagerActivity
+            SET Activity = COALESCE(Activity, 0) + 1
+            WHERE FamilyPath = @path;", conn, tx))
+                using (var cmdIns = new SQLiteCommand(@"
+            INSERT INTO FamilyManagerActivity (FamilyPath, Activity)
+            VALUES (@path, 1);", conn, tx))
+                {
+                    var pUpd = cmdUpd.Parameters.Add("@path", System.Data.DbType.String);
+                    var pIns = cmdIns.Parameters.Add("@path", System.Data.DbType.String);
+
+                    foreach (var path in paths)
+                    {
+                        pUpd.Value = path;
+                        int rows = cmdUpd.ExecuteNonQuery();
+
+                        if (rows == 0)
+                        {
+                            pIns.Value = path;
+                            cmdIns.ExecuteNonQuery();
+                        }
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        // Вызываем только для BIM (Админ)
+        private void RegisterFamilyActivityIfBimAdmin(IEnumerable<string> familyPaths)
+        {
+            if (!IsBimAdmin(GetCurrentDepartment()))
+                return;
+
+            try
+            {
+                UpsertFamilyManagerActivity(DB_PATH, familyPaths);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось записать активность в FamilyManagerActivity:\n" + ex.Message);
+            }
+        }
+
+        private static void UpsertFamilyManagerView(string dbPath, string familyPath)
+        {
+            if (string.IsNullOrWhiteSpace(dbPath) || string.IsNullOrWhiteSpace(familyPath))
+                return;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmdUpd = new SQLiteCommand(@"
+            UPDATE FamilyManagerActivity
+            SET [View] = COALESCE([View], 0) + 1
+            WHERE FamilyPath = @path;", conn, tx))
+                using (var cmdIns = new SQLiteCommand(@"
+            INSERT INTO FamilyManagerActivity (FamilyPath, [View], Activity)
+            VALUES (@path, 1, 0);", conn, tx))
+                {
+                    cmdUpd.Parameters.AddWithValue("@path", familyPath);
+                    int rows = cmdUpd.ExecuteNonQuery();
+
+                    if (rows == 0)
+                    {
+                        cmdIns.Parameters.AddWithValue("@path", familyPath);
+                        cmdIns.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        private void RegisterFamilyViewIfBimAdmin(string idText)
+        {
+
+            if (!int.TryParse(idText, out int famId))
+                return;
+
+            try
+            {
+                var rec = GetFamilyRowById(DB_PATH, famId);
+                var familyPath = rec?.FullPath;
+
+                if (string.IsNullOrWhiteSpace(familyPath))
+                    return;
+
+                UpsertFamilyManagerView(DB_PATH, familyPath);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось записать просмотр в FamilyManagerActivity:\n" + ex.Message);
+            }
+        }
+
         // Обработчик собыйтий. Фильтр семейств по названию
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
         {
@@ -1595,6 +1723,8 @@ namespace KPLN_FamilyManager.Forms
 
         private void OpenFamilyUserLoop(string idText)
         {
+            RegisterFamilyViewIfBimAdmin(idText);
+
             var owner = Window.GetWindow(this) ?? Application.Current?.MainWindow;
 
             while (true)
@@ -3584,6 +3714,8 @@ namespace KPLN_FamilyManager.Forms
         private void OnOpenInRevitClick(object sender, RoutedEventArgs e)
         {
             var list = GetSelectedRecordsForCurrentDept();
+            RegisterFamilyActivityIfBimAdmin(list.Select(r => r.FullPath));
+
             if (list.Count == 0) return;
 
             var names = list.Select(r => SafeFileName(r.FullPath)).ToList();
@@ -3600,6 +3732,8 @@ namespace KPLN_FamilyManager.Forms
                 TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
                 return;
             }
+
+
 
             int ok = 0, err = 0;
             foreach (var r in list)
@@ -3618,6 +3752,8 @@ namespace KPLN_FamilyManager.Forms
         private void OnLoadIntoProjectClick(object sender, RoutedEventArgs e)
         {
             var list = GetSelectedRecordsForCurrentDept();
+            RegisterFamilyActivityIfBimAdmin(list.Select(r => r.FullPath));
+
             if (list.Count == 0) return;
 
             var names = list.Select(r => SafeFileName(r.FullPath)).ToList();
