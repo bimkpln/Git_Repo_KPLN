@@ -397,6 +397,8 @@ namespace KPLN_FamilyManager.Forms
 
         private void ButtonOpenFamily_Click(object sender, RoutedEventArgs e)
         {
+            RegisterCurrentFamilyActivity();
+
             OpenFormat = "OpenFamily";
             DialogResult = true;
             Close();
@@ -404,10 +406,70 @@ namespace KPLN_FamilyManager.Forms
 
         private void ButtonOpenFamilyInProject_Click(object sender, RoutedEventArgs e)
         {
+            RegisterCurrentFamilyActivity();
+
             OpenFormat = "OpenFamilyInProject";
             DialogResult = true;
             Close();
         }
+
+        private static void IncrementFamilyActivity(string familyPath)
+        {
+            if (string.IsNullOrWhiteSpace(familyPath))
+                return;
+
+            using (var conn = new SQLiteConnection($"Data Source={DB_PATH};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmdUpd = new SQLiteCommand(@"
+                    UPDATE FamilyManagerActivity
+                    SET Activity = COALESCE(Activity, 0) + 1
+                    WHERE FamilyPath = @path;", conn, tx))
+                        using (var cmdIns = new SQLiteCommand(@"
+                    INSERT INTO FamilyManagerActivity (FamilyPath, Activity, [View])
+                    VALUES (@path, 1, 0);", conn, tx))
+                {
+                    cmdUpd.Parameters.AddWithValue("@path", familyPath);
+                    int rows = cmdUpd.ExecuteNonQuery();
+
+                    if (rows == 0)
+                    {
+                        cmdIns.Parameters.AddWithValue("@path", familyPath);
+                        cmdIns.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        private void RegisterCurrentFamilyActivity()
+        {
+            try
+            {
+                var rec = DataContext as FamilyManagerRecord;
+                string familyPath = rec?.FULLPATH;
+
+                if (string.IsNullOrWhiteSpace(familyPath))
+                    familyPath = filePathFI;
+
+                if (!string.IsNullOrWhiteSpace(familyPath))
+                    IncrementFamilyActivity(familyPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "Не удалось записать активность в FamilyManagerActivity:\n" + ex.Message,
+                    "Family Manager",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+
+
 
         // ---- ИЗБРАННОЕ ----
         private void FavoriteToggle_Click(object sender, RoutedEventArgs e)
