@@ -100,6 +100,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                this.Close();
+            }
+        }
+
         // Создание Dictionary<string, List<string>> для "Категории параметров" и "Тип данных"
         static public Dictionary<string, List<string>> CategoryParameterDataTypes = new Dictionary<string, List<string>>
         {

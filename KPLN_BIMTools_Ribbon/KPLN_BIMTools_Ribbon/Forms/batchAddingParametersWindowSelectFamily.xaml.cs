@@ -10,6 +10,7 @@ using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Xml.Linq;
 
@@ -86,6 +87,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
                     break;
             }           
+        }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                this.Close();
+            }
         }
 
         // Добавление значений в дебаг-окно
