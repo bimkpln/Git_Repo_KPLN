@@ -75,9 +75,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 .ToList();
 
             foreach (FamilySymbol symbol in symbols)
-            {
                 _signatureDefinitions.Add(new SignatureComboItem(symbol.Id, GetSignatureDisplayName(symbol)));
-            }
         }
 
         private string GetSignatureDisplayName(FamilySymbol symbol)
@@ -629,6 +627,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private readonly Document _doc;
         private readonly List<RevisionComboItem> _revisionDefinitions;
         private readonly List<SignatureComboItem> _signatureDefinitions;
+        private readonly int _rowCount;
+
         private bool _isSorting;
         private bool _isResettingDuplicateRevision;
         private bool _isRebuildingRevisionUi;
@@ -655,14 +655,44 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             SheetNumber = sheet.SheetNumber;
             SheetName = sheet.Name;
 
+            _rowCount = DetectRowCount();
+
             Lines = new ObservableCollection<SheetRevisionLine>();
+
+            for (int displayNumber = _rowCount; displayNumber >= 1; displayNumber--)
+            {
+                Lines.Add(new SheetRevisionLine(_doc, displayNumber, _revisionDefinitions, _signatureDefinitions));
+            }
+
             Lines.CollectionChanged += Lines_CollectionChanged;
-
-            for (int i = 1; i <= 4; i++)
-                Lines.Add(new SheetRevisionLine(_doc, i, _revisionDefinitions, _signatureDefinitions));
-
             SubscribeLines(Lines, true);
+
+            RefreshDisplayNumbers();
+            RebuildRevisionUi();
             LoadFromSheet();
+        }
+
+        private int DetectRowCount()
+        {
+            FamilyInstance titleBlock = GetMainTitleBlock();
+
+            if (HasTitleBlockParameterForRow4(titleBlock))
+                return 4;
+
+            return 2;
+        }
+
+        private bool HasTitleBlockParameterForRow4(FamilyInstance titleBlock)
+        {
+            if (titleBlock == null)
+                return false;
+
+            Parameter p = titleBlock.LookupParameter("Изм4 подпись<Типовые аннотации>");
+            if (p != null)
+                return true;
+
+            p = titleBlock.LookupParameter("Изм4 подпись");
+            return p != null;
         }
 
         private void Lines_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -770,7 +800,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void LoadStaticColumnsFromSheet()
         {
-            int[] statusDigits = ParseStatusDigits(GetParameterString(Sheet, "Ш.ШифрСтатусЛиста"));
+            int[] statusDigits = GetStatusDigitsFromSheet();
             FamilyInstance titleBlock = GetMainTitleBlock();
 
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
@@ -793,8 +823,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             List<ElementId> selectedRevisionIds = GetSelectedRevisionIds();
             Sheet.SetAdditionalRevisionIds(selectedRevisionIds);
 
-            // Кол. уч. не трогаем логикой сортировки.
-            // Пишем его строго из текущей визуальной строки в соответствующий зеркальный слот.
+            // Кол. уч. автономный.
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
             {
                 SheetRevisionLine line = Lines[rowIndex];
@@ -803,18 +832,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 SetParameterString(Sheet, GetQtyParamName(mirroredSlotNumber), line.QuantityText);
             }
 
-            // Лист (статус) тоже автономный.
-            StringBuilder statusBuilder = new StringBuilder();
-            for (int slotNumber = 1; slotNumber <= Lines.Count; slotNumber++)
-            {
-                SheetRevisionLine line = GetLineByMirroredSlotNumber(slotNumber);
-                int status = line != null ? line.StatusCode : 0;
-                statusBuilder.Append(status.ToString(CultureInfo.InvariantCulture));
-            }
+            // Лист автономный. Для 4-строчного и 2-строчного штампа разные методы.
+            SetStatusStringToSheet();
 
-            SetParameterString(Sheet, "Ш.ШифрСтатусЛиста", statusBuilder.ToString());
-
-            // Подпись автономная. Пишем строго в основную надпись по номеру строки 4/3/2/1.
+            // Подпись автономная.
             FamilyInstance titleBlock = GetMainTitleBlock();
 
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
@@ -844,9 +865,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     .ThenBy(x => x.OriginalIndex)
                     .ToList();
 
-                // ВАЖНО:
-                // Переставляем ТОЛЬКО revision.
-                // Quantity / Status / Signature не трогаем вообще.
+                // Переставляем только ИЗМ.
+                // Quantity / Status / Signature не трогаем.
                 for (int i = 0; i < Lines.Count; i++)
                 {
                     RevisionSortableState state = sortedStates[i];
@@ -965,11 +985,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             if (string.IsNullOrWhiteSpace(baseName))
                 return null;
 
-            Parameter p = titleBlock.LookupParameter(baseName);
+            Parameter p = titleBlock.LookupParameter(baseName + "<Типовые аннотации>");
             if (p != null)
                 return p;
 
-            p = titleBlock.LookupParameter(baseName + "<Типовые аннотации>");
+            p = titleBlock.LookupParameter(baseName);
             if (p != null)
                 return p;
 
@@ -1079,9 +1099,54 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        private int[] GetStatusDigitsFromSheet()
+        {
+            string value = GetParameterString(Sheet, "Ш.ШифрСтатусЛиста");
+
+            if (_rowCount == 4)
+                return ParseStatusDigitsForFourRows(value);
+
+            return ParseStatusDigitsForTwoRows(value);
+        }
+
+        private int[] ParseStatusDigitsForFourRows(string input)
+        {
+            return ParseStatusDigits(input, 4);
+        }
+
+        private int[] ParseStatusDigitsForTwoRows(string input)
+        {
+            return ParseStatusDigits(input, 2);
+        }
+
+        private int[] ParseStatusDigits(string input, int expectedCount)
+        {
+            int[] result = new int[expectedCount];
+
+            for (int i = 0; i < result.Length; i++)
+                result[i] = 0;
+
+            if (string.IsNullOrWhiteSpace(input))
+                return result;
+
+            string digitsOnly = new string(input.Where(char.IsDigit).ToArray());
+
+            for (int i = 0; i < result.Length; i++)
+            {
+                if (i < digitsOnly.Length)
+                {
+                    int digit;
+                    if (int.TryParse(digitsOnly[i].ToString(), out digit) && digit >= 0 && digit <= 3)
+                        result[i] = digit;
+                }
+            }
+
+            return result;
+        }
+
         private int GetStatusCodeBySlotNumber(int[] digits, int slotNumber)
         {
-            if (digits == null || digits.Length < 4)
+            if (digits == null || digits.Length == 0)
                 return 0;
 
             int index = slotNumber - 1;
@@ -1090,6 +1155,46 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return 0;
 
             return digits[index];
+        }
+
+        private void SetStatusStringToSheet()
+        {
+            string statusValue;
+
+            if (_rowCount == 4)
+                statusValue = BuildStatusStringForFourRows();
+            else
+                statusValue = BuildStatusStringForTwoRows();
+
+            SetParameterString(Sheet, "Ш.ШифрСтатусЛиста", statusValue);
+        }
+
+        private string BuildStatusStringForFourRows()
+        {
+            StringBuilder statusBuilder = new StringBuilder();
+
+            for (int slotNumber = 1; slotNumber <= 4; slotNumber++)
+            {
+                SheetRevisionLine line = GetLineByMirroredSlotNumber(slotNumber);
+                int status = line != null ? line.StatusCode : 0;
+                statusBuilder.Append(status.ToString(CultureInfo.InvariantCulture));
+            }
+
+            return statusBuilder.ToString();
+        }
+
+        private string BuildStatusStringForTwoRows()
+        {
+            StringBuilder statusBuilder = new StringBuilder();
+
+            for (int slotNumber = 1; slotNumber <= 2; slotNumber++)
+            {
+                SheetRevisionLine line = GetLineByMirroredSlotNumber(slotNumber);
+                int status = line != null ? line.StatusCode : 0;
+                statusBuilder.Append(status.ToString(CultureInfo.InvariantCulture));
+            }
+
+            return statusBuilder.ToString();
         }
 
         public List<ElementId> GetSelectedRevisionIds()
@@ -1110,30 +1215,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 .ToList();
 
             return ids.Count != ids.Distinct().Count();
-        }
-
-        private int[] ParseStatusDigits(string input)
-        {
-            int[] result = new int[] { 0, 0, 0, 0 };
-
-            if (string.IsNullOrWhiteSpace(input))
-                return result;
-
-            string digitsOnly = new string(input.Where(char.IsDigit).ToArray());
-
-            for (int i = 0; i < result.Length; i++)
-            {
-                if (i < digitsOnly.Length)
-                {
-                    int digit;
-                    if (int.TryParse(digitsOnly[i].ToString(), out digit) && digit >= 0 && digit <= 3)
-                        result[i] = digit;
-                    else
-                        result[i] = 0;
-                }
-            }
-
-            return result;
         }
 
         private string GetParameterString(Element element, string parameterName)

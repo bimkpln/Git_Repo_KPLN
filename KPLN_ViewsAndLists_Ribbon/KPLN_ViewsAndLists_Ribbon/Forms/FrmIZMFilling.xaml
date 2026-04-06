@@ -5,9 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d"
-        Title="Заполнение ИЗМов"
+        Title="KPLN. Заполнение ИЗМов"
         Height="900"
-        Width="1500"
+        Width="1530"
         MinHeight="700"
         MinWidth="1200"
         WindowStartupLocation="CenterScreen">
