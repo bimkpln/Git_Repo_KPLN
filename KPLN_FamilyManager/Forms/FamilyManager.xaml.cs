@@ -561,6 +561,8 @@ namespace KPLN_FamilyManager.Forms
         private bool _depsLoaded = false;
         private Dictionary<int, string> _searchIndex = new Dictionary<int, string>();
         private DispatcherTimer _searchDebounceTimer;
+        private string _savedSearchText = "";
+        private bool _savedSearchWasWatermark = true;
 
         private Button _btnOpenInRevit;
         private Button _btnLoadIntoProject;
@@ -976,6 +978,7 @@ namespace KPLN_FamilyManager.Forms
             var depUi = GetCurrentDepartment();
             var depDb = DepForDb(depUi);
 
+            CaptureSearchState();
             LoadFavoritesFromFile();
 
             if (!_depsLoaded || (CmbDepartment?.Items?.Count ?? 0) <= 2)
@@ -992,6 +995,10 @@ namespace KPLN_FamilyManager.Forms
 
                     RebuildSearchIndex();
                     BuildMainArea(depUi);
+                    RestoreSearchState();
+
+                    if (!_isWatermarkActive)
+                        RefreshScenario();
                 }
                 catch (Exception ex)
                 {
@@ -1119,7 +1126,6 @@ namespace KPLN_FamilyManager.Forms
             };
 
             _tbSearch.TextChanged += OnSearchTextChanged;
-            _tbSearch.Loaded += (s, e) => ActivateSearchWatermark();
             ActivateSearchWatermark();
 
             _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
@@ -1406,6 +1412,42 @@ namespace KPLN_FamilyManager.Forms
             _isApplyingWatermark = false;
         }
 
+        private void CaptureSearchState()
+        {
+            if (_tbSearch == null)
+            {
+                _savedSearchText = "";
+                _savedSearchWasWatermark = true;
+                return;
+            }
+
+            _savedSearchWasWatermark = _isWatermarkActive;
+            _savedSearchText = _isWatermarkActive ? "" : (_tbSearch.Text ?? "");
+        }
+
+        private void RestoreSearchState()
+        {
+            if (_tbSearch == null)
+                return;
+
+            _isApplyingWatermark = true;
+
+            if (_savedSearchWasWatermark || string.IsNullOrWhiteSpace(_savedSearchText))
+            {
+                _tbSearch.Foreground = System.Windows.Media.Brushes.Gray;
+                _tbSearch.Text = SEARCH_WATERMARK;
+                _isWatermarkActive = true;
+            }
+            else
+            {
+                _tbSearch.Foreground = System.Windows.Media.Brushes.Black;
+                _tbSearch.Text = _savedSearchText;
+                _isWatermarkActive = false;
+            }
+
+            _isApplyingWatermark = false;
+        }
+
         // UI в зависимости от подразделения
         private FrameworkElement BuildScenarioUI(string dep, List<FamilyManagerRecord> records)
         {
@@ -1653,10 +1695,28 @@ namespace KPLN_FamilyManager.Forms
                 }
                 else if (openFormat == "UpdateFamily")
                 {
-                    bool ok = TryUpdateImportInfoForRecord(idText);
-                    if (ok)
-                        ReloadFromDbAndRefreshUI();
+                    var rec = win.ResultRecord;
+                    if (rec == null)
+                    {
+                        MessageBox.Show("Нет данных для обновления.",
+                            "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        continue;
+                    }
 
+                    try
+                    {
+                        FamilyManagerEditBIM.SaveRecordToDatabase(rec);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Не удалось сохранить запись перед обновлением IMPORT_INFO: " + ex.Message,
+                            "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                        continue;
+                    }
+
+                    bool ok = TryUpdateImportInfoForRecord(rec.ID.ToString());
+
+                    ReloadFromDbAndRefreshUI();
                     continue;
                 }
                 else
@@ -2081,7 +2141,7 @@ namespace KPLN_FamilyManager.Forms
             return null;
         }
 
-        // IMPORT_INFO. Все непустые уникальные значения параметра по всем типам, через запятую
+        // IMPORT_INFO. Все непустые уникальные значения параметра по всем типам
         private static string JoinAllValuesByTypes(Autodesk.Revit.DB.FamilyManager fm, FamilyParameter param)
         {
             if (fm == null) return "";
@@ -2094,14 +2154,40 @@ namespace KPLN_FamilyManager.Forms
             foreach (FamilyType t in fm.Types)
             {
                 if (t == null) continue;
-                var val = GetFamilyParamStringValue(t, param);
+
+                var raw = GetFamilyParamStringValue(t, param);
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+
+                var val = NormalizeSingleLine(raw);
                 if (string.IsNullOrWhiteSpace(val)) continue;
 
                 if (seen.Add(val))
                     result.Add(val);
             }
 
-            return string.Join(", ", result);
+            return string.Join("\n", result);
+        }
+
+        private static string NormalizeSingleLine(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "";
+
+            var s = value.Trim();
+
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+
+            s = s.Replace("\r\n", " ")
+                 .Replace("\n", " ")
+                 .Replace("\r", " ")
+                 .Replace("\t", " ")
+                 .Trim();
+
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+
+            return s;
         }
 
         // IMPORT_INFO. Чтение строкового представления значения параметра у конкретного FamilyType
@@ -2261,7 +2347,9 @@ namespace KPLN_FamilyManager.Forms
         {
             try
             {
-                var depUi = GetCurrentDepartment(); // <— только из UI
+                CaptureSearchState();
+
+                var depUi = GetCurrentDepartment();
                 if (string.Equals(depUi, BIM_ADMIN, StringComparison.OrdinalIgnoreCase))
                 {
                     _records = LoadFamilyManagerRecords(DB_PATH);
@@ -2273,6 +2361,11 @@ namespace KPLN_FamilyManager.Forms
 
                 RebuildSearchIndex();
                 BuildMainArea(depUi);
+
+                RestoreSearchState();
+
+                if (!_isWatermarkActive)
+                    RefreshScenario();
             }
             catch (Exception ex)
             {
@@ -2462,6 +2555,36 @@ namespace KPLN_FamilyManager.Forms
                     }
                 }
                 else if (dlg.Result == 3)
+                {
+                    try
+                    {
+                        if (!File.Exists(DB_PATH))
+                        {
+                            TaskDialog.Show("Ошибка", $"Файл БД не найден:\n{DB_PATH}");
+                            return;
+                        }
+
+                        var confirm = System.Windows.MessageBox.Show(
+                            "Удалить из плагина все семейства, которые не найдены на диске?",
+                            "Подтверждение удаления",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Warning);
+
+                        if (confirm != MessageBoxResult.Yes)
+                            return;
+
+                        int deletedCount = DeleteAbsentRecords(DB_PATH);
+
+                        TaskDialog.Show("Очистка БД", $"Удалено записей: {deletedCount}");
+
+                        ReloadFromDbAndRefreshUI();
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("Ошибка", ex.Message);
+                    }
+                }
+                else if (dlg.Result == 4)
                 {
                     var win = new FamilyManagerSettingDB
                     {
@@ -2725,22 +2848,6 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         /// --- Обновление PROJECT в FamilyManager по ABR из Projects
         private static int UpdateProjectsByAbr(string dbPath)
         {
@@ -2812,30 +2919,6 @@ namespace KPLN_FamilyManager.Forms
                 }
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// --- Обновлеие IMAGE в FamilyManager
         // Запись данных в БД (FamilyManager). STATUS, IMAGE
@@ -3049,7 +3132,27 @@ namespace KPLN_FamilyManager.Forms
         }
 
 
+        private static int DeleteAbsentRecords(string dbPath)
+        {
+            if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
+                return 0;
 
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmd = new SQLiteCommand(@"
+            DELETE FROM FamilyManager
+            WHERE STATUS IS NOT NULL
+              AND UPPER(TRIM(STATUS)) = 'ABSENT';", conn, tx))
+                {
+                    int deleted = cmd.ExecuteNonQuery();
+                    tx.Commit();
+                    return deleted;
+                }
+            }
+        }
 
 
 

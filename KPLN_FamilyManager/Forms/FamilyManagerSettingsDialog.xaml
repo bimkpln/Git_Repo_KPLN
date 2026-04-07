@@ -1,15 +1,16 @@
 ﻿<Window x:Class="KPLN_FamilyManager.Forms.SettingsDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Менеджер семейств. Настройки" Height="180" Width="320"
+        Title="Менеджер семейств. Настройки" Height="210" Width="330"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         WindowStyle="ToolWindow">
     <StackPanel VerticalAlignment="Center"  HorizontalAlignment="Center" Margin="10 10 10 15">
         <StackPanel Orientation="Vertical" HorizontalAlignment="Left" >
-            <Button Content=" 🔄  Обновить файлы семейств в БД" ToolTip="Проход по всем rfa-файлам в ``X:\BIM\3_Семейства`` и добавление или обновление их в БД.&#x0a;Обновляются только пути, дата изменения и статус файла в БД.&#x0a;Ориентировочное время выполнения - 1 минута." Width="240" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnUpdateFileBD_Click"/>
-            <Button Content=" 🔄  Обновить свойства семейств в БД" ToolTip="Экспорт дополнительных параметров в БД: отдел, параметры семейства, изображение семейства." Width="240" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnUpdateSettingBD_Click"/>
-            <Button Content=" 🐞  Админ. панель и ошибки в БД" Width="240" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnDebug_Click" Background="#FFFFADAD"/>
+            <Button Content=" 🔄  Обновить файлы семейств в БД" ToolTip="Проход по всем rfa-файлам в ``X:\BIM\3_Семейства`` и добавление или обновление их в БД.&#x0a;Обновляются только пути, дата изменения и статус файла в БД.&#x0a;Ориентировочное время выполнения - 1 минута." Width="280" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnUpdateFileBD_Click"/>
+            <Button Content=" 🔄  Обновить свойства семейств в БД" ToolTip="Экспорт дополнительных параметров в БД: отдел, параметры семейства, изображение семейства." Width="280" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnUpdateSettingBD_Click"/>
+            <Button Content=" 🗑️  Очистить БД от отсутствующих семейств" ToolTip="Экспорт дополнительных параметров в БД: отдел, параметры семейства, изображение семейства." Width="280" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnDeleteErrorBD_Click"/>
+            <Button Content=" 🐞  Админ. панель и ошибки в БД" Width="280" Height="25" Margin="5" HorizontalContentAlignment="Left" Click="BtnDebug_Click" Background="#FFFFADAD"/>
         </StackPanel>
     </StackPanel>
 </Window>
