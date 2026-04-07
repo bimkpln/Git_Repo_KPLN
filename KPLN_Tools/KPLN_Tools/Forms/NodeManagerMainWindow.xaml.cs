@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Tools.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -4002,7 +4003,7 @@ namespace KPLN_Tools.Forms
                                 {
                                     var el = targetDoc.GetElement(id);
                                     string typeName = el?.GetType().Name ?? "<null>";
-                                    int intId = id.IntegerValue;
+                                    int intId = IDHelper.ElIdInt(id);
                                     return $"{typeName} (Id={intId})";
                                 })
                                 .Take(previewCount)
@@ -5340,7 +5341,7 @@ namespace KPLN_Tools.Forms
                         {
                             var el = targetDoc.GetElement(id);
                             string typeName = el?.GetType().Name ?? "<null>";
-                            int intId = id.IntegerValue;
+                            int intId = IDHelper.ElIdInt(id);
                             return $"{typeName} (Id={intId})";
                         })
                         .Take(previewCount)

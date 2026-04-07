@@ -106,6 +106,7 @@
     <Compile Include="Common\Lists\UniCodesCollection.cs" />
     <Compile Include="Common\RevitWindowUtil.cs" />
     <Compile Include="Common\UserErrorException.cs" />
+    <Compile Include="ExternalCommands\Lists\ExtCmdListIZMFilling.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListRevisionClouds.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListTBlockParamCopier.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListRenumber.cs" />
@@ -123,6 +124,9 @@
     </Compile>
     <Compile Include="Forms\CopyViewSoloForm.xaml.cs">
       <DependentUpon>CopyViewSoloForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FrmIZMFilling.xaml.cs">
+      <DependentUpon>FrmIZMFilling.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ListRenumberForm.xaml.cs">
       <DependentUpon>ListRenumberForm.xaml</DependentUpon>
@@ -209,6 +213,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\FrmIZMFilling.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\ListRenumberForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -281,6 +289,12 @@
     <Resource Include="Imagens\ViewTemplateCopySolo16_dark.png" />
     <Resource Include="Imagens\ViewTemplateCopySolo32.png" />
     <Resource Include="Imagens\ViewTemplateCopySolo32_dark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\CommandIZMFilling16.png" />
+    <Resource Include="Imagens\CommandIZMFilling16_dark.png" />
+    <Resource Include="Imagens\CommandIZMFilling32.png" />
+    <Resource Include="Imagens\CommandIZMFilling32_dark.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild">

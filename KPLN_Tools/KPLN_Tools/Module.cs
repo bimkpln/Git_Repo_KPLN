@@ -129,9 +129,9 @@ namespace KPLN_Tools
                 "http://moodle");
 
             PushButtonData changeLevel = CreateBtnData(
-                "Изменение уровня",
-                "Изменение уровня",
-                "Плагин для изменения позиции уровня с сохранением привязанности элементов",
+                "Изменения позиции элементов на уровне",
+                "Изменения позиции элементов на уровне",
+                "Плагин для изменения позиции элементов на уровне",
                 string.Format(
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
@@ -142,6 +142,32 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "KPLN_Tools.Imagens.changeLevelSmall.png",
                 "http://moodle/");
+
+
+
+
+
+
+
+            PushButtonData movingElementsInLevel = CreateBtnData(
+                "Перемещение элементов на новый уровень",
+                "Перемещение элементов на новый уровень",
+                "Плагин для перемещения элементов на новый уровень с сохранением их позиции",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandMovingElementsInLevel).FullName,
+                "KPLN_Tools.Imagens.changeElementsInLevelSmall.png",
+                "KPLN_Tools.Imagens.changeElementsInLevelSmall.png",
+                "http://moodle/");
+
+
+
+
+
 
             // Плагин не реализован до конца. 
             PushButtonData dimensionHelper = CreateBtnData(
@@ -228,6 +254,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(monitoringHelper);
             sharedPullDownBtn.AddPushButton(tagWiper);
             sharedPullDownBtn.AddPushButton(changeLevel);
+            sharedPullDownBtn.AddPushButton(movingElementsInLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(ws_Links);
 
@@ -294,11 +321,28 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.TEPDesignSmall.png",
                     "http://moodle");
 
+                PushButtonData evacuationRoutes = CreateBtnData(
+                    "Автомоделирование путей эвакуации",
+                    "Автомоделирование путей эвакуации",
+                    "Плагин для автомоделирования путей эвакуации",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_AR_EvacuationRoutes).FullName,
+                    "KPLN_Tools.Imagens.evacuationRoutesBig.png",
+                    "KPLN_Tools.Imagens.evacuationRoutesSmall.png",
+                    "http://moodle");
+
+
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
 #if Debug2023 || Revit2023
                 arToolsPullDownBtn.AddPushButton(arPyatnGraph);
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
 #endif
+                arToolsPullDownBtn.AddPushButton(evacuationRoutes);
             }
 
             #endregion

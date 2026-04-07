@@ -1,14 +1,14 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
-using System.Text.RegularExpressions;
-using System.Globalization;
-
 using Grid = System.Windows.Controls.Grid;
 using TextBox = System.Windows.Controls.TextBox;
 
@@ -29,6 +29,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             _uiApp = uiApp;
 
             LoadFamilyDocuments();
+        }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                this.Close();
+            }
         }
 
         // Загрузка имён всех существующих семейств

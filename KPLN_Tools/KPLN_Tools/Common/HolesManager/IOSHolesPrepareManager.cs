@@ -57,6 +57,9 @@ namespace KPLN_Tools.Common.HolesManager
             {
                 //Transform transform = inst.Transform;
                 GeometryElement instGeomElem = inst.GetInstanceGeometry();
+                if (instGeomElem == null)
+                    break;
+
                 foreach (GeometryObject obj in instGeomElem)
                 {
                     Solid solid = obj as Solid;
@@ -75,7 +78,8 @@ namespace KPLN_Tools.Common.HolesManager
                 }
             }
 
-            throw new Exception($"Не удалось получить геометрию у элемента с id: {famInst.Id}");
+            throw new Exception($"Не удалось получить геометрию у элемента с id: {famInst.Id}. Если в модели геометрия есть - обратись к разработчику, " +
+                $"если и в модели ничего нет (редко, но стабильно встречается) - элемент нужно создать заново.");
         }
 
         /// <summary>

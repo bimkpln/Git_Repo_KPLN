@@ -13,7 +13,7 @@ namespace KPLN_Clashes_Ribbon.Commands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class CommandCreateReport : IExternalCommand
+    public class CmdCreateReport : IExternalCommand
     {
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

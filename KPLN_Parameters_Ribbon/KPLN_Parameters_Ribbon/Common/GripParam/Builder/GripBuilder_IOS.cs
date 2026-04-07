@@ -28,6 +28,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 || Doc.Title.ToUpper().Contains("_EOM")
                 || Doc.Title.ToUpper().Contains("_СС")
                 || Doc.Title.ToUpper().Contains("_CC")
+                || Doc.Title.ToUpper().Contains("_ПБ")
+                || Doc.Title.ToUpper().Contains("_PB")
                 || Doc.Title.ToUpper().Contains("_АВ")
                 || Doc.Title.ToUpper().Contains("_AV"))
             {

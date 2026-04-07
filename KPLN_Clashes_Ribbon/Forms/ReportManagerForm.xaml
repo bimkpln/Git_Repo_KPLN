@@ -11,7 +11,7 @@
         WindowStyle="ToolWindow" 
         Topmost="False"
         WindowStartupLocation="CenterScreen" 
-        Width="700" 
+        Width="800" 
         Height="600" 
         Background="#FF292D36">
     <Window.Resources>

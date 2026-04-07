@@ -25,6 +25,7 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
         </Style>
 
         <Style
@@ -34,7 +35,7 @@
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextDecorations" Value="Underline"/>
             <Setter Property="Margin" Value="5,0,0,5"/>
@@ -101,7 +102,6 @@
                 <RadioButton
                     x:Name="AllItemsRB"
                     GroupName="FileNameFilterGroup"
-                    IsChecked="True"
                     Content="Все замечания"
                     Margin="5"
                     FontWeight="Bold"
@@ -315,6 +315,7 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -368,17 +369,37 @@
                                 Style="{StaticResource ItemBTN}"
                                 Background="{x:Null}" 
                                 BorderBrush="White" 
+                                ToolTip="Нажми чтобы расставить все метки пересечений"
                                 BorderThickness="2"/>
 
                             <!--Информация по субэлементам группы-->
                             <TextBlock 
                                 Grid.Row="3" 
                                 Grid.Column="0" 
+                                Text="Id субэлементов: " 
+                                Style="{StaticResource ItemLocalHeaderTBL}"
+                                FontSize="12"/>
+                            <Button 
+                                Grid.Row="3" 
+                                Grid.Column="1" 
+                                Style="{StaticResource ItemBTN}"
+                                MaxWidth="425"
+                                VerticalContentAlignment="Top" 
+                                Click="SelectIdElements"
+                                ToolTip="Нажми чтобы просто выделить все возможные элементы в открытой модели (по id)"
+                                FontSize="10">
+                                <TextBlock 
+                                    Text="{Binding GroupElementIds}" 
+                                    TextWrapping="Wrap"/>
+                            </Button>
+                            <TextBlock 
+                                Grid.Row="4" 
+                                Grid.Column="0" 
                                 Text="Субэлементы: " 
                                 Visibility="{Binding IsGroup}" 
                                 Style="{StaticResource ItemLocalHeaderTBL}"/>
                             <ItemsControl 
-                                Grid.Row="4" 
+                                Grid.Row="5" 
                                 Grid.Column="0" 
                                 Grid.ColumnSpan="2" 
                                 Visibility="{Binding IsGroup}" 
@@ -468,6 +489,7 @@
                                                 Style="{StaticResource ItemBTN}"
                                                 VerticalContentAlignment="Top" 
                                                 Click="SelectIdElement_1"
+                                                ToolTip="Нажми чтобы выделить и приблизить элементв в открытой модели (по id)"
                                                 FontSize="10"/>
                                             <TextBlock 
                                                 Grid.Row="3" 
@@ -509,6 +531,7 @@
                                                 Style="{StaticResource ItemBTN}"
                                                 VerticalContentAlignment="Top" 
                                                 Click="SelectIdElement_2"
+                                                ToolTip="Нажми чтобы выделить и приблизить элементв в открытой модели (по id)"
                                                 FontSize="10"/>
                                             <TextBlock 
                                                 Grid.Row="6" 
@@ -709,7 +732,7 @@
                             </ItemsControl>
                         </StackPanel>
                         <Button 
-                            Grid.Row="5" 
+                            Grid.Row="6" 
                             Width="200"
                             Content="Комментировать" 
                             IsEnabled="{Binding IsControllsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 

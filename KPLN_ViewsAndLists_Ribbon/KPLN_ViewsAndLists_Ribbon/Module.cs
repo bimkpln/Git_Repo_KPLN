@@ -222,6 +222,36 @@ namespace KPLN_ViewsAndLists_Ribbon
                 "CommandListRevisionClouds",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1330"
             );
+
+
+
+
+
+
+
+
+            AddPushButtonDataInPullDown(
+                "CommandIZMFilling",
+                "Заполнение ИЗМов",
+                "Плагин в виде таблицы-спецификации для заполнения изменений на листе.",
+                string.Format(
+                    "Переносит значения листа в экземпляр основной надписи.\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.Lists.ExtCmdListIZMFilling).FullName,
+                pullDown_Lists,
+                "CommandIZMFilling",
+                "http://moodle/"
+            );
+
+
+
+
+
+
             #endregion
 
             return Result.Succeeded;

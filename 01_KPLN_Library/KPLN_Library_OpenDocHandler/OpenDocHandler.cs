@@ -32,7 +32,7 @@ namespace KPLN_Library_OpenDocHandler
             if (args.PathName == null)
                 return;
 
-            _logger.Info($"Начало работы с файлом: {args.PathName}");
+            _logger.Info($"Открыт файл: {args.PathName}");
         }
 
         /// <summary>

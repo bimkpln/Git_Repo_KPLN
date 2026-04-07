@@ -329,7 +329,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// </summary>
         public string GroupName
         {
-            get => $"[{DBProject.Code}]: {Name} ({DBProject.Name})";
+            get => $"[{DBProject.Code}]: {Name} ({DBProject.Name}, Id отчёта:{Id})";
         }
 
         public bool IsEnabled

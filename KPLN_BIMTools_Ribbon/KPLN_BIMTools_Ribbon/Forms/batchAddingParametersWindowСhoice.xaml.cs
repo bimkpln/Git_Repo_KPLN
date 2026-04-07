@@ -1,15 +1,16 @@
-﻿using Autodesk.Revit.UI;
-using System.Windows;
-using System.IO;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
-using System.Linq;
-using Autodesk.Revit.DB;
+using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
-using System.Windows.Controls;
-using System.Security.Cryptography;
-using RevitServerAPILib;
 using System.Data.Common;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -42,6 +43,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
 
             familyName.Text = activeFamilyName;
+        }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                this.Close();
+            }
         }
 
         /// <summary>
@@ -373,19 +383,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
         static public ForgeTypeId GetParameterTypeFromStringParamType(string dataType)
         {
             switch (dataType)
@@ -554,42 +551,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         /// <summary>
         /// Функция предопределения базовых типов для ForgeTypeId при создании параметра. 
         /// Все числовые значения и (!) FamilyType попадают в Autodesk.Revit.DB.ForgeTypeId
@@ -618,29 +579,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 return "Double";
         }
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #if Revit2024 || Debug2024
 
@@ -766,27 +704,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return groupingDict;
         }
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #if !Revit2020 && !Debug2020
         /// <summary>
