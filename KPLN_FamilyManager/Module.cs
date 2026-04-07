@@ -57,7 +57,7 @@ namespace KPLN_FamilyManager
                     typeof(CommandFamilyManager).FullName,
                     "KPLN_FamilyManager.Imagens.familyManagerBig.png",
                     "KPLN_FamilyManager.Imagens.familyManagerBig.png",
-                    "http://moodle");
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1346");
 
                 panel.AddItem(familyManagerPanel);
             }

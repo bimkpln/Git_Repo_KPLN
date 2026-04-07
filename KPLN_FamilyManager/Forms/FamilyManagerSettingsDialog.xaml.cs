@@ -24,9 +24,15 @@ namespace KPLN_FamilyManager.Forms
             DialogResult = true;
         }
 
-        private void BtnDebug_Click(object sender, RoutedEventArgs e)
+        private void BtnDeleteErrorBD_Click(object sender, RoutedEventArgs e)
         {
             Result = 3;
+            DialogResult = true;
+        }
+
+        private void BtnDebug_Click(object sender, RoutedEventArgs e)
+        {
+            Result = 4;
             DialogResult = true;
         }
     }
