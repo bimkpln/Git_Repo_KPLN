@@ -3323,32 +3323,6 @@ namespace KPLN_FamilyManager.Forms
         }
 
 
-        private static int DeleteAbsentRecords(string dbPath)
-        {
-            if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
-                return 0;
-
-            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
-            {
-                conn.Open();
-
-                using (var tx = conn.BeginTransaction())
-                using (var cmd = new SQLiteCommand(@"
-            DELETE FROM FamilyManager
-            WHERE STATUS IS NOT NULL
-              AND UPPER(TRIM(STATUS)) = 'ABSENT';", conn, tx))
-                {
-                    int deleted = cmd.ExecuteNonQuery();
-                    tx.Commit();
-                    return deleted;
-                }
-            }
-        }
-
-
-
-
-
 
 
 
