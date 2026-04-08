@@ -2859,6 +2859,28 @@ namespace KPLN_FamilyManager.Forms
                    && c3 >= '0' && c3 <= '9';
         }
 
+        private static int DeleteAbsentRecords(string dbPath)
+        {
+            if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
+                return 0;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmd = new SQLiteCommand(@"
+                    DELETE FROM FamilyManager
+                    WHERE STATUS IS NOT NULL
+                      AND UPPER(TRIM(STATUS)) = 'ABSENT';", conn, tx))
+                {
+                    int deleted = cmd.ExecuteNonQuery();
+                    tx.Commit();
+                    return deleted;
+                }
+            }
+        }
+
         /// --- Обновлеие ID, FILEPATH, STATUS в FamilyManager
         // Запись данных в БД (FamilyManager). ID, FILEPATH, STATUS
         private static (int inserted, int updated, int deleted) InsertRfaRecords(string dbPath, List<string> rfaPaths)
