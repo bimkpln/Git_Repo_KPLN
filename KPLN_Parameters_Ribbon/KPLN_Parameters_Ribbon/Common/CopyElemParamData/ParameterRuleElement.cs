@@ -13,16 +13,10 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 {
     public class ParameterRuleElement : INotifyPropertyChanged
     {
-
-
-
         public static bool SaveData(string path, IEnumerable<ParameterRuleElement> collection)
         {
             try
             {
-                if (collection == null)
-                    return false;
-
                 List<string> dataparts = new List<string>();
 
                 foreach (ParameterRuleElement el in collection)
@@ -38,12 +32,14 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                     dataparts.Add(string.Join(Variables.separator_sub_element, parts));
                 }
 
+                if (dataparts.Count == 0)
+                    return false;
+
                 File.WriteAllText(path, string.Join(Variables.separator_element, dataparts));
                 return true;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                PrintError(e);
                 return false;
             }
         }
@@ -63,16 +59,6 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
             for (int z = 0; z < dataparts.Count; z++)
             {
-                List<string> parts = dataparts[z]
-                    .Split(new string[] { Variables.separator_sub_element }, StringSplitOptions.None)
-                    .ToList();
-
-                if (parts.Count < 3)
-                {
-                    Print(string.Format("[Ошибка чтения строки настроек:] <{0}>", dataparts[z]), MessageType.Error);
-                    continue;
-                }
-
                 parent.AddRule();
 
                 List<string> parts = dataparts[z]
@@ -89,9 +75,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 bool source_found = parts[1] == "null";
                 bool target_found = parts[2] == "null";
 
-                if (parts[0] != "null")
+                foreach (ListBoxElement cat in rule.Categories)
                 {
-                    foreach (ListBoxElement cat in rule.Categories)
+                    if (cat.Name == parts[0])
                     {
                         rule.SelectedCategory = cat;
                         System.Windows.Forms.Application.DoEvents();
@@ -148,9 +134,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
 
         public Guid Guid = Guid.NewGuid();
-        
+
         private ObservableCollection<ListBoxElement> _categories = new ObservableCollection<ListBoxElement>();
-        
+
         public ObservableCollection<ListBoxElement> Categories
         {
             get
@@ -163,9 +149,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
-        
+
         private ObservableCollection<ListBoxElement> _sourceParameters = new ObservableCollection<ListBoxElement>();
-        
+
         public ObservableCollection<ListBoxElement> SourceParameters
         {
             get
@@ -178,9 +164,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
-        
+
         private ObservableCollection<ListBoxElement> _targetParameters = new ObservableCollection<ListBoxElement>();
-        
+
         public ObservableCollection<ListBoxElement> TargetParameters
         {
             get
@@ -226,7 +212,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
         }
 
         private ListBoxElement _selectedSourceParameter;
-        
+
         public ListBoxElement SelectedSourceParameter
         {
             get
@@ -240,7 +226,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
             }
         }
         private ListBoxElement _selectedTargetParameter;
-       
+
         public ListBoxElement SelectedTargetParameter
         {
             get

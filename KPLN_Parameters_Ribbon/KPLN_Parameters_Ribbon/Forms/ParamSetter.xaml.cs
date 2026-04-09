@@ -44,11 +44,11 @@ namespace KPLN_Parameters_Ribbon.Forms
                         HashSet<string> ids = new HashSet<string>();
                         ElementId catId = cat.Id;
                         ObservableCollection<ListBoxElement> heapElemParams = new ObservableCollection<ListBoxElement>();
-                        
+
                         Element[] catElemsColl = new FilteredElementCollector(_doc)
                             .OfCategoryId(catId)
                             .ToArray();
-                        if (catElemsColl.Count() == 0) 
+                        if (catElemsColl.Count() == 0)
                             continue;
 
                         ListBoxElement lbElement = new ListBoxElement(cat, cat.Name);
@@ -418,9 +418,6 @@ namespace KPLN_Parameters_Ribbon.Forms
             BtnRunWithoutGroups.IsEnabled = hasValidRule;
             BtnRunWithGroups.IsEnabled = hasValidRule;
         }
-
-
-
 
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)
         {
