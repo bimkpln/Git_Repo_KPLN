@@ -16,7 +16,7 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
 
 
-        public static bool SaveData(string path, ObservableCollection<ParameterRuleElement> collection)
+        public static bool SaveData(string path, IEnumerable<ParameterRuleElement> collection)
         {
             try
             {
@@ -27,35 +27,13 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
                 foreach (ParameterRuleElement el in collection)
                 {
+                    if (el.IsCompletelyEmpty)
+                        continue;
+
                     string[] parts = new string[3];
-
-                    parts[0] = el != null && el.SelectedCategory != null
-                        ? el.SelectedCategory.Name
-                        : "null";
-
-                    ListBoxElement sourceElement = el != null ? el.SelectedSourceParameter as ListBoxElement : null;
-                    Parameter sourceParam = sourceElement != null ? sourceElement.Data as Parameter : null;
-
-                    if (sourceParam != null && sourceParam.Definition != null)
-                    {
-                        parts[1] = sourceParam.Definition.Name;
-                    }
-                    else
-                    {
-                        parts[1] = "null";
-                    }
-
-                    ListBoxElement targetElement = el != null ? el.SelectedTargetParameter as ListBoxElement : null;
-                    Parameter targetParam = targetElement != null ? targetElement.Data as Parameter : null;
-
-                    if (targetParam != null && targetParam.Definition != null)
-                    {
-                        parts[2] = targetParam.Definition.Name;
-                    }
-                    else
-                    {
-                        parts[2] = "null";
-                    }
+                    parts[0] = el.SelectedCategory?.Name ?? "null";
+                    parts[1] = GetParameterName(el.SelectedSourceParameter) ?? "null";
+                    parts[2] = GetParameterName(el.SelectedTargetParameter) ?? "null";
 
                     dataparts.Add(string.Join(Variables.separator_sub_element, parts));
                 }
@@ -73,17 +51,14 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
 
 
-
-
         public static void LoadData(ParamSetter parent, string path)
         {
             parent.RulesControll.ItemsSource = null;
             parent.RulesControll.ItemsSource = new ObservableCollection<ParameterRuleElement>();
 
-            string fileText = File.ReadAllText(path);
-
-            List<string> dataparts = fileText
-                .Split(new string[] { Variables.separator_element }, StringSplitOptions.RemoveEmptyEntries)
+            List<string> dataparts = File.ReadAllText(path)
+                .Split(new string[] { Variables.separator_element }, StringSplitOptions.None)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToList();
 
             for (int z = 0; z < dataparts.Count; z++)
@@ -100,94 +75,73 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
                 parent.AddRule();
 
+                List<string> parts = dataparts[z]
+                    .Split(new string[] { Variables.separator_sub_element }, StringSplitOptions.None)
+                    .ToList();
+
+                while (parts.Count < 3)
+                    parts.Add("null");
+
                 ParameterRuleElement rule = (parent.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)[z];
                 System.Windows.Forms.Application.DoEvents();
 
-                bool categoryFound = false;
-                bool sourceFound = false;
-                bool targetFound = false;
+                bool category_found = parts[0] == "null";
+                bool source_found = parts[1] == "null";
+                bool target_found = parts[2] == "null";
 
                 if (parts[0] != "null")
                 {
                     foreach (ListBoxElement cat in rule.Categories)
                     {
-                        if (cat.Name == parts[0])
-                        {
-                            rule.SelectedCategory = cat;
-                            System.Windows.Forms.Application.DoEvents();
-                            categoryFound = true;
-                            break;
-                        }
+                        rule.SelectedCategory = cat;
+                        System.Windows.Forms.Application.DoEvents();
+                        category_found = true;
+                        break;
                     }
                 }
 
-                if (categoryFound && parts[1] != "null")
+                if (rule.SourceParameters != null)
                 {
                     foreach (ListBoxElement par in rule.SourceParameters)
                     {
-                        Parameter param = par.Data as Parameter;
-                        if (param == null)
-                            continue;
-
-                        if (param.Definition != null && param.Definition.Name == parts[1])
+                        if ((par.Data as Parameter).Definition.Name == parts[1] ||
+                            (par.Data as Parameter).Id.ToString() == parts[1])
                         {
                             rule.SelectedSourceParameter = par;
                             System.Windows.Forms.Application.DoEvents();
-                            sourceFound = true;
-                            break;
-                        }
-
-                        if (param.Id != null && param.Id.ToString() == parts[1])
-                        {
-                            rule.SelectedSourceParameter = par;
-                            System.Windows.Forms.Application.DoEvents();
-                            sourceFound = true;
+                            source_found = true;
                             break;
                         }
                     }
                 }
 
-                if (categoryFound && parts[2] != "null")
+                if (rule.TargetParameters != null)
                 {
                     foreach (ListBoxElement par in rule.TargetParameters)
                     {
-                        Parameter param = par.Data as Parameter;
-                        if (param == null)
-                            continue;
-
-                        if (param.Definition != null && param.Definition.Name == parts[2])
+                        if ((par.Data as Parameter).Definition.Name == parts[2] ||
+                            (par.Data as Parameter).Id.ToString() == parts[2])
                         {
                             rule.SelectedTargetParameter = par;
                             System.Windows.Forms.Application.DoEvents();
-                            targetFound = true;
-                            break;
-                        }
-
-                        if (param.Id != null && param.Id.ToString() == parts[2])
-                        {
-                            rule.SelectedTargetParameter = par;
-                            System.Windows.Forms.Application.DoEvents();
-                            targetFound = true;
+                            target_found = true;
                             break;
                         }
                     }
                 }
 
-                if (!categoryFound && parts[0] != "null")
+                if (!category_found)
                     Print(string.Format("[Категория не найдена:] <{0}>", parts[0]), MessageType.Error);
 
-                if (parts[1] != "null" && !sourceFound)
-                    Print(string.Format("[Параметр-источник не найден:] <{0}>", parts[1]), MessageType.Error);
+                if (!source_found)
+                    Print(string.Format("[Параметр не найден:] <{0}>", parts[1]), MessageType.Error);
 
-                if (parts[2] != "null" && !targetFound)
-                    Print(string.Format("[Параметр-назначение не найден:] <{0}>", parts[2]), MessageType.Error);
+                if (!target_found)
+                    Print(string.Format("[Параметр не найден:] <{0}>", parts[2]), MessageType.Error);
             }
+
+            parent.UpdateRunEnability();
         }
-
-
-
-
-
 
 
 
@@ -239,10 +193,8 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
-        
+
         private ListBoxElement _selectedCategory;
-
-
 
         public ListBoxElement SelectedCategory
         {
@@ -257,24 +209,21 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 SourceParameters = new ObservableCollection<ListBoxElement>();
                 TargetParameters = new ObservableCollection<ListBoxElement>();
 
-                if (_selectedCategory != null && _selectedCategory.SubElements != null)
+                SelectedSourceParameter = null;
+                SelectedTargetParameter = null;
+
+                if (_selectedCategory != null)
                 {
                     foreach (ListBoxElement element in _selectedCategory.SubElements)
-                    {
                         SourceParameters.Add(element);
-                    }
 
                     foreach (ListBoxElement element in _selectedCategory.SubElements)
-                    {
                         TargetParameters.Add(element);
-                    }
                 }
 
                 NotifyPropertyChanged();
             }
         }
-
-
 
         private ListBoxElement _selectedSourceParameter;
         
@@ -304,6 +253,27 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 NotifyPropertyChanged();
             }
         }
+
+
+        public bool IsCompletelyEmpty =>
+            SelectedCategory == null &&
+            SelectedSourceParameter == null &&
+            SelectedTargetParameter == null;
+
+        public bool IsPartiallyFilled =>
+            !IsCompletelyEmpty &&
+            (SelectedCategory == null ||
+             SelectedSourceParameter == null ||
+             SelectedTargetParameter == null);
+
+        public static string GetParameterName(ListBoxElement element)
+        {
+            if (element?.Data is Parameter p)
+                return p.Definition.Name;
+            return null;
+        }
+
+
         public ParameterRuleElement(ObservableCollection<ListBoxElement> categories)
         {
             Categories = categories;
