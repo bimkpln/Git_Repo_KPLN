@@ -45,6 +45,15 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <!-- PROJECT REFERENCES -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2020\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2023\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2024\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>

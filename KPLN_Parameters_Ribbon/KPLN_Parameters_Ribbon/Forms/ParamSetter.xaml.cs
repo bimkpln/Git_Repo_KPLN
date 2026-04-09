@@ -275,26 +275,38 @@ namespace KPLN_Parameters_Ribbon.Forms
 
         private void SelectedTargetParamChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
+
+
+
         private void UpdateRunEnability()
         {
-            if ((this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Count == 0)
+            var rules = this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>;
+
+            if (rules == null || rules.Count == 0)
             {
                 BtnRunWithoutGroups.IsEnabled = false;
                 BtnRunWithGroups.IsEnabled = false;
                 return;
             }
-            foreach (ParameterRuleElement el in this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)
+
+            foreach (ParameterRuleElement el in rules)
             {
-                if (el.SelectedSourceParameter == null || el.SelectedTargetParameter == null)
+                if (el.SelectedCategory == null ||
+                    el.SelectedSourceParameter == null ||
+                    el.SelectedTargetParameter == null)
                 {
                     BtnRunWithoutGroups.IsEnabled = false;
                     BtnRunWithGroups.IsEnabled = false;
                     return;
                 }
             }
+
             BtnRunWithoutGroups.IsEnabled = true;
             BtnRunWithGroups.IsEnabled = true;
         }
+
+
+
 
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)
         {

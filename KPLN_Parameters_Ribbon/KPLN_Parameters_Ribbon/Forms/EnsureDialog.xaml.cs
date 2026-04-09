@@ -21,6 +21,7 @@ namespace KPLN_Parameters_Ribbon.Forms
         public string Header { get; set; }
         public string MainContent { get; set; }
         public static bool Commited = false;
+
         public EnsureDialog(Window parent, string sIcon, string header, string mainContent, bool cancelIsEnabled = true)
         {
             if (!cancelIsEnabled)
