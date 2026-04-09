@@ -419,6 +419,9 @@ namespace KPLN_Parameters_Ribbon.Forms
             BtnRunWithGroups.IsEnabled = hasValidRule;
         }
 
+
+
+
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)
         {
             IsEnabled = false;

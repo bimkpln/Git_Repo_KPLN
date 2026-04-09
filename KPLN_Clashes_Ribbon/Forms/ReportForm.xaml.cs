@@ -88,7 +88,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             this.Title = string.Format("KPLN: Отчет Navisworks ({0})", report.Name);
             this.Owner = reportManagerForm;
-            this.OnlyForFileItemsRB.IsChecked = true;
+            this.AllItemsRB.IsChecked = true;
             this.DataContext = this;
 
 

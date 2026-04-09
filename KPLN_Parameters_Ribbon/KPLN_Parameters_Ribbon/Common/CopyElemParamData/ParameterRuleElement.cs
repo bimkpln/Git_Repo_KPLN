@@ -20,6 +20,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
         {
             try
             {
+                if (collection == null)
+                    return false;
+
                 List<string> dataparts = new List<string>();
 
                 foreach (ParameterRuleElement el in collection)
@@ -35,14 +38,12 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                     dataparts.Add(string.Join(Variables.separator_sub_element, parts));
                 }
 
-                if (dataparts.Count == 0)
-                    return false;
-
                 File.WriteAllText(path, string.Join(Variables.separator_element, dataparts));
                 return true;
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                PrintError(e);
                 return false;
             }
         }
@@ -62,6 +63,16 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
 
             for (int z = 0; z < dataparts.Count; z++)
             {
+                List<string> parts = dataparts[z]
+                    .Split(new string[] { Variables.separator_sub_element }, StringSplitOptions.None)
+                    .ToList();
+
+                if (parts.Count < 3)
+                {
+                    Print(string.Format("[Ошибка чтения строки настроек:] <{0}>", dataparts[z]), MessageType.Error);
+                    continue;
+                }
+
                 parent.AddRule();
 
                 List<string> parts = dataparts[z]
@@ -78,9 +89,9 @@ namespace KPLN_Parameters_Ribbon.Common.CopyElemParamData
                 bool source_found = parts[1] == "null";
                 bool target_found = parts[2] == "null";
 
-                foreach (ListBoxElement cat in rule.Categories)
+                if (parts[0] != "null")
                 {
-                    if (cat.Name == parts[0])
+                    foreach (ListBoxElement cat in rule.Categories)
                     {
                         rule.SelectedCategory = cat;
                         System.Windows.Forms.Application.DoEvents();
