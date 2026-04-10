@@ -8,9 +8,9 @@ using System.Linq;
 
 namespace KPLN_Clashes_Ribbon.Commands
 {
-    public class CommandRemoveInstance : IExecutableCommand
+    public class CmdRemoveFamInst : IExecutableCommand
     {
-        public CommandRemoveInstance() {}
+        public CmdRemoveFamInst() {}
 
         public Result Execute(UIApplication app)
         {
@@ -30,7 +30,7 @@ namespace KPLN_Clashes_Ribbon.Commands
                     // Чистка от старых экз.
                     FamilyInstance[] oldFamInsOfGM = new FilteredElementCollector(doc)
                         .OfCategory(BuiltInCategory.OST_GenericModel)
-                        .Where(el => el is FamilyInstance famInst && famInst.Symbol.FamilyName == CommandPlaceFamily.FamilyName)
+                        .Where(el => el is FamilyInstance famInst && famInst.Symbol.FamilyName == CmdPlaceFamInst.FamilyName)
                         .Cast<FamilyInstance>()
                         .ToArray();
                         

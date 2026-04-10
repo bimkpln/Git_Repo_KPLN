@@ -1,8 +1,11 @@
 ﻿using Dapper;
+using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
+using System.Linq;
+using System.Text;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Services.SQLite
@@ -44,7 +47,21 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
             }
             catch (Exception ex)
             {
-                PrintError(ex);
+                StringBuilder sb = new StringBuilder();
+                if (parameters != null)
+                {
+                    // Беру параметр имени из динамика, если он есть
+                    var prop = parameters.GetType().GetProperty("Name");
+                    if (prop != null)
+                    {
+                        var name = prop.GetValue(parameters)?.ToString();
+                        sb.Append($"Ошибка в отчёте по имени \"{name}\": {ex.Message}");
+                    }
+                    else
+                        sb.Append($"{ex.Message}");
+                }
+
+                Print(sb.ToString(), MessageType.Error);
                 return -1;
             }
         }

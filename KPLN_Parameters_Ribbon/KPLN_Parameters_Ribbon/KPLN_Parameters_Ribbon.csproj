@@ -44,8 +44,27 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <OutputPath>..\..\..\..\..\..\..\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2023\</OutputPath>
+  </PropertyGroup>
   <!-- PROJECT REFERENCES -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2020\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2023\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Parameters_Ribbon\Debug\2024\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_ModelChecker_Lib, Version=1.3.11.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2024\KPLN_ModelChecker_Lib.dll</HintPath>
+    </Reference>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
       <Private>False</Private>
@@ -79,14 +98,6 @@
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">

@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace KPLN_BIMTools_Ribbon.Common
 {
@@ -86,6 +87,58 @@ namespace KPLN_BIMTools_Ribbon.Common
         internal static void SetStaticEnvironment(UIControlledApplication application)
         {
             RevitUIControlledApp = application;
+        }
+
+        /// <summary>
+        /// Поиск части имени в РН
+        /// </summary>
+        /// <param name="str"></param>
+        /// <param name="userQuery"></param>
+        /// <returns></returns>
+        internal static bool WSName_IsMatchByRules(string rnName, string ruleString)
+        {
+            if (string.IsNullOrWhiteSpace(rnName) || string.IsNullOrWhiteSpace(ruleString))
+                return false;
+
+            string[] rules = ruleString.Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries);
+
+            bool includeMatch = false;
+
+            foreach (string raw in rules)
+            {
+                string rule = raw.Trim();
+                if (string.IsNullOrWhiteSpace(rule))
+                    continue;
+
+                // !abc! -> НЕ змяшчае
+                if (rule.Length >= 2 && rule.StartsWith("!") && rule.EndsWith("!"))
+                {
+                    string value = rule.Substring(1, rule.Length - 2).Trim();
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    if (rnName.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return false;
+                }
+                // *abc* -> змяшчае
+                else if (rule.Length >= 2 && rule.StartsWith("*") && rule.EndsWith("*"))
+                {
+                    string value = rule.Substring(1, rule.Length - 2).Trim();
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    if (rnName.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0)
+                        includeMatch = true;
+                }
+                // abc -> пачынаецца з
+                else
+                {
+                    if (rnName.StartsWith(rule, StringComparison.OrdinalIgnoreCase))
+                        includeMatch = true;
+                }
+            }
+
+            return includeMatch;
         }
 
         /// <summary>
@@ -189,6 +242,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                                         Module.CurrentLogger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
                                         continue;
                                     }
+                                    Module.CurrentLogger.Info($"Приступаю к экспорту файла {ModelPathUtils.ConvertModelPathToUserVisiblePath(docFromModelPath)}");
 
                                     // Часто встречаются фантомные ошибки открытия, особенно с RS. Ввожу итерации
                                     int exchIteration = 1;
@@ -312,7 +366,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     $"Статус: Отработано с ошибками.\n" +
                     $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]\n" +
                     $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
-                    $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}");
+                    $"Путь к логам у пользователя: {Module.CurrentLoggerFullName}");
             }
             else
             {

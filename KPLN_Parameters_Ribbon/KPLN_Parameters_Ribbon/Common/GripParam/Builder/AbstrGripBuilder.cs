@@ -198,6 +198,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
                             "Блокировка параметра: у общего вложенного семейства параметр для секции или этажа заблокирован. Скорее всего, он передаётся из родителя, но нужно проверить"));
+                    pb.Update(++PbCounter, "Поиск по геометрии");
                     continue;
                 }
 
@@ -216,6 +217,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
                             "Геометрия: Элементу не удалось присвоить данные по геометрии"));
+                        pb.Update(++PbCounter, "Поиск по геометрии");
                         continue;
                     }
                 }

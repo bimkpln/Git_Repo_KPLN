@@ -32,6 +32,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private readonly UIApplication _uiapp;
         private readonly Document _mainDocument;
 
+        private string _templateSearchText = string.Empty;
+
         SortedDictionary<string, View> mainTemplates;
         private Dictionary<string, Tuple<string, string, string, string, View>> viewOnlyTemplateChanges = new Dictionary<string, Tuple<string, string, string, string, View>>();
 
@@ -55,14 +57,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _copyHandler = new CopyViewExternalHandler();
             _copyEvent = ExternalEvent.Create(_copyHandler);
         }
-       
+
+
+
+
+
+
+
         private void DisplayAllTemplatesInPanel(Document mainDocument)
         {
-            viewOnlyTemplateChanges.Clear();
             SP_OtherFileSetings.Children.Clear();
 
             var viewTemplateFilter = new ElementClassFilter(typeof(View));
-            var mainCollector = new FilteredElementCollector(mainDocument).WherePasses(viewTemplateFilter).Cast<View>();
+            var mainCollector = new FilteredElementCollector(mainDocument)
+                .WherePasses(viewTemplateFilter)
+                .Cast<View>();
 
             mainTemplates = new SortedDictionary<string, View>();
 
@@ -72,6 +81,22 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     mainTemplates[view.Name] = view;
             }
 
+            // Если словарь изменений ещё не заполнен, инициализируем его один раз.
+            // Это важно, чтобы при фильтрации не терялись выбранные галочки.
+            foreach (var kvp in mainTemplates)
+            {
+                if (!viewOnlyTemplateChanges.ContainsKey(kvp.Key))
+                {
+                    viewOnlyTemplateChanges[kvp.Key] =
+                        new Tuple<string, string, string, string, View>(
+                            "ignore",
+                            "ignoreIV",
+                            "ignoreCopyView",
+                            "ignoreCreate3D",
+                            kvp.Value);
+                }
+            }
+
             ScrollViewer scrollViewer = new ScrollViewer
             {
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -79,16 +104,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             };
 
             Grid grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });   
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });  
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(380) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
 
-            TextBlock emptyHeader = new TextBlock 
-            { 
-                Text = "", 
-                Margin = new Thickness(5) 
+            TextBlock emptyHeader = new TextBlock
+            {
+                Text = "",
+                Margin = new Thickness(5)
             };
             TextBlock nameHeader = new TextBlock
             {
@@ -132,18 +157,34 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             int row = 1;
 
-            foreach (var kvp in mainTemplates)
+            IEnumerable<KeyValuePair<string, View>> templatesToShow = mainTemplates;
+
+            if (!string.IsNullOrWhiteSpace(_templateSearchText))
+            {
+                templatesToShow = templatesToShow.Where(x =>
+                    x.Key.IndexOf(_templateSearchText, StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            foreach (var kvp in templatesToShow)
             {
                 string templateName = kvp.Key;
                 View templateView = kvp.Value;
 
+                var savedState = viewOnlyTemplateChanges[templateName];
+
+                bool isSelected = savedState.Item1 == "resave";
+                bool isReplaceInViews = savedState.Item2 == "resaveIV";
+                bool isCopy = savedState.Item3 == "copyView";
+                bool isCreate3D = savedState.Item4 == "create3D";
+
                 grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
                 CheckBox selectCheckBox = new CheckBox
-                {                   
+                {
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(5),
-                    ToolTip = "Выбор шаблона в активном документе"
+                    ToolTip = "Выбор шаблона в активном документе",
+                    IsChecked = isSelected
                 };
 
                 TextBlock nameBlock = new TextBlock
@@ -162,7 +203,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(5),
                     ToolTip = "Заменит данный шаблон вида на всех видах, где он встречается в открытом документе",
-                    IsEnabled = false
+                    IsEnabled = isSelected,
+                    IsChecked = isSelected ? isReplaceInViews : false
                 };
 
                 CheckBox copyCheckBox = new CheckBox
@@ -170,27 +212,32 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(5),
                     ToolTip = "Если шаблон с таким именем уже существует, то создасться резервная копия старого шаблона с именем 'староеИмяШаблона_ДатаВремя'",
-                    IsEnabled = false
+                    IsEnabled = isSelected,
+                    IsChecked = isSelected ? isCopy : false
                 };
+
+                bool is3DTemplate = templateView.ViewType == ViewType.ThreeD;
 
                 CheckBox create3DCheckBox = new CheckBox
                 {
                     VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(5),
                     ToolTip = "Создать из этого шаблона изометрический 3D-вид и применить к нему этот шаблон",
-                    IsEnabled = false
+                    IsEnabled = isSelected && is3DTemplate,
+                    IsChecked = isSelected && is3DTemplate ? isCreate3D : false
                 };
-                bool is3DTemplate = templateView.ViewType == ViewType.ThreeD;
 
                 selectCheckBox.Checked += (s, e) =>
                 {
                     copyCheckBox.IsEnabled = true;
-                    copyCheckBox.IsChecked = true;
-                    replaceCheckBox.IsEnabled = true;
-                    replaceCheckBox.IsChecked = true;
+                    if (copyCheckBox.IsChecked == false)
+                        copyCheckBox.IsChecked = true;
 
-                    create3DCheckBox.IsEnabled = is3DTemplate; 
-                    create3DCheckBox.IsChecked = false;
+                    replaceCheckBox.IsEnabled = true;
+                    if (replaceCheckBox.IsChecked == false)
+                        replaceCheckBox.IsChecked = true;
+
+                    create3DCheckBox.IsEnabled = is3DTemplate;
 
                     UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
                 };
@@ -199,10 +246,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 {
                     replaceCheckBox.IsEnabled = false;
                     replaceCheckBox.IsChecked = false;
+
                     copyCheckBox.IsEnabled = false;
                     copyCheckBox.IsChecked = false;
 
-                    create3DCheckBox.IsEnabled = false; 
+                    create3DCheckBox.IsEnabled = false;
                     create3DCheckBox.IsChecked = false;
 
                     UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
@@ -236,8 +284,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 grid.Children.Add(create3DCheckBox);
 
                 row++;
-
-                UpdateTemplateBackupChoice(templateName, selectCheckBox, replaceCheckBox, copyCheckBox, create3DCheckBox, templateView);
             }
 
             scrollViewer.Content = grid;
@@ -246,6 +292,23 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             BTN_RunManyFile.IsEnabled = true;
             BTN_RunManyFileRS.IsEnabled = true;
         }
+
+
+        private void TB_TemplateSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            _templateSearchText = TB_TemplateSearch.Text?.Trim() ?? string.Empty;
+            DisplayAllTemplatesInPanel(_mainDocument);
+        }
+
+        private void BTN_ClearTemplateSearch_Click(object sender, RoutedEventArgs e)
+        {
+            TB_TemplateSearch.Text = string.Empty;
+            TB_TemplateSearch.Focus();
+        }
+
+
+
+
 
         private void UpdateTemplateBackupChoice(string templateName, CheckBox selectCheckBox, CheckBox replaceCheckBox, CheckBox copyCheckBox, CheckBox create3DCheckBox, View templateView)
         {

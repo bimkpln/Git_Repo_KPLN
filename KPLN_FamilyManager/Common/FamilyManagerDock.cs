@@ -46,18 +46,15 @@ namespace KPLN_FamilyManager.Docking
             var provider = new FamilyManagerPaneProvider(_paneInstance);
             app.RegisterDockablePane(PaneId, "KPLN. Менеджер семейств", provider);
 
-            app.ViewActivated += (s, e) =>
-            {
-                var uiapp = new UIApplication(e.Document.Application);
-                _paneInstance?.SetUIApplication(uiapp);
-            };
-
             ExternalEventsHost.EnsureCreated();
         }
 
         public static void Toggle(UIApplication uiapp)
         {
             if (uiapp == null) throw new ArgumentNullException(nameof(uiapp));
+
+            _paneInstance?.SetUIApplication(uiapp);
+
             var pane = uiapp.GetDockablePane(PaneId);
 
             if (pane.IsShown())

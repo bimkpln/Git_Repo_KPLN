@@ -1,15 +1,16 @@
-﻿using Autodesk.Revit.UI;
-using System.Windows;
-using Newtonsoft.Json.Linq;
-using System.Linq;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Collections.Generic;
+﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using Newtonsoft.Json;
-using System.IO;
-using Autodesk.Revit.DB;
+using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
+using System.Windows.Media;
 
 
 
@@ -65,6 +66,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
             InitializeComponent();
             this.uiapp = uiapp;
             revitApp = uiapp.Application;
+        }
+
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                this.Close();
+            }
         }
 
         // Разблокирование элементов интерфейса
@@ -521,9 +531,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                                 statusOperation = true;
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
-                                logFile += $"ОШИБКА!: Семейство [{docPath}]: НЕ УДАЛОСЬ ОБРАБОТАТЬ.\n";
+                                logFile += $"ОШИБКА!: Семейство [{docPath}]: НЕ УДАЛОСЬ ОБРАБОТАТЬ: {ex}.\n";
                                 statusOperation = false;
                             }
                         }
@@ -551,6 +561,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             newParamList[nameParameter].Add(entry["comment"]);
                         }
                     }
+
+
+
+
 
                     foreach (string docPath in familyFieldValues)
                     {
@@ -653,13 +667,21 @@ namespace KPLN_BIMTools_Ribbon.Forms
                             statusOperation = true;
 
                         }
-                        catch (Exception)
+                        catch (Exception ex)
                         {
-                            logFile += $"ОШИБКА!: Семейство [{docPath}]: НЕ УДАЛОСЬ ОБРАБОТАТЬ.\n";
+                            logFile += $"ОШИБКА!: Семейство [{docPath}]: НЕ УДАЛОСЬ ОБРАБОТАТЬ: {ex.Message}.\n";
                             statusOperation = false;
                         }
 
                     }
+
+
+
+
+
+
+
+
 
                     if (statusOperation)
                     {

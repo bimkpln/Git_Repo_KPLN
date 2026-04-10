@@ -61,6 +61,13 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2020\AdWindows.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_Bitrix24Worker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2024\KPLN_Library_Forms.dll</HintPath>
+    </Reference>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
       <Private>False</Private>
@@ -96,6 +103,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data.SQLite, Version=1.0.118.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
       <HintPath>..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\lib\net46\System.Data.SQLite.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
@@ -121,10 +129,6 @@
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
       <ItemGroup>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="KPLN_Library_SQLiteWorker">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
           <Private>False</Private>
@@ -139,10 +143,6 @@
         </Reference>
         <Reference Include="KPLN_Library_ConfigWorker">
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ExtensibleStorage">
@@ -217,7 +217,8 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
+    <Compile Include="Common\IDHelper.cs" />
+    <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
@@ -247,6 +248,9 @@
     </Compile>
     <Compile Include="Forms\EvacuationRoutesDialog.xaml.cs">
       <DependentUpon>EvacuationRoutesDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormChangeElementInLevel.xaml.cs">
+      <DependentUpon>FormChangeElementInLevel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
@@ -472,6 +476,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\FormChangeElementInLevel.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -507,8 +515,8 @@
     <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
-    <EmbeddedResource Include="Imagens\ApartmentManagerBig.png" />
-    <EmbeddedResource Include="Imagens\ApartmentManagerSmall.png" />
+    <EmbeddedResource Include="Imagens\changeElementsInLevelBig.png" />
+    <EmbeddedResource Include="Imagens\changeElementsInLevelSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

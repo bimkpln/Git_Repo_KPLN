@@ -8,6 +8,7 @@ using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 
@@ -54,16 +55,20 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 #region Анализ и открытие рабочих наборов
                 IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(modelPathFrom);
                 IList<WorksetId> worksetIds = new List<WorksetId>();
-
-                string[] wsExceptions = nwConfigData.WorksetToCloseNamesStartWith.Split('~');
+                
+                StringBuilder openedWSSB = new StringBuilder();
                 foreach (WorksetPreview worksetPrev in worksets)
                 {
-                    if (nwConfigData.WorksetToCloseNamesStartWith.Count() == 0)
+                    if (!WSName_IsMatchByRules(worksetPrev.Name, nwConfigData.WorksetToCloseNamesStartWith))
+                    {
                         worksetIds.Add(worksetPrev.Id);
-                    else if (!wsExceptions.Any(name => worksetPrev.Name.StartsWith(name)))
-                        worksetIds.Add(worksetPrev.Id);
+                        openedWSSB.Append($"{worksetPrev.Name}, ");
+                    }
                 }
                 SetOpenOptions(worksetIds);
+
+                // Логирую список закрытых РН
+                Module.CurrentLogger.Info($"Список открываемых РН в файле {ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}: {openedWSSB.ToString().TrimEnd(new char[] {',', ' '})}");
                 #endregion
 
                 #region Устанавливаем параметры экспорта в Navisworks

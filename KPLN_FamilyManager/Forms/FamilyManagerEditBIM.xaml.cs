@@ -883,13 +883,20 @@ namespace KPLN_FamilyManager.Forms
 
                 foreach (var prop in obj.Properties())
                 {
-                    para.Inlines.Add(new Bold(new Run($"{prop.Name}: ")));
+                    var lines = ExtractCleanLines(prop.Value);
 
-                    var val = prop.Value?.Type == JTokenType.Null
-                        ? "—"
-                        : (prop.Value?.ToString() ?? "—");
+                    if (lines.Count == 0)
+                        continue;
 
-                    para.Inlines.Add(new Run(val));
+                    para.Inlines.Add(new Bold(new Run($"{prop.Name}:")));
+                    para.Inlines.Add(new LineBreak());
+
+                    foreach (var line in lines)
+                    {
+                        para.Inlines.Add(new Run(line));
+                        para.Inlines.Add(new LineBreak());
+                    }
+
                     para.Inlines.Add(new LineBreak());
                 }
 
@@ -897,8 +904,32 @@ namespace KPLN_FamilyManager.Forms
             }
             catch
             {
-                ImportInfoBox.Document.Blocks.Add(new Paragraph(new Run(json)) { Margin = new Thickness(0) });
+                ImportInfoBox.Document.Blocks.Add(
+                    new Paragraph(new Run((json ?? "").Trim())) { Margin = new Thickness(0) });
             }
+        }
+
+        private static List<string> ExtractCleanLines(JToken token)
+        {
+            var result = new List<string>();
+
+            if (token == null || token.Type == JTokenType.Null)
+                return result;
+
+            var raw = token.ToString();
+            if (string.IsNullOrWhiteSpace(raw))
+                return result;
+
+            var parts = raw
+                .Replace("\r\n", "\n")
+                .Replace("\r", "\n")
+                .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x));
+
+            result.AddRange(parts);
+
+            return result;
         }
 
         // IMPORT_INFO. Кол-во отделов выбрано
@@ -1248,10 +1279,100 @@ namespace KPLN_FamilyManager.Forms
         // XAML. Обновить информацию о семействе
         private void ButtonUpdateFamilyInfo_Click(object sender, RoutedEventArgs e)
         {
-            OpenFormat = "UpdateFamily";
-            DialogResult = true;
-            Close();
+            try
+            {
+                var record = DataContext as FamilyManagerRecord;
+                if (record == null)
+                {
+                    MessageBox.Show("Не удалось получить запись из контекста.", "Family Manager",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var selectedDeps = DeptPanel.Children
+                    .OfType<System.Windows.Controls.CheckBox>()
+                    .Where(c => c.IsChecked == true)
+                    .Select(c => c.Content?.ToString())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToList();
+
+                record.DEPARTAMENT = JoinDepartments(selectedDeps);
+
+                int selectedCategoryId = CategoryCombo.SelectedValue != null
+                    ? Convert.ToInt32(CategoryCombo.SelectedValue)
+                    : 0;
+
+                int selectedSubCategoryId = CategoryNcCombo.SelectedValue != null
+                    ? Convert.ToInt32(CategoryNcCombo.SelectedValue)
+                    : 0;
+
+                int selectedProjectId = ProjectCombo.SelectedValue != null
+                    ? Convert.ToInt32(ProjectCombo.SelectedValue)
+                    : 0;
+
+                int selectedStageId = StageCombo.SelectedValue != null
+                    ? Convert.ToInt32(StageCombo.SelectedValue)
+                    : 0;
+
+                record.CATEGORY = selectedCategoryId;
+                record.SUB_CATEGORY = selectedSubCategoryId;
+                record.PROJECT = selectedProjectId;
+                record.STAGE = selectedStageId;
+
+                var selectedUiStatus = StatusCombo.SelectedItem as string ?? "";
+                var mappedStatus = MapStatusForSave(_originalStatus, selectedUiStatus);
+
+                bool isIgnore = string.Equals(mappedStatus, "IGNORE", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(_originalStatus, "IGNORE", StringComparison.OrdinalIgnoreCase);
+
+                if (!isIgnore)
+                {
+                    bool deptFilled = !string.IsNullOrWhiteSpace(record.DEPARTAMENT);
+                    bool categoryOk = selectedCategoryId != 1;
+
+                    List<string> errors = new List<string>();
+                    if (!deptFilled) errors.Add("— Не выбран ни один отдел");
+                    if (!categoryOk) errors.Add("— Не выбрана категория");
+
+                    if (errors.Count > 0)
+                    {
+                        string msg = "Были допущены ошибки:\n" + string.Join("\n", errors);
+                        MessageBox.Show(msg, "Проверка данных", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+                }
+
+                ResultRecord = new FamilyManagerRecord
+                {
+                    ID = record.ID,
+                    STATUS = isIgnore ? mappedStatus : "OK",
+                    FULLPATH = record.FULLPATH,
+                    LM_DATE = record.LM_DATE,
+                    CATEGORY = selectedCategoryId,
+                    SUB_CATEGORY = selectedSubCategoryId,
+                    PROJECT = selectedProjectId,
+                    STAGE = selectedStageId,
+                    DEPARTAMENT = record.DEPARTAMENT,
+                    IMPORT_INFO = record.IMPORT_INFO,
+                    IMAGE = GetImageBytesFromImageControl(PreviewImage)
+                };
+
+                DeleteStatus = false;
+                OpenFormat = "UpdateFamily";
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Ошибка при сборе данных: " + ex.Message, "Family Manager",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
+
+
+
+
+
 
         // XAML. Редактировать информацию о семействе
         private void ButtonEditFamilyInfo_Click(object sender, RoutedEventArgs e)

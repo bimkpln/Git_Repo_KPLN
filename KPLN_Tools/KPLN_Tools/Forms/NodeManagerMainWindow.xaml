@@ -203,13 +203,34 @@
             </Border>
 
             <!-- === КНОПКИ === -->
-            <Border Grid.Row="1" Margin="10,0,0,10" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FFFFFF">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
-                    <Button x:Name="BtnCopyInView" Content="Копировать вид с узлом в документ   📝"  Width="270" MinHeight="26" Margin="4" IsEnabled="False" Click="BtnCopyInView_Click"/>
-                    <Button x:Name="BtnCopyElements"   Content="Копировать узел на открытый вид/лист/легенду   📋"  Width="320" MinHeight="26"  Margin="4" IsEnabled="False" Click="BtnCopyElements_Click"/>
-                    <Button x:Name="BtnSettings" IsEnabled="False" Content="Настройки  ⚙️"  Width="120" MinHeight="26" Margin="200, 4, 4, 4" Click="BtnSettings_Click"/>
-                </StackPanel>
+            <Border Grid.Row="1"
+        Margin="10,0,0,10"
+        Padding="10"
+        BorderThickness="1"
+        BorderBrush="#DDD"
+        CornerRadius="8"
+        Background="#FFFFFF">
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+
+                    <Button Grid.Row="0" Grid.Column="0" x:Name="BtnCopyInView" Content="Копировать вид с узлом в документ   📝" Width="270" MinHeight="26" Margin="4" IsEnabled="False" Click="BtnCopyInView_Click"/>
+                    <Button Grid.Row="0" Grid.Column="1" x:Name="BtnCopyElements" Content="Копировать узел на открытый вид/лист/легенду   📋" Width="320" MinHeight="26" Margin="4" IsEnabled="False" Click="BtnCopyElements_Click"/>
+                    <Button Grid.Row="0" Grid.Column="2" x:Name="BtnSettings" IsEnabled="False" Content="Настройки  ⚙️" Width="120" MinHeight="26" HorizontalAlignment="Right" Margin="4" Click="BtnSettings_Click"/>
+                    <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" x:Name="ChkUseLegendsInsteadOfViews" Margin="6,6,0,0" Content="Использовать легенды (вместо видов) для копирования узла в документ и для копирования узла на лист"/>
+                </Grid>
             </Border>
+
 
             <!-- === СОРТИРОВКА === -->
             <Border Grid.Row="2" Margin="10,0,0,0" Padding="10" BorderThickness="1" BorderBrush="#DDD" CornerRadius="8" Background="#FFFFFF">
@@ -308,4 +329,4 @@
             </Border>
         </Grid>
     </Grid>
-</Window>
+</Window> 

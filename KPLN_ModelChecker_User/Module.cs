@@ -22,10 +22,7 @@ namespace KPLN_ModelChecker_User
         {
         }
 
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
@@ -44,10 +41,7 @@ namespace KPLN_ModelChecker_User
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf52"),
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf53")));
             CheckLinks checkLinks = new CheckLinks();
-            CommandCheckListAnnotations commandCheckListAnnotations = new CommandCheckListAnnotations(new ExtensibleStorageEntity(
-                CommandCheckListAnnotations.PluginName,
-                "KPLN_CheckAnnotation",
-                new Guid("caf1c9b7-14cc-4ba1-8336-aa4b357d2898")));
+            CheckListAnnotations checkListAnnotations = new CheckListAnnotations();
             CheckMEPHeight checkMEPHeight = new CheckMEPHeight();
             CheckMirroredInstances checkMirroredInstances = new CheckMirroredInstances();
 
@@ -68,6 +62,7 @@ namespace KPLN_ModelChecker_User
                 checkMirroredInstances.ESEntity,
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA155")),
+                new ExtensibleStorageEntity("АР: Подсчёт эл-в на этаж", "KPLN_ARDoorCount", new Guid("5884e915-072d-42ba-bd8d-2c1dfef9b6aa")),
                 new ExtensibleStorageEntity("ОВ: Толщина воздуховодов", "KPLN_DuctSize", new Guid("753380C4-DF00-40F8-9745-D53F328AC139")),
                 new ExtensibleStorageEntity("ОВВК: Спецификации", "KPLN_IOSQuant", new Guid("720080C5-DA99-40D7-9445-E53F288AA140")),
                 new ExtensibleStorageEntity("ОВ: Клапаны ОЗК", "KPLN_OZKAccessory", new Guid("85c46d4e-fdc6-424e-909a-27af56597328")),
@@ -177,7 +172,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckAnnotations",
-                CommandCheckListAnnotations.PluginName,
+                checkListAnnotations.PluginName,
                 "Анализирует все элементы на листах и ищет аннотации следующих типов:" +
                     "\n1. Линии детализации;" +
                     "\n2. Элементы узлов;" +
@@ -306,10 +301,10 @@ namespace KPLN_ModelChecker_User
         /// </summary>
         /// <param name="name">Внутреннее имя кнопки</param>
         /// <param name="text">Имя, видимое пользователю</param>
-        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="description">Краткое описание, видимое пользователю</param>
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
-        /// <param name="panel">Панель, в которую добавляем кнопку</param>
+        /// <param name="pullDown">Панель, в которую добавляем кнопку</param>
         /// <param name="imageName">Имя иконки</param>
         private void AddPushButtonData(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp, bool isVisible)
         {

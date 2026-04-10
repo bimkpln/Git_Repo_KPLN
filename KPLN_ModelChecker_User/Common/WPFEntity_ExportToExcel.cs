@@ -31,8 +31,10 @@ namespace KPLN_ModelChecker_User.Common
             // Show the dialog and capture the result
             DialogResult result = folderBrowserDialog.ShowDialog();
 
-            if (result == DialogResult.OK) return folderBrowserDialog.SelectedPath;
-            else return null;
+            if (result == DialogResult.OK) 
+                return folderBrowserDialog.SelectedPath;
+            else 
+                return null;
         }
 
         /// <summary>

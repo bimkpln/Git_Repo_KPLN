@@ -120,9 +120,9 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
 
 
                 // Беру трансформ для линка
-                Transform lDocTrans = rli.GetTransform();
-                if (!lDocTrans.IsTranslation)
-                    lDocTrans = Transform.CreateTranslation(lDocTrans.Origin);
+                Transform lDocTrans = rli.GetTotalTransform();
+                //if (!lDocTrans.IsTranslation)
+                //    lDocTrans = Transform.CreateTranslation(lDocTrans.Origin);
 
                 foreach (FamilyInstance lsMainFI in lsLinkMainFIColl)
                 {

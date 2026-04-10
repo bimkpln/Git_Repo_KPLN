@@ -189,12 +189,20 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 public bool NeedCloseTempOpenedDoc;
             }
 
+
+
+
+
+
+
+
+
+
+
             private bool TrySwitchActiveToSource(out DocSwitchContext ctx, out string error)
             {
                 ctx = new DocSwitchContext();
                 error = null;
-
-                ctx.PrevUiDoc = _uiapp.ActiveUIDocument;
 
                 if (SelectedSourceDoc == null || SelectedSourceDoc.Doc == null)
                 {
@@ -204,107 +212,77 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
                 Document srcDoc = SelectedSourceDoc.Doc;
 
-                if (srcDoc.IsLinked)
-                {
-                    if (string.IsNullOrWhiteSpace(srcDoc.PathName))
-                    {
-                        error = "Линк не имеет PathName (не сохранён/не доступен). Невозможно открыть источник.";
-                        return false;
-                    }
-
-                    try
-                    {
-                        ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(srcDoc.PathName);
-                        var openOpts = new OpenOptions();
-                        Document opened = _uiapp.Application.OpenDocumentFile(modelPath, openOpts);
-
-                        if (opened == null)
-                        {
-                            error = "Не удалось открыть файл линка как документ-источник.";
-                            return false;
-                        }
-
-                        ctx.TempOpenedDoc = opened;
-                        ctx.NeedCloseTempOpenedDoc = true;
-
-                        ctx.EffectiveSourceDoc = opened;
-                        ctx.ActivatedDoc = ctx.PrevUiDoc != null ? ctx.PrevUiDoc.Document : null;
-                        ctx.Switched = false;
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        error = "Не удалось открыть файл линка: " + ex.Message;
-                        return false;
-                    }
-                }
-
-                if (_uiapp.ActiveUIDocument != null && object.ReferenceEquals(_uiapp.ActiveUIDocument.Document, srcDoc))
+                // Обычный открытый документ (не линк)
+                if (!srcDoc.IsLinked)
                 {
                     ctx.EffectiveSourceDoc = srcDoc;
-                    ctx.ActivatedDoc = srcDoc;
                     ctx.Switched = false;
                     return true;
                 }
 
+                // Линк (нужно открыть физический файл)
                 if (string.IsNullOrWhiteSpace(srcDoc.PathName))
                 {
-                    error = "Документ-источник не сохранён (нет PathName), активировать его невозможно. Сохраните документ и повторите.";
+                    error = "Линк не имеет PathName. Невозможно открыть источник.";
                     return false;
                 }
 
                 try
                 {
-                    UIDocument u = _uiapp.OpenAndActivateDocument(srcDoc.PathName);
-                    if (u == null || u.Document == null)
+                    ModelPath modelPath =
+                        ModelPathUtils.ConvertUserVisiblePathToModelPath(srcDoc.PathName);
+
+                    var openOpts = new OpenOptions();
+
+                    Document opened =
+                        _uiapp.Application.OpenDocumentFile(modelPath, openOpts);
+
+                    if (opened == null)
                     {
-                        error = "Не удалось активировать документ-источник.";
+                        error = "Не удалось открыть файл линка.";
                         return false;
                     }
 
-                    ctx.EffectiveSourceDoc = u.Document;
-                    ctx.ActivatedDoc = u.Document;
-                    ctx.Switched = true;
+                    ctx.TempOpenedDoc = opened;
+                    ctx.NeedCloseTempOpenedDoc = true;
+                    ctx.EffectiveSourceDoc = opened;
+
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    error = "Не удалось активировать документ-источник: " + ex.Message;
+                    error = "Ошибка открытия линка: " + ex.Message;
                     return false;
                 }
             }
 
             private void RestoreActiveDocument(DocSwitchContext ctx)
             {
-                try
+                if (ctx == null) return;
+
+                if (ctx.NeedCloseTempOpenedDoc && ctx.TempOpenedDoc != null)
                 {
-                    if (ctx == null) return;
-
-                    if (ctx.NeedCloseTempOpenedDoc && ctx.TempOpenedDoc != null)
-                    {
-                        try { ctx.TempOpenedDoc.Close(false); }
-                        catch { }
-                    }
-
-                    if (!ctx.Switched) return;
-                    if (ctx.PrevUiDoc == null) return;
-
-                    Document prevDoc = ctx.PrevUiDoc.Document;
-                    if (prevDoc == null) return;
-
-                    if (_uiapp.ActiveUIDocument != null && object.ReferenceEquals(_uiapp.ActiveUIDocument.Document, prevDoc))
-                        return;
-
-                    if (!string.IsNullOrWhiteSpace(prevDoc.PathName))
-                    {
-                        _uiapp.OpenAndActivateDocument(prevDoc.PathName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    TaskDialog.Show("Ошибка", ex.Message);
+                    try { ctx.TempOpenedDoc.Close(false); }
+                    catch { }
                 }
             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             public bool CopySelectedTemplates()
             {
@@ -389,12 +367,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         return;
                     }
 
-                    var sourceTemplatesByName = new FilteredElementCollector(sourceDoc)
-                        .OfClass(typeof(View))
-                        .Cast<View>()
-                        .Where(v => v.IsTemplate)
-                        .GroupBy(v => v.Name, StringComparer.CurrentCultureIgnoreCase)
-                        .ToDictionary(g => g.Key, g => g.First(), StringComparer.CurrentCultureIgnoreCase);
+                    var sourceTemplatesByName = new FilteredElementCollector(sourceDoc).OfClass(typeof(View)).Cast<View>().Where(v => v.IsTemplate).
+                        GroupBy(v => v.Name, StringComparer.CurrentCultureIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.CurrentCultureIgnoreCase);
 
                     var targetTemplatesByName = GetTargetTemplatesByName(targetDoc);
 

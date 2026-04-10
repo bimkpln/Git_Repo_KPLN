@@ -43,13 +43,13 @@ namespace KPLN_Clashes_Ribbon.Commands
         }
     }
 
-    public class CommandPlaceFamily : IExecutableCommand
+    public class CmdPlaceFamInst : IExecutableCommand
     {
         public static readonly string FamilyName = "ClashPoint";
 
         private readonly ReportItem _report;
 
-        public CommandPlaceFamily(ReportItem report)
+        public CmdPlaceFamInst(ReportItem report)
         {
             _report = report;
         }
@@ -89,6 +89,7 @@ namespace KPLN_Clashes_Ribbon.Commands
 
                     // Создание новых
                     FamilyInstance[] resultInst;
+                    // Если субэлементы (группа) - захожу в них
                     if (_report.SubElements.Any())
                     {
                         resultInst = GetClashPoints(uidoc, _report.SubElements.ToArray());
@@ -99,16 +100,17 @@ namespace KPLN_Clashes_Ribbon.Commands
                         ElementId[] firstElemsId = _report.SubElements.Select(subRI => new ElementId(subRI.Element_1_Id)).ToArray();
                         ElementId[] secondElemsId = _report.SubElements.Select(subRI => new ElementId(subRI.Element_2_Id)).ToArray();
                         List<ElementId> elemsId = firstElemsId.Concat(secondElemsId).ToList();
-                        uidoc.Selection.SetElementIds(elemsId);
+
+                        SelectInDocTools.SelectElemsInDoc(uidoc, elemsId);
                     }
+                    // Если "одиночки"
                     else
                     {
                         resultInst = GetClashPoints(uidoc, new ReportItem[1] { _report });
                         if (resultInst == null)
                             return Result.Cancelled;
 
-                        // Выделяю элементы пересечения в модели
-                        uidoc.Selection.SetElementIds(new List<ElementId>
+                        SelectInDocTools.SelectElemsInDoc(uidoc, new List<ElementId>
                         {
                             new ElementId(_report.Element_1_Id),
                             new ElementId(_report.Element_2_Id)
@@ -182,8 +184,19 @@ namespace KPLN_Clashes_Ribbon.Commands
             ////if (!docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
             ////    docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
 
+
+            // Проверка есть открытый док в списке с ошибками
+            bool isElemFromOpenDoc = riArr.All(subRI => doc.Title.Contains(subRI.Element_1_DocName) || doc.Title.Contains(subRI.Element_2_DocName));
+            if (!isElemFromOpenDoc)
+            {
+                TaskDialog.Show("Внимание!",
+                    "Проверь имя файлов, участвующих в отчёте. Твой файл не попадает в их список.\n" +
+                    "ВАЖНО: Коллизии нужно искать только в моделях, указанных в отчёте.\n" +
+                    "ВАЖНО: Точки пересечения всё равно появятся, но если ошибка ложная - напиши Куцко Тимофею");
+            }
+
+
             // Создание новых
-            // Метка, что хотя бы один элемент был удален
             bool elemsDeleted = false;
             bool elemsNotInOpenFile = true;
             foreach (ReportItem subRI in riArr)
@@ -209,9 +222,8 @@ namespace KPLN_Clashes_Ribbon.Commands
             {
                 TaskDialog.Show("Внимание!",
                     "Элементы отсутсвуют в открытом проекте - скорее всего это элементы не относятся к вашей модели.\n" +
-                    "ВАЖНО: Внимательно прочитай имя отчета - оно должно содержать аббревиатуру твоего раздела");
-
-                return null;
+                    "ВАЖНО: Внимательно прочитай имя отчета - оно должно содержать аббревиатуру твоего раздела\n" +
+                    "ВАЖНО: Точка пересечения всё равно появится, чтобы избежать пропуска перемоделированных элементов");
             }
 
             if (elemsDeleted)

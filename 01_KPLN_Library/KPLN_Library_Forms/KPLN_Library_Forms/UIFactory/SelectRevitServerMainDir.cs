@@ -40,6 +40,14 @@ namespace KPLN_Library_Forms.UIFactory
                         new ElementEntity(@"192.168.0.5\Пушкино, Маяковского, 1 очередь", "Содержит модели всех разделов"),
                         new ElementEntity(@"192.168.0.5\Речной порт Якутск", "Содержит модели всех разделов"),
                         new ElementEntity(@"rs07\Матросская Тишина", "Содержит модели всех разделов"),
+                        new ElementEntity(@"rs07\Сочи гостиница Москва", "Содержит модели всех разделов"),
+                    };
+                    break;
+                case 2024:
+                    rsColl = new ObservableCollection<ElementEntity>()
+                    {
+                        new ElementEntity(@"rs24-1\Гравион_Сочи\Стадия П", "Содержит модели всех разделов стадии ПД"),
+                        new ElementEntity(@"rs24-1\Гравион_Сочи\Стадия Р", "Содержит модели всех разделов стадии РД"),
                     };
                     break;
             }

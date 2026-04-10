@@ -53,7 +53,12 @@ namespace KPLN_ModelChecker_Lib.Core
         /// Итоговая коллекция ошибок, полученных при проверке модели
         /// </summary>
         public CheckerEntity[] CheckerEntitiesColl { get; private protected set; }
-        
+
+        /// <summary>
+        /// Метка быстрого выбора элементов в модели, без использования окна
+        /// </summary>
+        public bool OnlySelectOnModel { get; set; } = false;
+
         /// <summary>
         /// Ссылка на Revit-документ
         /// </summary>

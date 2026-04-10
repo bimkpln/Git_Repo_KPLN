@@ -55,7 +55,12 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 if ((checkResultStatus == CheckResultStatus.Succeeded || checkResultStatus == CheckResultStatus.NoItemsToCheck)
                     && CommandCheck.CheckerEntitiesColl.Length > 0 
                     && showMainForm)
-                    ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
+                {
+                    if (CommandCheck.OnlySelectOnModel)
+                        SelectElemsInModelResult<T>(uiapp);
+                    else
+                        ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
+                }
                 else if (showSuccsessText)
                 {
                     // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
@@ -99,6 +104,21 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             };
 
             form.Show();
+        }
+
+        /// <summary>
+        /// Выделение элементов в модели
+        /// </summary>
+        /// <param name="uiapp">Revit-UIApplication</param>
+        /// <returns>Окно для вывода пользователю</returns>
+        public void SelectElemsInModelResult<T>(UIApplication uiapp) where T : AbstrCheck, new()
+        {
+            TaskDialog.Show($"Результат [{CommandCheck.ESEntity.CheckName}]", 
+                $"Выделены элементы ошибок проверки. Количество - {CommandCheck.CheckerEntitiesColl.Sum(ce => ce.ElementIdCollection.Count())}", 
+                TaskDialogCommonButtons.Ok);
+
+            // Выделяю элементы в модели
+            uiapp.ActiveUIDocument.Selection.SetElementIds(CommandCheck.CheckerEntitiesColl.SelectMany(ent => ent.ElementIdCollection).ToList());
         }
 
         /// <summary>

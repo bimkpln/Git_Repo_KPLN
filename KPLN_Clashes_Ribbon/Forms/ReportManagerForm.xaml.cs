@@ -1,6 +1,8 @@
-﻿using HtmlAgilityPack;
+﻿using Autodesk.Revit.UI;
+using HtmlAgilityPack;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Clashes_Ribbon.ExternalEventHandler;
 using KPLN_Clashes_Ribbon.Services;
 using KPLN_Clashes_Ribbon.Tools;
 using KPLN_Library_SQLiteWorker;
@@ -39,6 +41,9 @@ namespace KPLN_Clashes_Ribbon.Forms
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
         private string _reportNameTBxData = string.Empty;
         private string _reportBitrixIdTBxData = string.Empty;
+
+        private ExternalEvent _viewExtEv;
+        private ViewActivatedHandler _viewHandler;
 
         public ReportManagerForm(DBProject project)
         {
@@ -109,6 +114,14 @@ namespace KPLN_Clashes_Ribbon.Forms
                 iControllGroups.ItemsSource = FilteredRepGroupColl;
             }
         }
+
+        public void SetExternalEvent(ExternalEvent viewExtEv, ViewActivatedHandler viewHandler)
+        {
+            _viewExtEv = viewExtEv;
+            _viewHandler = viewHandler;
+        }
+
+        public void RaiseUpdateViewChanged() => _viewExtEv?.Raise();
 
         private ReportGroup SetReportsToReportGroup(ReportGroup group)
         {
@@ -247,6 +260,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (result == System.Windows.Forms.DialogResult.OK)
                     {
                         int taskCount = 0;
+                        bool errorsWhenPosted = false;
                         Task[] riWorkerTasks = new Task[dialog.FileNames.Length];
                         foreach (string file_name in dialog.FileNames)
                         {
@@ -256,6 +270,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                             // Публикую запись о новом репорте
                             FileInfo db_FI = GenerateNewPath_DBForReportInstance(group, ++repInstIndex);
                             int newReportId = _sqliteService_MainDB.PostReport_NewReport_ByNameAndReportGroup(reportInstanceName, group, db_FI);
+                            if (newReportId == -1)
+                                errorsWhenPosted = true;
 
                             ObservableCollection<ReportItem> reportInstances = ParseHtmlToRepInstColelction(file, group, newReportId);
                             if (reportInstances != null)
@@ -289,6 +305,13 @@ namespace KPLN_Clashes_Ribbon.Forms
                         Task.WaitAll(riWorkerTasks);
 
                         UpdateSelectedReportGroup(group);
+
+                        if (errorsWhenPosted)
+                            System.Windows.MessageBox.Show(
+                                $"При загрузке были ошибки. Отчёт выдан в отдельном окне, ОБЯЗАТЕЛЬНО изучи его",
+                                "Внимание",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error);
                     }
                 }
                 catch (Exception e)
@@ -478,9 +501,6 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             return null;
         }
-
-
-
 
 
         private void OnButtonCloseReportGroup(object sender, RoutedEventArgs args)
@@ -1017,19 +1037,19 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
+                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
                         form.Show();
                     }
                     if (sender.GetType() == typeof(TextBlock))
                     {
                         Report report = (sender as TextBlock).DataContext as Report;
-                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
+                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
                         form.Show();
                     }
                     if (sender.GetType() == typeof(Image))
                     {
                         Report report = (sender as Image).DataContext as Report;
-                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId));
+                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
                         form.Show();
                     }
                 }

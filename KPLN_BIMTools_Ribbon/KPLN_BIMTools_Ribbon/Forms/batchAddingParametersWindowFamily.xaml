@@ -8,6 +8,7 @@
         FontSize="14"
         Title="KPLN: Пакетное добавление параметров семейства" 
         WindowStyle="ToolWindow" 
+        PreviewKeyDown="Window_PreviewKeyDown"
         Topmost="True" 
         WindowStartupLocation="CenterScreen" 
         Width="1450" 

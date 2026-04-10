@@ -325,12 +325,13 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Availability\StaticAvailable.cs" />
-    <Compile Include="Commands\CommandCreateReport.cs" />
-    <Compile Include="Commands\CommandPlaceFamily.cs" />
-    <Compile Include="Commands\CommandRemoveInstance.cs" />
-    <Compile Include="Commands\CommandShowManager.cs" />
-    <Compile Include="Commands\CommandZoomSelectElement.cs" />
-    <Compile Include="Commands\GetActiveDocumentHandler.cs" />
+    <Compile Include="Commands\CmdCreateReport.cs" />
+    <Compile Include="Commands\CmdPlaceFamInst.cs" />
+    <Compile Include="Commands\CmdRemoveFamInst.cs" />
+    <Compile Include="Commands\CmdShowManager.cs" />
+    <Compile Include="Commands\CmdZoomSelectElems.cs" />
+    <Compile Include="ExternalEventHandler\UnsubViewActHandler.cs" />
+    <Compile Include="ExternalEventHandler\ViewActivatedHandler.cs" />
     <Compile Include="Core\ClashesMainCollection.cs" />
     <Compile Include="Core\SubDepartmentBtn.cs" />
     <Compile Include="Core\Reports\Report.cs" />
@@ -364,6 +365,7 @@
     <Compile Include="Source\Source.cs" />
     <Compile Include="Tools\HtmlReportParser.cs" />
     <Compile Include="Tools\HTMLTools.cs" />
+    <Compile Include="Tools\SelectInDocTools.cs" />
     <Compile Include="Tools\SystemTools.cs" />
     <Compile Include="Tools\ZoomTools.cs" />
   </ItemGroup>
@@ -445,6 +447,9 @@
 IF "$(ConfigurationName)" == "Debug2023" (
     xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
 )
+IF "$(ConfigurationName)" == "Debug2024" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2024\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2024\"
+)
 IF "$(ConfigurationName)" == "Revit2020" (
     xcopy /y "$(ProjectDir)Source\RevitData\2020\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2020\"
 )
@@ -454,8 +459,14 @@ IF "$(ConfigurationName)" == "Revit2020_ExtraNet" (
 IF "$(ConfigurationName)" == "Revit2023" (
     xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
 )
+IF "$(ConfigurationName)" == "Revit2024" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2024\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2024\"
+)
 IF "$(ConfigurationName)" == "Revit2023_ExtraNet" (
     xcopy /y "$(ProjectDir)Source\RevitData\2023\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2023\"
+)
+IF "$(ConfigurationName)" == "Revit2024_ExtraNet" (
+    xcopy /y "$(ProjectDir)Source\RevitData\2024\ClashPoint.rfa" "$(TargetDir)Source\RevitData\2024\"
 )</PreBuildEvent>
   </PropertyGroup>
   <Import Project="packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
