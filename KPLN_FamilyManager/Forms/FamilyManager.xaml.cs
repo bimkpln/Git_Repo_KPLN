@@ -2778,8 +2778,9 @@ namespace KPLN_FamilyManager.Forms
                 string dirName = Path.GetFileName(dir) ?? dir;
 
                 if ((dirName.IndexOf("архив", StringComparison.OrdinalIgnoreCase) >= 0)
-                    || (dirName.IndexOf("8_Библиотека семейств Самолета", StringComparison.OrdinalIgnoreCase) >= 0))
-                    continue;
+                || (dirName.IndexOf("8_Библиотека семейств Самолета", StringComparison.OrdinalIgnoreCase) >= 0)
+                || (dirName.IndexOf("000_Семейства квартир", StringComparison.OrdinalIgnoreCase) >= 0))
+                                continue;
 
                 IEnumerable<string> subdirs = Enumerable.Empty<string>();
                 IEnumerable<string> files = Enumerable.Empty<string>();
