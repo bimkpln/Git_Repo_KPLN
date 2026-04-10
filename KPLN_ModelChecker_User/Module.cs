@@ -22,10 +22,7 @@ namespace KPLN_ModelChecker_User
         {
         }
 
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
@@ -44,10 +41,7 @@ namespace KPLN_ModelChecker_User
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf52"),
                 new Guid("bb59ea6c-9208-4fae-b609-3d73dc3abf53")));
             CheckLinks checkLinks = new CheckLinks();
-            CommandCheckListAnnotations commandCheckListAnnotations = new CommandCheckListAnnotations(new ExtensibleStorageEntity(
-                CommandCheckListAnnotations.PluginName,
-                "KPLN_CheckAnnotation",
-                new Guid("caf1c9b7-14cc-4ba1-8336-aa4b357d2898")));
+            CheckListAnnotations checkListAnnotations = new CheckListAnnotations();
             CheckMEPHeight checkMEPHeight = new CheckMEPHeight();
             CheckMirroredInstances checkMirroredInstances = new CheckMirroredInstances();
 
@@ -178,7 +172,7 @@ namespace KPLN_ModelChecker_User
 
             AddPushButtonData(
                 "CheckAnnotations",
-                CommandCheckListAnnotations.PluginName,
+                checkListAnnotations.PluginName,
                 "Анализирует все элементы на листах и ищет аннотации следующих типов:" +
                     "\n1. Линии детализации;" +
                     "\n2. Элементы узлов;" +
@@ -307,10 +301,10 @@ namespace KPLN_ModelChecker_User
         /// </summary>
         /// <param name="name">Внутреннее имя кнопки</param>
         /// <param name="text">Имя, видимое пользователю</param>
-        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
+        /// <param name="description">Краткое описание, видимое пользователю</param>
         /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
         /// <param name="className">Имя класса, содержащего реализацию команды</param>
-        /// <param name="panel">Панель, в которую добавляем кнопку</param>
+        /// <param name="pullDown">Панель, в которую добавляем кнопку</param>
         /// <param name="imageName">Имя иконки</param>
         private void AddPushButtonData(string name, string text, string description, string longDescription, string className, PulldownButton pullDown, string imageName, string anchorlHelp, bool isVisible)
         {
