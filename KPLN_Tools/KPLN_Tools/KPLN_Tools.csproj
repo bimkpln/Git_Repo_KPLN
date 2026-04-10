@@ -231,6 +231,18 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
+    <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
+      <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ApartmentImportWindow.xaml.cs">
+      <DependentUpon>ApartmentImportWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ApartmentManagerWindow.xaml.cs">
+      <DependentUpon>ApartmentManagerWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ApartmentPresetsWindow.xaml.cs">
+      <DependentUpon>ApartmentPresetsWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -444,6 +456,22 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\ApartmentExecutionReportWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ApartmentImportWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ApartmentManagerWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ApartmentPresetsWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

@@ -1,0 +1,63 @@
+﻿<Window x:Class="KPLN_Tools.Forms.ApartmentExecutionReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Отчёт построения квартир"
+        Width="900"
+        Height="700"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="White">
+
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,12,0,0">
+            <Button Content="Сохранить отчёт"
+                    Width="150"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="SaveReport_Click"/>
+
+            <Button Content="Закрыть"
+                    Width="120"
+                    Height="32"
+                    Click="Close_Click"/>
+        </StackPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border BorderBrush="#D0D0D0"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="12"
+                                Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="{Binding HeaderText}"
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           TextWrapping="Wrap"
+                                           Margin="0,0,0,10"/>
+
+                                <ItemsControl ItemsSource="{Binding Lines}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Text}"
+                                                       Foreground="{Binding Foreground}"
+                                                       FontSize="{Binding FontSize}"
+                                                       FontWeight="{Binding FontWeight}"
+                                                       TextWrapping="Wrap"
+                                                       Margin="0,0,0,4"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
