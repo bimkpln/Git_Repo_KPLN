@@ -219,6 +219,7 @@
   <ItemGroup>
     <Compile Include="Common\IDHelper.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
@@ -515,6 +516,8 @@
     <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
+    <EmbeddedResource Include="Imagens\ApartmentManagerBig.png" />
+    <EmbeddedResource Include="Imagens\ApartmentManagerSmall.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelSmall.png" />
     <Content Include="Source\autonumber.exe">
