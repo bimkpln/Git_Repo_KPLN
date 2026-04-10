@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,15 +11,19 @@ using KPLN_Tools.Forms;
 
 namespace KPLN_Tools.ExternalCommands
 {
+
+
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_KR_WSofLinks : IExternalCommand
     {
+        public ObservableCollection<LinkWorksetsItem> LinksWorksetsSP { get; set; } = new ObservableCollection<LinkWorksetsItem>();
+
         internal const string PluginName = "Рабочие наборы связей";
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //получение документа
-            UIDocument uidoc = commandData.Application.ActiveUIDocument;   
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
             //коллекция всех загруженных экземпляров связей
@@ -27,81 +32,76 @@ namespace KPLN_Tools.ExternalCommands
 
             List<Document> linkedDocs = new List<Document>();
 
-            //"имя для РН который хотим вкл/выкл";
-            string targetWorksetName = null;
-            //сценарий рабоыт плагина (открыть или закрыть введенный РН)
+            //сценарий работы плагина (открыть или закрыть выбранные РН)
             bool WSOpenClose;
 
-            var inputWindow = new KR_WSofLinks();
+            var inputWindow = new KR_WSofLinks(uidoc);
             bool? result = inputWindow.ShowDialog();
 
             //проверяем ввел ли пользователь имя РН, если нет, то отменяем работу плагина
             if (result == true)
             {
-                targetWorksetName = inputWindow.WorksetName;
+                LinksWorksetsSP = inputWindow.LinksWorksetsList;
                 WSOpenClose = inputWindow.WorksetOpenClose;
             }
             else
             {
-                // Пользователь отменил ввод
+            // Пользователь отменил ввод
                 return Result.Cancelled;
-            }
-
-            if (string.IsNullOrWhiteSpace(targetWorksetName))   //проверяем, получил ли наш параметр какое-то значение ,если нет, то отменяем работу плагина
-            {
-                TaskDialog.Show("Ошибка", "Имя рабочего набора не задано.");
-                return Result.Failed;
             }
 
             foreach (var linkInstance in linkInstances)
             {
                 Document linkedDoc = linkInstance.GetLinkDocument();
-                // если ссылка на связь не корректная то пропускаем ее
+                // если связь до запуска плагина выгружена или ссылка на связь не корректная, то пропускаем ее
                 if (linkedDoc == null)
                     continue;
 
-
                 // Получаем тип связи
                 RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
-                if (linkType == null) continue;
+                if (linkType == null) 
+                    continue;
 
-                ExternalFileReference extFileRef = linkType.GetExternalFileReference();
-                if (extFileRef == null) continue;
-                ModelPath absPath = extFileRef.GetAbsolutePath();
+                //Получаем имя связи
+                string linkName = linkType.Name;
 
-                // Формируем список Id рабочих наборов, которые нужно ОТКРЫТЬ (все, кроме целевого)
+                //Получаем путь у связи               
+                ModelPath linkPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(linkedDoc.PathName);
+
+
+                // Cписок имен открытых РН внутри связи
                 var openedWorksetNames = new FilteredWorksetCollector(linkedDoc)
                                                                                 .OfKind(WorksetKind.UserWorkset)
                                                                                 .ToWorksets()
                                                                                 .Where(ws => ws.IsOpen)
                                                                                 .Select(ws => ws.Name)
                                                                                 .ToHashSet();
-                IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(absPath);
+
+                //Список всех рабочих наборов связи не открывая связь
+                IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(linkPath);
+                //Список РН которые по итогу надо открыть
                 IList<WorksetId> worksetsToOpen = new List<WorksetId>();
-                IList<WorksetPreview> worksetsTypeToOpen = new List<WorksetPreview>();
 
                 foreach (var ws in worksets)
                 {
                     //если выбран сценарий закрыть и соответственно галка не стоит
                     if (!WSOpenClose)
                     {
-                        // Открываем только те, что были открыты и не равны целевому
-                        if (ws.Name != targetWorksetName && openedWorksetNames.Contains(ws.Name))
+                        // Открываем только те, что не равны целевому и были открыты
+                        if (!Cont(LinksWorksetsSP, linkName, ws.Name) && openedWorksetNames.Contains(ws.Name))
                         {
                             worksetsToOpen.Add(ws.Id);
-                            worksetsTypeToOpen.Add(ws);
                         }
                     }
+                    //если выбран сценарий открыть и соответственно галка стоит
                     else
                     {
-                        // Открываем только те, что были открыты и равны целевому
-                        if (ws.Name == targetWorksetName || openedWorksetNames.Contains(ws.Name))
+                        // Открываем только те, что были открыты и равны целевому                       
+                        if (Cont(LinksWorksetsSP, linkName, ws.Name) || openedWorksetNames.Contains(ws.Name))
                         {
                             worksetsToOpen.Add(ws.Id);
-                            worksetsTypeToOpen.Add(ws);
                         }
                     }
-
                 }
 
                 // Конфигурация: по умолчанию все закрыты, открываем только нужные
@@ -109,18 +109,34 @@ namespace KPLN_Tools.ExternalCommands
                 if (worksetsToOpen.Count > 0)
                     wsConfig.Open(worksetsToOpen);
 
-                // Параметры загрузки связи с новой конфигурацией рабочих наборов
-                RevitLinkOptions options = new RevitLinkOptions(true);
-                options.SetWorksetConfiguration(wsConfig);
-
                 // Выгружаем связь
                 linkType.Unload(null);
 
                 // Перезагружаем связь
-                linkType.LoadFrom(absPath, wsConfig);
+                linkType.LoadFrom(linkPath, wsConfig);
             }
-
             return Result.Succeeded;
         }
+
+        /// <summary>
+        /// Используется для проверки чекбокса опредленного РН в определенной связи
+        /// </summary>
+        public bool Cont(ObservableCollection<LinkWorksetsItem> sp, string lname, string targetWS)
+        {
+            foreach (LinkWorksetsItem link in sp)
+            {
+                if (link.LinkName == lname)
+                {
+                    foreach (WorksetItem workset in link.Worksets)
+                    {
+                        if (workset.Name == targetWS && workset.IsSelected == true)
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+
     }
 }
