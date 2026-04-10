@@ -4,45 +4,183 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:KPLN_Tools.Forms"
-             Title="Отключение рабочего набора"
-             Height="200" Width="420"
+             Title="Вкл/Выкл рабочих наборов связей"
+             Height="300" Width="1130"
+             MinHeight="300" MinWidth="1130"
              WindowStartupLocation="CenterScreen"
-             ResizeMode="NoResize"
+             ResizeMode="CanResizeWithGrip"
              FontFamily="Consolas"
              FontSize="16">
+
+    <!-- ✅ ДОБАВЬ ЭТОТ БЛОК -->
+    <Window.Resources>
+        <local:BoolToBrushConverter x:Key="BoolToBrushConverter"/>
+        <local:BoolToOpenCloseConverter x:Key="BoolToOpenCloseConverter"/>
+    </Window.Resources>
+    <!-- ================================= -->
+
     <Border>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <!-- 0: Заголовок -->
                 <RowDefinition Height="*"/>
+                <!-- 1: Основная область (ввод + список) -->
                 <RowDefinition Height="Auto"/>
+                <!-- 2: чекбокс -->
+                <RowDefinition Height="Auto"/>
+                <!-- 3: кнопка -->
             </Grid.RowDefinitions>
 
-            <TextBlock Text="Введите имя набора для отключения:" 
-                    Margin="8,8,8,4" Grid.Row="0"/>
-            <TextBox x:Name="tbWorksetName" 
-                
-                 Margin="8,4,8,8" 
-                 FontSize="18" 
-                 Grid.Row="1"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <!-- 0: Левая часть (ввод) -->
+                <ColumnDefinition Width="280"/>
+                <!-- 1: Список выбранных РН -->
+                <ColumnDefinition Width="450"/>
+                <!-- 2: Список обрабатываемых связей и РН по итогу -->
+            </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Row="2" Margin="8,4,8,8">
+            <!-- Заголовок левой части-->
+            <TextBlock Text="Введите имя набора (клик чтобы добавить):" 
+                       Margin="8,8,8,4" 
+                       Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                       TextWrapping="Wrap"/>
+
+            <!-- Левая часть: TextBox + подсказки -->
+            <Grid Grid.Row="1" Grid.Column="0" Margin="8,4,4,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBox x:Name="tbWorksetName"
+                         Margin="0,0,0,4" 
+                         FontSize="18"
+                         Grid.Row="0"
+                         TextChanged="OnWorksetNameTextChanged"/>
+
+                <ListBox x:Name="lbSuggestions"
+                         ItemsSource="{Binding FilteredSuggestions}"       
+                         DisplayMemberPath="."
+                         Padding="4"
+                         Grid.Row="1"
+                         Visibility="Collapsed"
+                         Background="White"
+                         BorderBrush="LightGray"
+                         MouseLeftButtonUp="OnSuggestionClick"/>
+            </Grid>
+
+            <!-- Заголовок чредней части-->
+            <Grid Grid.Row="0" Grid.Column="1" Margin="4,4,4,4">
+                <TextBlock Text="Выбранные наборы:" 
+                            FontSize="14"                          
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,0,0"/>
+            </Grid>
+
+            <!-- Средняя часть: Список выбранных РН -->
+            <Grid Grid.Row="1" Grid.Column="1" Margin="4,4,8,8">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <ListBox x:Name="lbSelectedWorksets"
+                         ItemsSource="{Binding SelectedWorksets}"
+                         DisplayMemberPath="."
+                         Grid.Row="0"
+                         VerticalAlignment="Stretch"
+                         HorizontalAlignment="Stretch"
+                         Background="White"
+                         BorderBrush="LightGray"
+                         MouseLeftButtonUp="OnSelectedWorksetClick"/>
+
+                <Button Content="Стереть все" 
+                        Width="110" Height="28"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Bottom"
+                        Grid.Row="1"
+                        Margin="4"
+                        Click="RemoveButton_Click"/>
+
+            </Grid>
+
+            <!-- Заголовок правой части-->
+            <Grid Grid.Row="0" Grid.Column="2" Margin="4,4,4,4">
+                <TextBlock Text="Список обрабатываемых связей и РН:" 
+                            FontSize="14"                          
+                            VerticalAlignment="Bottom"
+                            Margin="0,0,0,0"/>
+            </Grid>
+
+            <!-- Правая часть: Список обрабатываемых связей и РН -->
+            <Grid Grid.Row="1" Grid.Column="2" Margin="4,4,8,8">
+                <TreeView x:Name="lbProcLinksWS"
+                            ItemsSource="{Binding LinksWorksetsList}"
+                            VerticalAlignment="Stretch"
+                            HorizontalAlignment="Stretch"
+                            Background="White"
+                            BorderBrush="LightGray"
+                            FontFamily="Consolas">
+                    <TreeView.Resources>
+                        <!-- Стиль для связи (родительский элемент) -->
+                        <HierarchicalDataTemplate DataType="{x:Type local:LinkWorksetsItem}" 
+                                      ItemsSource="{Binding Worksets}">
+                            <StackPanel Orientation="Horizontal" Margin="2">
+                                <TextBlock Text="{Binding LinkName}"/>
+                                <TextBlock Text=" (" Foreground="Gray"/>
+                                <TextBlock Text="{Binding Worksets.Count}" Foreground="Gray"/>
+                                <TextBlock Text=" РН)" Foreground="Gray"/>
+                                <!-- ✅ ЗЕЛЁНЫЙ КРУГ (появляется, если есть выбранные РН) -->
+                                <Ellipse Width="10" Height="10" 
+                                Margin="0,0,6,0" VerticalAlignment="Center"
+                                Fill="{Binding IsHighlighted, Converter={StaticResource BoolToBrushConverter}}"/>
+
+
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+
+                        <!-- Стиль для рабочего набора (дочерний элемент) -->
+                        <DataTemplate DataType="{x:Type local:WorksetItem}">
+                            <StackPanel Orientation="Horizontal" Margin="2">
+                                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" 
+                                  Margin="0,0,6,0"
+                                  VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Name}"/>
+                                <TextBlock Text=" (" Foreground="Gray" Margin="4,0,0,0"/>
+                                <TextBlock Text="{Binding IsOpen, Converter={StaticResource BoolToOpenCloseConverter}}" 
+                                Foreground="Gray"/>
+                                <TextBlock Text=")" Foreground="Gray"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </TreeView.Resources>
+                </TreeView>
+
+
+
+            </Grid>
+
+            <!-- чекбокс -->
+            <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="8,4,8,8">
                 <CheckBox x:Name="chkOpenClose"
-                Content="Открыть/Закрыть"
-                FontSize="16"/>
+                          Content="Открыть/Закрыть"
+                          FontSize="16"/>
                 <TextBlock Text="(включенная галка значит открыть)"
-                FontSize="12"                   
-                Foreground="Gray"
-                Margin="0,2,0,0"/>
+                           FontSize="12"                   
+                           Foreground="Gray"
+                           Margin="0,2,0,0"
+                           TextWrapping="Wrap"/>
             </StackPanel>
 
+            <!-- Кнопка -->
             <Button Content="OK" 
-                Width="80" Height="28"
-                HorizontalAlignment="Right" 
-                Margin="8" 
-                Grid.Row="3"
-                Click="OkButton_Click"/>
+                    Width="80" Height="28"
+                    HorizontalAlignment="Right" 
+                    Margin="8" 
+                    Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                    Click="OkButton_Click"/>
         </Grid>
     </Border>
 </Window>
