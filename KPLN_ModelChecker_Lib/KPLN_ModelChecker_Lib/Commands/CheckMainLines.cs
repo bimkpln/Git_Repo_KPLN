@@ -11,19 +11,13 @@ namespace KPLN_ModelChecker_Lib.Commands
     {
         internal Grid CurrentGrid { get; set; }
 
-        internal Grid NearestParallelGrid { get; set; }
+        internal Grid NearestGrid { get; set; }
 
-        internal double NearestParallelDistance { get; set; }
-
-        internal Grid NearestAnglelGrid { get; set; }
-
-        internal double NearestAngle { get; set; }
+        internal double Distance { get; set; }
 
         internal bool IsChecked { get; set; }
 
         internal bool IsDistanceError { get; set; }
-
-        internal bool IsAngleError { get; set; }
     }
 
     public sealed class CheckMainLines : AbstrCheck
@@ -75,16 +69,9 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             if (lineGridsOnly.Length > 0)
             {
-                GridEntity[] gridEntites = CreateGridEntites(lineGridsOnly);
-
-                IEnumerable <CheckerEntity> gridParallDistErrEnts = GetGridParallDistErrorEnt(gridEntites);
+                IEnumerable<CheckerEntity> gridParallDistErrEnts = GetGridParallDistErrorEnt(lineGridsOnly);
                 if (gridParallDistErrEnts != null)
                     _checkerEntitiesCollHeap.AddRange(gridParallDistErrEnts);
-
-                // Проверка угла не реализуема. Причина - угол может быть не точным, при условии, что точки пересечения осей точные.
-                //IEnumerable<CheckerEntity> gridAngleErrEnts = GetGridAngleErrorEnt(gridEntites);
-                //if (gridAngleErrEnts != null)
-                //    _checkerEntitiesCollHeap.AddRange(gridAngleErrEnts);
             }
 
             return CheckResultStatus.Succeeded;
@@ -153,11 +140,12 @@ namespace KPLN_ModelChecker_Lib.Commands
         }
 
         /// <summary>
-        /// Создание коллекции GridEntity для анализа (ТОЛЬКО прямые оси)
+        /// Проверка осей на расстояние между параллельными эл-тами (ТОЛЬКО прямые оси)
         /// </summary>
-        /// <param name="grids"></param>
+        /// <param name="esEntity"></param>
+        /// <param name="element"></param>
         /// <returns></returns>
-        private static GridEntity[] CreateGridEntites(Grid[] grids)
+        private static IEnumerable<CheckerEntity> GetGridParallDistErrorEnt(Grid[] grids)
         {
             GridEntity[] gridEntities = grids
                 .Select(gr => new GridEntity { CurrentGrid = gr })
@@ -166,43 +154,18 @@ namespace KPLN_ModelChecker_Lib.Commands
             for (int i = 0; i < gridEntities.Count(); i++)
             {
                 GridEntity gridEntity = gridEntities[i];
-                GridEntity nearestGridEntity = gridEntities.FirstOrDefault(ge => ge.NearestParallelGrid != null && ge.NearestParallelGrid.Id == gridEntity.CurrentGrid.Id);
-                if (nearestGridEntity.IsChecked && (nearestGridEntity.IsDistanceError || nearestGridEntity.IsAngleError)) continue;
+                GridEntity nearestGridEntity = gridEntities.FirstOrDefault(ge => ge.NearestGrid != null && ge.NearestGrid.Id == gridEntity.CurrentGrid.Id);
+                if (nearestGridEntity.IsChecked && nearestGridEntity.IsDistanceError) continue;
 
                 SetGridData(grids, ref gridEntities[i]);
             }
 
-            return gridEntities;
-        }
-
-
-
-        /// <summary>
-        /// Сортировка GridEntity по расстоянию между осями
-        /// </summary>
-        /// <returns></returns>
-        private static IEnumerable<CheckerEntity> GetGridParallDistErrorEnt(GridEntity[] gridEntities)
-        {
             return gridEntities
                 .Where(ge => ge.IsDistanceError)
-                .Select(ge => new CheckerEntity(new Element[2] { ge.CurrentGrid, ge.NearestAnglelGrid },
+                .Select(ge => new CheckerEntity(ge.CurrentGrid,
                     "Нарушена точность построения",
-                    $"Ось «{ge.CurrentGrid.Name}» расположена на расстоянии {ge.NearestParallelDistance} от оси «{ge.NearestParallelGrid.Name}»",
+                    $"Ось «{ge.CurrentGrid.Name}» расположена на расстоянии {ge.Distance} от оси «{ge.NearestGrid.Name}»",
                     $"Точность построения осей - 5,00001. ПРЕДВАРИТЕЛЬНО - согласуй внесение изменений со своим BIM-координатором"));
-        }
-
-        /// <summary>
-        /// Сортировка GridEntity по углу между ними
-        /// </summary>
-        /// <returns></returns>
-        private static IEnumerable<CheckerEntity> GetGridAngleErrorEnt(GridEntity[] gridEntities)
-        {
-            return gridEntities
-                .Where(ge => ge.IsAngleError)
-                .Select(ge => new CheckerEntity(new Element[2] { ge.CurrentGrid, ge.NearestAnglelGrid },
-                    "Нарушена точность построения",
-                    $"Ось «{ge.CurrentGrid.Name}» расположена под углом {ge.NearestAngle}° от оси «{ge.NearestAnglelGrid.Name}»",
-                    "Точность построения угловых размеров осей - 0,00001°. ПРЕДВАРИТЕЛЬНО - согласуй внесение изменений со своим BIM-координатором"));
         }
 
         /// <summary>
@@ -222,12 +185,9 @@ namespace KPLN_ModelChecker_Lib.Commands
             XYZ checkGridDirection = checkGridLine.Direction;
 
             Grid tempNearestGrid = null;
-            Grid tempNearestAnglelGrid = null;
             double tempDist = double.MaxValue;
-            double tempAngleDegrees = 0;
             foreach (Grid grid in grids)
             {
-                // Исключение проверки сам на себя
                 if (checkGrid.Id == grid.Id) continue;
 
                 Curve gridCurve = grid.Curve;
@@ -237,92 +197,62 @@ namespace KPLN_ModelChecker_Lib.Commands
                 Line lineGrid = gridCurve as Line;
                 XYZ gridDirection = lineGrid.Direction;
 
-                // Проверяем на параллельность. Еесли векторное произведение != 0, то линии НЕ параллельны, проверяем угол
+                // Проверяем на параллельность (если векторное произведение != 0, то линии НЕ параллельны, пропускаем)
                 XYZ crossProduct = checkGridDirection.CrossProduct(gridDirection);
-                if (!crossProduct.IsZeroLength())
-                {
-                    // Проверка угла не реализуема. Причина - угол может быть не точным, при условии, что точки пересечения осей точные.
-                    continue;
+                if (!crossProduct.IsZeroLength()) continue;
 
-                    double angle = checkGridDirection.AngleTo(gridDirection);
+
+                // Расстояние между параллельными линиями
+                IntersectionResult intRes1 = checkGridCurve.Project(fStartPontGrid);
+                IntersectionResult intRes2 = gridCurve.Project(fEndPontCheckGrid);
+                double distBetweenIntResPnts1 = intRes1.XYZPoint.DistanceTo(intRes2.XYZPoint);
+
+                IntersectionResult intRes3 = checkGridCurve.Project(sStartPontGrid);
+                IntersectionResult intRes4 = gridCurve.Project(sEndPontCheckGrid);
+                double distBetweenIntResPnts3 = intRes3.XYZPoint.DistanceTo(intRes4.XYZPoint);
+
+                double minBetweenDist = Math.Min(distBetweenIntResPnts1, distBetweenIntResPnts3);
+
+                // Проверяю угол между линией пересечений и проверяемой осью (если он не 0/90/180 - значит оси со смещением)
+                // Очень мелкие линии в ревит не построить. Просто игнор
+                if (minBetweenDist > 0.1)
+                {
+                    Line lineBetween;
+                    if (minBetweenDist == distBetweenIntResPnts1)
+                        lineBetween = Line.CreateBound(intRes1.XYZPoint, intRes2.XYZPoint);
+                    else
+                        lineBetween = Line.CreateBound(intRes3.XYZPoint, intRes4.XYZPoint);
+
+                    double angle = lineBetween.Direction.AngleTo(checkGridDirection);
 #if Debug2020 || Revit2020
                     double angleDegrees = UnitUtils.ConvertFromInternalUnits(angle, DisplayUnitType.DUT_DECIMAL_DEGREES);
 #else
                     double angleDegrees = UnitUtils.ConvertFromInternalUnits(angle, UnitTypeId.Degrees);
 #endif
-                    double normalizedAngle = angleDegrees > 90 ? 180 - angleDegrees : angleDegrees;
-                    double roundedAngle = Math.Round(normalizedAngle, 5);
-                    // Обнуляю разницу в 0,00001°, т.к. будет выдавать ПОЧТИ параллельные оси
-                    if (tempNearestGrid == null || (roundedAngle > tempAngleDegrees && roundedAngle > 0.01 && roundedAngle < 89.99))
-                    {
-                        tempNearestAnglelGrid = grid;
-                        tempAngleDegrees = roundedAngle;
-                    }
-
+                    if (angleDegrees % 90 > 0.1)
+                        minBetweenDist = minBetweenDist * Math.Sin(angle);
                 }
-                // Иначе - проверяем расстояние
-                else
-                {
-                    // Расстояние между параллельными линиями
-                    IntersectionResult intRes1 = checkGridCurve.Project(fStartPontGrid);
-                    IntersectionResult intRes2 = gridCurve.Project(fEndPontCheckGrid);
-                    double distBetweenIntResPnts1 = intRes1.XYZPoint.DistanceTo(intRes2.XYZPoint);
-
-                    IntersectionResult intRes3 = checkGridCurve.Project(sStartPontGrid);
-                    IntersectionResult intRes4 = gridCurve.Project(sEndPontCheckGrid);
-                    double distBetweenIntResPnts3 = intRes3.XYZPoint.DistanceTo(intRes4.XYZPoint);
-
-                    double minBetweenDist = Math.Min(distBetweenIntResPnts1, distBetweenIntResPnts3);
-
-                    // Проверяю угол между линией пересечений и проверяемой осью (если он не 0/90/180 - значит оси со смещением)
-                    // Очень мелкие линии в ревит не построить. Просто игнор
-                    if (minBetweenDist > 0.1)
-                    {
-                        Line lineBetween;
-                        if (minBetweenDist == distBetweenIntResPnts1)
-                            lineBetween = Line.CreateBound(intRes1.XYZPoint, intRes2.XYZPoint);
-                        else
-                            lineBetween = Line.CreateBound(intRes3.XYZPoint, intRes4.XYZPoint);
-
-                        double angle = lineBetween.Direction.AngleTo(checkGridDirection);
-#if Debug2020 || Revit2020
-                        double angleDegrees = UnitUtils.ConvertFromInternalUnits(angle, DisplayUnitType.DUT_DECIMAL_DEGREES);
-#else
-                        double angleDegrees = UnitUtils.ConvertFromInternalUnits(angle, UnitTypeId.Degrees);
-#endif
-                        if (angleDegrees % 90 > 0.1)
-                            minBetweenDist = minBetweenDist * Math.Sin(angle);
-                    }
 
 #if Debug2020 || Revit2020
                 double resultDistMM = UnitUtils.ConvertFromInternalUnits(minBetweenDist, DisplayUnitType.DUT_MILLIMETERS);
 #else
-                    double resultDistMM = UnitUtils.ConvertFromInternalUnits(minBetweenDist, UnitTypeId.Millimeters);
+                double resultDistMM = UnitUtils.ConvertFromInternalUnits(minBetweenDist, UnitTypeId.Millimeters);
 #endif
 
-                    if (resultDistMM < tempDist)
-                    {
-                        tempDist = resultDistMM;
-                        tempNearestGrid = grid;
-                    }
+                if (resultDistMM < tempDist)
+                {
+                    tempDist = resultDistMM;
+                    tempNearestGrid = grid;
                 }
             }
 
             // Предварительно округляю с нужно точностью, чтобы и в отчет попало норм. значение, и анализировалось тоже корректное значение, а не напрм. 14.999999975
             double roundDist = Math.Round(tempDist, 5);
 
-            // Заполняю данные по параллельным осям
-            gridEnt.NearestParallelGrid = tempNearestGrid;
-            gridEnt.NearestParallelDistance = roundDist;
-            gridEnt.IsDistanceError = IsErrorValidNumber(roundDist);
-
-            // Заполняю данные по НЕ параллельным осям
-            //gridEnt.NearestAnglelGrid = tempNearestAnglelGrid;
-            //gridEnt.NearestAngle = tempAngleDegrees;
-            //gridEnt.IsAngleError = IsAngleError(tempAngleDegrees);
-
-            // Помечаю, что элемент проверен
+            gridEnt.NearestGrid = tempNearestGrid;
+            gridEnt.Distance = roundDist;
             gridEnt.IsChecked = true;
+            gridEnt.IsDistanceError = IsErrorValidNumber(roundDist);
         }
 
         private static bool IsErrorValidNumber(double roundNumber)
@@ -342,17 +272,6 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                 return !(isCorrectEnding && isValidPrecision);
             }
-
-            return false;
-        }
-
-        private static bool IsAngleError(double angleDegrees)
-        {
-            double roundedAngle = Math.Round(angleDegrees, 0);
-            double roundedToleranceAngle = Math.Round(angleDegrees, 5);
-
-            if (Math.Abs(roundedAngle - roundedToleranceAngle) >= 0.000005)
-                return true;
 
             return false;
         }
