@@ -1,12 +1,16 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.Common;
+using KPLN_ExtraFilter.ExternalCommands;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace KPLN_ExtraFilter.Forms.Entities
@@ -18,7 +22,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
     public enum ViewFilterMode
     {
         CurrentView,
-        Model
+        Model,
+        UserSelection,
     }
 
     /// <summary>
@@ -46,7 +51,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private WSEntity _where_SelectedWorkset;
         private bool _whereCategoryFilter;
         private bool _what_ParameterData;
-        private ViewFilterMode _where_ViewDocFilterMode = ViewFilterMode.CurrentView;
+        private ViewFilterMode _where_ViewDocFilterMode;
         private SelectFilterMode _how_SelectFilterMode = SelectFilterMode.CreateNew;
         private bool _belongGroup;
 
@@ -60,11 +65,17 @@ namespace KPLN_ExtraFilter.Forms.Entities
         [JsonConstructor]
         public SelectionByModelM() { }
 
-        public SelectionByModelM(Document doc)
+        public SelectionByModelM(UIApplication uiapp, ViewFilterMode viewFilterMode)
         {
-            Doc = doc;
-            IsWorkshared = doc.IsWorkshared || doc.IsDetached;
-            DocActiveView = doc.ActiveView;
+            Doc = uiapp.ActiveUIDocument.Document;
+            IsWorkshared = Doc.IsWorkshared || Doc.IsDetached;
+            DocActiveView = Doc.ActiveView;
+
+            ICollection<ElementId> userSelIds = uiapp.ActiveUIDocument.Selection.GetElementIds();
+            if (userSelIds.Count > 0)
+                UserSelElems = userSelIds.Select(id => Doc.GetElement(id));
+            
+            Where_ViewDocFilterMode = viewFilterMode;
         }
 
         public Document Doc { get; set; }
@@ -87,7 +98,16 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// Пользовательский выбор из модели
         /// </summary>
-        public IEnumerable<Element> UserSelElems { get => _userSelElems; set => _userSelElems = value; }
+        public IEnumerable<Element> UserSelElems 
+        { 
+            get => _userSelElems; 
+            set 
+            {
+                _userSelElems = value; 
+                SetUserSelElems();
+
+            } 
+        }
 
         /// <summary>
         /// Коллекция элементов согласно пользовательскому выбору
@@ -445,6 +465,26 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 case ViewFilterMode.Model:
                     fic = new FilteredElementCollector(Doc);
                     break;
+                case ViewFilterMode.UserSelection:
+                    if (UserSelElems != null && UserSelElems.Any())
+                    {
+                        fic = new FilteredElementCollector(Doc, UserSelElems.Select(el => el.Id).ToArray());
+                        break;
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                           $"Для выбора этого режима - нужно выбрать элементы в модели. Сейчас будет включён режим \"Элементы на виде\"",
+                           $"{SelectionByModelExtCmd.PluginName}: Ошибка",
+                           MessageBoxButton.OK,
+                           MessageBoxImage.Error);
+                        
+                        // Переключаю режим
+                        Where_ViewDocFilterMode = ViewFilterMode.CurrentView;
+                        
+                        // Устанавливаю фильтрацию
+                        goto case ViewFilterMode.CurrentView;
+                    }
             }
 
             if (fic == null)

@@ -80,7 +80,6 @@
                             Text="Откуда анализ?" 
                             Style="{StaticResource TXT}"/>
                         <StackPanel>
-            
                             <RadioButton 
                                 GroupName="ViewFilter"
                                 Content="Элементы на виде" 
@@ -96,6 +95,14 @@
                                 IsChecked="{Binding Where_ViewDocFilterMode, 
                                     Converter={StaticResource EnumToBooleanConverter}, 
                                     ConverterParameter=Model}" />
+                            
+                            <RadioButton 
+                                GroupName="ViewFilter"
+                                Content="Пользовательский выбор" 
+                                Style="{StaticResource RB}"
+                                IsChecked="{Binding Where_ViewDocFilterMode, 
+                                    Converter={StaticResource EnumToBooleanConverter}, 
+                                    ConverterParameter=UserSelection}" />
             
                             <CheckBox 
                                 Content="Только с 3D-геометрией" 

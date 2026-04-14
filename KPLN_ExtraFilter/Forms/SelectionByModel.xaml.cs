@@ -20,9 +20,9 @@ namespace KPLN_ExtraFilter.Forms
 
         private TreeElementEntity _lastClickedEntity;
 
-        public SelectionByModel(Document doc)
+        public SelectionByModel(UIApplication uiapp, ViewFilterMode viewFilterMode)
         {
-            CurrentSelectionByModelVM = new SelectionByModelVM(this, doc);
+            CurrentSelectionByModelVM = new SelectionByModelVM(this, uiapp, viewFilterMode);
 
             InitializeComponent();
 

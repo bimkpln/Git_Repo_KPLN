@@ -4,6 +4,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms;
+using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_PluginActivityWorker;
 
@@ -13,17 +14,19 @@ namespace KPLN_ExtraFilter.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class SelectionByModelExtCmd : IExternalCommand
     {
-        internal const string PluginName = "Дерево элементов";
+        /// <summary>
+        /// Имя плагина. Использую в KPLN_DefaultPanelExtension_Modify
+        /// </summary>
+        public const string PluginName = "Дерево элементов";
         private SelectionByModel _mainForm;
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result ExecuteByUIApp(UIApplication uiapp, ViewFilterMode viewFilterMode)
         {
             //Получение объектов приложения и документа
-            UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            _mainForm = new SelectionByModel(doc);
+            _mainForm = new SelectionByModel(uiapp, viewFilterMode);
             WindowHandleSearch.MainWindowHandle.SetAsOwner(_mainForm);
             
             
@@ -69,6 +72,8 @@ namespace KPLN_ExtraFilter.ExternalCommands
 
             return Result.Succeeded;
         }
+
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => ExecuteByUIApp(commandData.Application, ViewFilterMode.CurrentView);
 
         private void OnViewChanged(object sender, ViewActivatedEventArgs e) => _mainForm.RaiseUpdateViewChanged();
 

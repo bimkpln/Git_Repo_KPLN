@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.ExecutableCommand;
 using KPLN_ExtraFilter.Forms.Commands;
 using KPLN_ExtraFilter.Forms.Entities;
@@ -13,20 +14,20 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
     {
         private readonly SelectionByModel _mainWindow;
 
-        public SelectionByModelVM(SelectionByModel mainWindow, Document doc)
+        public SelectionByModelVM(SelectionByModel mainWindow, UIApplication uiapp, ViewFilterMode viewFilterMode)
         {
             _mainWindow = mainWindow;
             // Чтение конфигурации последнего запуска
-            object lastRunConfigObj = ConfigService.ReadConfigFile<SelectionByClickM>(ModuleData.RevitVersion, doc, ConfigType.Memory);
+            object lastRunConfigObj = ConfigService.ReadConfigFile<SelectionByClickM>(ModuleData.RevitVersion, uiapp.ActiveUIDocument.Document, ConfigType.Memory);
             if (lastRunConfigObj != null && lastRunConfigObj is SelectionByModelM model)
             {
                 // Если тот же док - беру из пред. запуска
-                if (model.Doc.Title == doc.Title)
+                if (model.Doc.Title == uiapp.ActiveUIDocument.Document.Title)
                     CurrentSelectionByModelM = model;
             }
 
             if (CurrentSelectionByModelM == null)
-                CurrentSelectionByModelM = new SelectionByModelM(doc);
+                CurrentSelectionByModelM = new SelectionByModelM(uiapp, viewFilterMode);
 
 
             DropUserParamCmd = new RelayCommand<object>(_ => DropUserParam());
