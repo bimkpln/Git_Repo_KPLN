@@ -21,6 +21,7 @@ namespace KPLN_Tools.ExecutableCommand
     {
         private static ApartmentManagerWindow _window;
         private static ApartmentManagerExternalController _controller;
+        private static ApartmentPresetData _sessionPresetData;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -35,7 +36,11 @@ namespace KPLN_Tools.ExecutableCommand
                 }
 
                 _controller = new ApartmentManagerExternalController();
-                _window = new ApartmentManagerWindow(DBWorkerService.CurrentDBUserSubDepartment.Id, _controller);
+                _window = new ApartmentManagerWindow(
+                    DBWorkerService.CurrentDBUserSubDepartment.Id,
+                    _controller,
+                    _sessionPresetData != null ? _sessionPresetData.Clone() : null);
+
                 _controller.AttachWindow(_window);
                 _window.Closed += OnWindowClosed;
 
@@ -72,6 +77,11 @@ namespace KPLN_Tools.ExecutableCommand
 
         private static void OnWindowClosed(object sender, EventArgs e)
         {
+            if (_window != null)
+                _sessionPresetData = _window.ApartmentPresetData != null
+                    ? _window.ApartmentPresetData.Clone()
+                    : null;
+
             if (_controller != null)
                 _controller.DetachWindow();
 
@@ -130,6 +140,9 @@ namespace KPLN_Tools.ExecutableCommand
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string ApartmentInstanceMarker = "[KPLN_APT_INSTANCE]";
+
+        private static readonly Dictionary<string, string> _familyNameByPathCache =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         private ApartmentManagerWindow _window;
 
@@ -509,6 +522,9 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+
+
+
         private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
         {
             if (projectDoc == null)
@@ -517,7 +533,12 @@ namespace KPLN_Tools.ExecutableCommand
             if (string.IsNullOrWhiteSpace(familyPath) || !File.Exists(familyPath))
                 return null;
 
+            string cachedName;
+            if (_familyNameByPathCache.TryGetValue(familyPath, out cachedName))
+                return string.IsNullOrWhiteSpace(cachedName) ? null : cachedName;
+
             Document familyDoc = null;
+            string detectedName = null;
 
             try
             {
@@ -529,7 +550,7 @@ namespace KPLN_Tools.ExecutableCommand
                     .FirstOrDefault();
 
                 if (family != null && !string.IsNullOrWhiteSpace(family.Name))
-                    return family.Name.Trim();
+                    detectedName = family.Name.Trim();
             }
             catch
             {
@@ -548,8 +569,13 @@ namespace KPLN_Tools.ExecutableCommand
                 }
             }
 
-            return null;
+            _familyNameByPathCache[familyPath] = detectedName ?? "";
+            return detectedName;
         }
+
+
+
+
 
         private static long GetElementIdValue(ElementId id)
         {
@@ -1691,6 +1717,10 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
+
+
+
+
         private void ExecutePlaceApartment(UIDocument uidoc, Document doc, int id)
         {
             ViewPlan floorPlan = doc.ActiveView as ViewPlan;
@@ -1713,9 +1743,9 @@ namespace KPLN_Tools.ExecutableCommand
                 return;
             }
 
-            XYZ insertPoint = uidoc.Selection.PickPoint("Укажите точку вставки семейства");
+            FamilySymbol symbol = null;
 
-            using (Transaction t = new Transaction(doc, "Разместить семейство квартиры"))
+            using (Transaction t = new Transaction(doc, "Подготовить семейство квартиры"))
             {
                 t.Start();
 
@@ -1723,7 +1753,7 @@ namespace KPLN_Tools.ExecutableCommand
                 if (family == null)
                     throw new Exception("Не удалось загрузить или найти семейство в проекте.");
 
-                FamilySymbol symbol = GetFirstFamilySymbol(doc, family);
+                symbol = GetFirstFamilySymbol(doc, family);
                 if (symbol == null)
                     throw new Exception("У семейства не найдено ни одного типоразмера.");
 
@@ -1733,15 +1763,54 @@ namespace KPLN_Tools.ExecutableCommand
                     doc.Regenerate();
                 }
 
-                FamilyInstance placedInstance = PlaceFamilyInstance(doc, floorPlan, symbol, insertPoint);
-                if (placedInstance == null)
-                    throw new Exception("Не удалось разместить экземпляр семейства.");
-
-                AppendComment(placedInstance, ApartmentInstanceMarker);
-
                 t.Commit();
             }
+
+            int placedCount = 0;
+
+            using (TransactionGroup tg = new TransactionGroup(doc, "Разместить семейство квартиры"))
+            {
+                tg.Start();
+
+                while (true)
+                {
+                    XYZ insertPoint;
+
+                    try
+                    {
+                        insertPoint = uidoc.Selection.PickPoint("Укажите точку вставки семейства. ESC - завершить.");
+                    }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+                    {
+                        break;
+                    }
+
+                    using (Transaction t = new Transaction(doc, "Разместить экземпляр квартиры"))
+                    {
+                        t.Start();
+
+                        FamilyInstance placedInstance = PlaceFamilyInstance(doc, floorPlan, symbol, insertPoint);
+                        if (placedInstance == null)
+                            throw new Exception("Не удалось разместить экземпляр семейства.");
+
+                        AppendComment(placedInstance, ApartmentInstanceMarker);
+
+                        t.Commit();
+                    }
+
+                    placedCount++;
+                }
+
+                if (placedCount > 0)
+                    tg.Assimilate();
+                else
+                    tg.RollBack();
+            }
         }
+
+
+
+
 
         private static Family LoadOrFindFamily(Document doc, string familyPath)
         {
@@ -1754,13 +1823,20 @@ namespace KPLN_Tools.ExecutableCommand
             if (!File.Exists(familyPath))
                 throw new FileNotFoundException("Файл семейства не найден.", familyPath);
 
-            string realFamilyName = GetFamilyNameFromFile(doc, familyPath);
             string fileFamilyName = Path.GetFileNameWithoutExtension(familyPath);
 
             List<Family> existingFamilies = new FilteredElementCollector(doc)
                 .OfClass(typeof(Family))
                 .Cast<Family>()
                 .ToList();
+
+            Family existingByFileName = existingFamilies.FirstOrDefault(f =>
+                string.Equals(f.Name, fileFamilyName, StringComparison.OrdinalIgnoreCase));
+
+            if (existingByFileName != null)
+                return existingByFileName;
+
+            string realFamilyName = GetFamilyNameFromFile(doc, familyPath);
 
             if (!string.IsNullOrWhiteSpace(realFamilyName))
             {
@@ -1770,12 +1846,6 @@ namespace KPLN_Tools.ExecutableCommand
                 if (existingByRealName != null)
                     return existingByRealName;
             }
-
-            Family existingByFileName = existingFamilies.FirstOrDefault(f =>
-                string.Equals(f.Name, fileFamilyName, StringComparison.OrdinalIgnoreCase));
-
-            if (existingByFileName != null)
-                return existingByFileName;
 
             Family loadedFamily = null;
 
@@ -1790,7 +1860,10 @@ namespace KPLN_Tools.ExecutableCommand
             {
             }
 
-            existingFamilies = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>().ToList();
+            existingFamilies = new FilteredElementCollector(doc)
+                .OfClass(typeof(Family))
+                .Cast<Family>()
+                .ToList();
 
             if (!string.IsNullOrWhiteSpace(realFamilyName))
             {
@@ -1809,6 +1882,9 @@ namespace KPLN_Tools.ExecutableCommand
 
             return null;
         }
+
+
+
 
         private static FamilySymbol GetFirstFamilySymbol(Document doc, Family family)
         {
