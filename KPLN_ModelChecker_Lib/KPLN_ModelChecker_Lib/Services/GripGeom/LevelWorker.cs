@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace KPLN_ModelChecker_Lib.Services.GripGeom
 {
@@ -10,9 +11,9 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom
         /// Бинарный поиск уровня по отметке 
         /// </summary>
         /// <param name="levels">Отсортированный список уровней</param>
-        /// <param name="elevation">Отметка, по которой идёт поиск</param>
+        /// <param name="mmElev">Отметка, по которой идёт поиск в миллиметрах</param>
         /// <returns></returns>
-        public static Level BinaryFindExactLevel(List<Level> levels, double elevation)
+        public static Level BinaryFindExactLevel(List<Level> levels, double mmElev)
         {
             int low = 0;
             int high = levels.Count - 1;
@@ -25,12 +26,12 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom
 
 
 #if Debug2020 || Revit2020
-                double midElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, DisplayUnitType.DUT_MILLIMETERS);
+                double mmMidElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, DisplayUnitType.DUT_MILLIMETERS);
 #else
-                double midElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, SpecTypeId.Length);
+                double mmMidElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, SpecTypeId.Length);
 #endif
 
-                double diff = midElev - elevation;
+                double diff = mmMidElev - mmElev;
 
                 if (Math.Abs(diff) < epsilon)
                     return levels[mid]; // знайшлі дакладна

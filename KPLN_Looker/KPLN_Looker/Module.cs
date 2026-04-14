@@ -9,6 +9,7 @@ using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
+using KPLN_Loader.Core.Entities;
 using KPLN_Looker.Comparers;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
@@ -17,6 +18,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -24,11 +26,6 @@ namespace KPLN_Looker
 {
     public class Module : IExternalModule
     {        
-        /// <summary>
-        /// Коллекция пользователей БИМ-отдела, которых подписываю на рассылку уведомлений по файлам АР_АФК
-        /// </summary>
-        private static DBUser[] _arKonFileSubscribersFromBIM;
-
         /// <summary>
         /// Кэширование текущего пути мониторингового проекта (ЗА исключением файлов концепций)
         /// </summary>
@@ -82,14 +79,7 @@ namespace KPLN_Looker
         /// </summary>
         private static readonly Dictionary<string, Room[]> _lastDocRooms = new Dictionary<string, Room[]>();
 
-        public Module()
-        {
-            List<DBUser> bimManager = DBMainService.UserDbService.GetDBUsers_BIMManager().ToList();
-            List<DBUser> arBimCoord = DBMainService.UserDbService.GetDBUsers_BIMARCoord().ToList();
-            arBimCoord.AddRange(bimManager);
-
-            _arKonFileSubscribersFromBIM = arBimCoord.ToArray();
-        }
+        public Module() { }
 
         /// <summary>
         /// Указатель на окно ревит
@@ -198,6 +188,8 @@ namespace KPLN_Looker
                 && (fileFullName.ToLower().Contains("stinproject.local\\project\\") || fileFullName.ToLower().Contains("rsn"))
 #endif
                 && !fileFullName.EndsWith("rte")
+                // Модели координационных файлов
+                && !fileFullName.ToLower().Contains("координационный")
                 // Офис КПЛН
                 && !fileFullName.ToLower().Contains("16с13"))
                 return fileFullName;
@@ -406,14 +398,18 @@ namespace KPLN_Looker
             }
             else
             {
-                TaskDialog td = new TaskDialog("ВНИМАНИЕ")
-                {
-                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
-                    MainInstruction = "Вы работаете в незарегистрированном проекте. Скинь скрин в BIM-отдел",
-                    FooterText = $"Специалисту BIM-отдела: файл - {fileFullName}",
-                    CommonButtons = TaskDialogCommonButtons.Ok,
-                };
-                td.Show();
+                #if DEBUG
+                // Глушу оповещение своих тестовых проектов (достаточно в режиме дебага, чтобы не нагружать остальных)
+                if (KPLN_Loader.Application.CurrentRevitUser.Id == 1 && _currentMonitoredDocFilePath_ExceptARKon.Contains("04_Модели для теста"))
+                    return;
+                #endif
+
+                BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
+                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Действие: Открыл файл незарегестрированного проекта стадии П/Р.\n" +
+                        $"Имя файла: [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{fileFullName}[/b].");
             }
             #endregion
         }
@@ -442,7 +438,8 @@ namespace KPLN_Looker
 
             #region Утсановка переменных, привязаных к виду
             // Имя файла
-            _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+            if (!doc.IsFamilyDocument)
+                _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
 
 
             // Проект КПЛН
@@ -545,8 +542,6 @@ namespace KPLN_Looker
         {
             Document doc = args.Document;
             if (doc == null) return;
-
-            ARKonFileSendMsg(doc);
 
 #if REVIT
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)
@@ -684,13 +679,18 @@ namespace KPLN_Looker
                     }
                 }
 
-                // Проект Матросская тишина
+                // Проект Измайловский1
                 bool isIZML1 = doc.PathName.Contains("ИЗМЛ_");
                 if (isIZML1)
                 {
                     if (doc.PathName.Contains("_АР_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
                 }
+
+                // Проект Сочи гостиница Москва
+                bool isSGM = doc.PathName.Contains("СГМ_РД");
+                if (isSGM && doc.PathName.Contains("_АР_"))
+                    RSBackupFile(doc, "Y:\\Общественные здания\\Сочи гостиница Москва\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
             }
             #endregion
 
@@ -724,11 +724,13 @@ namespace KPLN_Looker
             string familyName = args.FamilyName;
             string familyPath = args.FamilyPath;
 
-            if (_currentMonitoredDocFilePath_ExceptARKon == null
+            // Анализ файла на предмет мониторинга. ВАЖНО: Использовать кэш не безопасно, ну и такие процедуры редко происходят, поэтому - приемлемо
+            string currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(prjDoc);
+            if (currentMonitoredDocFilePath_ExceptARKon == null
                 // Отлов проекта ПШМ1.1_РД_ОВ. Делает субчик на нашем компе. Семейства правит сам.
-                || _currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
+                || currentMonitoredDocFilePath_ExceptARKon.Contains("Жилые здания\\Пушкино, Маяковского, 1 очередь\\10.Стадия_Р\\7.4.ОВ\\")
                 // Отлов проекта Школа 825. Его дорабатываем за другой организацией
-                || _currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
+                || currentMonitoredDocFilePath_ExceptARKon.ToLower().Contains("sh1-"))
                 return;
 
             // Игнор семейств от BimStep
@@ -760,7 +762,8 @@ namespace KPLN_Looker
                     throw new Exception("Ошибка определения типа файла. Обратись к разработчику!");
             }
 
-            UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только с диска X (из папки проекта, если она есть)");
+            UserVerify userVerify = new UserVerify("[BEP]: Загружать семейства можно только из папок X:\\BIM\\3_Семейства\\. " +
+                "При этом запрещено использовать архивные семейства, а семейства Самолета - можно использовать только для проекта СЕТ. ");
             if (!(bool)userVerify.ShowDialog())
             {
                 TaskDialog.Show("Запрещено", "Не верный пароль, в загрузке семейства отказано!");
@@ -774,8 +777,6 @@ namespace KPLN_Looker
         private static void OnDocumentSaved(object sender, DocumentSavedEventArgs args)
         {
             Document doc = args.Document;
-
-            ARKonFileSendMsg(doc);
         }
 
         /// <summary>
@@ -795,6 +796,11 @@ namespace KPLN_Looker
             #region Локальный отлов по пути семейства для проектов
             if (!string.IsNullOrEmpty(familyPath))
             {
+                // Отлов ЛЮБЫХ архивных семейств
+                if (familyPath.ToLower().Contains("архив"))
+                    return true;
+
+
                 // Уточнение для ЛОКАЛЬНЫХ ПРОЕКТОВ
                 bool isSMLT = doc.Title.Contains("СЕТ_1");
                 if (isSMLT)
@@ -812,6 +818,7 @@ namespace KPLN_Looker
                     else
                         return true;
                 }
+
 
                 // Уточнение для ЛОКАЛЬНЫХ СЕМЕЙСТВ
                 if (familyPath.StartsWith("X:\\BIM\\3_Семейства\\8_Библиотека семейств Самолета"))
@@ -873,7 +880,9 @@ namespace KPLN_Looker
         private static void CheckAndSendError_RoomDeleted(Document doc, string fileFullName)
         {
             // Проверка, что это проект КПЛН стадии РД
+#if REVIT
             if (CurrentDBProject == null || CurrentDBProject.Stage != "РД") return;
+#endif
             
             
             Room[] updatedRoomColl = GetDocRooms(doc);
@@ -893,8 +902,12 @@ namespace KPLN_Looker
                 {
                     if (r != null && r.IsValidObject)
                         return r.Id;
-
-                    return new ElementId(-1);
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    var errId = -1;
+#else
+                    long errId = -1;
+#endif
+                    return new ElementId(errId);
                 }), ElementIdEqualityComparer.Instance);
             
             
@@ -949,7 +962,7 @@ namespace KPLN_Looker
                 .Where(el =>
                 {
                     if (el is Room room)
-                        return room.Area > 0.001;
+                        return room.LimitOffset > 0.001;
 
                     return false;
                 })
@@ -1163,68 +1176,6 @@ namespace KPLN_Looker
 
             if (clearTaskMsg != string.Empty)
                 Print($"Ошибка при очистке старых резервных копий: {clearTaskMsg}", MessageType.Error);
-        }
-
-        /// <summary>
-        /// Анализ файлов Концепций КПЛН и оповещение о создании новых проектов и моделей внутри проектов
-        /// </summary>
-        private static void ARKonFileSendMsg(Document doc)
-        {
-            // Если это не концепция АР - в игнор
-            if (MonitoredDocFilePath(doc) == null
-                || MonitoredDocFilePath_ExceptARKon(doc) != null)
-                return;
-
-            string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            // Проекта нет, а путь принадлежит к мониторинговым ВКЛЮЧАЯ концепции - то оповещение о новом проекте
-            if (CurrentDBProject == null)
-            {
-                string centralPathForUser = fileFullName.Replace("\\\\stinproject.local\\project", "Y:");
-                foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
-                {
-                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                        dbUser,
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию файла незарегестрированного проекта.\n" +
-                        $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{centralPathForUser}[/b].",
-                        "Y");
-                }
-
-                return;
-            }
-
-            // Проект есть, но модель еще не зарегестриована в БД - оповещение о новом файле
-            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(doc.PathName);
-            DBDocument dBDocument = DBDocumentByRevitDocPathAndDBProject(fileFullName, CurrentDBProject, prjDBSubDepartment);
-            if (dBDocument == null)
-            {
-                foreach (DBUser dbUser in _arKonFileSubscribersFromBIM)
-                {
-                    BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                        dbUser,
-                        $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
-                        $"из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n" +
-                        $"Действие: Произвел сохранение/синхронизацию нового файла проекта [b]{CurrentDBProject.Name}_{CurrentDBProject.Stage}[/b] (сообщение возникает только при 1м сохранении).\n" +
-                        $"Имя файла: [b]{doc.Title}[/b].\n" +
-                        $"Путь к модели: [b]{fileFullName}[/b].",
-                        "Y");
-                }
-
-                // Создаю, если не нашел
-                dBDocument = new DBDocument()
-                {
-                    CentralPath = fileFullName,
-                    ProjectId = CurrentDBProject.Id,
-                    SubDepartmentId = prjDBSubDepartment.Id,
-                    LastChangedUserId = DBMainService.CurrentDBUser.Id,
-                    LastChangedData = DBMainService.CurrentTimeForDB(),
-                    IsClosed = false,
-                };
-
-                DBMainService.DocDbService.CreateDBDocument(dBDocument);
-            }
         }
 
         /// <summary>

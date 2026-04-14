@@ -48,8 +48,7 @@
   <!-- STATIC REFERENCES -->
   <ItemGroup>
     <Reference Include="KPLN_Library_PluginActivityWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2024\KPLN_Library_PluginActivityWorker.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>

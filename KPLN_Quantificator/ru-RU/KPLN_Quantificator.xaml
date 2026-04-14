@@ -46,6 +46,11 @@
                             Orientation="Vertical"/>
             </RibbonPanelSource>
         </RibbonPanel>
+		
+		
+		
+		
+		
         <RibbonPanel x:Uid="KPLN_Tab_Add">
             <RibbonPanelSource x:Uid="KPLN_Tab_Add" KeyTip="U2" Title="Отчеты пересечений">
                 <local:NWRibbonButton x:Uid="Button_E" Id="ID_Button_E"
@@ -61,8 +66,15 @@
                             ShowText="True"
                             Text="Сгруппировать&#x0a;по комментарию"
                             Orientation="Vertical"/>
-
+				
 				<local:NWRibbonButton x:Uid="Button_E1" Id="ID_Button_E1"
+                            Size="Large"
+                            KeyTip="T1"
+                            ShowText="True"
+                            Text="Точки обзора&#x0a;по комментарию"
+                            Orientation="Vertical"/>
+
+				<local:NWRibbonButton x:Uid="Button_E2" Id="ID_Button_E2"
                             Size="Large"
                             KeyTip="T1"
                             ShowText="True"
@@ -70,7 +82,7 @@
                             Orientation="Vertical"/>	
 				
 				
-				<local:NWRibbonButton x:Uid="Button_E2" Id="ID_Button_E2"
+				<local:NWRibbonButton x:Uid="Button_E3" Id="ID_Button_E3"
                             Size="Large"
                             KeyTip="T1"
                             ShowText="True"
@@ -78,6 +90,11 @@
                             Orientation="Vertical"/>
             </RibbonPanelSource>
         </RibbonPanel>
+		
+		
+		
+		
+		
 		<RibbonPanel x:Uid="KPLN_Tab_Other">
 			<RibbonPanelSource x:Uid="KPLN_Tab_Other" KeyTip="G3" Title="Другое">
 				<local:NWRibbonButton x:Uid="Button_G" Id="ID_Button_G"

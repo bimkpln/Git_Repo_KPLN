@@ -25,7 +25,15 @@ namespace KPLN_Library_Forms.UI
         {
             this.Owner = owner;
             this.SetPosition(owner);
-            this.Show();
+            this.ShowDialog();
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (DialogResult == null)
+                DialogResult = false;
+
+            base.OnClosing(e);
         }
 
         /// <summary>

@@ -44,11 +44,11 @@ namespace KPLN_Parameters_Ribbon.Forms
                         HashSet<string> ids = new HashSet<string>();
                         ElementId catId = cat.Id;
                         ObservableCollection<ListBoxElement> heapElemParams = new ObservableCollection<ListBoxElement>();
-                        
+
                         Element[] catElemsColl = new FilteredElementCollector(_doc)
                             .OfCategoryId(catId)
                             .ToArray();
-                        if (catElemsColl.Count() == 0) 
+                        if (catElemsColl.Count() == 0)
                             continue;
 
                         ListBoxElement lbElement = new ListBoxElement(cat, cat.Name);
@@ -198,10 +198,103 @@ namespace KPLN_Parameters_Ribbon.Forms
 
         private void OnBtnAddRule(object sender, RoutedEventArgs e) => AddRule();
 
+        private string GetParamName(ListBoxElement element)
+        {
+            if (element?.Data is Parameter p)
+                return p.Definition.Name;
+            return null;
+        }
+
+        private string FormatValue(string value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? "<span style='color:red;'>ПУСТО</span>"
+                : value;
+        }
+
+        private string FormatRule(ParameterRuleElement rule)
+        {
+            return string.Format(
+                "{0} -> {1} -> {2}",
+                FormatValue(rule.SelectedCategory?.Name),
+                FormatValue(GetParamName(rule.SelectedSourceParameter)),
+                FormatValue(GetParamName(rule.SelectedTargetParameter)));
+        }
+
+        private List<ParameterRuleElement> GetValidRules(bool forSave)
+        {
+            var rules = this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>;
+            List<ParameterRuleElement> validRules = new List<ParameterRuleElement>();
+            List<string> invalidRules = new List<string>();
+
+            if (rules == null || rules.Count == 0)
+            {
+                ShowNothingMessage(forSave);
+                return null;
+            }
+
+            foreach (ParameterRuleElement rule in rules)
+            {
+                if (rule.IsCompletelyEmpty)
+                    continue;
+
+                if (rule.IsPartiallyFilled)
+                {
+                    invalidRules.Add(FormatRule(rule));
+                    continue;
+                }
+
+                validRules.Add(rule);
+            }
+
+            if (invalidRules.Count > 0)
+            {
+                Print("[Обнаружены незаполненные правила:]", MessageType.Error);
+                foreach (string row in invalidRules)
+                    Print(row, MessageType.Error);
+
+                EnsureDialog form = new EnsureDialog(
+                    this,
+                    ":(",
+                    "Обнаружены незаполненные правила",
+                    "Заполните или удалите строки, в которых есть ПУСТО.",
+                    false);
+                form.ShowDialog();
+
+                return null;
+            }
+
+            if (validRules.Count == 0)
+            {
+                ShowNothingMessage(forSave);
+                return null;
+            }
+
+            return validRules;
+        }
+
+        private void ShowNothingMessage(bool forSave)
+        {
+            string title = forSave ? "Сохранять нечего" : "Запускать нечего";
+            string text = forSave
+                ? "Все строки пустые. Сохранять нечего."
+                : "Все строки пустые. Запускать нечего.";
+
+            EnsureDialog form = new EnsureDialog(this, ":|", title, text, false);
+            form.ShowDialog();
+        }
+
+
+
+
         private void Save()
         {
             try
             {
+                List<ParameterRuleElement> validRules = GetValidRules(true);
+                if (validRules == null)
+                    return;
+
                 string path;
                 try
                 {
@@ -222,7 +315,6 @@ namespace KPLN_Parameters_Ribbon.Forms
                             DirectoryInfo info = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
                             path = info.FullName;
                         }
-
                     }
                 }
                 catch (Exception)
@@ -230,6 +322,7 @@ namespace KPLN_Parameters_Ribbon.Forms
                     DirectoryInfo info = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
                     path = info.FullName;
                 }
+
                 SaveFileDialog dialog = new SaveFileDialog
                 {
                     Filter = "Text files(*.txt)|*.txt",
@@ -239,10 +332,11 @@ namespace KPLN_Parameters_Ribbon.Forms
                     ValidateNames = true,
                     DefaultExt = "txt"
                 };
+
                 Hide();
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    if (!ParameterRuleElement.SaveData(dialog.FileName, this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>))
+                    if (!ParameterRuleElement.SaveData(dialog.FileName, validRules))
                     {
                         EnsureDialog form = new EnsureDialog(this, ":(", "Ошибка при сохранении", "При сохранении настроек произошла ошибка...");
                         form.ShowDialog();
@@ -257,43 +351,72 @@ namespace KPLN_Parameters_Ribbon.Forms
             }
         }
 
+
+
+
         private void OnBtnRun_WithoutGroups(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>, false));
+            List<ParameterRuleElement> validRules = GetValidRules(false);
+            if (validRules == null)
+                return;
+
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(
+                new CommandWriteValues(new ObservableCollection<ParameterRuleElement>(validRules), false));
+
             Close();
         }
 
         private void OnBtnRun_WithGroups(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWriteValues(this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>, true));
+            List<ParameterRuleElement> validRules = GetValidRules(false);
+            if (validRules == null)
+                return;
+
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(
+                new CommandWriteValues(new ObservableCollection<ParameterRuleElement>(validRules), true));
+
             Close();
         }
-        
+
+
+
+
         private void SelectedCategoryChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
         private void SelectedSourceParamChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
         private void SelectedTargetParamChanged(object sender, SelectionChangedEventArgs e) => UpdateRunEnability();
 
-        private void UpdateRunEnability()
+        public void UpdateRunEnability()
         {
-            if ((this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>).Count == 0)
+            var rules = this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>;
+
+            if (rules == null || rules.Count == 0)
             {
                 BtnRunWithoutGroups.IsEnabled = false;
                 BtnRunWithGroups.IsEnabled = false;
                 return;
             }
-            foreach (ParameterRuleElement el in this.RulesControll.ItemsSource as ObservableCollection<ParameterRuleElement>)
+
+            bool hasValidRule = false;
+
+            foreach (ParameterRuleElement el in rules)
             {
-                if (el.SelectedSourceParameter == null || el.SelectedTargetParameter == null)
+                if (el.IsCompletelyEmpty)
+                    continue;
+
+                if (el.IsPartiallyFilled)
                 {
                     BtnRunWithoutGroups.IsEnabled = false;
                     BtnRunWithGroups.IsEnabled = false;
                     return;
                 }
+
+                hasValidRule = true;
             }
-            BtnRunWithoutGroups.IsEnabled = true;
-            BtnRunWithGroups.IsEnabled = true;
+
+            BtnRunWithoutGroups.IsEnabled = hasValidRule;
+            BtnRunWithGroups.IsEnabled = hasValidRule;
         }
 
         private void OnBtnRemoveRule(object sender, RoutedEventArgs args)

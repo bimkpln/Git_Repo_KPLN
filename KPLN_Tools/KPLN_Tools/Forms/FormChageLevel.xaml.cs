@@ -1,560 +1,1018 @@
-using Autodesk.Revit;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.Attributes;
+using KPLN_Tools.Common;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using KPLN_Tools.ExternalCommands;
-using System.Xml.Linq;
 using System.Windows.Documents;
-using static System.Net.Mime.MediaTypeNames;
-using System.Windows.Forms;
-
+using Visibility = System.Windows.Visibility;
 
 namespace KPLN_Tools.Forms
 {
-    /// <summary>
-    /// Логика взаимодействия для FormChageLevel.xaml
-    /// </summary>
-    public partial class FormChageLevel : Window
+    public partial class FormChageLevel : Window, INotifyPropertyChanged
     {
-        private Document _doc;
-        public Dictionary<string, List<ElementId>> ElementsByLevel { get; set; }
+        private readonly Document _doc;
 
-        public static string listLevelExportElement;
-        public static string listLevelImportElement;
+        private readonly List<BuiltInCategory> _listCategories = new List<BuiltInCategory>
+        {
+            BuiltInCategory.OST_AreaRein,
+            BuiltInCategory.OST_StructuralFraming,
+            BuiltInCategory.OST_Floors,
+            BuiltInCategory.OST_Rebar,
+            BuiltInCategory.OST_Walls,
+            BuiltInCategory.OST_Windows,
+            BuiltInCategory.OST_StructuralColumns,
+            BuiltInCategory.OST_GenericModel
+        };
 
-        bool conditionsTopLevel;
+        private readonly List<BuiltInCategory> _editableCategories = new List<BuiltInCategory>
+        {
+            BuiltInCategory.OST_StructuralFraming,
+            BuiltInCategory.OST_Floors,
+            BuiltInCategory.OST_Walls,
+            BuiltInCategory.OST_Windows,
+            BuiltInCategory.OST_StructuralColumns
+        };
+
+        private List<Level> _levels;
+        private List<Element> _currentLevelElements;
+
+        public ObservableCollection<CategoryOffsetItem> CategoryItems { get; private set; }
+
+        private ObservableCollection<CategoryOffsetItem> _visibleCategoryItems;
+        public ObservableCollection<CategoryOffsetItem> VisibleCategoryItems
+        {
+            get { return _visibleCategoryItems; }
+            set
+            {
+                _visibleCategoryItems = value;
+                OnPropertyChanged("VisibleCategoryItems");
+            }
+        }
 
         public FormChageLevel(Document document)
         {
             _doc = document;
-            ElementsByLevel = GetElementsByLevel(_doc);
 
             InitializeComponent();
-            this.DataContext = this;
+            DataContext = this;
+
+            BuildCategoryItems();
+            VisibleCategoryItems = new ObservableCollection<CategoryOffsetItem>();
+            LoadData();
         }
 
-        // Обработчик ошибок и предупреждений
-        public class IgnoreFailuresPreprocessor : IFailuresPreprocessor
+        public class CategoryOffsetItem : INotifyPropertyChanged
         {
-            public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+            private int _count;
+            private string _firstOffsetText;
+
+            public BuiltInCategory Category { get; set; }
+            public string DisplayName { get; set; }
+
+            public bool HasFirstOffset { get; set; }
+            public string FirstOffsetLabel { get; set; }
+
+            public Visibility FirstOffsetVisibility
             {
-                IList<FailureMessageAccessor> failures = failuresAccessor.GetFailureMessages();
-                foreach (FailureMessageAccessor failure in failures)
+                get { return HasFirstOffset ? Visibility.Visible : Visibility.Collapsed; }
+            }
+
+            public int Count
+            {
+                get { return _count; }
+                set
                 {
-                    failuresAccessor.DeleteWarning(failure);
+                    _count = value;
+                    OnPropertyChanged("Count");
                 }
-                return FailureProcessingResult.Continue;
+            }
+
+            public string FirstOffsetText
+            {
+                get { return _firstOffsetText; }
+                set
+                {
+                    _firstOffsetText = value;
+                    OnPropertyChanged("FirstOffsetText");
+                }
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+
+            protected void OnPropertyChanged(string propertyName)
+            {
+                PropertyChangedEventHandler handler = PropertyChanged;
+                if (handler != null)
+                {
+                    handler(this, new PropertyChangedEventArgs(propertyName));
+                }
             }
         }
 
-        // Создаём словарь: key - string (level name); value - List<ElementId>> 
-        public Dictionary<string, List<ElementId>> GetElementsByLevel(Document doc)
+        private class OffsetValues
         {
-            Dictionary<string, List<ElementId>> elementsByLevel = new Dictionary<string, List<ElementId>>();
+            public bool HasFirstOffset;
+            public double FirstOffsetDelta;
+        }
 
-            FilteredElementCollector collector = new FilteredElementCollector(doc);
+        private class FailedElementInfo
+        {
+            public string CategoryName { get; set; }
+            public long ElementId { get; set; }
+            public string Reason { get; set; }
+        }
 
-            List<Level> levels = collector.OfClass(typeof(Level)).Cast<Level>().ToList();
+        public event PropertyChangedEventHandler PropertyChanged;
 
-            foreach (Level level in levels)
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChangedEventHandler handler = PropertyChanged;
+            if (handler != null)
             {
-                List<ElementId> elementInLevel = new List<ElementId>();
+                handler(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
 
-                ElementLevelFilter levelFilter = new ElementLevelFilter(level.Id);
-
-                FilteredElementCollector elementsList = new FilteredElementCollector(doc);
-                List<Element> elements = elementsList.WherePasses(levelFilter).ToList();
-
-                foreach (Element element in elements)
+        private void BuildCategoryItems()
+        {
+            CategoryItems = new ObservableCollection<CategoryOffsetItem>
+            {
+                new CategoryOffsetItem
                 {
-                    elementInLevel.Add(element.Id);
+                    Category = BuiltInCategory.OST_StructuralFraming,
+                    DisplayName = "Каркас несущий",
+                    HasFirstOffset = true,
+                    FirstOffsetLabel = "Смещение:",
+                    FirstOffsetText = "0"
+                },
+                new CategoryOffsetItem
+                {
+                    Category = BuiltInCategory.OST_Floors,
+                    DisplayName = "Перекрытия",
+                    HasFirstOffset = true,
+                    FirstOffsetLabel = "Смещение от уровня:",
+                    FirstOffsetText = "0"
+                },
+                new CategoryOffsetItem
+                {
+                    Category = BuiltInCategory.OST_Walls,
+                    DisplayName = "Стены",
+                    HasFirstOffset = true,
+                    FirstOffsetLabel = "Смещение:",
+                    FirstOffsetText = "0"
+                },
+                new CategoryOffsetItem
+                {
+                    Category = BuiltInCategory.OST_Windows,
+                    DisplayName = "Окна",
+                    HasFirstOffset = true,
+                    FirstOffsetLabel = "Высота нижнего бруса:",
+                    FirstOffsetText = "0"
+                },
+                new CategoryOffsetItem
+                {
+                    Category = BuiltInCategory.OST_StructuralColumns,
+                    DisplayName = "Несущие колонны",
+                    HasFirstOffset = true,
+                    FirstOffsetLabel = "Смещение:",
+                    FirstOffsetText = "0"
+                }
+            };
+        }
+
+        private void LoadData()
+        {
+            _levels = new FilteredElementCollector(_doc)
+                .OfClass(typeof(Level))
+                .Cast<Level>()
+                .OrderBy(x => x.Elevation)
+                .ToList();
+
+            LevelSelector.ItemsSource = _levels;
+
+            if (_levels.Count > 0)
+            {
+                LevelSelector.SelectedIndex = 0;
+            }
+            else
+            {
+                RefreshForSelectedLevel();
+            }
+        }
+
+        private static BuiltInCategory GetBuiltInCategory(Category category)
+        {
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+            return (BuiltInCategory)category.Id.IntegerValue;
+#else
+            return category.BuiltInCategory;
+#endif
+        }
+
+        private ElementId GetElementBaseLevelId(Element element)
+        {
+            if (element == null || element.Category == null)
+            {
+                return ElementId.InvalidElementId;
+            }
+
+            BuiltInCategory bic = GetBuiltInCategory(element.Category);
+
+            switch (bic)
+            {
+                case BuiltInCategory.OST_Walls:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.WALL_BASE_CONSTRAINT);
+
+                case BuiltInCategory.OST_StructuralColumns:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.FAMILY_BASE_LEVEL_PARAM,
+                        BuiltInParameter.SCHEDULE_BASE_LEVEL_PARAM,
+                        BuiltInParameter.LEVEL_PARAM);
+
+                case BuiltInCategory.OST_Floors:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.LEVEL_PARAM);
+
+                case BuiltInCategory.OST_Windows:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.FAMILY_LEVEL_PARAM,
+                        BuiltInParameter.LEVEL_PARAM);
+
+                case BuiltInCategory.OST_StructuralFraming:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM,
+                        BuiltInParameter.LEVEL_PARAM);
+
+                case BuiltInCategory.OST_GenericModel:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.FAMILY_LEVEL_PARAM,
+                        BuiltInParameter.LEVEL_PARAM);
+
+                case BuiltInCategory.OST_Rebar:
+                case BuiltInCategory.OST_AreaRein:
+                    return GetElementIdParameterValue(
+                        element,
+                        BuiltInParameter.LEVEL_PARAM);
+
+                default:
+                    return ElementId.InvalidElementId;
+            }
+        }
+
+        private ElementId GetElementIdParameterValue(Element element, params BuiltInParameter[] parameterIds)
+        {
+            foreach (BuiltInParameter parameterId in parameterIds)
+            {
+                Parameter parameter = element.get_Parameter(parameterId);
+                if (parameter == null || !parameter.HasValue)
+                {
+                    continue;
                 }
 
-                elementsByLevel.Add(level.Name, elementInLevel);
-            }
-
-            return elementsByLevel;
-        }
-
-        // XAML: обработчик события LevelExport
-        private void LevelExport_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            string selectedKey = LevelExport.SelectedItem as string;
-
-            listLevelExportElement = "";
-
-            if (selectedKey != null && ElementsByLevel.ContainsKey(selectedKey))
-            {
-                List<ElementId> elements = ElementsByLevel[selectedKey];
-
-                foreach (ElementId elementID in elements)
+                try
                 {
-                    Element element = _doc.GetElement(elementID);
-                    listLevelExportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
-                }
-
-                System.Windows.Controls.RichTextBox levelExportElementListRTB = LevelExportElementList;
-                levelExportElementListRTB.Document.Blocks.Clear();
-
-                Paragraph paragraphLEChanges = new Paragraph();
-                paragraphLEChanges.Inlines.Add(new Run(listLevelExportElement));
-                LevelExportElementList.Document.Blocks.Add(paragraphLEChanges);
-            }
-        }
-
-        // XAML: обработчик события LevelImport
-        private void LevelImport_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            string selectedKey = levelImport.SelectedItem as string;
-
-            listLevelImportElement = "";
-
-            if (selectedKey != null && ElementsByLevel.ContainsKey(selectedKey))
-            {
-                List<ElementId> elements = ElementsByLevel[selectedKey];
-
-                foreach (ElementId elementID in elements)
-                {
-                    Element element = _doc.GetElement(elementID);
-                    listLevelImportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
-                }
-
-                LevelImportElementList.Document.Blocks.Clear();
-                Paragraph paragraphLIChanges = new Paragraph();
-                paragraphLIChanges.Inlines.Add(new Run(listLevelImportElement));
-                LevelImportElementList.Document.Blocks.Add(paragraphLIChanges);
-            }
-        }
-
-        // XAML: обновление содержимого списков LevelExport и LevelImport
-        private void ElementLevelListName()
-        {
-            listLevelExportElement = "";
-            listLevelImportElement = "";
-
-            foreach (ElementId elementID in ElementsByLevel[LevelExport.SelectedItem as string])
-            {
-                Element element = _doc.GetElement(elementID);
-                listLevelExportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
-            }
-
-            foreach (ElementId elementID in ElementsByLevel[levelImport.SelectedItem as string])
-            {
-                Element element = _doc.GetElement(elementID);
-                listLevelImportElement += $"ID: {elementID}; ИМЯ: {element.Name}\n";
-            }
-
-            LevelExportElementList.Document.Blocks.Clear();
-            LevelImportElementList.Document.Blocks.Clear();
-
-            Paragraph paragraphExport = new Paragraph();
-            paragraphExport.Inlines.Add(new Run(listLevelExportElement));
-            LevelExportElementList.Document.Blocks.Add(paragraphExport);
-
-            Paragraph paragraphImport = new Paragraph();
-            paragraphImport.Inlines.Add(new Run(listLevelImportElement));
-            LevelImportElementList.Document.Blocks.Add(paragraphImport);
-        }
-
-        // Формула сдвига элемента на уровне
-        private double CalculatedElementOffset(Element element, Level level)
-        {
-            double offset = 0;
-
-            BuiltInParameter[] levelExportParametrs = CommandChangeLevel.GetParametersForMovingItems(element);
-            double baseOffset = element.get_Parameter(levelExportParametrs[1]).AsDouble();
-
-            Level baseLevel = _doc.GetElement(element.LevelId) as Level;
-            double baseElevation = baseLevel.Elevation;
-            double newElevation = level.Elevation;
-
-            double elevationDifference = newElevation - baseElevation;
-
-            if (elevationDifference > 0)
-            {
-                offset = baseOffset - Math.Abs(elevationDifference);
-            }
-            if (elevationDifference < 0)
-            {
-                offset = baseOffset + Math.Abs(elevationDifference);
-            }
-
-            return offset;
-        }
-
-        // Создать и открыть новый вид
-        private View3D CreateAndOpenNewView(string exportLevelName, string importLevelName)
-        {
-            ViewFamilyType viewFamilyType = new FilteredElementCollector(_doc)
-                .OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>().FirstOrDefault(x => x.ViewFamily == ViewFamily.ThreeDimensional);
-
-            if (viewFamilyType != null)
-            {
-                View3D newView3D = null;
-
-                using (Transaction transaction = new Transaction(_doc, "KPLN: Создание нового 3D вида"))
-                {
-                    transaction.Start();
-
-                    // Используем стандартные 3D настройки (изометрию)
-                    XYZ eyePosition = new XYZ(1, 1, 1);
-                    XYZ upDirection = new XYZ(0, 0, 1);
-                    XYZ forwardDirection = new XYZ(0, 1, 0);
-                    ViewOrientation3D viewOrientation = new ViewOrientation3D(eyePosition, upDirection, forwardDirection);
-
-                    newView3D = View3D.CreateIsometric(_doc, viewFamilyType.Id);
-
-                    if (newView3D != null)
+                    ElementId value = parameter.AsElementId();
+                    if (value != ElementId.InvalidElementId)
                     {
-                        List<string> existingViewNames = new List<string>();
-
-                        FilteredElementCollector collector = new FilteredElementCollector(_doc);
-                        ICollection<Element> views = collector.OfClass(typeof(Autodesk.Revit.DB.View)).ToElements();
-
-                        foreach (Element view in views)
-                        {
-                            Autodesk.Revit.DB.View viewElement = view as Autodesk.Revit.DB.View;
-
-                            if (viewElement != null && !string.IsNullOrEmpty(viewElement.Name))
-                            {
-                                existingViewNames.Add(viewElement.Name);
-                            }
-                        }
-
-                        string baseName = $"ПроверочныйВид__{exportLevelName}--{importLevelName}";
-                        string newViewName = baseName;
-                        int numSuffixView3D = 2;
-
-                        while (existingViewNames.Contains(newViewName))
-                        {
-                            newViewName = $"{baseName} ({numSuffixView3D++})";
-                        }
-
-                        newView3D.Name = newViewName;
-
-                        newView3D.SetOrientation(viewOrientation);
+                        return value;
                     }
-
-                    transaction.Commit();
                 }
-
-                if (newView3D != null)
+                catch
                 {
-                    UIDocument uiDoc = new UIDocument(_doc);
-                    uiDoc.ActiveView = newView3D;
+                }
+            }
 
-                    ApplyTemporaryIsolation(newView3D, importLevelName);
+            return ElementId.InvalidElementId;
+        }
 
-                    return newView3D;
+        private Parameter GetFirstWritableParameter(Element element, params BuiltInParameter[] parameterIds)
+        {
+            foreach (BuiltInParameter parameterId in parameterIds)
+            {
+                Parameter parameter = element.get_Parameter(parameterId);
+                if (parameter != null && !parameter.IsReadOnly)
+                {
+                    return parameter;
                 }
             }
 
             return null;
         }
 
-        // Временаая изоляция элементов
-        private void ApplyTemporaryIsolation(View3D view3D, string levelName)
+        private bool HasValidTopConstraint(Element wall)
         {
-            using (Transaction transaction = new Transaction(_doc, "KPLN: Временная изоляция элементов"))
+            Parameter topConstraintParam = wall.get_Parameter(BuiltInParameter.WALL_HEIGHT_TYPE);
+            if (topConstraintParam == null || !topConstraintParam.HasValue)
+            {
+                return false;
+            }
+
+            try
+            {
+                ElementId topConstraintId = topConstraintParam.AsElementId();
+                return topConstraintId != ElementId.InvalidElementId;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool IsWallRelatedToLevelForInfo(Element wall, ElementId levelId)
+        {
+            if (wall == null)
+            {
+                return false;
+            }
+
+            ElementId baseLevelId = GetElementIdParameterValue(
+                wall,
+                BuiltInParameter.WALL_BASE_CONSTRAINT);
+
+            if (baseLevelId == levelId)
+            {
+                return true;
+            }
+
+            ElementId topLevelId = GetElementIdParameterValue(
+                wall,
+                BuiltInParameter.WALL_HEIGHT_TYPE);
+
+            if (topLevelId == levelId)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private void LevelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            RefreshForSelectedLevel();
+        }
+
+        private void RefreshForSelectedLevel()
+        {
+            RefreshElementList();
+            RefreshCategoryCounts();
+            RefreshVisibleCategoryItems();
+        }
+
+        private void RefreshElementList()
+        {
+            ElementList.Document.Blocks.Clear();
+
+            Level selectedLevel = LevelSelector.SelectedItem as Level;
+            if (selectedLevel == null)
+            {
+                ElementList.Document.Blocks.Add(new Paragraph(new Run("Уровень не выбран.")));
+                _currentLevelElements = new List<Element>();
+                return;
+            }
+
+            _currentLevelElements = CollectElementsByLevel(selectedLevel.Id);
+
+            if (_currentLevelElements.Count == 0)
+            {
+                ElementList.Document.Blocks.Add(new Paragraph(new Run("На выбранном уровне нет элементов поддерживаемых категорий.")));
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+
+            foreach (Element element in _currentLevelElements.OrderBy(x => IDHelper.ElIdValue(x.Id)))
+            {
+                string categoryName = element.Category != null ? element.Category.Name : "<без категории>";
+                sb.AppendLine("ID: " + $"{element.Id}" + "; Категория: " + categoryName + "; Имя: " + element.Name);
+            }
+
+            ElementList.Document.Blocks.Add(new Paragraph(new Run(sb.ToString())));
+        }
+
+        private void RefreshCategoryCounts()
+        {
+            foreach (CategoryOffsetItem item in CategoryItems)
+            {
+                item.Count = 0;
+            }
+
+            if (_currentLevelElements == null)
+            {
+                return;
+            }
+
+            Level selectedLevel = LevelSelector.SelectedItem as Level;
+            if (selectedLevel == null)
+            {
+                return;
+            }
+
+            foreach (Element element in _currentLevelElements)
+            {
+                if (element == null || element.Category == null)
+                {
+                    continue;
+                }
+
+                BuiltInCategory bic = GetBuiltInCategory(element.Category);
+
+                if (bic == BuiltInCategory.OST_Walls)
+                {
+                    continue;
+                }
+
+                CategoryOffsetItem item = CategoryItems.FirstOrDefault(x => x.Category == bic);
+                if (item != null)
+                {
+                    item.Count++;
+                }
+            }
+
+            CategoryOffsetItem wallItem = CategoryItems.FirstOrDefault(x => x.Category == BuiltInCategory.OST_Walls);
+            if (wallItem != null)
+            {
+                List<Element> allWalls = new FilteredElementCollector(_doc)
+                    .OfCategory(BuiltInCategory.OST_Walls)
+                    .WhereElementIsNotElementType()
+                    .ToElements()
+                    .ToList();
+
+                wallItem.Count = allWalls.Count(x => IsWallRelatedToLevelForInfo(x, selectedLevel.Id));
+            }
+        }
+
+        private void RefreshVisibleCategoryItems()
+        {
+            List<CategoryOffsetItem> sortedVisibleItems = CategoryItems
+                .Where(x => x.Count > 0)
+                .OrderByDescending(x => x.Count)
+                .ThenBy(x => x.DisplayName)
+                .ToList();
+
+            VisibleCategoryItems = new ObservableCollection<CategoryOffsetItem>(sortedVisibleItems);
+        }
+
+        private List<Element> CollectElementsByLevel(ElementId levelId)
+        {
+            List<Element> result = new List<Element>();
+
+            List<ElementFilter> categoryFilters = _listCategories
+                .Select(x => (ElementFilter)new ElementCategoryFilter(x))
+                .ToList();
+
+            if (categoryFilters.Count == 0)
+            {
+                return result;
+            }
+
+            LogicalOrFilter multiCategoryFilter = new LogicalOrFilter(categoryFilters);
+
+            List<Element> elements = new FilteredElementCollector(_doc)
+                .WherePasses(multiCategoryFilter)
+                .WhereElementIsNotElementType()
+                .ToElements()
+                .ToList();
+
+            foreach (Element element in elements)
+            {
+                ElementId baseLevelId = GetElementBaseLevelId(element);
+                if (baseLevelId == levelId)
+                {
+                    result.Add(element);
+                }
+            }
+
+            return result;
+        }
+
+        private void Button_ClickCopyValues(object sender, RoutedEventArgs e)
+        {
+            CopyValuesToAllFields();
+        }
+
+        private void CopyValuesToAllFields()
+        {
+            CategoryOffsetItem sourceItem = CategoryItems.FirstOrDefault(x => IsNonZeroText(x.FirstOffsetText));
+
+            if (sourceItem == null)
+            {
+                TaskDialog.Show("Предупреждение", "Не найдено ни одного поля со значением, отличным от нуля.");
+                return;
+            }
+
+            string valueToCopy = sourceItem.FirstOffsetText;
+
+            foreach (CategoryOffsetItem item in CategoryItems)
+            {
+                if (item.HasFirstOffset)
+                {
+                    item.FirstOffsetText = valueToCopy;
+                }
+            }
+        }
+
+        private bool IsNonZeroText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return false;
+            }
+
+            double value;
+            if (!TryParseLength(text, out value))
+            {
+                return false;
+            }
+
+            return Math.Abs(value) > 1e-9;
+        }
+
+        private void Button_ClickApplyOffsets(object sender, RoutedEventArgs e)
+        {
+            ApplyOffsets();
+        }
+
+        private void ApplyOffsets()
+        {
+            Level selectedLevel = LevelSelector.SelectedItem as Level;
+            if (selectedLevel == null)
+            {
+                TaskDialog.Show("Предупреждение", "Не выбран уровень.");
+                return;
+            }
+
+            if (_currentLevelElements == null || _currentLevelElements.Count == 0)
+            {
+                TaskDialog.Show("Предупреждение", "На выбранном уровне нет элементов поддерживаемых категорий.");
+                return;
+            }
+
+            Dictionary<BuiltInCategory, OffsetValues> offsetsByCategory;
+            string validationMessage;
+
+            if (!TryBuildOffsetsDictionary(out offsetsByCategory, out validationMessage))
+            {
+                TaskDialog.Show("Ошибка ввода", validationMessage);
+                return;
+            }
+
+            int movedCount = 0;
+            List<FailedElementInfo> failedItems = new List<FailedElementInfo>();
+
+            using (Transaction transaction = new Transaction(_doc, "KPLN: Смещение элементов выбранного уровня"))
             {
                 transaction.Start();
 
-                Level level = new FilteredElementCollector(_doc)
-                    .OfClass(typeof(Level))
-                    .FirstOrDefault(e => e.Name.Equals(levelName)) as Level;
-
-                if (level != null)
+                foreach (Element element in _currentLevelElements)
                 {
-                    ElementLevelFilter levelFilter = new ElementLevelFilter(level.Id);
-                    ICollection<ElementId> elementIds = new FilteredElementCollector(_doc)
-                        .WherePasses(levelFilter)
-                        .WhereElementIsNotElementType()
-                        .ToElementIds();
-
-                    if (elementIds.Count > 0)
+                    if (element == null || element.Category == null)
                     {
-                        view3D.IsolateElementsTemporary(elementIds);
+                        failedItems.Add(new FailedElementInfo
+                        {
+                            CategoryName = "Неизвестная категория",
+                            ElementId = element != null ? IDHelper.ElIdValue(element.Id) : -1,
+                            Reason = "Элемент не найден или отсутствует категория."
+                        });
+                        continue;
+                    }
+
+                    BuiltInCategory bic = GetBuiltInCategory(element.Category);
+
+                    if (!_editableCategories.Contains(bic))
+                    {
+                        continue;
+                    }
+
+                    OffsetValues offsets;
+                    if (!offsetsByCategory.TryGetValue(bic, out offsets))
+                    {
+                        continue;
+                    }
+
+                    bool hasDelta = offsets.HasFirstOffset && Math.Abs(offsets.FirstOffsetDelta) > 1e-9;
+                    if (!hasDelta)
+                    {
+                        continue;
+                    }
+
+                    string failReason;
+                    try
+                    {
+                        bool moved = ApplyOffsetsToElement(element, offsets, out failReason);
+
+                        if (moved)
+                        {
+                            movedCount++;
+                        }
+                        else
+                        {
+                            failedItems.Add(new FailedElementInfo
+                            {
+                                CategoryName = element.Category.Name,
+                                ElementId = IDHelper.ElIdValue(element.Id),
+                                Reason = failReason
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failedItems.Add(new FailedElementInfo
+                        {
+                            CategoryName = element.Category.Name,
+                            ElementId = IDHelper.ElIdValue(element.Id),
+                            Reason = "Исключение: " + ex.Message
+                        });
                     }
                 }
 
                 transaction.Commit();
             }
+
+            RefreshForSelectedLevel();
+            ShowResultDialog(movedCount, failedItems);
+
+            Activate();
+            Show();
         }
 
-        // Условия для окон с предупреждениями
-        private bool WarningDialogWindow(string exportLevelName, string importLevelName)
+        private bool TryBuildOffsetsDictionary(out Dictionary<BuiltInCategory, OffsetValues> offsetsByCategory, out string validationMessage)
         {
-            if (exportLevelName == importLevelName)
-            {
-                System.Windows.Forms.MessageBox.Show("Выбраны одинаковые уровни", "Предупреждение",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
-                return false;
-            }
+            offsetsByCategory = new Dictionary<BuiltInCategory, OffsetValues>();
+            validationMessage = null;
 
-            if (string.IsNullOrEmpty(new System.Windows.Documents.TextRange(LevelExportElementList.Document.ContentStart, LevelExportElementList.Document.ContentEnd).Text))
+            foreach (CategoryOffsetItem item in CategoryItems)
             {
-                System.Windows.Forms.MessageBox.Show("На уровне-экспортере нет элементов", "Предупреждение",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
-                return false;
-            }
+                OffsetValues values = new OffsetValues
+                {
+                    HasFirstOffset = item.HasFirstOffset,
+                    FirstOffsetDelta = 0.0
+                };
 
-            if (NewTopLevel.Text == "" && conditionsTopLevel == true)
-            {
-                System.Windows.Forms.MessageBox.Show("Не выбран верхний уровень", "Предупреждение",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
-                return false;
-            }
+                if (item.HasFirstOffset)
+                {
+                    double parsedOffset;
+                    if (!TryParseLength(item.FirstOffsetText, out parsedOffset))
+                    {
+                        validationMessage = "Не удалось распознать значение поля:\n" +
+                                            item.FirstOffsetLabel +
+                                            "\nдля категории:\n" +
+                                            item.DisplayName;
+                        return false;
+                    }
 
-            if (NewTopLevel.Text == exportLevelName && conditionsTopLevel == true)
-            {
-                System.Windows.Forms.MessageBox.Show("Выбранный верхний уровень совпадает с уровнем-экспортером", "Предупреждение",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
-                return false;
-            }
+                    values.FirstOffsetDelta = parsedOffset;
+                }
 
-            if (NewTopLevel.Text == importLevelName && conditionsTopLevel == true)
-            {
-                System.Windows.Forms.MessageBox.Show("Выбранный верхний уровень совпадает с уровнем-импортером", "Предупреждение",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
-                return false;
+                offsetsByCategory[item.Category] = values;
             }
 
             return true;
         }
 
-        // Окно о выполнении работы
-        private void FinishTransferMessage()
+        private bool ApplyOffsetsToElement(Element element, OffsetValues offsets, out string failReason)
         {
-            if (!string.IsNullOrEmpty(new System.Windows.Documents.TextRange(LevelImportElementList.Document.ContentStart, LevelImportElementList.Document.ContentEnd).Text))
+            failReason = null;
+
+            if (element == null || element.Category == null)
             {
-                System.Windows.Forms.MessageBox.Show("Не все элементы были перенесены на новый уровень", "Предупреждение",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Warning);
-                return;
+                failReason = "Элемент отсутствует или не имеет категории.";
+                return false;
             }
-            else
+
+            BuiltInCategory bic = GetBuiltInCategory(element.Category);
+
+            switch (bic)
             {
-                System.Windows.Forms.MessageBox.Show("Все элементы были перенесены на новый уровень", "Уведомление",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Information);
-                return;
+                case BuiltInCategory.OST_StructuralFraming:
+                    return ApplyOffsetsToStructuralFraming(element, offsets, out failReason);
+
+                case BuiltInCategory.OST_Floors:
+                    return ApplyOffsetsToFloor(element, offsets, out failReason);
+
+                case BuiltInCategory.OST_Walls:
+                    return ApplyOffsetsToWall(element, offsets, out failReason);
+
+                case BuiltInCategory.OST_Windows:
+                    return ApplyOffsetsToWindow(element, offsets, out failReason);
+
+                case BuiltInCategory.OST_StructuralColumns:
+                    return ApplyOffsetsToColumn(element, offsets, out failReason);
+
+                default:
+                    failReason = "Категория не поддерживается для смещения.";
+                    return false;
             }
         }
 
-        // Нахождение высоты черезз геометрию (стены, колоны)
-        private double GetElementHeight(Element element)
+        private bool ApplyOffsetsToStructuralFraming(Element element, OffsetValues offsets, out string failReason)
         {
-            Options options = new Options();
-            GeometryElement geomElement = element.get_Geometry(options);
+            failReason = null;
+            double delta = offsets.FirstOffsetDelta;
 
-            double minZ = double.MaxValue;
-            double maxZ = double.MinValue;
-
-            foreach (GeometryObject geomObj in geomElement)
+            if (Math.Abs(delta) < 1e-9)
             {
-                Solid solid = geomObj as Solid;
-                if (solid != null)
-                {
-                    foreach (Face face in solid.Faces)
-                    {
-                        Mesh mesh = face.Triangulate();
-                        foreach (XYZ vertex in mesh.Vertices)
-                        {
-                            if (vertex.Z < minZ) minZ = vertex.Z;
-                            if (vertex.Z > maxZ) maxZ = vertex.Z;
-                        }
-                    }
-                }
+                return true;
             }
 
-            double height = maxZ - minZ;
-            return height;
+            Parameter startOffsetParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.STRUCTURAL_BEAM_END0_ELEVATION);
+
+            if (startOffsetParam == null)
+            {
+                failReason = "Не найдено доступное для записи поле STRUCTURAL_BEAM_END0_ELEVATION.";
+                return false;
+            }
+
+            Parameter endOffsetParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.STRUCTURAL_BEAM_END1_ELEVATION);
+
+            if (endOffsetParam == null)
+            {
+                failReason = "Не найдено доступное для записи поле STRUCTURAL_BEAM_END1_ELEVATION.";
+                return false;
+            }
+
+            startOffsetParam.Set(startOffsetParam.AsDouble() + delta);
+            endOffsetParam.Set(endOffsetParam.AsDouble() + delta);
+            return true;
         }
 
-        // Перемещение элементов на новый уровень
-        private void Button_ClickTransferringElements(object sender, RoutedEventArgs e)
+        private bool ApplyOffsetsToFloor(Element element, OffsetValues offsets, out string failReason)
         {
-            string exportLevelName = LevelExport.SelectedItem as string;
-            string importLevelName = levelImport.SelectedItem as string;
+            failReason = null;
+            double delta = offsets.FirstOffsetDelta;
 
-            conditionsTopLevel = false;
-
-            bool shouldContinue = WarningDialogWindow(exportLevelName, importLevelName);
-
-            if (!shouldContinue)
+            if (Math.Abs(delta) < 1e-9)
             {
-                return;
+                return true;
             }
 
-            Level newLevel = new FilteredElementCollector(_doc)
-                .OfClass(typeof(Level)).FirstOrDefault(x => x.Name == importLevelName) as Level;
-            Level newLevelTransfer = newLevel;
+            Parameter floorOffsetParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.FLOOR_HEIGHTABOVELEVEL_PARAM);
 
-            using (Transaction transaction = new Transaction(_doc, "KPLN: Перенос на новый уровень"))
+            if (floorOffsetParam == null)
             {
-                transaction.Start();
-
-                foreach (ElementId elementID in ElementsByLevel[exportLevelName])
-                {
-                    Element element = _doc.GetElement(elementID);
-                    BuiltInParameter[] levelExportParametrs = CommandChangeLevel.GetParametersForMovingItems(element);
-
-                    // Разгруппировка эллементов
-                    Group groupOld = element as Group;
-                    if (groupOld != null)
-                    {
-                        groupOld.UngroupMembers();
-                    }
-
-                    //
-                    var levelNameParameter = element.get_Parameter(levelExportParametrs[0]);
-                    var levelOffsetParameter = element.get_Parameter(levelExportParametrs[1]);
-
-                    if (levelNameParameter?.HasValue == true && levelNameParameter.IsReadOnly == false)
-                    {
-                        FailureHandlingOptions failureHandlingOptions = transaction.GetFailureHandlingOptions();
-                        failureHandlingOptions.SetFailuresPreprocessor(new IgnoreFailuresPreprocessor());
-                        transaction.SetFailureHandlingOptions(failureHandlingOptions);
-
-                        levelOffsetParameter.Set(CalculatedElementOffset(element, newLevelTransfer));
-                        levelNameParameter.Set(newLevel.Id);
-                    }
-                }
-
-                //Группировка эллементов
-                try
-                {
-                    Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
-                }
-                catch (Autodesk.Revit.Exceptions.ArgumentException) { };
-
-                transaction.Commit();
+                failReason = "Не найдено доступное для записи поле FLOOR_HEIGHTABOVELEVEL_PARAM.";
+                return false;
             }
 
-            CreateAndOpenNewView(exportLevelName, importLevelName);
-
-            ElementsByLevel = GetElementsByLevel(_doc);
-            ElementLevelListName();
-
-            FinishTransferMessage();
+            floorOffsetParam.Set(floorOffsetParam.AsDouble() + delta);
+            return true;
         }
 
-        // Перемещение элементов на новый уровень, отсоеденив зависимость сверху
-        private void Button_ClickTransferringElementsConditions(object sender, RoutedEventArgs e)
+        private bool ApplyOffsetsToWall(Element element, OffsetValues offsets, out string failReason)
         {
-            string exportLevelName = LevelExport.SelectedItem as string;
-            string importLevelName = levelImport.SelectedItem as string;
-            string newTopLevellName = NewTopLevel.SelectedItem as string;
+            failReason = null;
+            double delta = offsets.FirstOffsetDelta;
 
-            conditionsTopLevel = true;
-
-            bool shouldContinue = WarningDialogWindow(exportLevelName, importLevelName);
-
-            if (!shouldContinue)
+            if (Math.Abs(delta) < 1e-9)
             {
-                return;
+                return true;
             }
 
-            Level newLevel = new FilteredElementCollector(_doc)
-                .OfClass(typeof(Level)).FirstOrDefault(x => x.Name == importLevelName) as Level;
-            Level newLevelTransfer = newLevel;
+            Parameter baseOffsetParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.WALL_BASE_OFFSET);
 
-            Level newTopLevel = new FilteredElementCollector(_doc)
-               .OfClass(typeof(Level)).FirstOrDefault(x => x.Name == newTopLevellName) as Level;
-
-            using (Transaction transaction = new Transaction(_doc, "KPLN: Перенос на новый уровень"))
+            if (baseOffsetParam == null)
             {
-                transaction.Start();
+                failReason = "Не найдено доступное для записи поле WALL_BASE_OFFSET.";
+                return false;
+            }
 
-                foreach (ElementId elementID in ElementsByLevel[exportLevelName])
+            baseOffsetParam.Set(baseOffsetParam.AsDouble() + delta);
+
+            bool hasTopConstraint = HasValidTopConstraint(element);
+
+            if (hasTopConstraint)
+            {
+                Parameter topOffsetParam = GetFirstWritableParameter(
+                    element,
+                    BuiltInParameter.WALL_TOP_OFFSET);
+
+                if (topOffsetParam == null)
                 {
-                    Element element = _doc.GetElement(elementID);
-                    BuiltInParameter[] levelExportParametrs = CommandChangeLevel.GetParametersForMovingItems(element);
+                    failReason = "Не найдено доступное для записи поле WALL_TOP_OFFSET.";
+                    return false;
+                }
 
-                    // Разгруппировка эллементов
-                    Group groupOld = element as Group;
+                topOffsetParam.Set(topOffsetParam.AsDouble() + delta);
+                return true;
+            }
 
-                    if (groupOld != null)
-                    {
-                        groupOld.UngroupMembers();
-                    }
+            Parameter unconnectedHeightParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.WALL_USER_HEIGHT_PARAM);
 
-                    //
-                    var levelNameParameter = element.get_Parameter(levelExportParametrs[0]);
-                    var levelOffsetParameter = element.get_Parameter(levelExportParametrs[1]);
+            if (unconnectedHeightParam == null)
+            {
+                failReason = "Не найдено доступное для записи поле WALL_USER_HEIGHT_PARAM для неприсоединённой стены.";
+                return false;
+            }
 
-#if Revit2020 || Debug2020 || Revit2023 || Debug2023
-                    BuiltInCategory elCatBIC = (BuiltInCategory)element.Category.Id.IntegerValue;
+            double newHeight = unconnectedHeightParam.AsDouble() + delta;
+            if (newHeight < 1e-6)
+            {
+                failReason = "Неприсоединённая высота стала меньше допустимой.";
+                return false;
+            }
+
+            unconnectedHeightParam.Set(newHeight);
+            return true;
+        }
+
+        private bool ApplyOffsetsToWindow(Element element, OffsetValues offsets, out string failReason)
+        {
+            failReason = null;
+            double delta = offsets.FirstOffsetDelta;
+
+            if (Math.Abs(delta) < 1e-9)
+            {
+                return true;
+            }
+
+            Parameter sillHeightParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM);
+
+            if (sillHeightParam == null)
+            {
+                failReason = "Не найдено доступное для записи поле INSTANCE_SILL_HEIGHT_PARAM.";
+                return false;
+            }
+
+            sillHeightParam.Set(sillHeightParam.AsDouble() + delta);
+            return true;
+        }
+
+        private bool ApplyOffsetsToColumn(Element element, OffsetValues offsets, out string failReason)
+        {
+            failReason = null;
+            double delta = offsets.FirstOffsetDelta;
+
+            if (Math.Abs(delta) < 1e-9)
+            {
+                return true;
+            }
+
+            Parameter baseOffsetParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.FAMILY_BASE_LEVEL_OFFSET_PARAM,
+                BuiltInParameter.SCHEDULE_BASE_LEVEL_OFFSET_PARAM);
+
+            if (baseOffsetParam == null)
+            {
+                failReason = "Не найдено доступное для записи нижнее смещение колонны.";
+                return false;
+            }
+
+            Parameter topOffsetParam = GetFirstWritableParameter(
+                element,
+                BuiltInParameter.FAMILY_TOP_LEVEL_OFFSET_PARAM,
+                BuiltInParameter.SCHEDULE_TOP_LEVEL_OFFSET_PARAM);
+
+            if (topOffsetParam == null)
+            {
+                failReason = "Не найдено доступное для записи верхнее смещение колонны.";
+                return false;
+            }
+
+            baseOffsetParam.Set(baseOffsetParam.AsDouble() + delta);
+            topOffsetParam.Set(topOffsetParam.AsDouble() + delta);
+            return true;
+        }
+
+
+        private bool TryParseLength(string input, out double internalValue)
+        {
+            internalValue = 0.0;
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return true;
+            }
+
+            string normalized = input.Trim().Replace(',', '.');
+
+            double numericValue;
+            if (!double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out numericValue))
+            {
+#if Revit2020 || Debug2020
+                return UnitFormatUtils.TryParse(_doc.GetUnits(), UnitType.UT_Length, input, out internalValue);
 #else
-                    BuiltInCategory elCatBIC = element.Category.BuiltInCategory;
+                return UnitFormatUtils.TryParse(_doc.GetUnits(), SpecTypeId.Length, input, out internalValue);
 #endif
-                    if (levelNameParameter?.HasValue == true && levelNameParameter.IsReadOnly == false)
-                    {
-                        FailureHandlingOptions failureHandlingOptions = transaction.GetFailureHandlingOptions();
-                        failureHandlingOptions.SetFailuresPreprocessor(new IgnoreFailuresPreprocessor());
-                        transaction.SetFailureHandlingOptions(failureHandlingOptions);
-
-                        levelOffsetParameter.Set(CalculatedElementOffset(element, newLevelTransfer));
-                        levelNameParameter.Set(newLevel.Id);
-                    }
-
-                    if (levelExportParametrs.Length > 2 && (elCatBIC == BuiltInCategory.OST_Walls ||
-                        elCatBIC == BuiltInCategory.OST_StructuralColumns))
-                    {
-                        var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
-                        var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
-                        var elementHeight = element.get_Parameter(levelExportParametrs[4]);
-
-                        double heightValue = GetElementHeight(element);
-
-                        topLevelNameParameter.Set(ElementId.InvalidElementId);
-                        elementHeight.Set(heightValue);
-                    }
-
-                    if (levelExportParametrs.Length > 2 && (elCatBIC == BuiltInCategory.OST_Stairs
-                        || elCatBIC == BuiltInCategory.OST_Ramps))
-                    {
-                        var topLevelNameParameter = element.get_Parameter(levelExportParametrs[2]);
-                        var topLevelOffsetParameter = element.get_Parameter(levelExportParametrs[3]);
-
-                        levelNameParameter.Set(newLevel.Id);
-                        topLevelNameParameter.Set(newTopLevel.Id);
-                    }
-
-                }
-
-                //Группировка эллементов
-                try
-                {
-                    Group groupNew = _doc.Create.NewGroup(ElementsByLevel[exportLevelName]);
-                }
-                catch (Autodesk.Revit.Exceptions.ArgumentException) { };
-
-                transaction.Commit();
             }
 
-            CreateAndOpenNewView(exportLevelName, importLevelName);
-
-            ElementsByLevel = GetElementsByLevel(_doc);
-            ElementLevelListName();
-
-            FinishTransferMessage();
+#if Revit2020 || Debug2020
+            FormatOptions formatOptions = _doc.GetUnits().GetFormatOptions(UnitType.UT_Length);
+            DisplayUnitType displayUnitType = formatOptions.DisplayUnits;
+            internalValue = UnitUtils.ConvertToInternalUnits(numericValue, displayUnitType);
+#else
+            FormatOptions formatOptions = _doc.GetUnits().GetFormatOptions(SpecTypeId.Length);
+            ForgeTypeId unitTypeId = formatOptions.GetUnitTypeId();
+            internalValue = UnitUtils.ConvertToInternalUnits(numericValue, unitTypeId);
+#endif
+            return true;
         }
 
-        // XAML: закрыть окно
-        private void Button_CloseClick(object sender, RoutedEventArgs e)
+        private void ShowResultDialog(int movedCount, List<FailedElementInfo> failedItems)
         {
-            this.Close();
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Успешно обработано элементов: " + movedCount);
+
+            if (failedItems.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Есть ошибки: " + failedItems.Count);
+                sb.AppendLine("Сохранить лог?");
+            }
+
+            if (failedItems.Count == 0)
+            {
+                TaskDialog.Show("Результат смещения", sb.ToString());
+                return;
+            }
+
+            TaskDialog dialog = new TaskDialog("Результат смещения");
+            dialog.MainInstruction = "Смещение выполнено с ошибками.";
+            dialog.MainContent = sb.ToString();
+            dialog.CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No;
+            dialog.DefaultButton = TaskDialogResult.Yes;
+
+            TaskDialogResult result = dialog.Show();
+
+            if (result == TaskDialogResult.Yes)
+            {
+                SaveFailureLog(failedItems);
+            }
+        }
+
+        private void SaveFailureLog(List<FailedElementInfo> failedItems)
+        {
+            SaveFileDialog saveDialog = new SaveFileDialog();
+            saveDialog.Title = "Сохранить лог смещения";
+            saveDialog.Filter = "Текстовый файл (*.txt)|*.txt";
+            saveDialog.FileName = "KPLN_СмещениеЭлементов_Лог.txt";
+
+            bool? dialogResult = saveDialog.ShowDialog();
+            if (dialogResult != true)
+            {
+                return;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("Лог смещения элементов");
+            sb.AppendLine("Документ: " + _doc.Title);
+            sb.AppendLine("Дата: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            sb.AppendLine();
+
+            foreach (IGrouping<string, FailedElementInfo> categoryGroup in failedItems
+                .OrderBy(x => x.CategoryName)
+                .ThenBy(x => x.Reason)
+                .ThenBy(x => x.ElementId)
+                .GroupBy(x => x.CategoryName))
+            {
+                sb.AppendLine("Категория: " + categoryGroup.Key);
+
+                foreach (IGrouping<string, FailedElementInfo> reasonGroup in categoryGroup.GroupBy(x => x.Reason))
+                {
+                    List<long> ids = reasonGroup
+                        .Select(x => x.ElementId)
+                        .Distinct()
+                        .OrderBy(x => x)
+                        .ToList();
+
+                    sb.AppendLine("  Причина: " + reasonGroup.Key);
+                    sb.AppendLine("  ID: " + string.Join(", ", ids));
+                    sb.AppendLine();
+                }
+
+                sb.AppendLine();
+            }
+
+            File.WriteAllText(saveDialog.FileName, sb.ToString(), Encoding.UTF8);
+
+            TaskDialog.Show("Лог сохранён", "Лог успешно сохранён:\n" + saveDialog.FileName);
         }
     }
 }

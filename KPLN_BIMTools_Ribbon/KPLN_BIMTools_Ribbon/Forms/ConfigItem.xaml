@@ -11,10 +11,11 @@
         WindowStyle="ToolWindow" 
         WindowStartupLocation="CenterScreen" 
         ResizeMode="CanResize"
-        Width="1000"
+        SizeToContent="WidthAndHeight"
         MinWidth="1000" 
-        Height="675" 
-        MinHeight="675" 
+        MaxWidth="1250" 
+        MinHeight="575" 
+        MaxHeight="975" 
         Background="#FF292D36">
     <Window.Resources>
 

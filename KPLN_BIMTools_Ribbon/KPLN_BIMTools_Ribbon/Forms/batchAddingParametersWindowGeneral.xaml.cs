@@ -1,14 +1,15 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
-using Newtonsoft.Json;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
 
 
 namespace KPLN_BIMTools_Ribbon.Forms
@@ -100,6 +101,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 CB_paramsGroup.ToolTip = $"ФОП: {SPFPath}";
                 CB_paramsGroup.Tag = SPFPath;               
             }         
+        }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                this.Close();
+            }
         }
 
         // Открытие ФОП и формирование Dictionary<String, List<ExternalDefinition>> -> List<string> параметров; 

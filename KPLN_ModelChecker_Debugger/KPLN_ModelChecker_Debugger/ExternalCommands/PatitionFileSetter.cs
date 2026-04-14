@@ -2,10 +2,11 @@ using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Services.GripGeom;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using KPLN_ModelChecker_Lib.Services.GripGeom;
+using System.Security.Cryptography;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_Debugger.ExternalCommands
@@ -64,8 +65,14 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     {
                         // Т.к. боксы квадратные - достаточно облегченных BoundingBoxXYZ, а не Solid
                         BoundingBoxXYZ bbox = subBox.get_BoundingBox(null);
-                        double minZ = Math.Round(bbox.Min.Z, 3);
-                        double maxZ = Math.Round(bbox.Max.Z, 3);
+
+#if Debug2020 || Revit2020
+                        double mmMinZ = UnitUtils.ConvertFromInternalUnits(bbox.Min.Z, DisplayUnitType.DUT_MILLIMETERS);
+                        double mmMaxZ = UnitUtils.ConvertFromInternalUnits(bbox.Max.Z, DisplayUnitType.DUT_MILLIMETERS);
+#else
+                        double mmMinZ = UnitUtils.ConvertFromInternalUnits(bbox.Min.Z, SpecTypeId.Length);
+                        double mmMaxZ = UnitUtils.ConvertFromInternalUnits(bbox.Max.Z, SpecTypeId.Length);
+#endif
 
 
                         // Установка значений параметров
@@ -74,8 +81,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 
 
                         // Поиск уровней по отметкам
-                        Level upLevelFromDoc = LevelWorker.BinaryFindExactLevel(orderedLvls, maxZ);
-                        Level downLevelFromDoc = LevelWorker.BinaryFindExactLevel(orderedLvls, minZ);
+                        Level upLevelFromDoc = LevelWorker.BinaryFindExactLevel(orderedLvls, mmMaxZ);
+                        Level downLevelFromDoc = LevelWorker.BinaryFindExactLevel(orderedLvls, mmMinZ);
 
 
                         if (upLevelFromDoc == null)

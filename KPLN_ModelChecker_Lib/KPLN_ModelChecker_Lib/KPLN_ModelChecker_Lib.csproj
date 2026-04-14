@@ -290,6 +290,7 @@
     <Compile Include="Commands\CheckDimensions.cs" />
     <Compile Include="Commands\CheckFamilies.cs" />
     <Compile Include="Commands\CheckFlatsAreaCompare.cs" />
+    <Compile Include="Commands\CheckListAnnotations.cs" />
     <Compile Include="Commands\CheckMEPHeight.cs" />
     <Compile Include="Commands\CheckMirroredInstances.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesEntity.cs" />

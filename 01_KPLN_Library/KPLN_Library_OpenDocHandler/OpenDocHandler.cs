@@ -32,7 +32,7 @@ namespace KPLN_Library_OpenDocHandler
             if (args.PathName == null)
                 return;
 
-            _logger.Info($"Начало работы с файлом: {args.PathName}");
+            _logger.Info($"Открыт файл: {args.PathName}");
         }
 
         /// <summary>
@@ -74,17 +74,24 @@ namespace KPLN_Library_OpenDocHandler
             else
             {
                 DBRevitDialog currentDBDialog = null;
+                string userFriendlyDialogData = string.Empty;
                 if (string.IsNullOrEmpty(args.DialogId))
                 {
                     TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
                     currentDBDialog = DBMainService
                         .DBRevitDialogColl
                         .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
+                    
+                    userFriendlyDialogData = taskDialogShowingEventArgs.Message;
                 }
                 else
+                {
                     currentDBDialog = DBMainService
                         .DBRevitDialogColl
                         .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
+
+                    userFriendlyDialogData = args.DialogId;
+                }
 
                 if (currentDBDialog == null)
                 {
@@ -95,12 +102,12 @@ namespace KPLN_Library_OpenDocHandler
                 if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
                 {
                     if (args.OverrideResult((int)taskDialogResult))
-                        _logger.Info($"Окно {args.DialogId} успешно закрыто. Была применена команда {currentDBDialog.OverrideResult}");
+                        _logger.Info($"Окно \"{userFriendlyDialogData}\" успешно закрыто. Была применена команда \"{currentDBDialog.OverrideResult}\"");
                     else
-                        _logger.Error($"Окно {args.DialogId} не удалось обработать. Была применена команда {currentDBDialog.OverrideResult}, но она не сработала!");
+                        _logger.Error($"Окно \"{userFriendlyDialogData}\" не удалось обработать. Была применена команда \"{currentDBDialog.OverrideResult}\", но она не сработала!");
                 }
                 else
-                    _logger.Error($"Не удалось привести OverrideResult '{currentDBDialog.OverrideResult}' к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
+                    _logger.Error($"Не удалось привести OverrideResult \"{currentDBDialog.OverrideResult}\" к позиции из Autodesk.Revit.UI.TaskDialogResult. Нужна корректировка БД!");
             }
         }
 

@@ -197,7 +197,7 @@ namespace KPLN_Tools.ExternalCommands
             List<FilterRule> filtRules_ZhB = new List<FilterRule>();
             foreach (string currentName in _exceptFamAndTypeNameStartWithList_ZhB)
             {
-#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+#if Revit2020 || Debug2020 
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName, true);
 #else
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName);
@@ -212,7 +212,7 @@ namespace KPLN_Tools.ExternalCommands
             List<FilterRule> filtRules_Rb = new List<FilterRule>();
             foreach (string currentName in _exceptFamAndTypeNameStartWithList_Rb)
             {
-#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+#if Revit2020 || Debug2020 
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName, true);
 #else
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName);

@@ -7,9 +7,7 @@ using KPLN_Library_PluginActivityWorker;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-
 using System.Data.SQLite;
-
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -561,14 +559,65 @@ namespace KPLN_FamilyManager.Forms
         private bool _depsLoaded = false;
         private Dictionary<int, string> _searchIndex = new Dictionary<int, string>();
         private DispatcherTimer _searchDebounceTimer;
+        private string _savedSearchText = "";
+        private bool _savedSearchWasWatermark = true;
 
         private Button _btnOpenInRevit;
         private Button _btnLoadIntoProject;
 
+        private bool _uiAppEventsSubscribed = false;
+        private string _lastProjectKey = "";
+        private bool _isResettingFilters = false;
+
         public void SetUIApplication(UIApplication uiapp)
         {
+            if (_uiapp != null && _uiAppEventsSubscribed)
+            {
+                try { _uiapp.Idling -= Uiapp_Idling; } catch { }
+                _uiAppEventsSubscribed = false;
+            }
+
             _uiapp = uiapp;
+
+            if (_uiapp != null && !_uiAppEventsSubscribed)
+            {
+                _uiapp.Idling += Uiapp_Idling;
+                _uiAppEventsSubscribed = true;
+            }
+
             ResetDeptCacheAndUi();
+            RememberCurrentProjectKey();
+        }
+
+        private void Uiapp_Idling(object sender, IdlingEventArgs e)
+        {
+            try
+            {
+                var doc = _uiapp?.ActiveUIDocument?.Document;
+                if (doc == null)
+                    return;
+
+                // Если открыт .rfa — фильтры не трогаем
+                if (doc.IsFamilyDocument)
+                    return;
+
+                string currentKey = GetProjectKey(doc);
+                if (string.IsNullOrWhiteSpace(currentKey))
+                    return;
+
+                if (string.Equals(_lastProjectKey, currentKey, StringComparison.OrdinalIgnoreCase))
+                    return;
+
+                _lastProjectKey = currentKey;
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ResetFiltersForNewProject();
+                }));
+            }
+            catch
+            {
+            }
         }
 
         public FamilyManager(string currentStr)
@@ -581,6 +630,108 @@ namespace KPLN_FamilyManager.Forms
         private string GetCurrentDepartment()
         {
             return CmbDepartment?.SelectedItem?.ToString()?.Trim();
+        }
+
+        private void Uiapp_ViewActivated(object sender, ViewActivatedEventArgs e)
+        {
+            try
+            {
+                var doc = e?.CurrentActiveView?.Document;
+                if (doc == null)
+                    return;
+
+                // Если открыт .rfa — фильтры не сбрасываем
+                if (doc.IsFamilyDocument)
+                    return;
+
+                string currentKey = GetProjectKey(doc);
+                if (string.IsNullOrWhiteSpace(currentKey))
+                    return;
+
+                if (!string.Equals(_lastProjectKey, currentKey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _lastProjectKey = currentKey;
+
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        ResetFiltersForNewProject();
+                    }));
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private string GetProjectKey(Document doc)
+        {
+            if (doc == null)
+                return "";
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(doc.PathName))
+                    return doc.PathName.Trim();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(doc.Title))
+                    return doc.Title.Trim();
+            }
+            catch
+            {
+            }
+
+            return "";
+        }
+
+        private void RememberCurrentProjectKey()
+        {
+            try
+            {
+                var doc = _uiapp?.ActiveUIDocument?.Document;
+                if (doc == null || doc.IsFamilyDocument)
+                {
+                    _lastProjectKey = "";
+                    return;
+                }
+
+                _lastProjectKey = GetProjectKey(doc);
+            }
+            catch
+            {
+                _lastProjectKey = "";
+            }
+        }
+
+        private void ResetFiltersForNewProject()
+        {
+            if (_isResettingFilters)
+                return;
+
+            _isResettingFilters = true;
+
+            try
+            {
+                ClearCurrentDeptSelection();
+
+                if (_cbStage != null && _cbStage.Items.Count > 0)
+                    _cbStage.SelectedValue = 0;
+
+                if (_cbProject != null && _cbProject.Items.Count > 0)
+                    _cbProject.SelectedValue = 0;
+
+                UpdateSelectionButtonsState();
+                RefreshScenario();
+            }
+            finally
+            {
+                _isResettingFilters = false;
+            }
         }
 
         // Данные БД. Отделы
@@ -976,6 +1127,7 @@ namespace KPLN_FamilyManager.Forms
             var depUi = GetCurrentDepartment();
             var depDb = DepForDb(depUi);
 
+            CaptureSearchState();
             LoadFavoritesFromFile();
 
             if (!_depsLoaded || (CmbDepartment?.Items?.Count ?? 0) <= 2)
@@ -992,6 +1144,10 @@ namespace KPLN_FamilyManager.Forms
 
                     RebuildSearchIndex();
                     BuildMainArea(depUi);
+                    RestoreSearchState();
+
+                    if (!_isWatermarkActive)
+                        RefreshScenario();
                 }
                 catch (Exception ex)
                 {
@@ -1119,7 +1275,6 @@ namespace KPLN_FamilyManager.Forms
             };
 
             _tbSearch.TextChanged += OnSearchTextChanged;
-            _tbSearch.Loaded += (s, e) => ActivateSearchWatermark();
             ActivateSearchWatermark();
 
             _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
@@ -1160,6 +1315,8 @@ namespace KPLN_FamilyManager.Forms
                     BindStageCombo_DefaultId1(_cbStage);
                     _cbStage.SelectionChanged += (s, e) =>
                     {
+                        if (_isResettingFilters) return;
+
                         ClearCurrentDeptSelection();
                         RefreshScenario();
                         UpdateSelectionButtonsState();
@@ -1179,6 +1336,8 @@ namespace KPLN_FamilyManager.Forms
                 BindProjectCombo_DefaultId1(_cbProject);
                 _cbProject.SelectionChanged += (s, e) =>
                 {
+                    if (_isResettingFilters) return;
+
                     ClearCurrentDeptSelection();
                     RefreshScenario();
                     UpdateSelectionButtonsState();
@@ -1237,6 +1396,134 @@ namespace KPLN_FamilyManager.Forms
             MainArea.Child = root;
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // Логирование активности по путям семейств. Для каждого FamilyPath увеличивает Activity на 1, а если записи ещё нет — создаёт её.
+        private static void UpsertFamilyManagerActivity(string dbPath, IEnumerable<string> familyPaths)
+        {
+            var paths = (familyPaths ?? Enumerable.Empty<string>())
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (paths.Count == 0)
+                return;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmdUpd = new SQLiteCommand(@"
+            UPDATE FamilyManagerActivity
+            SET Activity = COALESCE(Activity, 0) + 1
+            WHERE FamilyPath = @path;", conn, tx))
+                using (var cmdIns = new SQLiteCommand(@"
+            INSERT INTO FamilyManagerActivity (FamilyPath, Activity)
+            VALUES (@path, 1);", conn, tx))
+                {
+                    var pUpd = cmdUpd.Parameters.Add("@path", System.Data.DbType.String);
+                    var pIns = cmdIns.Parameters.Add("@path", System.Data.DbType.String);
+
+                    foreach (var path in paths)
+                    {
+                        pUpd.Value = path;
+                        int rows = cmdUpd.ExecuteNonQuery();
+
+                        if (rows == 0)
+                        {
+                            pIns.Value = path;
+                            cmdIns.ExecuteNonQuery();
+                        }
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        // Вызываем только для BIM (Админ)
+        private void RegisterFamilyActivityIfBimAdmin(IEnumerable<string> familyPaths)
+        {
+            if (!IsBimAdmin(GetCurrentDepartment()))
+                return;
+
+            try
+            {
+                UpsertFamilyManagerActivity(DB_PATH, familyPaths);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось записать активность в FamilyManagerActivity:\n" + ex.Message);
+            }
+        }
+
+        private static void UpsertFamilyManagerView(string dbPath, string familyPath)
+        {
+            if (string.IsNullOrWhiteSpace(dbPath) || string.IsNullOrWhiteSpace(familyPath))
+                return;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmdUpd = new SQLiteCommand(@"
+            UPDATE FamilyManagerActivity
+            SET [View] = COALESCE([View], 0) + 1
+            WHERE FamilyPath = @path;", conn, tx))
+                using (var cmdIns = new SQLiteCommand(@"
+            INSERT INTO FamilyManagerActivity (FamilyPath, [View], Activity)
+            VALUES (@path, 1, 0);", conn, tx))
+                {
+                    cmdUpd.Parameters.AddWithValue("@path", familyPath);
+                    int rows = cmdUpd.ExecuteNonQuery();
+
+                    if (rows == 0)
+                    {
+                        cmdIns.Parameters.AddWithValue("@path", familyPath);
+                        cmdIns.ExecuteNonQuery();
+                    }
+
+                    tx.Commit();
+                }
+            }
+        }
+
+        private void RegisterFamilyViewIfBimAdmin(string idText)
+        {
+
+            if (!int.TryParse(idText, out int famId))
+                return;
+
+            try
+            {
+                var rec = GetFamilyRowById(DB_PATH, famId);
+                var familyPath = rec?.FullPath;
+
+                if (string.IsNullOrWhiteSpace(familyPath))
+                    return;
+
+                UpsertFamilyManagerView(DB_PATH, familyPath);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Ошибка", "Не удалось записать просмотр в FamilyManagerActivity:\n" + ex.Message);
+            }
+        }
+
         // Обработчик собыйтий. Фильтр семейств по названию
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
         {
@@ -1275,6 +1562,42 @@ namespace KPLN_FamilyManager.Forms
             _isWatermarkActive = true;
             _tbSearch.Foreground = System.Windows.Media.Brushes.Gray;
             _tbSearch.Text = SEARCH_WATERMARK;
+            _isApplyingWatermark = false;
+        }
+
+        private void CaptureSearchState()
+        {
+            if (_tbSearch == null)
+            {
+                _savedSearchText = "";
+                _savedSearchWasWatermark = true;
+                return;
+            }
+
+            _savedSearchWasWatermark = _isWatermarkActive;
+            _savedSearchText = _isWatermarkActive ? "" : (_tbSearch.Text ?? "");
+        }
+
+        private void RestoreSearchState()
+        {
+            if (_tbSearch == null)
+                return;
+
+            _isApplyingWatermark = true;
+
+            if (_savedSearchWasWatermark || string.IsNullOrWhiteSpace(_savedSearchText))
+            {
+                _tbSearch.Foreground = System.Windows.Media.Brushes.Gray;
+                _tbSearch.Text = SEARCH_WATERMARK;
+                _isWatermarkActive = true;
+            }
+            else
+            {
+                _tbSearch.Foreground = System.Windows.Media.Brushes.Black;
+                _tbSearch.Text = _savedSearchText;
+                _isWatermarkActive = false;
+            }
+
             _isApplyingWatermark = false;
         }
 
@@ -1525,10 +1848,28 @@ namespace KPLN_FamilyManager.Forms
                 }
                 else if (openFormat == "UpdateFamily")
                 {
-                    bool ok = TryUpdateImportInfoForRecord(idText);
-                    if (ok)
-                        ReloadFromDbAndRefreshUI();
+                    var rec = win.ResultRecord;
+                    if (rec == null)
+                    {
+                        MessageBox.Show("Нет данных для обновления.",
+                            "Family Manager", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        continue;
+                    }
 
+                    try
+                    {
+                        FamilyManagerEditBIM.SaveRecordToDatabase(rec);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Не удалось сохранить запись перед обновлением IMPORT_INFO: " + ex.Message,
+                            "Family Manager", MessageBoxButton.OK, MessageBoxImage.Error);
+                        continue;
+                    }
+
+                    bool ok = TryUpdateImportInfoForRecord(rec.ID.ToString());
+
+                    ReloadFromDbAndRefreshUI();
                     continue;
                 }
                 else
@@ -1595,6 +1936,8 @@ namespace KPLN_FamilyManager.Forms
 
         private void OpenFamilyUserLoop(string idText)
         {
+            RegisterFamilyViewIfBimAdmin(idText);
+
             var owner = Window.GetWindow(this) ?? Application.Current?.MainWindow;
 
             while (true)
@@ -1951,7 +2294,7 @@ namespace KPLN_FamilyManager.Forms
             return null;
         }
 
-        // IMPORT_INFO. Все непустые уникальные значения параметра по всем типам, через запятую
+        // IMPORT_INFO. Все непустые уникальные значения параметра по всем типам
         private static string JoinAllValuesByTypes(Autodesk.Revit.DB.FamilyManager fm, FamilyParameter param)
         {
             if (fm == null) return "";
@@ -1964,14 +2307,40 @@ namespace KPLN_FamilyManager.Forms
             foreach (FamilyType t in fm.Types)
             {
                 if (t == null) continue;
-                var val = GetFamilyParamStringValue(t, param);
+
+                var raw = GetFamilyParamStringValue(t, param);
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+
+                var val = NormalizeSingleLine(raw);
                 if (string.IsNullOrWhiteSpace(val)) continue;
 
                 if (seen.Add(val))
                     result.Add(val);
             }
 
-            return string.Join(", ", result);
+            return string.Join("\n", result);
+        }
+
+        private static string NormalizeSingleLine(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "";
+
+            var s = value.Trim();
+
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+
+            s = s.Replace("\r\n", " ")
+                 .Replace("\n", " ")
+                 .Replace("\r", " ")
+                 .Replace("\t", " ")
+                 .Trim();
+
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+
+            return s;
         }
 
         // IMPORT_INFO. Чтение строкового представления значения параметра у конкретного FamilyType
@@ -2131,7 +2500,12 @@ namespace KPLN_FamilyManager.Forms
         {
             try
             {
-                var depUi = GetCurrentDepartment(); // <— только из UI
+                CaptureSearchState();
+
+                int? savedStage = (_cbStage != null && _cbStage.SelectedValue is int s) ? s : (int?)null;
+                int? savedProject = (_cbProject != null && _cbProject.SelectedValue is int p) ? p : (int?)null;
+
+                var depUi = GetCurrentDepartment();
                 if (string.Equals(depUi, BIM_ADMIN, StringComparison.OrdinalIgnoreCase))
                 {
                     _records = LoadFamilyManagerRecords(DB_PATH);
@@ -2143,6 +2517,24 @@ namespace KPLN_FamilyManager.Forms
 
                 RebuildSearchIndex();
                 BuildMainArea(depUi);
+                RestoreSearchState();
+
+                _isResettingFilters = true;
+                try
+                {
+                    if (_cbStage != null && savedStage.HasValue)
+                        _cbStage.SelectedValue = savedStage.Value;
+
+                    if (_cbProject != null && savedProject.HasValue)
+                        _cbProject.SelectedValue = savedProject.Value;
+                }
+                finally
+                {
+                    _isResettingFilters = false;
+                }
+
+                RefreshScenario();
+                UpdateSelectionButtonsState();
             }
             catch (Exception ex)
             {
@@ -2232,7 +2624,7 @@ namespace KPLN_FamilyManager.Forms
                                 updatedCount = UpdateDepartmentsByPath(DB_PATH);
                                 dubugInfo += $"Обновлено значение «Отдел» в БД: {updatedCount}\n";
                             }
-                            if (doProject) 
+                            if (doProject)
                             {
                                 updatedCount = UpdateProjectsByAbr(DB_PATH);
                                 dubugInfo += $"Обновлено значение «Проект» в БД: {updatedCount}\n";
@@ -2315,7 +2707,7 @@ namespace KPLN_FamilyManager.Forms
                                 ExternalEventsHost.BulkPagedUpdateEvent.Raise();
                                 return;
                             }
-                            if (doDepartment || doProject || doImage )
+                            if (doDepartment || doProject || doImage)
                             {
                                 dubugInfo += $"Опперация выполнена успешно.";
                                 TaskDialog.Show("Обновлены данные в БД", $"{dubugInfo}");
@@ -2332,6 +2724,36 @@ namespace KPLN_FamilyManager.Forms
                     }
                 }
                 else if (dlg.Result == 3)
+                {
+                    try
+                    {
+                        if (!File.Exists(DB_PATH))
+                        {
+                            TaskDialog.Show("Ошибка", $"Файл БД не найден:\n{DB_PATH}");
+                            return;
+                        }
+
+                        var confirm = System.Windows.MessageBox.Show(
+                            "Удалить из плагина все семейства, которые не найдены на диске?",
+                            "Подтверждение удаления",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Warning);
+
+                        if (confirm != MessageBoxResult.Yes)
+                            return;
+
+                        int deletedCount = DeleteAbsentRecords(DB_PATH);
+
+                        TaskDialog.Show("Очистка БД", $"Удалено записей: {deletedCount}");
+
+                        ReloadFromDbAndRefreshUI();
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("Ошибка", ex.Message);
+                    }
+                }
+                else if (dlg.Result == 4)
                 {
                     var win = new FamilyManagerSettingDB
                     {
@@ -2356,8 +2778,9 @@ namespace KPLN_FamilyManager.Forms
                 string dirName = Path.GetFileName(dir) ?? dir;
 
                 if ((dirName.IndexOf("архив", StringComparison.OrdinalIgnoreCase) >= 0)
-                    || (dirName.IndexOf("8_Библиотека семейств Самолета", StringComparison.OrdinalIgnoreCase) >= 0))
-                    continue;
+                || (dirName.IndexOf("8_Библиотека семейств Самолета", StringComparison.OrdinalIgnoreCase) >= 0)
+                || (dirName.IndexOf("000_Семейства квартир", StringComparison.OrdinalIgnoreCase) >= 0))
+                                continue;
 
                 IEnumerable<string> subdirs = Enumerable.Empty<string>();
                 IEnumerable<string> files = Enumerable.Empty<string>();
@@ -2398,6 +2821,28 @@ namespace KPLN_FamilyManager.Forms
             return c0 == '0' && c1 == '0'
                    && c2 >= '0' && c2 <= '9'
                    && c3 >= '0' && c3 <= '9';
+        }
+
+        private static int DeleteAbsentRecords(string dbPath)
+        {
+            if (string.IsNullOrWhiteSpace(dbPath) || !File.Exists(dbPath))
+                return 0;
+
+            using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
+            {
+                conn.Open();
+
+                using (var tx = conn.BeginTransaction())
+                using (var cmd = new SQLiteCommand(@"
+                    DELETE FROM FamilyManager
+                    WHERE STATUS IS NOT NULL
+                      AND UPPER(TRIM(STATUS)) = 'ABSENT';", conn, tx))
+                {
+                    int deleted = cmd.ExecuteNonQuery();
+                    tx.Commit();
+                    return deleted;
+                }
+            }
         }
 
         /// --- Обновлеие ID, FILEPATH, STATUS в FamilyManager
@@ -2595,22 +3040,6 @@ namespace KPLN_FamilyManager.Forms
             }
         }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         /// --- Обновление PROJECT в FamilyManager по ABR из Projects
         private static int UpdateProjectsByAbr(string dbPath)
         {
@@ -2630,7 +3059,7 @@ namespace KPLN_FamilyManager.Forms
                             int id = Convert.ToInt32(r["ID"]);
 
                             string abr = r["ABR"] == DBNull.Value ? null : Convert.ToString(r["ABR"]);
-                            if (string.IsNullOrWhiteSpace(abr)) continue; 
+                            if (string.IsNullOrWhiteSpace(abr)) continue;
 
                             var tokens = abr
                                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
@@ -2682,30 +3111,6 @@ namespace KPLN_FamilyManager.Forms
                 }
             }
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         /// --- Обновлеие IMAGE в FamilyManager
         // Запись данных в БД (FamilyManager). STATUS, IMAGE
@@ -2922,18 +3327,35 @@ namespace KPLN_FamilyManager.Forms
 
 
 
-
-
-
         // Интерфейс универсального отдела
         private IEnumerable<FamilyManagerRecord> GetUniversalFiltered(string depUi)
         {
-            //const int FILTER_ALL = -1;
-            const int FILTER_UNIVERSAL = -2;
+            const int FILTER_NOT_SELECTED = 0; // Ничего не выбрано
+            const int FILTER_UNIVERSAL = -2;   // Только универсальные
             const int PROJECT_UNIVERSAL_ID = 1;
 
             var depDb = DepForDb(depUi);
             IEnumerable<FamilyManagerRecord> all = _records ?? Enumerable.Empty<FamilyManagerRecord>();
+
+            // Пока проект не выбран — ничего не показываем
+            if (_cbProject != null)
+            {
+                if (!(_cbProject.SelectedValue is int selectedProject))
+                    return Enumerable.Empty<FamilyManagerRecord>();
+
+                if (selectedProject == FILTER_NOT_SELECTED)
+                    return Enumerable.Empty<FamilyManagerRecord>();
+            }
+
+            // Для АР дополнительно требуем явный выбор стадии
+            if (_cbStage != null)
+            {
+                if (!(_cbStage.SelectedValue is int selectedStage))
+                    return Enumerable.Empty<FamilyManagerRecord>();
+
+                if (selectedStage == FILTER_NOT_SELECTED)
+                    return Enumerable.Empty<FamilyManagerRecord>();
+            }
 
             var filtered = all.Where(r =>
                 !string.IsNullOrWhiteSpace(r.Departament) &&
@@ -2944,6 +3366,7 @@ namespace KPLN_FamilyManager.Forms
             if (!string.IsNullOrEmpty(q))
                 filtered = filtered.Where(r => MatchesSearchByIndex(r, q));
 
+            // Фильтр по проекту
             if (_cbProject != null && _cbProject.SelectedValue is int projectId)
             {
                 if (projectId == FILTER_UNIVERSAL)
@@ -2954,11 +3377,25 @@ namespace KPLN_FamilyManager.Forms
                 {
                     filtered = filtered.Where(r => r.Project == projectId);
                 }
- 
+            }
+
+            // Фильтр по стадии
+            if (_cbStage != null && _cbStage.SelectedValue is int stageId)
+            {
+                if (stageId > 0)
+                {
+                    filtered = filtered.Where(r => r.Stage == stageId);
+                }
             }
 
             return filtered.OrderBy(r => SafeFileName(r.FullPath), StringComparer.OrdinalIgnoreCase);
         }
+
+
+
+
+
+
 
         // Интерфейс универсального отдела. Фильтр по статусу
         private static bool HasStatusNewOrOk(string status)
@@ -3179,14 +3616,14 @@ namespace KPLN_FamilyManager.Forms
         private void BindStageCombo_DefaultId1(ComboBox cb)
         {
             var items = new List<KeyValuePair<int, string>>
-            {
-                new KeyValuePair<int, string>(-1, "Для всех стадий (без фильтра)")
-            };
+    {
+        new KeyValuePair<int, string>(0, "Выберите стадию"),
+        new KeyValuePair<int, string>(-1, "Для всех стадий (без фильтра)")
+    };
 
             items.AddRange(
                 _stagesById
-                    .Where(kv =>
-                        !string.Equals(kv.Value, "Для всех стадий", StringComparison.OrdinalIgnoreCase))
+                    .Where(kv => !string.Equals(kv.Value, "Для всех стадий", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(kv => kv.Key)
                     .Select(kv => new KeyValuePair<int, string>(kv.Key, kv.Value))
             );
@@ -3194,28 +3631,18 @@ namespace KPLN_FamilyManager.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = -1;
+            cb.SelectedValue = 0;
         }
-
-
-
-
-
-
-
-
-
-
 
         // Интерфейс универсального отдела. Биндер для ComboBox - Проект
         private void BindProjectCombo_DefaultId1(ComboBox cb)
         {
-            const int FILTER_ALL = -1;        // Без фильтра
-            const int FILTER_UNIVERSAL = -2;  // Универсальные (PROJECT == 1)
+            const int FILTER_NOT_SELECTED = 0;
+            const int FILTER_UNIVERSAL = -2;
 
             var items = new List<KeyValuePair<int, string>>
     {
-        new KeyValuePair<int, string>(FILTER_ALL, "Без фильтра"),
+        new KeyValuePair<int, string>(FILTER_NOT_SELECTED, "Выберите проект"),
         new KeyValuePair<int, string>(FILTER_UNIVERSAL, "Универсальные")
     };
 
@@ -3228,20 +3655,8 @@ namespace KPLN_FamilyManager.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = FILTER_ALL;
+            cb.SelectedValue = FILTER_NOT_SELECTED;
         }
-
-
-
-
-
-
-
-
-
-
-
-
 
         // Интерфейс универсального отдела. Строковое представление
         private FrameworkElement CreateUniversalRow(FamilyManagerRecord rec)
@@ -3584,6 +3999,8 @@ namespace KPLN_FamilyManager.Forms
         private void OnOpenInRevitClick(object sender, RoutedEventArgs e)
         {
             var list = GetSelectedRecordsForCurrentDept();
+            RegisterFamilyActivityIfBimAdmin(list.Select(r => r.FullPath));
+
             if (list.Count == 0) return;
 
             var names = list.Select(r => SafeFileName(r.FullPath)).ToList();
@@ -3600,6 +4017,8 @@ namespace KPLN_FamilyManager.Forms
                 TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
                 return;
             }
+
+
 
             int ok = 0, err = 0;
             foreach (var r in list)
@@ -3618,6 +4037,8 @@ namespace KPLN_FamilyManager.Forms
         private void OnLoadIntoProjectClick(object sender, RoutedEventArgs e)
         {
             var list = GetSelectedRecordsForCurrentDept();
+            RegisterFamilyActivityIfBimAdmin(list.Select(r => r.FullPath));
+
             if (list.Count == 0) return;
 
             var names = list.Select(r => SafeFileName(r.FullPath)).ToList();

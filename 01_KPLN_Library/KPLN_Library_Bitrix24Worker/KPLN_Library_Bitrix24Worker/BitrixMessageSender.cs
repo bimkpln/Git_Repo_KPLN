@@ -12,7 +12,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace KPLN_Library_Bitrix24Worker
 {
@@ -343,7 +342,7 @@ namespace KPLN_Library_Bitrix24Worker
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ошибка при отправке сообщения в задачу Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return false;
@@ -382,7 +381,7 @@ namespace KPLN_Library_Bitrix24Worker
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ошибка при поиске задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return false;
@@ -630,7 +629,7 @@ namespace KPLN_Library_Bitrix24Worker
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ошибка при получении ID диска из Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return string.Empty;
@@ -664,7 +663,7 @@ namespace KPLN_Library_Bitrix24Worker
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка при постановке задачи в Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ошибка при получении папки из Bitrix: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             return string.Empty;
@@ -740,7 +739,6 @@ namespace KPLN_Library_Bitrix24Worker
         public static async Task<int> GetUserHeadPersanBitrixId_ByUserId(int currentUserId)
         {
             int headPersanId = -1;
-
             if (currentUserId == 0 || currentUserId == -1)
             {
                 MessageBox.Show(
@@ -787,7 +785,6 @@ namespace KPLN_Library_Bitrix24Worker
         public static async Task<int> GetDepartmentHeadPersan_ByDepId(int depId)
         {
             int headPersanId = -1;
-
             try
             {
                 using (HttpClient client = new HttpClient())

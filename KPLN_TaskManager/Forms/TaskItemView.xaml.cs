@@ -691,6 +691,23 @@ namespace KPLN_TaskManager.Forms
 
             TaskEntity_ImageBuffer newTE_IMB = new TaskEntity_ImageBuffer(CurrentTaskItemEntity.TE_ImageBufferColl.Count, CurrentTaskItemEntity.Id, resultBit);
             CurrentTaskItemEntity.TE_ImageBufferColl.Add(newTE_IMB);
+            
+            
+            // Проверка на одинаковые id у рисунка
+            var idGrouping = CurrentTaskItemEntity.TE_ImageBufferColl.GroupBy(ib => ib.Id);
+            foreach(var group in idGrouping)
+            {
+                if (group.Count() != 1)
+                {
+                    int startId = 0;
+                    // Если всё же попали одинаковые id - переписываю их с нуля
+                    foreach (var item in group)
+                    {
+                        item.Id = startId++;
+                    }
+                }
+            }
+
             CurrentTaskItemEntity.TE_ImageBuffer_Current = CurrentTaskItemEntity.TE_ImageBufferColl.Count - 1;
         }
 

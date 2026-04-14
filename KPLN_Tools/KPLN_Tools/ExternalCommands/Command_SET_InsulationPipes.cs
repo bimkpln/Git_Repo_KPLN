@@ -328,11 +328,23 @@ namespace KPLN_Tools.ExternalCommands
         public Guid _guidParamidNamePipeAndDuct;
         public Guid _guidParamidNameing;
 
+        /// <summary>
+        /// Размер запаса
+        /// </summary>
+        private double _stock = 1.0;
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIApplication application1 = commandData.Application;
             UIDocument activeUiDocument = application1.ActiveUIDocument;
             this._doc = activeUiDocument.Document;
+            
+            // Про запас только ОВ попросили
+            if (_doc.Title.Contains("_ОВ"))
+                _stock = 1.1;
+            else
+                _stock = 1.0;
+            
             this._errorType = new List<string>();
             this._errorElmentsNotConnectToSystem = new List<string>();
             UnitsProject.Check(this._doc);
@@ -466,28 +478,23 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     if (element != null && element.get_Parameter(this._guidParamSizeLanthFitt)?.AsDouble() == 0.0)
                     {
-                        var insulation = element as InsulationLiningBase;
-                        if (insulation != null)
-                        {
+                        if (element is InsulationLiningBase insulation)
                             source2.Add(insulation.HostElementId);
-                        }
                     }
                     else
                     {
                         try
                         {
                             double sizeLanthFitt = element.get_Parameter(this._guidParamSizeLanthFitt)?.AsDouble() ?? 0.0;
-                            double newValue = sizeLanthFitt / (1250.0 / 381.0);
+                            double newValue = sizeLanthFitt / (1250.0 / 381.0) * _stock;
 
                             element.get_Parameter(this._guidParamCount)?.Set(newValue);
                         }
                         catch (Exception ex)
                         {
-                            var insulation = element as InsulationLiningBase;
-                            if (insulation != null)
-                            {
+                            if (element is InsulationLiningBase insulation)
                                 source2.Add(insulation.HostElementId);
-                            }
+                            
                             System.Windows.MessageBox.Show($"Error updating element {element.Id}: {ex.Message}", "Error", (MessageBoxButton)MessageBoxButtons.OK, (MessageBoxImage)MessageBoxIcon.Error);
                         }
                     }
@@ -497,11 +504,8 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     if (element != null && element.get_Parameter(this._guidParamSizeLanthFitt)?.AsDouble() == 0.0)
                     {
-                        var insulation = element as InsulationLiningBase;
-                        if (insulation != null)
-                        {
+                        if (element is InsulationLiningBase insulation)
                             source2.Add(insulation.HostElementId);
-                        }
                     }
                     else
                     {
@@ -509,25 +513,22 @@ namespace KPLN_Tools.ExternalCommands
                         {
                             double sizeLanthFitt = element.get_Parameter(this._guidParamSizeLanthFitt)?.AsDouble() ?? 0.0;
 
-                            var insulation = element as InsulationLiningBase;
-                            if (insulation != null)
+                            if (element is InsulationLiningBase insulation)
                             {
                                 double hostSize = this._doc.GetElement(insulation.HostElementId)
                                     .get_Parameter(BuiltInParameter.RBS_PIPE_OUTER_DIAMETER)?.AsDouble() ?? 0.0;
                                 double insulationParam = element.get_Parameter(BuiltInParameter.RBS_INSULATION_THICKNESS_FOR_PIPE)?.AsDouble() ?? 0.0;
 
-                                double newValue = sizeLanthFitt / (1250.0 / 381.0) * (hostSize / (1250.0 / 381.0) + insulationParam / (1250.0 / 381.0) * 2.0) * Math.PI;
+                                double newValue = sizeLanthFitt / (1250.0 / 381.0) * (hostSize / (1250.0 / 381.0) + insulationParam / (1250.0 / 381.0) * 2.0) * Math.PI * _stock;
 
                                 element.get_Parameter(this._guidParamCount)?.Set(newValue);
                             }
                         }
                         catch (Exception ex)
                         {
-                            var insulation = element as InsulationLiningBase;
-                            if (insulation != null)
-                            {
+                            if (element is InsulationLiningBase insulation)
                                 source2.Add(insulation.HostElementId);
-                            }
+                            
                             System.Windows.MessageBox.Show($"Error updating element {element.Id}: {ex.Message}", "Error", (MessageBoxButton)MessageBoxButtons.OK, (MessageBoxImage)MessageBoxIcon.Error);
                         }
                     }
@@ -779,12 +780,17 @@ namespace KPLN_Tools.ExternalCommands
                         strArray[5] = " мм";
                         string str = string.Concat(strArray);
                         parameter1.Set(str);
-                        elem.get_Parameter(this._guidParamCount).Set(elem.get_Parameter(this._guidParamSizeLanthFitt).AsDouble() / (1250.0 / 381.0) * (diamOut / (1250.0 / 381.0) + elem.get_Parameter(BuiltInParameter.RBS_INSULATION_THICKNESS_FOR_PIPE).AsDouble() / (1250.0 / 381.0) * 2.0) * Math.PI);
+                        elem
+                            .get_Parameter(this._guidParamCount)
+                            .Set(
+                                (elem.get_Parameter(this._guidParamSizeLanthFitt).AsDouble() / (1250.0 / 381.0) * (diamOut / (1250.0 / 381.0) 
+                                    + elem.get_Parameter(BuiltInParameter.RBS_INSULATION_THICKNESS_FOR_PIPE).AsDouble() / (1250.0 / 381.0) * 2.0) * Math.PI) 
+                                * _stock);
                     }
                     if (this._doc.GetElement(elem.GetTypeId()).get_Parameter(this._guidParamidUnit).AsString() == "м")
                     {
                         this.SetInsulation(this._doc, elem, newDt, num1, diamOut);
-                        elem.get_Parameter(this._guidParamCount).Set(elem.get_Parameter(this._guidParamSizeLanthFitt).AsDouble() / (1250.0 / 381.0));
+                        elem.get_Parameter(this._guidParamCount).Set(elem.get_Parameter(this._guidParamSizeLanthFitt).AsDouble() / (1250.0 / 381.0) * _stock);
                     }
                 }
                 if (source6.Count<string>() > 0)
