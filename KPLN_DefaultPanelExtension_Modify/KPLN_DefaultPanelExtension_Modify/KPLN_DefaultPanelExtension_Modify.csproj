@@ -113,6 +113,10 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ExtraFilter">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ExtraFilter\bin\Debug\$(RevitVer)\KPLN_ExtraFilter.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
@@ -141,6 +145,10 @@
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_ExtraFilter">
+          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ExtraFilter\$(RevitVer)\KPLN_ExtraFilter.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
@@ -150,9 +158,11 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\XyzJsonConverter.cs" />
+    <Compile Include="ExecutableCommands\ExtCmdTreeModel.cs" />
     <Compile Include="ExecutableCommands\ExcCmdListVPPositionSet.cs" />
     <Compile Include="ExecutableCommands\ExcCmdListVPPositionStart.cs" />
     <Compile Include="ExecutableCommands\ExtCmdSendToBitrix.cs" />
+    <Compile Include="ExternalEventHandler\ExecutableCommandEventHandler .cs" />
     <Compile Include="ExternalEventHandler\ListVPPositionHandler.cs" />
     <Compile Include="ExternalEventHandler\UnsubEventHandler.cs" />
     <Compile Include="Forms\Commands.cs" />
@@ -228,6 +238,11 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Resource Include="Imagens\ExtCmdTreeModel16.png" />
+    <Resource Include="Imagens\ExtCmdTreeModel16_dark.png" />
+    <Resource Include="Imagens\ExtCmdTreeModel32.png" />
+    <Resource Include="Imagens\ExtCmdTreeModel32_dark.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

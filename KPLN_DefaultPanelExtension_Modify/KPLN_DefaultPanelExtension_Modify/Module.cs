@@ -14,6 +14,7 @@ namespace KPLN_DefaultPanelExtension_Modify
     {
         private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
         private readonly ObservableCollection<Element> _selElems = new ObservableCollection<Element>();
+        private UIApplication _uiApp;
 
         private UIControlledApplication _controlledApp;
 
@@ -22,6 +23,8 @@ namespace KPLN_DefaultPanelExtension_Modify
         private const string _sendToBtrBtnId = "ExtCmdSendToBitrix";
         private Autodesk.Windows.RibbonButton _positionBtn;
         private const string _positionBtnId = "ExtCmdListVPPosition";
+        private Autodesk.Windows.RibbonButton _treeModelBtn;
+        private const string _treeModelBtnId = "ExtCmdTreeModel";
 
         public Result Close()
         {
@@ -91,6 +94,13 @@ namespace KPLN_DefaultPanelExtension_Modify
                 $"{ExtCmdSendToBitrix.PluginName}",
                 "Генерируется сообщение с данными по элементу, дополнительными комментариями и отправляется выбранному / -ым пользователям Bitrix.");
 
+            _treeModelBtn = CreateButton(
+                _treeModelBtnId,
+                _treeModelBtnId,
+                $"{ExtCmdTreeModel.PluginName}",
+                $"{ExtCmdTreeModel.PluginName}",
+                "Создать дерево элементов из выбранных");
+
             _positionBtn = CreateButton(
                 _positionBtnId,
                 _positionBtnId,
@@ -102,6 +112,8 @@ namespace KPLN_DefaultPanelExtension_Modify
 
             // В свою панель добавляю кнопки
             _modifyPanel.Source.Items.Add(_sendToBtrBtn);
+            _modifyPanel.Source.Items.Add(new Autodesk.Windows.RibbonRowBreak());
+            _modifyPanel.Source.Items.Add(_treeModelBtn);
             _modifyPanel.Source.Items.Add(new Autodesk.Windows.RibbonRowBreak());
             _modifyPanel.Source.Items.Add(_positionBtn);
             _modifyPanel.Source.Items.Add(new Autodesk.Windows.RibbonRowBreak());
@@ -125,7 +137,8 @@ namespace KPLN_DefaultPanelExtension_Modify
                     return;
 
                 _selElems.Clear();
-                Document selDoc = uiapp.ActiveUIDocument.Document;
+                _uiApp = uiapp;
+                Document selDoc = _uiApp.ActiveUIDocument.Document;
                 foreach (ElementId id in e.GetSelectedElements())
                 {
                     _selElems.Add(selDoc.GetElement(id));
@@ -145,6 +158,9 @@ namespace KPLN_DefaultPanelExtension_Modify
             {
                 if (e.Item?.Id == _sendToBtrBtnId)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExtCmdSendToBitrix());
+
+                if (e.Item?.Id == _treeModelBtnId)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExtCmdTreeModel());
 
                 if (e.Item?.Id == _positionBtnId)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdListVPPositionStart(_selElems.ToArray()));
@@ -171,11 +187,7 @@ namespace KPLN_DefaultPanelExtension_Modify
                 ShowText = false,
                 ShowToolTipOnDisabled = true,
                 Text = text,
-                Size = Autodesk.Windows.RibbonItemSize.Large,
-                ResizeStyle = Autodesk.Windows.RibbonItemResizeStyles.NoResize,
-                Orientation = System.Windows.Controls.Orientation.Horizontal,
                 IsCheckable = true,
-                Width = 200,
                 // Создаю/устанавливаю описание
                 ToolTip = new Autodesk.Windows.RibbonToolTip
                 {
@@ -192,6 +204,7 @@ namespace KPLN_DefaultPanelExtension_Modify
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
             // Регистрация кнопки для смены иконок
             KPLN_Loader.Application.KPLNWindButtonsForImageReverse.Add((button, _sendToBtrBtnId, Assembly.GetExecutingAssembly().GetName().Name));
+            KPLN_Loader.Application.KPLNWindButtonsForImageReverse.Add((button, _treeModelBtnId, Assembly.GetExecutingAssembly().GetName().Name));
             KPLN_Loader.Application.KPLNWindButtonsForImageReverse.Add((button, _positionBtnId, Assembly.GetExecutingAssembly().GetName().Name));
 #endif
 
@@ -203,12 +216,29 @@ namespace KPLN_DefaultPanelExtension_Modify
         /// </summary>
         private void SelElems_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            bool visibleSentToBtrBtn = null != _selElems && _selElems.Any();
-            bool visiblePositionBtn = visibleSentToBtrBtn && _selElems.All(el => el is Viewport || el is ScheduleSheetInstance);
+            bool visibleSelModelElems = null != _selElems && _selElems.Any();
+            bool visibleSelVPorts = visibleSelModelElems && _selElems.All(el => el is Viewport || el is ScheduleSheetInstance);
 
-            _modifyPanel.IsVisible = visibleSentToBtrBtn || visiblePositionBtn;
-            _sendToBtrBtn.IsVisible = visibleSentToBtrBtn;
-            _positionBtn.IsVisible = visiblePositionBtn;
+            // Включаю видимость кнопок
+            _modifyPanel.IsVisible = visibleSelModelElems || visibleSelVPorts;
+            _sendToBtrBtn.IsVisible = visibleSelModelElems;
+            _treeModelBtn.IsVisible = visibleSelModelElems;
+            _positionBtn.IsVisible = visibleSelVPorts;
+
+
+            // Настраиваю размер
+            if (visibleSelModelElems && visibleSelVPorts)
+            {
+                _sendToBtrBtn.Size = Autodesk.Windows.RibbonItemSize.Standard;
+                _treeModelBtn.Size = Autodesk.Windows.RibbonItemSize.Standard;
+                _positionBtn.Size = Autodesk.Windows.RibbonItemSize.Standard;
+            }
+            else
+            {
+                _sendToBtrBtn.Size = Autodesk.Windows.RibbonItemSize.Large;
+                _treeModelBtn.Size = Autodesk.Windows.RibbonItemSize.Large;
+                _positionBtn.Size = Autodesk.Windows.RibbonItemSize.Large;
+            }
         }
     }
 }
