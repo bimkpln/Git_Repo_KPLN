@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
 {
-    internal class ExtCmdTreeModel : IExecutableCommand
+    internal class ExcCmdTreeModel : IExecutableCommand
     {
         internal const string PluginName = SelectionByModelExtCmd.PluginName;
 

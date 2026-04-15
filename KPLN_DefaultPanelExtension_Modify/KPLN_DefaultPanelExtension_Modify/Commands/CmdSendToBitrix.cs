@@ -1,5 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_DefaultPanelExtension_Modify.Forms;
@@ -9,7 +8,6 @@ using KPLN_Library_Forms.Services;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -17,19 +15,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
+namespace KPLN_DefaultPanelExtension_Modify.Commands
 {
-    [Transaction(TransactionMode.Manual)]
-    [Regeneration(RegenerationOption.Manual)]
-    internal class ExtCmdSendToBitrix : IExecutableCommand
+    internal class CmdSendToBitrix
     {
         internal const string PluginName = "Отправить в Bitrix";
 
-        public ExtCmdSendToBitrix()
-        {
-        }
-
-        public Result Execute(UIApplication app)
+        internal Result Execute(UIApplication app)
         {
 #if !Debug2020 && !Revit2020
             Document selectedDoc = null;

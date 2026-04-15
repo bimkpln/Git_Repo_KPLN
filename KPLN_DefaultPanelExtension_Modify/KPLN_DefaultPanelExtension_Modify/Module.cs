@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_DefaultPanelExtension_Modify.Commands;
 using KPLN_DefaultPanelExtension_Modify.ExecutableCommands;
 using KPLN_Loader.Common;
 using System;
@@ -90,15 +91,15 @@ namespace KPLN_DefaultPanelExtension_Modify
             _sendToBtrBtn = CreateButton(
                 _sendToBtrBtnId,
                 _sendToBtrBtnId,
-                $"{ExtCmdSendToBitrix.PluginName}",
-                $"{ExtCmdSendToBitrix.PluginName}",
+                $"{CmdSendToBitrix.PluginName}",
+                $"{CmdSendToBitrix.PluginName}",
                 "Генерируется сообщение с данными по элементу, дополнительными комментариями и отправляется выбранному / -ым пользователям Bitrix.");
 
             _treeModelBtn = CreateButton(
                 _treeModelBtnId,
                 _treeModelBtnId,
-                $"{ExtCmdTreeModel.PluginName}",
-                $"{ExtCmdTreeModel.PluginName}",
+                $"{ExcCmdTreeModel.PluginName}",
+                $"{ExcCmdTreeModel.PluginName}",
                 "Создать дерево элементов из выбранных");
 
             _positionBtn = CreateButton(
@@ -157,10 +158,10 @@ namespace KPLN_DefaultPanelExtension_Modify
             if (_selElems != null && _selElems.Any())
             {
                 if (e.Item?.Id == _sendToBtrBtnId)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExtCmdSendToBitrix());
+                    new CmdSendToBitrix().Execute(_uiApp);
 
                 if (e.Item?.Id == _treeModelBtnId)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExtCmdTreeModel());
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdTreeModel());
 
                 if (e.Item?.Id == _positionBtnId)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdListVPPositionStart(_selElems.ToArray()));

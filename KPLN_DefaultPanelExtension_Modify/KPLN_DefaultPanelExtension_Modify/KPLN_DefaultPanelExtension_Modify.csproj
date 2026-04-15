@@ -158,10 +158,10 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\XyzJsonConverter.cs" />
-    <Compile Include="ExecutableCommands\ExtCmdTreeModel.cs" />
+    <Compile Include="ExecutableCommands\ExcCmdTreeModel.cs" />
     <Compile Include="ExecutableCommands\ExcCmdListVPPositionSet.cs" />
     <Compile Include="ExecutableCommands\ExcCmdListVPPositionStart.cs" />
-    <Compile Include="ExecutableCommands\ExtCmdSendToBitrix.cs" />
+    <Compile Include="Commands\CmdSendToBitrix.cs" />
     <Compile Include="ExternalEventHandler\ExecutableCommandEventHandler .cs" />
     <Compile Include="ExternalEventHandler\ListVPPositionHandler.cs" />
     <Compile Include="ExternalEventHandler\UnsubEventHandler.cs" />
