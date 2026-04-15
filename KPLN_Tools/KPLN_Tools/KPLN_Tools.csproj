@@ -220,6 +220,7 @@
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
+    <Compile Include="ExternalCommands\Command_hiddenElementsFilter.cs" />
     <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
@@ -248,6 +249,9 @@
     </Compile>
     <Compile Include="Forms\FormChangeElementInLevel.xaml.cs">
       <DependentUpon>FormChangeElementInLevel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\HiddenElementsFilterWindow.xaml.cs">
+      <DependentUpon>HiddenElementsFilterWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
@@ -360,6 +364,9 @@
     </Compile>
     <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
       <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ScanProgressWindow.xaml.cs">
+      <DependentUpon>ScanProgressWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ScheduleSubForm.xaml.cs">
       <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
@@ -477,6 +484,14 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\HiddenElementsFilterWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ScanProgressWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -516,6 +531,7 @@
     <EmbeddedResource Include="Imagens\ApartmentManagerSmall.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelSmall.png" />
+    <EmbeddedResource Include="Imagens\hiddenElementsFilterSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
