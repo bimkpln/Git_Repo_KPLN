@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_Tools.Common;
 using KPLN_Tools.ExternalCommands;
 using Microsoft.Win32;
 using System;
@@ -83,28 +84,28 @@ namespace KPLN_Tools.Forms
         {
             StringBuilder sb = new StringBuilder();
 
-            Dictionary<int, List<ViewOccurrenceInfo>> elementViewsMap = BuildElementViewsMap();
+            Dictionary<long, List<ViewOccurrenceInfo>> elementViewsMap = BuildElementViewsMap();
 
             List<PlanHiddenInfo> plansWithHiddenElements = _scanResult.Sheets
                 .Where(s => s != null && s.Plans != null)
                 .SelectMany(s => s.Plans)
                 .Where(p => p != null && p.HiddenElementIds != null && p.HiddenElementIds.Count > 0)
                 .OrderBy(p => p.ViewName)
-                .ThenBy(p => p.ViewId.IntegerValue)
+                .ThenBy(p => IDHelper.ElIdValue(p.ViewId))
                 .ToList();
 
             foreach (PlanHiddenInfo plan in plansWithHiddenElements)
             {
-                sb.AppendLine((plan.ViewName ?? string.Empty) + " (" + plan.ViewId.IntegerValue + ")");
+                sb.AppendLine((plan.ViewName ?? string.Empty) + " (" + IDHelper.ElIdValue(plan.ViewId) + ")");
 
-                List<int> uniqueIdsInPlan = plan.HiddenElementIds
+                List<long> uniqueIdsInPlan = plan.HiddenElementIds
                     .Where(x => x != null)
-                    .Select(x => x.IntegerValue)
+                    .Select(x => IDHelper.ElIdValue(x))
                     .Distinct()
                     .OrderBy(x => x)
                     .ToList();
 
-                foreach (int elementId in uniqueIdsInPlan)
+                foreach (long elementId in uniqueIdsInPlan)
                 {
                     List<ViewOccurrenceInfo> otherViews = new List<ViewOccurrenceInfo>();
 
@@ -112,7 +113,7 @@ namespace KPLN_Tools.Forms
                     if (elementViewsMap.TryGetValue(elementId, out allViewsForElement))
                     {
                         otherViews = allViewsForElement
-                            .Where(v => v.ViewId != plan.ViewId.IntegerValue)
+                            .Where(v => v.ViewId != IDHelper.ElIdValue(plan.ViewId))
                             .OrderBy(v => v.ViewName)
                             .ThenBy(v => v.ViewId)
                             .ToList();
@@ -146,9 +147,9 @@ namespace KPLN_Tools.Forms
             return sb.ToString().TrimEnd();
         }
 
-        private Dictionary<int, List<ViewOccurrenceInfo>> BuildElementViewsMap()
+        private Dictionary<long, List<ViewOccurrenceInfo>> BuildElementViewsMap()
         {
-            Dictionary<int, List<ViewOccurrenceInfo>> result = new Dictionary<int, List<ViewOccurrenceInfo>>();
+            Dictionary<long, List<ViewOccurrenceInfo>> result = new Dictionary<long, List<ViewOccurrenceInfo>>();
 
             List<PlanHiddenInfo> allPlansWithHidden = _scanResult.Sheets
                 .Where(s => s != null && s.Plans != null)
@@ -158,13 +159,13 @@ namespace KPLN_Tools.Forms
 
             foreach (PlanHiddenInfo plan in allPlansWithHidden)
             {
-                List<int> uniqueIdsInPlan = plan.HiddenElementIds
+                List<long> uniqueIdsInPlan = plan.HiddenElementIds
                     .Where(x => x != null)
-                    .Select(x => x.IntegerValue)
+                    .Select(x => IDHelper.ElIdValue(x))
                     .Distinct()
                     .ToList();
 
-                foreach (int elementId in uniqueIdsInPlan)
+                foreach (long elementId in uniqueIdsInPlan)
                 {
                     List<ViewOccurrenceInfo> views;
                     if (!result.TryGetValue(elementId, out views))
@@ -175,7 +176,7 @@ namespace KPLN_Tools.Forms
 
                     views.Add(new ViewOccurrenceInfo
                     {
-                        ViewId = plan.ViewId.IntegerValue,
+                        ViewId = IDHelper.ElIdValue(plan.ViewId),
                         ViewName = plan.ViewName ?? string.Empty
                     });
                 }
@@ -184,12 +185,17 @@ namespace KPLN_Tools.Forms
             return result;
         }
 
-        private bool ElementHasParameter(int elementId, string parameterName)
+        private bool ElementHasParameter(long elementId, string parameterName)
         {
             if (_doc == null)
                 return false;
 
+#if !Revit2024 && !Debug2024
+            Element element = _doc.GetElement(new ElementId((int)elementId));
+#else
             Element element = _doc.GetElement(new ElementId(elementId));
+#endif
+
             if (element == null)
                 return false;
 
@@ -199,7 +205,7 @@ namespace KPLN_Tools.Forms
 
         private class ViewOccurrenceInfo
         {
-            public int ViewId { get; set; }
+            public long ViewId { get; set; }
             public string ViewName { get; set; }
         }
     }

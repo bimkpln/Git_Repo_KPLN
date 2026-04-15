@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace KPLN_Tools.ExternalCommands
     {
         internal const string PluginName = "Управление скрытыми элементами";
         private const string FilterParameterName = "KPLN_Фильтрация";
+        private const string FilterNamePrefix = "KPLN_Фильтрация_";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -52,6 +54,12 @@ namespace KPLN_Tools.ExternalCommands
                     scanResult.HiddenElementViews,
                     FilterParameterName);
 
+                ViewFilterResult filterResult = HiddenElementsCollector.ApplyViewFiltersToViews(
+                    doc,
+                    scanResult.Sheets,
+                    FilterParameterName,
+                    FilterNamePrefix);
+
                 UnhideResult unhideResult = HiddenElementsCollector.UnhideHiddenElements(
                     doc,
                     scanResult.Sheets,
@@ -61,6 +69,7 @@ namespace KPLN_Tools.ExternalCommands
                 string resultText = BuildResultText(
                     scanResult,
                     writeResult,
+                    filterResult,
                     unhideResult,
                     window.UnhideAllElements);
 
@@ -89,6 +98,7 @@ namespace KPLN_Tools.ExternalCommands
         private static string BuildResultText(
             HiddenElementsScanResult scanResult,
             WriteResult writeResult,
+            ViewFilterResult filterResult,
             UnhideResult unhideResult,
             bool unhideAllElements)
         {
@@ -109,8 +119,35 @@ namespace KPLN_Tools.ExternalCommands
                 AppendNonZeroLine(sb, "NULL", writeResult.NullElementCount);
                 AppendNonZeroLine(sb, "Нет параметра", writeResult.NoParameterCount);
                 AppendNonZeroLine(sb, "Параметр ReadOnly", writeResult.ReadOnlyCount);
-                AppendNonZeroLine(sb, "Параметр имет не строчный тип", writeResult.WrongStorageTypeCount);
+                AppendNonZeroLine(sb, "Тип параметра не строковый", writeResult.WrongStorageTypeCount);
                 AppendNonZeroLine(sb, "Ошибка Set()", writeResult.SetFailedCount);
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("Фильтры в переопределении видимости/графики: " + filterResult.AppliedViewsCount + " из " + filterResult.TargetViewsCount);
+            sb.AppendLine("Элементов скрывается фильтрами: " + filterResult.FilteredElementsCount + " из " + filterResult.TargetElementsCount);
+
+            if (filterResult.TemplatesCheckedCount > 0)
+            {
+                AppendNonZeroLine(sb, "Шаблонов проверено", filterResult.TemplatesCheckedCount);
+                AppendNonZeroLine(sb, "Шаблонов, где снят контроль Filters", filterResult.TemplatesReleasedCount);
+                AppendNonZeroLine(sb, "Шаблонов, где Filters уже не контролировались", filterResult.TemplatesAlreadyReleasedCount);
+                AppendNonZeroLine(sb, "Ошибка изменения шаблона", filterResult.FailedTemplatesCount);
+            }
+
+            if (filterResult.CreatedFiltersCount > 0 ||
+                filterResult.UpdatedFiltersCount > 0 ||
+                filterResult.ViewsWithoutCategoriesCount > 0 ||
+                filterResult.FailedViewsCount > 0)
+            {
+                AppendNonZeroLine(sb, "Создано фильтров", filterResult.CreatedFiltersCount);
+                AppendNonZeroLine(sb, "Обновлено фильтров", filterResult.UpdatedFiltersCount);
+                AppendNonZeroLine(sb, "Вид без категорий для фильтра", filterResult.ViewsWithoutCategoriesCount);
+                AppendNonZeroLine(sb, "Ошибка применения фильтра", filterResult.FailedViewsCount);
+                sb.AppendLine();
+            }
+            else
+            {
                 sb.AppendLine();
             }
 
@@ -127,12 +164,12 @@ namespace KPLN_Tools.ExternalCommands
 
             if (totalUnhideIssues > 0)
             {
-                sb.AppendLine("Ошибки и пропуски:");
+                sb.AppendLine("Пропуски:");
                 AppendNonZeroLine(sb, "Вид не найден", unhideResult.MissingViewsCount);
                 AppendNonZeroLine(sb, "План без подходящих элементов", unhideResult.SkippedPlansWithoutTargetElementsCount);
 
                 if (!unhideAllElements)
-                    AppendNonZeroLine(sb, "Элемент без параметра KPLN_Фильтрация", unhideResult.NoParameterElementsCount);
+                    AppendNonZeroLine(sb, "Элемент не отмечен в KPLN_Фильтрация для этого вида", unhideResult.NoParameterElementsCount);
 
                 AppendNonZeroLine(sb, "Элемент уже не скрыт", unhideResult.NotCurrentlyHiddenElementsCount);
                 AppendNonZeroLine(sb, "Ошибка отображения элемента", unhideResult.FailedElementsCount);
@@ -167,7 +204,9 @@ namespace KPLN_Tools.ExternalCommands
                 .Where(e => e != null && !(e is View) && !(e is ViewSheet))
                 .ToList();
 
-            Dictionary<ElementId, List<ViewPlan>> plansBySheetId = new Dictionary<ElementId, List<ViewPlan>>(new ElementIdEqualityComparer());
+            Dictionary<ElementId, List<ViewPlan>> plansBySheetId =
+                new Dictionary<ElementId, List<ViewPlan>>(new ElementIdEqualityComparer());
+
             List<ViewPlan> allPlans = new List<ViewPlan>();
 
             foreach (ViewSheet sheet in sheets)
@@ -224,7 +263,7 @@ namespace KPLN_Tools.ExternalCommands
                     }
 
                     List<ElementId> hiddenIds = GetPermanentlyHiddenElementIds(plan, candidateElements)
-                        .OrderBy(x => x.IntegerValue)
+                        .OrderBy(x => IDHelper.ElIdInt(x))
                         .ToList();
 
                     PlanHiddenInfo planInfo = new PlanHiddenInfo
@@ -250,14 +289,14 @@ namespace KPLN_Tools.ExternalCommands
                     {
                         uniqueHiddenOnSheet.Add(hiddenId);
 
-                        HashSet<string> viewNames;
-                        if (!result.HiddenElementViews.TryGetValue(hiddenId, out viewNames))
+                        HashSet<int> viewIds;
+                        if (!result.HiddenElementViews.TryGetValue(hiddenId, out viewIds))
                         {
-                            viewNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            result.HiddenElementViews.Add(hiddenId, viewNames);
+                            viewIds = new HashSet<int>();
+                            result.HiddenElementViews.Add(hiddenId, viewIds);
                         }
 
-                        viewNames.Add(plan.Name);
+                        viewIds.Add(IDHelper.ElIdInt(plan.Id));
                     }
                 }
 
@@ -287,10 +326,10 @@ namespace KPLN_Tools.ExternalCommands
                 if (e == null)
                     continue;
 
-                if (e.Id.IntegerValue == view.Id.IntegerValue)
+                if (IDHelper.ElIdInt(e.Id) == IDHelper.ElIdInt(view.Id))
                     continue;
 
-                if (e.ViewSpecific && e.OwnerViewId.IntegerValue != view.Id.IntegerValue)
+                if (e.ViewSpecific && IDHelper.ElIdInt(e.OwnerViewId) != IDHelper.ElIdInt(view.Id))
                     continue;
 
                 try
@@ -318,7 +357,7 @@ namespace KPLN_Tools.ExternalCommands
 
         public static WriteResult WriteFilterParameter(
             Document doc,
-            Dictionary<ElementId, HashSet<string>> hiddenElementViews,
+            Dictionary<ElementId, HashSet<int>> hiddenElementViews,
             string parameterName)
         {
             WriteResult result = new WriteResult();
@@ -327,7 +366,7 @@ namespace KPLN_Tools.ExternalCommands
             {
                 t.Start();
 
-                foreach (KeyValuePair<ElementId, HashSet<string>> pair in hiddenElementViews)
+                foreach (KeyValuePair<ElementId, HashSet<int>> pair in hiddenElementViews)
                 {
                     Element element = doc.GetElement(pair.Key);
                     if (element == null)
@@ -359,12 +398,12 @@ namespace KPLN_Tools.ExternalCommands
                         continue;
                     }
 
-                    string value = string.Join(
-                        ";",
-                        pair.Value
-                            .Where(x => !string.IsNullOrWhiteSpace(x))
-                            .Distinct(StringComparer.OrdinalIgnoreCase)
-                            .OrderBy(x => x));
+                    List<int> sortedViewIds = pair.Value
+                        .Distinct()
+                        .OrderBy(x => x)
+                        .ToList();
+
+                    string value = ";" + string.Join(";", sortedViewIds) + ";";
 
                     try
                     {
@@ -390,6 +429,212 @@ namespace KPLN_Tools.ExternalCommands
             }
 
             return result;
+        }
+
+        public static ViewFilterResult ApplyViewFiltersToViews(
+            Document doc,
+            List<SheetHiddenInfo> sheets,
+            string parameterName,
+            string filterNamePrefix)
+        {
+            ViewFilterResult result = new ViewFilterResult();
+
+            Dictionary<string, ParameterFilterElement> existingFilters =
+                new FilteredElementCollector(doc)
+                    .OfClass(typeof(ParameterFilterElement))
+                    .Cast<ParameterFilterElement>()
+                    .GroupBy(x => x.Name)
+                    .Select(x => x.First())
+                    .ToDictionary(x => x.Name, x => x);
+
+            Dictionary<int, bool> templatePrepared = new Dictionary<int, bool>();
+
+            using (Transaction t = new Transaction(doc, "Применение фильтров к видам"))
+            {
+                t.Start();
+
+                foreach (SheetHiddenInfo sheet in sheets)
+                {
+                    if (sheet == null || sheet.Plans == null)
+                        continue;
+
+                    foreach (PlanHiddenInfo planInfo in sheet.Plans)
+                    {
+                        if (planInfo == null || planInfo.HiddenElementIds == null || planInfo.HiddenElementIds.Count == 0)
+                            continue;
+
+                        View view = doc.GetElement(planInfo.ViewId) as View;
+                        if (view == null)
+                        {
+                            result.FailedViewsCount++;
+                            continue;
+                        }
+
+                        if (!PrepareTemplateForViewFilters(doc, view, templatePrepared, result))
+                        {
+                            result.FailedViewsCount++;
+                            continue;
+                        }
+
+                        List<Element> targetElements = new List<Element>();
+                        HashSet<ElementId> categoryIds = new HashSet<ElementId>(new ElementIdEqualityComparer());
+                        ElementId parameterId = null;
+
+                        foreach (ElementId id in planInfo.HiddenElementIds.Distinct(new ElementIdLinqComparer()))
+                        {
+                            Element element = doc.GetElement(id);
+                            if (element == null)
+                                continue;
+
+                            Parameter parameter = element.LookupParameter(parameterName);
+                            if (parameter == null)
+                                continue;
+
+                            if (parameter.StorageType != StorageType.String)
+                                continue;
+
+                            string paramValue = parameter.AsString();
+                            if (!ContainsViewToken(paramValue, IDHelper.ElIdInt(planInfo.ViewId)))
+                                continue;
+
+                            if (parameterId == null)
+                                parameterId = parameter.Id;
+
+                            if (element.Category != null)
+                                categoryIds.Add(element.Category.Id);
+
+                            targetElements.Add(element);
+                        }
+
+                        if (targetElements.Count == 0)
+                            continue;
+
+                        result.TargetViewsCount++;
+                        result.TargetElementsCount += targetElements.Count;
+
+                        List<ElementId> filterCategoryIds = categoryIds.ToList();
+
+                        try
+                        {
+                            ParameterFilterUtilities.RemoveUnfilterableCategories(filterCategoryIds);
+                        }
+                        catch
+                        {
+                        }
+
+                        if (filterCategoryIds.Count == 0 || parameterId == null)
+                        {
+                            result.ViewsWithoutCategoriesCount++;
+                            continue;
+                        }
+
+                        try
+                        {
+                            string token = ";" + IDHelper.ElIdInt(planInfo.ViewId) + ";";
+
+                            FilterRule rule = IDHelper.CreateContainsRule(parameterId, token);
+
+                            ElementParameterFilter elementFilter = new ElementParameterFilter(rule);
+
+                            string filterName = filterNamePrefix + IDHelper.ElIdInt(planInfo.ViewId);
+                            ParameterFilterElement parameterFilter;
+
+                            if (existingFilters.TryGetValue(filterName, out parameterFilter))
+                            {
+                                parameterFilter.SetCategories(filterCategoryIds);
+                                parameterFilter.SetElementFilter(elementFilter);
+                                result.UpdatedFiltersCount++;
+                            }
+                            else
+                            {
+                                parameterFilter = ParameterFilterElement.Create(doc, filterName, filterCategoryIds);
+                                parameterFilter.SetElementFilter(elementFilter);
+                                existingFilters[filterName] = parameterFilter;
+                                result.CreatedFiltersCount++;
+                            }
+
+                            ICollection<ElementId> viewFilters = view.GetFilters();
+                            if (!viewFilters.Contains(parameterFilter.Id))
+                                view.AddFilter(parameterFilter.Id);
+
+                            view.SetFilterVisibility(parameterFilter.Id, false);
+
+                            result.AppliedViewsCount++;
+                            result.FilteredElementsCount += targetElements.Count;
+                        }
+                        catch
+                        {
+                            result.FailedViewsCount++;
+                        }
+                    }
+                }
+
+                t.Commit();
+            }
+
+            return result;
+        }
+
+        private static bool PrepareTemplateForViewFilters(
+            Document doc,
+            View view,
+            Dictionary<int, bool> templatePrepared,
+            ViewFilterResult result)
+        {
+            if (doc == null || view == null)
+                return false;
+
+            if (view.ViewTemplateId == null ||
+                IDHelper.ElIdInt(view.ViewTemplateId) == IDHelper.ElIdInt(ElementId.InvalidElementId))
+            {
+                return true;
+            }
+
+            int templateId = IDHelper.ElIdInt(view.ViewTemplateId);
+
+            bool isReady;
+            if (templatePrepared.TryGetValue(templateId, out isReady))
+                return isReady;
+
+            View templateView = doc.GetElement(view.ViewTemplateId) as View;
+            if (templateView == null || !templateView.IsTemplate)
+            {
+                templatePrepared[templateId] = false;
+                result.FailedTemplatesCount++;
+                return false;
+            }
+
+            result.TemplatesCheckedCount++;
+
+            try
+            {
+                ElementId filtersParameterId = new ElementId(BuiltInParameter.VIS_GRAPHICS_FILTERS);
+                ICollection<ElementId> nonControlledIds = templateView.GetNonControlledTemplateParameterIds();
+
+                bool alreadyReleased = nonControlledIds.Any(x => x != null && IDHelper.ElIdInt(x) == IDHelper.ElIdInt(filtersParameterId));
+
+                if (alreadyReleased)
+                {
+                    result.TemplatesAlreadyReleasedCount++;
+                    templatePrepared[templateId] = true;
+                    return true;
+                }
+
+                List<ElementId> newNonControlledIds = nonControlledIds.ToList();
+                newNonControlledIds.Add(filtersParameterId);
+
+                templateView.SetNonControlledTemplateParameterIds(newNonControlledIds);
+
+                result.TemplatesReleasedCount++;
+                templatePrepared[templateId] = true;
+                return true;
+            }
+            catch
+            {
+                result.FailedTemplatesCount++;
+                templatePrepared[templateId] = false;
+                return false;
+            }
         }
 
         public static UnhideResult UnhideHiddenElements(
@@ -427,8 +672,7 @@ namespace KPLN_Tools.ExternalCommands
 
                             if (!unhideAllElements)
                             {
-                                Parameter parameter = element.LookupParameter(parameterName);
-                                if (parameter == null)
+                                if (!ElementContainsViewToken(element, parameterName, IDHelper.ElIdInt(planInfo.ViewId)))
                                 {
                                     result.NoParameterElementsCount++;
                                     continue;
@@ -528,6 +772,27 @@ namespace KPLN_Tools.ExternalCommands
             return result;
         }
 
+        private static bool ElementContainsViewToken(Element element, string parameterName, int viewId)
+        {
+            if (element == null)
+                return false;
+
+            Parameter parameter = element.LookupParameter(parameterName);
+            if (parameter == null || parameter.StorageType != StorageType.String)
+                return false;
+
+            return ContainsViewToken(parameter.AsString(), viewId);
+        }
+
+        private static bool ContainsViewToken(string value, int viewId)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string token = ";" + viewId + ";";
+            return value.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private static void DoEvents()
         {
             DispatcherFrame frame = new DispatcherFrame();
@@ -553,11 +818,11 @@ namespace KPLN_Tools.ExternalCommands
         public HiddenElementsScanResult()
         {
             Sheets = new List<SheetHiddenInfo>();
-            HiddenElementViews = new Dictionary<ElementId, HashSet<string>>(new ElementIdEqualityComparer());
+            HiddenElementViews = new Dictionary<ElementId, HashSet<int>>(new ElementIdEqualityComparer());
         }
 
         public List<SheetHiddenInfo> Sheets { get; private set; }
-        public Dictionary<ElementId, HashSet<string>> HiddenElementViews { get; private set; }
+        public Dictionary<ElementId, HashSet<int>> HiddenElementViews { get; private set; }
 
         public int TotalPlansCount { get; set; }
         public int TotalPlansWithHiddenElements { get; set; }
@@ -618,6 +883,25 @@ namespace KPLN_Tools.ExternalCommands
         public int SetFailedCount { get; set; }
     }
 
+    public class ViewFilterResult
+    {
+        public int TargetViewsCount { get; set; }
+        public int AppliedViewsCount { get; set; }
+
+        public int TargetElementsCount { get; set; }
+        public int FilteredElementsCount { get; set; }
+
+        public int CreatedFiltersCount { get; set; }
+        public int UpdatedFiltersCount { get; set; }
+        public int ViewsWithoutCategoriesCount { get; set; }
+        public int FailedViewsCount { get; set; }
+
+        public int TemplatesCheckedCount { get; set; }
+        public int TemplatesReleasedCount { get; set; }
+        public int TemplatesAlreadyReleasedCount { get; set; }
+        public int FailedTemplatesCount { get; set; }
+    }
+
     public class UnhideResult
     {
         public int TargetPlansCount { get; set; }
@@ -644,12 +928,31 @@ namespace KPLN_Tools.ExternalCommands
             if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
                 return false;
 
-            return x.IntegerValue == y.IntegerValue;
+            return IDHelper.ElIdInt(x) == IDHelper.ElIdInt(y);
         }
 
         public int GetHashCode(ElementId obj)
         {
-            return obj == null ? 0 : obj.IntegerValue.GetHashCode();
+            return obj == null ? 0 : IDHelper.ElIdInt(obj).GetHashCode();
+        }
+    }
+
+    internal class ElementIdLinqComparer : IEqualityComparer<ElementId>
+    {
+        public bool Equals(ElementId x, ElementId y)
+        {
+            if (ReferenceEquals(x, y))
+                return true;
+
+            if (ReferenceEquals(x, null) || ReferenceEquals(y, null))
+                return false;
+
+            return IDHelper.ElIdInt(x) == IDHelper.ElIdInt(y);
+        }
+
+        public int GetHashCode(ElementId obj)
+        {
+            return obj == null ? 0 : IDHelper.ElIdInt(obj).GetHashCode();
         }
     }
 }
