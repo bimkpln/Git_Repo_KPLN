@@ -214,28 +214,6 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.wsLinksSmall.png",
                     "http://moodle");
 
-
-
-
-
-            PushButtonData hiddenElementsFilter = CreateBtnData(
-                Command_hiddenElementsFilter.PluginName,
-                Command_hiddenElementsFilter.PluginName,
-                "Анализ на наличие скрытых под лампочку элементов, а так же заполнение параметра KPLN_Фильтрация для таких элементов",
-                string.Format(
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(Command_hiddenElementsFilter).FullName,
-                "KPLN_Tools.Imagens.hiddenElementsFilterSmall.png",
-                "KPLN_Tools.Imagens.hiddenElementsFilterSmall.png",
-                "http://moodle");
-
-
-
-
 #if Revit2020 || Debug2020
             PushButtonData set_ChangeRSLinks = CreateBtnData(
                 "СЕТ: Обновить связи",
@@ -264,7 +242,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(movingElementsInLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(ws_Links);
-            sharedPullDownBtn.AddPushButton(hiddenElementsFilter);
+            
 
             #endregion
 
@@ -600,8 +578,24 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.FillInParamSmall.png",
                     "http://moodle/");
 
+                PushButtonData hiddenElementsFilter = CreateBtnData(
+                    "СЕТ: Скрытые элементы",
+                    "СЕТ: Скрытые элементы",
+                    "Анализ на наличие скрытых под лампочку элементов, а так же заполнение параметра KPLN_Фильтрация для таких элементов",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_hiddenElementsFilter).FullName,
+                    "KPLN_Tools.Imagens.hiddenElementsFilterSmall.png",
+                    "KPLN_Tools.Imagens.hiddenElementsFilterSmall.png",
+                    "http://moodle");               
+
                 ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
                 ssToolsPullDownBtn.AddPushButton(ssCheckingDimension);
+                ssToolsPullDownBtn.AddPushButton(hiddenElementsFilter);
             }
             #endregion
 
