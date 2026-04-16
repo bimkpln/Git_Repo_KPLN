@@ -15,7 +15,6 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal class Command_hiddenElementsFilter : IExternalCommand
     {
-        internal const string PluginName = "Управление скрытыми элементами";
         private const string FilterParameterName = "KPLN_Фильтрация";
         private const string FilterNamePrefix = "KPLN_Фильтрация_";
 
@@ -39,7 +38,7 @@ namespace KPLN_Tools.ExternalCommands
 
                 if (scanResult.TotalPlansCount == 0)
                 {
-                    TaskDialog.Show(PluginName, "На листах не найдено размещённых планов.");
+                    TaskDialog.Show("СЕТ: Скрытые элементы", "На листах не найдено размещённых планов.");
                     return Result.Succeeded;
                 }
 
@@ -73,7 +72,7 @@ namespace KPLN_Tools.ExternalCommands
                     unhideResult,
                     window.UnhideAllElements);
 
-                TaskDialog.Show(PluginName, resultText);
+                TaskDialog.Show("СЕТ: Скрытые элементы", resultText);
 
                 return Result.Succeeded;
             }
