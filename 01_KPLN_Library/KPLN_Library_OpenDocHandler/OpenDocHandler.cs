@@ -73,6 +73,7 @@ namespace KPLN_Library_OpenDocHandler
             }
             else
             {
+                // Определение типа окна
                 DBRevitDialog currentDBDialog = null;
                 string userFriendlyDialogData = string.Empty;
                 if (string.IsNullOrEmpty(args.DialogId))
@@ -93,9 +94,11 @@ namespace KPLN_Library_OpenDocHandler
                     userFriendlyDialogData = args.DialogId;
                 }
 
+
+                // Обработка конкретного типа окна
                 if (currentDBDialog == null)
                 {
-                    _logger.Error($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека");
+                    _logger.Error($"Окно \"{userFriendlyDialogData}\" не удалось обработать. Необходим контроль со стороны человека");
                     return;
                 }
 
