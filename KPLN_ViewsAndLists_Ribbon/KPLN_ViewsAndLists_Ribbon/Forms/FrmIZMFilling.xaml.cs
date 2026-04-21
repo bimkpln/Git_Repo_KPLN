@@ -1,9 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
@@ -35,6 +33,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 #endif
     }
 
+    internal enum SheetStampMode
+    {
+        StandardFull,
+        Form12SingleRevision,
+        RevisionPermissionSingleRevision,
+        GipCertificateSingleRevision,
+        MultiStampCustom
+    }
+
     internal class FrmIZMFillingViewModel : INotifyPropertyChanged
     {
         private readonly Document _doc;
@@ -45,6 +52,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public ObservableCollection<SheetRowItem> SheetRows { get; private set; }
         public ObservableCollection<RevisionComboItem> RevisionItems { get; private set; }
         public ObservableCollection<SheetStatusItem> StatusItems { get; private set; }
+        public ObservableCollection<SheetStatusItem> ManualStatusItems { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler SelectedSheetsChanged;
@@ -57,6 +65,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             SheetRows = new ObservableCollection<SheetRowItem>();
             RevisionItems = new ObservableCollection<RevisionComboItem>();
             StatusItems = new ObservableCollection<SheetStatusItem>();
+            ManualStatusItems = new ObservableCollection<SheetStatusItem>();
 
             FillRevisionItems();
             FillStatusItems();
@@ -80,7 +89,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             {
                 string approvedFor = GetRevisionApprovedForDisplay(revision);
                 string displayName = "Строка " + revision.SequenceNumber.ToString(CultureInfo.InvariantCulture) + ": ИЗМ № " + approvedFor;
-
                 RevisionItems.Add(new RevisionComboItem(revision.Id, displayName, revision.SequenceNumber));
             }
         }
@@ -107,7 +115,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return string.Empty;
 
             string familyName = string.Empty;
-
             try
             {
                 Parameter familyNameParam = symbol.get_Parameter(BuiltInParameter.SYMBOL_FAMILY_NAME_PARAM);
@@ -119,7 +126,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
 
             string typeName = string.Empty;
-
             try
             {
                 typeName = symbol.Name;
@@ -165,6 +171,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             StatusItems.Add(new SheetStatusItem(1, "-"));
             StatusItems.Add(new SheetStatusItem(2, "Зам."));
             StatusItems.Add(new SheetStatusItem(3, "Нов."));
+
+            ManualStatusItems.Clear();
+            ManualStatusItems.Add(new SheetStatusItem(0, "*Пусто*"));
+            ManualStatusItems.Add(new SheetStatusItem(1, "-"));
+            ManualStatusItems.Add(new SheetStatusItem(2, "Зам."));
+            ManualStatusItems.Add(new SheetStatusItem(3, "Нов."));
+            ManualStatusItems.Add(new SheetStatusItem(-1, "Ошибка"));
         }
 
         private void BuildTree()
@@ -650,16 +663,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private readonly Document _doc;
         private readonly List<RevisionComboItem> _revisionDefinitions;
         private readonly List<SignatureComboItem> _signatureDefinitions;
-        private readonly int _rowCount;
 
-        private bool _isSorting;
-        private bool _isResettingDuplicateRevision;
-        private bool _isRebuildingRevisionUi;
+        private const string _form12TitleBlockName = "020_Основная надпись_Форма_12";
+        private const string _revisionPermissionTitleBlockName = "020_Разрешение на внесение изменений";
+        private const string _gipCertificateTitleBlockName = "020_Справка_ГИП";
 
         public ViewSheet Sheet { get; private set; }
         public string SheetNumber { get; private set; }
         public string SheetName { get; private set; }
-        public ObservableCollection<SheetRevisionLine> Lines { get; private set; }
+
+        public ObservableCollection<SheetStampBlockItem> Blocks { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler DuplicateRevisionDetected;
@@ -678,27 +691,136 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             SheetNumber = sheet.SheetNumber;
             SheetName = sheet.Name;
 
-            _rowCount = DetectRowCount();
+            Blocks = new ObservableCollection<SheetStampBlockItem>();
 
-            Lines = new ObservableCollection<SheetRevisionLine>();
-
-            for (int displayNumber = _rowCount; displayNumber >= 1; displayNumber--)
-            {
-                Lines.Add(new SheetRevisionLine(_doc, displayNumber, _revisionDefinitions, _signatureDefinitions));
-            }
-
-            Lines.CollectionChanged += Lines_CollectionChanged;
-            SubscribeLines(Lines, true);
-
-            RefreshDisplayNumbers();
-            RebuildRevisionUi();
-            LoadFromSheet();
+            BuildBlocks();
         }
 
-        private int DetectRowCount()
+        private void BuildBlocks()
         {
-            FamilyInstance titleBlock = GetMainTitleBlock();
+            Blocks.Clear();
 
+            List<FamilyInstance> titleBlocks = GetTitleBlocksOnSheet();
+
+            if (titleBlocks.Count <= 1)
+            {
+                FamilyInstance titleBlock = titleBlocks.FirstOrDefault();
+
+                SheetStampMode mode = GetSingleStampMode(titleBlock);
+                int rowCount = mode == SheetStampMode.StandardFull
+                    ? DetectRowCount(titleBlock)
+                    : 1;
+
+                SheetStampBlockItem block = new SheetStampBlockItem(
+                    _doc,
+                    Sheet,
+                    titleBlock,
+                    titleBlock != null ? GetTitleBlockHeader(titleBlock) : string.Empty,
+                    mode,
+                    rowCount,
+                    _revisionDefinitions,
+                    _signatureDefinitions);
+
+                block.ShowHeader = false;
+                block.DuplicateRevisionDetected += Block_DuplicateRevisionDetected;
+
+                Blocks.Add(block);
+
+                OnPropertyChanged("Blocks");
+                return;
+            }
+
+            foreach (FamilyInstance titleBlock in titleBlocks)
+            {
+                int rowCount = DetectRowCount(titleBlock);
+
+                SheetStampBlockItem block = new SheetStampBlockItem(
+                    _doc,
+                    Sheet,
+                    titleBlock,
+                    GetTitleBlockHeader(titleBlock),
+                    SheetStampMode.MultiStampCustom,
+                    rowCount,
+                    _revisionDefinitions,
+                    _signatureDefinitions);
+
+                block.ShowHeader = true;
+                block.DuplicateRevisionDetected += Block_DuplicateRevisionDetected;
+
+                Blocks.Add(block);
+            }
+
+            OnPropertyChanged("Blocks");
+        }
+
+        private void Block_DuplicateRevisionDetected(object sender, EventArgs e)
+        {
+            EventHandler handler = DuplicateRevisionDetected;
+            if (handler != null)
+                handler(this, EventArgs.Empty);
+        }
+
+        public void ApplyToSheet()
+        {
+            foreach (SheetStampBlockItem block in Blocks)
+                block.Apply();
+        }
+
+        public bool HasDuplicateRevisions()
+        {
+            return Blocks.Any(x => x.HasDuplicateRevisions());
+        }
+
+        private List<FamilyInstance> GetTitleBlocksOnSheet()
+        {
+            return new FilteredElementCollector(_doc, Sheet.Id)
+                .OfCategory(BuiltInCategory.OST_TitleBlocks)
+                .WhereElementIsNotElementType()
+                .Cast<FamilyInstance>()
+                .OrderBy(x => GetTitleBlockHeader(x), StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        private SheetStampMode GetSingleStampMode(FamilyInstance titleBlock)
+        {
+            if (MatchesTitleBlock(titleBlock, _form12TitleBlockName))
+                return SheetStampMode.Form12SingleRevision;
+
+            if (MatchesTitleBlock(titleBlock, _revisionPermissionTitleBlockName))
+                return SheetStampMode.RevisionPermissionSingleRevision;
+
+            if (MatchesTitleBlock(titleBlock, _gipCertificateTitleBlockName))
+                return SheetStampMode.GipCertificateSingleRevision;
+
+            return SheetStampMode.StandardFull;
+        }
+
+        private bool MatchesTitleBlock(FamilyInstance titleBlock, string targetName)
+        {
+            if (titleBlock == null || string.IsNullOrWhiteSpace(targetName))
+                return false;
+
+            string familyName = GetTitleBlockFamilyName(titleBlock);
+            string typeName = GetTitleBlockTypeName(titleBlock);
+
+            if (string.Equals(familyName, targetName, StringComparison.CurrentCultureIgnoreCase))
+                return true;
+
+            if (string.Equals(typeName, targetName, StringComparison.CurrentCultureIgnoreCase))
+                return true;
+
+            if (!string.IsNullOrWhiteSpace(familyName) && !string.IsNullOrWhiteSpace(typeName))
+            {
+                string combined = familyName + " : " + typeName;
+                if (string.Equals(combined, targetName, StringComparison.CurrentCultureIgnoreCase))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private int DetectRowCount(FamilyInstance titleBlock)
+        {
             if (HasTitleBlockParameterForRow4(titleBlock))
                 return 4;
 
@@ -718,35 +840,282 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             return p != null;
         }
 
-        private void Lines_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private string GetTitleBlockHeader(FamilyInstance titleBlock)
         {
-            SubscribeLines(e.NewItems, true);
-            SubscribeLines(e.OldItems, false);
-            RefreshDisplayNumbers();
-            RebuildRevisionUi();
+            if (titleBlock == null)
+                return string.Empty;
+
+            string manualNumber = GetParameterString(titleBlock, "Номер листа вручную");
+            if (!string.IsNullOrWhiteSpace(manualNumber))
+                return manualNumber;
+
+            string familyName = GetTitleBlockFamilyName(titleBlock);
+            if (!string.IsNullOrWhiteSpace(familyName))
+                return familyName;
+
+            return "Основная надпись " + IDHelper.ElIdInt(titleBlock.Id).ToString(CultureInfo.InvariantCulture);
         }
 
-        private void SubscribeLines(IList items, bool subscribe)
+        private string GetTitleBlockFamilyName(FamilyInstance titleBlock)
         {
-            if (items == null)
-                return;
+            if (titleBlock == null)
+                return string.Empty;
 
-            foreach (object item in items)
+            Element typeElement = _doc.GetElement(titleBlock.GetTypeId());
+            FamilySymbol symbol = typeElement as FamilySymbol;
+            if (symbol == null)
+                return string.Empty;
+
+            try
             {
-                SheetRevisionLine line = item as SheetRevisionLine;
-                if (line == null)
+                Parameter p = symbol.get_Parameter(BuiltInParameter.SYMBOL_FAMILY_NAME_PARAM);
+                if (p != null)
+                {
+                    string familyName = p.AsString();
+                    if (!string.IsNullOrWhiteSpace(familyName))
+                        return familyName;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (symbol.Family != null && !string.IsNullOrWhiteSpace(symbol.Family.Name))
+                    return symbol.Family.Name;
+            }
+            catch
+            {
+            }
+
+            return string.Empty;
+        }
+
+        private string GetTitleBlockTypeName(FamilyInstance titleBlock)
+        {
+            if (titleBlock == null)
+                return string.Empty;
+
+            Element typeElement = _doc.GetElement(titleBlock.GetTypeId());
+            FamilySymbol symbol = typeElement as FamilySymbol;
+            if (symbol == null)
+                return string.Empty;
+
+            try
+            {
+                return symbol.Name ?? string.Empty;
+            }
+            catch
+            {
+            }
+
+            return string.Empty;
+        }
+
+        private string GetParameterString(Element element, params string[] parameterNames)
+        {
+            if (element == null || parameterNames == null)
+                return string.Empty;
+
+            foreach (string name in parameterNames)
+            {
+                if (string.IsNullOrWhiteSpace(name))
                     continue;
 
-                if (subscribe)
-                    line.PropertyChanged += Line_PropertyChanged;
-                else
-                    line.PropertyChanged -= Line_PropertyChanged;
+                Parameter p = element.LookupParameter(name);
+                if (p == null)
+                    continue;
+
+                string value = GetParameterValueAsString(p);
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+
+            return string.Empty;
+        }
+
+        private string GetParameterValueAsString(Parameter p)
+        {
+            if (p == null)
+                return string.Empty;
+
+            try
+            {
+                if (p.StorageType == StorageType.String)
+                    return p.AsString();
+
+                string valueString = p.AsValueString();
+                if (!string.IsNullOrWhiteSpace(valueString))
+                    return valueString;
+
+                if (p.StorageType == StorageType.Integer)
+                    return p.AsInteger().ToString(CultureInfo.InvariantCulture);
+
+                if (p.StorageType == StorageType.Double)
+                    return p.AsDouble().ToString(CultureInfo.InvariantCulture);
+
+                if (p.StorageType == StorageType.ElementId)
+                    return IDHelper.ElIdInt(p.AsElementId()).ToString(CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+            }
+
+            return string.Empty;
+        }
+
+        protected void OnPropertyChanged(string propName)
+        {
+            PropertyChangedEventHandler handler = PropertyChanged;
+            if (handler != null)
+                handler(this, new PropertyChangedEventArgs(propName));
+        }
+    }
+
+    internal class SheetStampBlockItem : INotifyPropertyChanged
+    {
+        private readonly Document _doc;
+        private readonly ViewSheet _sheet;
+        private readonly FamilyInstance _titleBlock;
+        private readonly List<RevisionComboItem> _revisionDefinitions;
+        private readonly List<SignatureComboItem> _signatureDefinitions;
+
+        private bool _isSorting;
+        private bool _isResettingDuplicateRevision;
+        private bool _isRebuildingRevisionUi;
+        private bool _manualEditEnabled;
+        private bool _manualDocDataEnabled;
+
+        public string Header { get; private set; }
+        public SheetStampMode Mode { get; private set; }
+        public bool ShowHeader { get; set; }
+
+        public bool ManualEditEnabled
+        {
+            get { return _manualEditEnabled; }
+            set
+            {
+                if (_manualEditEnabled == value)
+                    return;
+
+                _manualEditEnabled = value;
+                OnPropertyChanged("ManualEditEnabled");
+            }
+        }
+
+        public bool ManualDocDataEnabled
+        {
+            get { return _manualDocDataEnabled; }
+            set
+            {
+                if (_manualDocDataEnabled == value)
+                    return;
+
+                _manualDocDataEnabled = value;
+                OnPropertyChanged("ManualDocDataEnabled");
+            }
+        }
+
+        public bool IsStandardFull { get { return Mode == SheetStampMode.StandardFull; } }
+
+        public bool IsForm12SingleRevision
+        {
+            get { return Mode == SheetStampMode.Form12SingleRevision; }
+        }
+
+        public bool IsRevisionPermissionSingleRevision
+        {
+            get { return Mode == SheetStampMode.RevisionPermissionSingleRevision; }
+        }
+
+        public bool IsGipCertificateSingleRevision
+        {
+            get { return Mode == SheetStampMode.GipCertificateSingleRevision; }
+        }
+
+        public bool IsSingleRevisionOnly
+        {
+            get
+            {
+                return Mode == SheetStampMode.Form12SingleRevision
+                    || Mode == SheetStampMode.RevisionPermissionSingleRevision
+                    || Mode == SheetStampMode.GipCertificateSingleRevision;
+            }
+        }
+
+        public bool IsMultiStampCustom
+        {
+            get { return Mode == SheetStampMode.MultiStampCustom; }
+        }
+
+        public ObservableCollection<SheetRevisionLine> Lines { get; private set; }
+
+        public SheetRevisionLine SingleLine
+        {
+            get { return Lines.FirstOrDefault(); }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        public event EventHandler DuplicateRevisionDetected;
+
+        public SheetStampBlockItem(
+            Document doc,
+            ViewSheet sheet,
+            FamilyInstance titleBlock,
+            string header,
+            SheetStampMode mode,
+            int rowCount,
+            List<RevisionComboItem> revisionDefinitions,
+            List<SignatureComboItem> signatureDefinitions)
+        {
+            _doc = doc;
+            _sheet = sheet;
+            _titleBlock = titleBlock;
+            _revisionDefinitions = revisionDefinitions ?? new List<RevisionComboItem>();
+            _signatureDefinitions = signatureDefinitions ?? new List<SignatureComboItem>();
+
+            Header = header ?? string.Empty;
+            Mode = mode;
+            ShowHeader = false;
+            ManualEditEnabled = false;
+            ManualDocDataEnabled = false;
+
+            if (rowCount <= 0)
+                rowCount = 1;
+
+            Lines = new ObservableCollection<SheetRevisionLine>();
+
+            for (int displayNumber = rowCount; displayNumber >= 1; displayNumber--)
+                Lines.Add(new SheetRevisionLine(_doc, displayNumber, _revisionDefinitions, _signatureDefinitions));
+
+            foreach (SheetRevisionLine line in Lines)
+                line.PropertyChanged += Line_PropertyChanged;
+
+            RefreshDisplayNumbers();
+
+            if (Mode == SheetStampMode.StandardFull)
+            {
+                RebuildRevisionUi();
+                LoadStandardFull();
+            }
+            else if (IsSingleRevisionOnly)
+            {
+                RebuildRevisionUi();
+                LoadSingleRevisionOnly();
+            }
+            else if (Mode == SheetStampMode.MultiStampCustom)
+            {
+                LoadMultiStampCustom();
             }
         }
 
         private void Line_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName != "RevisionIdValue")
+                return;
+
+            if (!IsStandardFull)
                 return;
 
             if (_isSorting || _isResettingDuplicateRevision || _isRebuildingRevisionUi)
@@ -774,29 +1143,32 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             SortLinesByRevisionOrder();
         }
 
-        private void CommitAllRevisionSelections()
+        public bool HasDuplicateRevisions()
         {
-            foreach (SheetRevisionLine line in Lines)
-                line.CommitRevisionSelection();
+            if (!IsStandardFull)
+                return false;
+
+            List<int> ids = Lines
+                .Where(x => IsValidRevisionId(x.RevisionId))
+                .Select(x => IDHelper.ElIdInt(x.RevisionId))
+                .ToList();
+
+            return ids.Count != ids.Distinct().Count();
         }
 
-        private bool IsValidRevisionId(ElementId revisionId)
+        public void Apply()
         {
-            if (revisionId == null)
-                return false;
-
-            if (revisionId == ElementId.InvalidElementId)
-                return false;
-
-            if (IDHelper.ElIdInt(revisionId) <= 0)
-                return false;
-
-            return _doc.GetElement(revisionId) is Revision;
+            if (IsStandardFull)
+                ApplyStandardFull();
+            else if (IsSingleRevisionOnly)
+                ApplySingleRevisionOnly();
+            else if (IsMultiStampCustom)
+                ApplyMultiStampCustom();
         }
 
-        public void LoadFromSheet()
+        private void LoadStandardFull()
         {
-            List<Revision> revisions = Sheet.GetAdditionalRevisionIds()
+            List<Revision> revisions = _sheet.GetAdditionalRevisionIds()
                 .Select(x => _doc.GetElement(x) as Revision)
                 .Where(x => x != null)
                 .OrderByDescending(x => x.SequenceNumber)
@@ -821,56 +1193,107 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             CommitAllRevisionSelections();
         }
 
-        private void LoadStaticColumnsFromSheet()
+        private void LoadSingleRevisionOnly()
         {
-            int[] statusDigits = GetStatusDigitsFromSheet();
-            FamilyInstance titleBlock = GetMainTitleBlock();
+            foreach (SheetRevisionLine line in Lines)
+                line.ResetAllData();
 
-            for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
+            Revision revision = _sheet.GetAdditionalRevisionIds()
+                .Select(x => _doc.GetElement(x) as Revision)
+                .Where(x => x != null)
+                .OrderByDescending(x => x.SequenceNumber)
+                .FirstOrDefault();
+
+            if (revision != null && SingleLine != null)
+                SingleLine.RevisionId = revision.Id;
+
+            CommitAllRevisionSelections();
+        }
+
+        private void LoadMultiStampCustom()
+        {
+            ManualEditEnabled = GetBoolFromTitleBlock(_titleBlock, "Изм_Вручную_Вкл");
+            ManualDocDataEnabled = GetBoolFromTitleBlock(_titleBlock, "ИзмДокДата_Вкл_Вручную");
+
+            foreach (SheetRevisionLine line in Lines)
             {
-                SheetRevisionLine line = Lines[rowIndex];
-                int mirroredSlotNumber = GetMirroredSlotNumber(rowIndex);
-
-                line.QuantityText = GetParameterString(Sheet, GetQtyParamName(mirroredSlotNumber));
-                line.StatusCode = GetStatusCodeBySlotNumber(statusDigits, mirroredSlotNumber);
-
-                int displayNumber = line.DisplayNumber;
-                line.SignatureTypeId = GetSignatureTypeIdFromTitleBlock(titleBlock, displayNumber);
+                line.ResetAllData();
+                line.SignatureTypeId = GetSignatureTypeIdFromTitleBlock(_titleBlock, line.DisplayNumber);
+                line.QuantityText = GetParameterString(_titleBlock, GetManualQtyParamName(line.DisplayNumber));
+                line.StatusCode = GetStatusCodeByManualValue(GetParameterString(_titleBlock, GetManualSheetParamName(line.DisplayNumber)));
+                line.ManualRevisionText = GetParameterString(_titleBlock, GetManualRevisionParamName(line.DisplayNumber));
+                line.ManualDocNumberText = GetParameterString(_titleBlock, GetManualDocParamName(line.DisplayNumber));
+                line.ManualDateText = GetParameterString(_titleBlock, GetManualDateParamName(line.DisplayNumber));
             }
         }
 
-        public void ApplyToSheet()
+        private void ApplyStandardFull()
         {
             SortLinesByRevisionOrder();
 
             List<ElementId> selectedRevisionIds = GetSelectedRevisionIds();
-            Sheet.SetAdditionalRevisionIds(selectedRevisionIds);
+            _sheet.SetAdditionalRevisionIds(selectedRevisionIds);
 
-            // Кол. уч. автономный.
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
             {
                 SheetRevisionLine line = Lines[rowIndex];
                 int mirroredSlotNumber = GetMirroredSlotNumber(rowIndex);
 
-                SetParameterString(Sheet, GetQtyParamName(mirroredSlotNumber), line.QuantityText);
+                SetParameterString(_sheet, GetQtyParamName(mirroredSlotNumber), line.QuantityText);
             }
 
-            // Лист автономный. Для 4-строчного и 2-строчного штампа разные методы.
             SetStatusStringToSheet();
-
-            // Подпись автономная.
-            FamilyInstance titleBlock = GetMainTitleBlock();
 
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
             {
                 SheetRevisionLine line = Lines[rowIndex];
                 int displayNumber = line.DisplayNumber;
-                SetSignatureTypeIdToTitleBlock(titleBlock, displayNumber, line.SignatureTypeId);
+
+                SetSignatureTypeIdToTitleBlock(_titleBlock, displayNumber, line.SignatureTypeId);
+            }
+        }
+
+        private void ApplySingleRevisionOnly()
+        {
+            List<ElementId> ids = new List<ElementId>();
+
+            if (SingleLine != null && IsValidRevisionId(SingleLine.RevisionId))
+                ids.Add(SingleLine.RevisionId);
+
+            _sheet.SetAdditionalRevisionIds(ids);
+        }
+
+        private void ApplyMultiStampCustom()
+        {
+            SetBoolToTitleBlock(_titleBlock, "КолУчЛист_Вручную_Вкл", ManualEditEnabled);
+            SetBoolToTitleBlock(_titleBlock, "ИзмДокДата_Вкл_Вручную", ManualDocDataEnabled);
+
+            foreach (SheetRevisionLine line in Lines)
+            {
+                SetSignatureTypeIdToTitleBlock(_titleBlock, line.DisplayNumber, line.SignatureTypeId);
+
+                if (ManualEditEnabled)
+                {
+                    SetParameterString(_titleBlock, GetManualQtyParamName(line.DisplayNumber), line.QuantityText);
+
+                    if (line.StatusCode != -1)
+                        SetParameterString(_titleBlock, GetManualSheetParamName(line.DisplayNumber), GetManualSheetValueByStatusCode(line.StatusCode));
+                }
+
+                if (ManualDocDataEnabled)
+                {
+                    SetParameterString(_titleBlock, GetManualRevisionParamName(line.DisplayNumber), line.ManualRevisionText);
+                    SetParameterString(_titleBlock, GetManualDocParamName(line.DisplayNumber), line.ManualDocNumberText);
+                    SetParameterString(_titleBlock, GetManualDateParamName(line.DisplayNumber), line.ManualDateText);
+                }
             }
         }
 
         public void SortLinesByRevisionOrder()
         {
+            if (!IsStandardFull)
+                return;
+
             _isSorting = true;
 
             try
@@ -888,8 +1311,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                     .ThenBy(x => x.OriginalIndex)
                     .ToList();
 
-                // Переставляем только ИЗМ.
-                // Quantity / Status / Signature не трогаем.
                 for (int i = 0; i < Lines.Count; i++)
                 {
                     RevisionSortableState state = sortedStates[i];
@@ -907,8 +1328,27 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             OnPropertyChanged("Lines");
         }
 
+        public List<ElementId> GetSelectedRevisionIds()
+        {
+            return Lines
+                .Where(x => IsValidRevisionId(x.RevisionId))
+                .Select(x => x.RevisionId)
+                .Distinct(new ElementIdEqualityComparer())
+                .OrderByDescending(x => GetRevisionSequence(x))
+                .ToList();
+        }
+
+        private void CommitAllRevisionSelections()
+        {
+            foreach (SheetRevisionLine line in Lines)
+                line.CommitRevisionSelection();
+        }
+
         private void RebuildRevisionUi()
         {
+            if (!IsStandardFull && !IsSingleRevisionOnly)
+                return;
+
             _isRebuildingRevisionUi = true;
 
             try
@@ -937,9 +1377,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private int GetVisualSortWeight(SheetRevisionLine line)
         {
             if (line == null || !line.HasRevisionSelected)
-                return 0; // пустые сверху
+                return 0;
 
-            return 1;     // заполненные снизу
+            return 1;
         }
 
         private int GetRevisionSequence(ElementId revisionId)
@@ -987,6 +1427,161 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        private string GetManualQtyParamName(int displayNumber)
+        {
+            switch (displayNumber)
+            {
+                case 1: return "КолУч1_Вручную";
+                case 2: return "КолУч2_Вручную";
+                case 3: return "КолУч3_Вручную";
+                case 4: return "КолУч4_Вручную";
+                default: return string.Empty;
+            }
+        }
+
+        private string GetManualSheetParamName(int displayNumber)
+        {
+            switch (displayNumber)
+            {
+                case 1: return "Лист1_Вручную";
+                case 2: return "Лист2_Вручную";
+                case 3: return "Лист3_Вручную";
+                case 4: return "Лист4_Вручную";
+                default: return string.Empty;
+            }
+        }
+
+        private string GetManualRevisionParamName(int displayNumber)
+        {
+            switch (displayNumber)
+            {
+                case 1: return "№Изм1_Вручную";
+                case 2: return "№Изм2_Вручную";
+                case 3: return "№Изм3_Вручную";
+                case 4: return "№Изм4_Вручную";
+                default: return string.Empty;
+            }
+        }
+
+        private string GetManualDocParamName(int displayNumber)
+        {
+            switch (displayNumber)
+            {
+                case 1: return "Док1_Вручную";
+                case 2: return "Док2_Вручную";
+                case 3: return "Док3_Вручную";
+                case 4: return "Док4_Вручную";
+                default: return string.Empty;
+            }
+        }
+
+        private string GetManualDateParamName(int displayNumber)
+        {
+            switch (displayNumber)
+            {
+                case 1: return "Дата1_Вручную";
+                case 2: return "Дата2_Вручную";
+                case 3: return "Дата3_Вручную";
+                case 4: return "Дата4_Вручную";
+                default: return string.Empty;
+            }
+        }
+
+        private string GetManualSheetValueByStatusCode(int statusCode)
+        {
+            switch (statusCode)
+            {
+                case 1: return "-";
+                case 2: return "Зам.";
+                case 3: return "Нов.";
+                case 0: return string.Empty;
+                default: return null;
+            }
+        }
+
+        private int GetStatusCodeByManualValue(string value)
+        {
+            string normalized = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+
+            if (string.IsNullOrWhiteSpace(normalized))
+                return 0;
+
+            if (string.Equals(normalized, "-", StringComparison.CurrentCultureIgnoreCase))
+                return 1;
+
+            if (string.Equals(normalized, "Зам.", StringComparison.CurrentCultureIgnoreCase))
+                return 2;
+
+            if (string.Equals(normalized, "Нов.", StringComparison.CurrentCultureIgnoreCase))
+                return 3;
+
+            return -1;
+        }
+
+        private bool GetBoolFromTitleBlock(FamilyInstance titleBlock, string parameterName)
+        {
+            if (titleBlock == null || string.IsNullOrWhiteSpace(parameterName))
+                return false;
+
+            Parameter p = titleBlock.LookupParameter(parameterName);
+            if (p == null)
+                return false;
+
+            try
+            {
+                if (p.StorageType == StorageType.Integer)
+                    return p.AsInteger() != 0;
+
+                if (p.StorageType == StorageType.String)
+                {
+                    string value = p.AsString();
+                    if (string.IsNullOrWhiteSpace(value))
+                        return false;
+
+                    value = value.Trim();
+
+                    if (string.Equals(value, "1", StringComparison.CurrentCultureIgnoreCase))
+                        return true;
+                    if (string.Equals(value, "true", StringComparison.CurrentCultureIgnoreCase))
+                        return true;
+                    if (string.Equals(value, "да", StringComparison.CurrentCultureIgnoreCase))
+                        return true;
+                }
+            }
+            catch
+            {
+            }
+
+            return false;
+        }
+
+        private void SetBoolToTitleBlock(FamilyInstance titleBlock, string parameterName, bool value)
+        {
+            if (titleBlock == null || string.IsNullOrWhiteSpace(parameterName))
+                return;
+
+            Parameter p = titleBlock.LookupParameter(parameterName);
+            if (p == null || p.IsReadOnly)
+                return;
+
+            try
+            {
+                if (p.StorageType == StorageType.Integer)
+                {
+                    p.Set(value ? 1 : 0);
+                    return;
+                }
+
+                if (p.StorageType == StorageType.String)
+                {
+                    p.Set(value ? "1" : "0");
+                }
+            }
+            catch
+            {
+            }
+        }
+
         private string GetTitleBlockSignatureParamName(int displayNumber)
         {
             switch (displayNumber)
@@ -1017,50 +1612,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return p;
 
             return null;
-        }
-
-        private FamilyInstance GetMainTitleBlock()
-        {
-            List<FamilyInstance> titleBlocks = new FilteredElementCollector(_doc, Sheet.Id)
-                .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                .WhereElementIsNotElementType()
-                .Cast<FamilyInstance>()
-                .ToList();
-
-            if (titleBlocks.Count == 0)
-                return null;
-
-            FamilyInstance preferred = titleBlocks
-                .FirstOrDefault(x => GetTitleBlockFamilyName(x).StartsWith("020_Основная надпись", StringComparison.CurrentCultureIgnoreCase));
-
-            return preferred ?? titleBlocks.FirstOrDefault();
-        }
-
-        private string GetTitleBlockFamilyName(FamilyInstance titleBlock)
-        {
-            if (titleBlock == null)
-                return string.Empty;
-
-            Element typeElement = _doc.GetElement(titleBlock.GetTypeId());
-            FamilySymbol symbol = typeElement as FamilySymbol;
-            if (symbol == null)
-                return string.Empty;
-
-            try
-            {
-                Parameter p = symbol.get_Parameter(BuiltInParameter.SYMBOL_FAMILY_NAME_PARAM);
-                if (p != null)
-                {
-                    string familyName = p.AsString();
-                    if (!string.IsNullOrWhiteSpace(familyName))
-                        return familyName;
-                }
-            }
-            catch
-            {
-            }
-
-            return string.Empty;
         }
 
         private ElementId GetSignatureTypeIdFromTitleBlock(FamilyInstance titleBlock, int displayNumber)
@@ -1122,24 +1673,31 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        private void LoadStaticColumnsFromSheet()
+        {
+            int[] statusDigits = GetStatusDigitsFromSheet();
+
+            for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
+            {
+                SheetRevisionLine line = Lines[rowIndex];
+                int mirroredSlotNumber = GetMirroredSlotNumber(rowIndex);
+
+                line.QuantityText = GetParameterString(_sheet, GetQtyParamName(mirroredSlotNumber));
+                line.StatusCode = GetStatusCodeBySlotNumber(statusDigits, mirroredSlotNumber);
+
+                int displayNumber = line.DisplayNumber;
+                line.SignatureTypeId = GetSignatureTypeIdFromTitleBlock(_titleBlock, displayNumber);
+            }
+        }
+
         private int[] GetStatusDigitsFromSheet()
         {
-            string value = GetParameterString(Sheet, "Ш.ШифрСтатусЛиста");
+            string value = GetParameterString(_sheet, "Ш.ШифрСтатусЛиста");
 
-            if (_rowCount == 4)
-                return ParseStatusDigitsForFourRows(value);
+            if (Lines.Count == 4)
+                return ParseStatusDigits(value, 4);
 
-            return ParseStatusDigitsForTwoRows(value);
-        }
-
-        private int[] ParseStatusDigitsForFourRows(string input)
-        {
-            return ParseStatusDigits(input, 4);
-        }
-
-        private int[] ParseStatusDigitsForTwoRows(string input)
-        {
-            return ParseStatusDigits(input, 2);
+            return ParseStatusDigits(value, 2);
         }
 
         private int[] ParseStatusDigits(string input, int expectedCount)
@@ -1182,62 +1740,34 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void SetStatusStringToSheet()
         {
-            string statusValue;
-
-            if (_rowCount == 4)
-                statusValue = BuildStatusStringForFourRows();
-            else
-                statusValue = BuildStatusStringForTwoRows();
-
-            SetParameterString(Sheet, "Ш.ШифрСтатусЛиста", statusValue);
-        }
-
-        private string BuildStatusStringForFourRows()
-        {
             StringBuilder statusBuilder = new StringBuilder();
 
-            for (int slotNumber = 1; slotNumber <= 4; slotNumber++)
+            for (int slotNumber = 1; slotNumber <= Lines.Count; slotNumber++)
             {
                 SheetRevisionLine line = GetLineByMirroredSlotNumber(slotNumber);
                 int status = line != null ? line.StatusCode : 0;
+
+                if (status < 0 || status > 3)
+                    status = 0;
+
                 statusBuilder.Append(status.ToString(CultureInfo.InvariantCulture));
             }
 
-            return statusBuilder.ToString();
+            SetParameterString(_sheet, "Ш.ШифрСтатусЛиста", statusBuilder.ToString());
         }
 
-        private string BuildStatusStringForTwoRows()
+        private bool IsValidRevisionId(ElementId revisionId)
         {
-            StringBuilder statusBuilder = new StringBuilder();
+            if (revisionId == null)
+                return false;
 
-            for (int slotNumber = 1; slotNumber <= 2; slotNumber++)
-            {
-                SheetRevisionLine line = GetLineByMirroredSlotNumber(slotNumber);
-                int status = line != null ? line.StatusCode : 0;
-                statusBuilder.Append(status.ToString(CultureInfo.InvariantCulture));
-            }
+            if (revisionId == ElementId.InvalidElementId)
+                return false;
 
-            return statusBuilder.ToString();
-        }
+            if (IDHelper.ElIdInt(revisionId) <= 0)
+                return false;
 
-        public List<ElementId> GetSelectedRevisionIds()
-        {
-            return Lines
-                .Where(x => IsValidRevisionId(x.RevisionId))
-                .Select(x => x.RevisionId)
-                .Distinct(new ElementIdEqualityComparer())
-                .OrderByDescending(x => GetRevisionSequence(x))
-                .ToList();
-        }
-
-        public bool HasDuplicateRevisions()
-        {
-            List<int> ids = Lines
-                .Where(x => IsValidRevisionId(x.RevisionId))
-                .Select(x => IDHelper.ElIdInt(x.RevisionId))
-                .ToList();
-
-            return ids.Count != ids.Distinct().Count();
+            return _doc.GetElement(revisionId) is Revision;
         }
 
         private string GetParameterString(Element element, string parameterName)
@@ -1335,6 +1865,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private ElementId _signatureTypeId;
         private int _signatureTypeIdValue;
+
+        private string _manualRevisionText;
+        private string _manualDocNumberText;
+        private string _manualDateText;
 
         private RevisionComboItem _selectedRevisionItem;
         private SignatureComboItem _selectedSignatureItem;
@@ -1519,6 +2053,48 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        public string ManualRevisionText
+        {
+            get { return _manualRevisionText; }
+            set
+            {
+                string newValue = value ?? string.Empty;
+                if (_manualRevisionText == newValue)
+                    return;
+
+                _manualRevisionText = newValue;
+                OnPropertyChanged("ManualRevisionText");
+            }
+        }
+
+        public string ManualDocNumberText
+        {
+            get { return _manualDocNumberText; }
+            set
+            {
+                string newValue = value ?? string.Empty;
+                if (_manualDocNumberText == newValue)
+                    return;
+
+                _manualDocNumberText = newValue;
+                OnPropertyChanged("ManualDocNumberText");
+            }
+        }
+
+        public string ManualDateText
+        {
+            get { return _manualDateText; }
+            set
+            {
+                string newValue = value ?? string.Empty;
+                if (_manualDateText == newValue)
+                    return;
+
+                _manualDateText = newValue;
+                OnPropertyChanged("ManualDateText");
+            }
+        }
+
         public SheetRevisionLine(
             Document doc,
             int displayNumber,
@@ -1539,6 +2115,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _statusCode = 0;
             _revisionDocNumber = string.Empty;
             _revisionDate = string.Empty;
+
+            _manualRevisionText = string.Empty;
+            _manualDocNumberText = string.Empty;
+            _manualDateText = string.Empty;
 
             AvailableRevisionItems = new ObservableCollection<RevisionComboItem>();
             AvailableSignatureItems = new ObservableCollection<SignatureComboItem>();
@@ -1730,10 +2310,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private int NormalizeRevisionIdValue(int revisionIdValue)
         {
-            if (revisionIdValue <= 0)
+            if (revisionIdValue == IDHelper.InvalidIdInt)
                 return IDHelper.InvalidIdInt;
 
-            if (revisionIdValue == IDHelper.InvalidIdInt)
+            if (revisionIdValue <= 0)
                 return IDHelper.InvalidIdInt;
 
             Revision revision = _doc.GetElement(IDHelper.ToElementId(revisionIdValue)) as Revision;
@@ -1745,10 +2325,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private int NormalizeSignatureTypeIdValue(int signatureTypeIdValue)
         {
-            if (signatureTypeIdValue <= 0)
+            if (signatureTypeIdValue == IDHelper.InvalidIdInt)
                 return IDHelper.InvalidIdInt;
 
-            if (signatureTypeIdValue == IDHelper.InvalidIdInt)
+            if (signatureTypeIdValue <= 0)
                 return IDHelper.InvalidIdInt;
 
             Element e = _doc.GetElement(IDHelper.ToElementId(signatureTypeIdValue));
@@ -1791,6 +2371,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             _revisionDocNumber = string.Empty;
             _revisionDate = string.Empty;
 
+            _manualRevisionText = string.Empty;
+            _manualDocNumberText = string.Empty;
+            _manualDateText = string.Empty;
+
             SyncSelectedRevisionItem();
             SyncSelectedSignatureItem();
 
@@ -1805,6 +2389,10 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             OnPropertyChanged("StatusCode");
             OnPropertyChanged("RevisionDocNumber");
             OnPropertyChanged("RevisionDate");
+
+            OnPropertyChanged("ManualRevisionText");
+            OnPropertyChanged("ManualDocNumberText");
+            OnPropertyChanged("ManualDateText");
         }
 
         public void ApplyRevisionState(ElementId revisionId)
@@ -1896,8 +2484,17 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private string GetRevisionDate(Revision revision)
         {
-            if (!string.IsNullOrWhiteSpace(revision.RevisionDate))
-                return revision.RevisionDate;
+            if (revision == null)
+                return string.Empty;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(revision.RevisionDate))
+                    return revision.RevisionDate;
+            }
+            catch
+            {
+            }
 
             string value = GetParameterString(revision, "Дата", "Revision Date");
             return value;
@@ -2027,7 +2624,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             {
                 if (row.HasDuplicateRevisions())
                 {
-                    MessageBox.Show("Обнаружены повторяющиеся ИЗМы в одном из листов. Исправьте таблицу и повторите.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(
+                        "Обнаружены повторяющиеся ИЗМы в одном из листов. Исправьте таблицу и повторите.",
+                        "Ошибка",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
                     return;
                 }
             }
