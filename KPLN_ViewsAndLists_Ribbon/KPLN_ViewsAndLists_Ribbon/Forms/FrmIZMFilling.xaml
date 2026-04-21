@@ -6,11 +6,7 @@
         xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
         mc:Ignorable="d"
         Title="KPLN. Заполнение ИЗМов"
-        Height="900"
-        Width="1530"
-        MinHeight="700"
-        MinWidth="1200"
-        WindowStartupLocation="CenterScreen">
+        Height="900" Width="1550" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
 
@@ -57,7 +53,6 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Левая панель: дерево листов -->
             <Border Grid.Column="0"
                     BorderBrush="Gray"
                     BorderThickness="1"
@@ -76,7 +71,6 @@
                 </DockPanel>
             </Border>
 
-            <!-- Правая панель: таблица -->
             <Border Grid.Column="2"
                     BorderBrush="Gray"
                     BorderThickness="1"
@@ -105,110 +99,257 @@
                                             <TextBlock Margin="0,0,0,8"
                                                        Text="{Binding SheetName}" />
 
-                                            <!-- Шапка -->
-                                            <Grid Margin="0,0,0,2">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="55"/>
-                                                    <ColumnDefinition Width="300"/>
-                                                    <ColumnDefinition Width="90"/>
-                                                    <ColumnDefinition Width="100"/>
-                                                    <ColumnDefinition Width="180"/>
-                                                    <ColumnDefinition Width="220"/>
-                                                    <ColumnDefinition Width="120"/>
-                                                </Grid.ColumnDefinitions>
-
-                                                <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="№" HorizontalAlignment="Center"/>
-                                                </Border>
-                                                <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="Изм" HorizontalAlignment="Center"/>
-                                                </Border>
-                                                <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="Кол. уч." HorizontalAlignment="Center"/>
-                                                </Border>
-                                                <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="Лист" HorizontalAlignment="Center"/>
-                                                </Border>
-                                                <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="№ док." HorizontalAlignment="Center"/>
-                                                </Border>
-                                                <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="Подпись" HorizontalAlignment="Center"/>
-                                                </Border>
-                                                <Border Grid.Column="6" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
-                                                    <TextBlock Text="Дата" HorizontalAlignment="Center"/>
-                                                </Border>
-                                            </Grid>
-
-                                            <!-- Строки -->
-                                            <ItemsControl ItemsSource="{Binding Lines}">
+                                            <ItemsControl ItemsSource="{Binding Blocks}">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Grid Margin="0,0,0,2">
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="55"/>
-                                                                <ColumnDefinition Width="300"/>
-                                                                <ColumnDefinition Width="90"/>
-                                                                <ColumnDefinition Width="100"/>
-                                                                <ColumnDefinition Width="180"/>
-                                                                <ColumnDefinition Width="220"/>
-                                                                <ColumnDefinition Width="120"/>
-                                                            </Grid.ColumnDefinitions>
+                                                        <Border Margin="0,0,0,10"
+                                                                Padding="6"
+                                                                BorderBrush="#FFBFBFBF"
+                                                                BorderThickness="1">
+                                                            <StackPanel>
 
-                                                            <!-- № -->
-                                                            <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="4">
-                                                                <TextBlock Text="{Binding DisplayNumber}" HorizontalAlignment="Center"/>
-                                                            </Border>
+                                                                <TextBlock Text="{Binding Header}"
+                                                                           FontWeight="SemiBold"
+                                                                           Margin="0,0,0,8"
+                                                                           Visibility="{Binding ShowHeader, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-                                                            <!-- Изм -->
-                                                            <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="2">
-                                                                <ComboBox ItemsSource="{Binding AvailableRevisionItems}"
-                                                                          DisplayMemberPath="Name"
-                                                                          SelectedItem="{Binding SelectedRevisionItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                                                                    <ComboBox.ItemContainerStyle>
-                                                                        <Style TargetType="ComboBoxItem">
-                                                                            <Style.Triggers>
-                                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
-                                                                                    <Setter Property="IsEnabled" Value="False"/>
-                                                                                    <Setter Property="Foreground" Value="Gray"/>
-                                                                                </DataTrigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </ComboBox.ItemContainerStyle>
-                                                                </ComboBox>
-                                                            </Border>
+                                                                <StackPanel Visibility="{Binding IsStandardFull, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                    <Grid Margin="0,0,0,2">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="55"/>
+                                                                            <ColumnDefinition Width="300"/>
+                                                                            <ColumnDefinition Width="90"/>
+                                                                            <ColumnDefinition Width="100"/>
+                                                                            <ColumnDefinition Width="180"/>
+                                                                            <ColumnDefinition Width="220"/>
+                                                                            <ColumnDefinition Width="120"/>
+                                                                        </Grid.ColumnDefinitions>
 
-                                                            <!-- Кол. уч. -->
-                                                            <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="2">
-                                                                <TextBox Text="{Binding QuantityText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                                         HorizontalContentAlignment="Center"/>
-                                                            </Border>
+                                                                        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="№" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Изм" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Кол. уч." HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Лист" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="№ док." HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Подпись" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="6" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Дата" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                    </Grid>
 
-                                                            <!-- Лист -->
-                                                            <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Padding="2">
-                                                                <ComboBox ItemsSource="{Binding DataContext.StatusItems, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                          DisplayMemberPath="Name"
-                                                                          SelectedValuePath="Code"
-                                                                          SelectedValue="{Binding StatusCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                            </Border>
+                                                                    <ItemsControl ItemsSource="{Binding Lines}">
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Grid Margin="0,0,0,2">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="55"/>
+                                                                                        <ColumnDefinition Width="300"/>
+                                                                                        <ColumnDefinition Width="90"/>
+                                                                                        <ColumnDefinition Width="100"/>
+                                                                                        <ColumnDefinition Width="180"/>
+                                                                                        <ColumnDefinition Width="220"/>
+                                                                                        <ColumnDefinition Width="120"/>
+                                                                                    </Grid.ColumnDefinitions>
 
-                                                            <!-- № док. -->
-                                                            <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Padding="4">
-                                                                <TextBlock Text="{Binding RevisionDocNumber}" HorizontalAlignment="Center"/>
-                                                            </Border>
+                                                                                    <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="4">
+                                                                                        <TextBlock Text="{Binding DisplayNumber}" HorizontalAlignment="Center"/>
+                                                                                    </Border>
 
-                                                            <!-- Подпись -->
-                                                            <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Padding="2">
-                                                                <ComboBox ItemsSource="{Binding AvailableSignatureItems}"
-                                                                          DisplayMemberPath="Name"
-                                                                          SelectedItem="{Binding SelectedSignatureItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-                                                            </Border>
+                                                                                    <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <ComboBox ItemsSource="{Binding AvailableRevisionItems}"
+                                                                                                  DisplayMemberPath="Name"
+                                                                                                  SelectedItem="{Binding SelectedRevisionItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                                            <ComboBox.ItemContainerStyle>
+                                                                                                <Style TargetType="ComboBoxItem">
+                                                                                                    <Style.Triggers>
+                                                                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                                                            <Setter Property="IsEnabled" Value="False"/>
+                                                                                                            <Setter Property="Foreground" Value="Gray"/>
+                                                                                                        </DataTrigger>
+                                                                                                    </Style.Triggers>
+                                                                                                </Style>
+                                                                                            </ComboBox.ItemContainerStyle>
+                                                                                        </ComboBox>
+                                                                                    </Border>
 
-                                                            <!-- Дата -->
-                                                            <Border Grid.Column="6" BorderBrush="Gray" BorderThickness="1" Padding="4">
-                                                                <TextBlock Text="{Binding RevisionDate}" HorizontalAlignment="Center"/>
-                                                            </Border>
-                                                        </Grid>
+                                                                                    <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <TextBox Text="{Binding QuantityText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                 HorizontalContentAlignment="Center"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <ComboBox ItemsSource="{Binding DataContext.StatusItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                                  DisplayMemberPath="Name"
+                                                                                                  SelectedValuePath="Code"
+                                                                                                  SelectedValue="{Binding StatusCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Padding="4">
+                                                                                        <TextBlock Text="{Binding RevisionDocNumber}" HorizontalAlignment="Center"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <ComboBox ItemsSource="{Binding AvailableSignatureItems}"
+                                                                                                  DisplayMemberPath="Name"
+                                                                                                  SelectedItem="{Binding SelectedSignatureItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="6" BorderBrush="Gray" BorderThickness="1" Padding="4">
+                                                                                        <TextBlock Text="{Binding RevisionDate}" HorizontalAlignment="Center"/>
+                                                                                    </Border>
+                                                                                </Grid>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </StackPanel>
+
+                                                                <StackPanel Visibility="{Binding IsSingleRevisionOnly, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                    <Grid Margin="0,0,0,2">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="80"/>
+                                                                            <ColumnDefinition Width="360"/>
+                                                                        </Grid.ColumnDefinitions>
+
+                                                                        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Изм" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                            <ComboBox ItemsSource="{Binding SingleLine.AvailableRevisionItems}"
+                                                                                      DisplayMemberPath="Name"
+                                                                                      SelectedItem="{Binding SingleLine.SelectedRevisionItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                                <ComboBox.ItemContainerStyle>
+                                                                                    <Style TargetType="ComboBoxItem">
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                                                                <Setter Property="Foreground" Value="Gray"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </ComboBox.ItemContainerStyle>
+                                                                            </ComboBox>
+                                                                        </Border>
+                                                                    </Grid>
+                                                                </StackPanel>
+
+                                                                <StackPanel Visibility="{Binding IsMultiStampCustom, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                                        <CheckBox Content="КолУчЛист_Вручную_Вкл"
+                                                                                  IsChecked="{Binding ManualEditEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                  Margin="0,0,16,0"/>
+
+                                                                        <CheckBox Content="ИзмДокДата_Вкл_Вручную"
+                                                                                  IsChecked="{Binding ManualDocDataEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                    </StackPanel>
+
+                                                                    <Grid Margin="0,0,0,2">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="55"/>
+                                                                            <ColumnDefinition Width="300"/>
+                                                                            <ColumnDefinition Width="90"/>
+                                                                            <ColumnDefinition Width="100"/>
+                                                                            <ColumnDefinition Width="180"/>
+                                                                            <ColumnDefinition Width="220"/>
+                                                                            <ColumnDefinition Width="120"/>
+                                                                        </Grid.ColumnDefinitions>
+
+                                                                        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="№" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Изм" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Кол. уч." HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Лист" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="№ док." HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Подпись" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <Border Grid.Column="6" BorderBrush="Gray" BorderThickness="1" Background="#FFEFEFEF" Padding="4">
+                                                                            <TextBlock Text="Дата" HorizontalAlignment="Center"/>
+                                                                        </Border>
+                                                                    </Grid>
+
+                                                                    <ItemsControl ItemsSource="{Binding Lines}">
+                                                                        <ItemsControl.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <Grid Margin="0,0,0,2">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="55"/>
+                                                                                        <ColumnDefinition Width="300"/>
+                                                                                        <ColumnDefinition Width="90"/>
+                                                                                        <ColumnDefinition Width="100"/>
+                                                                                        <ColumnDefinition Width="180"/>
+                                                                                        <ColumnDefinition Width="220"/>
+                                                                                        <ColumnDefinition Width="120"/>
+                                                                                    </Grid.ColumnDefinitions>
+
+                                                                                    <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Padding="4">
+                                                                                        <TextBlock Text="{Binding DisplayNumber}" HorizontalAlignment="Center"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <TextBox Text="{Binding ManualRevisionText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                 HorizontalContentAlignment="Center"
+                                                                                                 IsEnabled="{Binding DataContext.ManualDocDataEnabled, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="2" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <TextBox Text="{Binding QuantityText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                 HorizontalContentAlignment="Center"
+                                                                                                 IsEnabled="{Binding DataContext.ManualEditEnabled, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="3" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <ComboBox ItemsSource="{Binding DataContext.ManualStatusItems, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                                  DisplayMemberPath="Name"
+                                                                                                  SelectedValuePath="Code"
+                                                                                                  SelectedValue="{Binding StatusCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                  IsEnabled="{Binding DataContext.ManualEditEnabled, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <TextBox Text="{Binding ManualDocNumberText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                 HorizontalContentAlignment="Center"
+                                                                                                 IsEnabled="{Binding DataContext.ManualDocDataEnabled, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="5" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <ComboBox ItemsSource="{Binding AvailableSignatureItems}"
+                                                                                                  DisplayMemberPath="Name"
+                                                                                                  SelectedItem="{Binding SelectedSignatureItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                                    </Border>
+
+                                                                                    <Border Grid.Column="6" BorderBrush="Gray" BorderThickness="1" Padding="2">
+                                                                                        <TextBox Text="{Binding ManualDateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                 HorizontalContentAlignment="Center"
+                                                                                                 IsEnabled="{Binding DataContext.ManualDocDataEnabled, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                                    </Border>
+                                                                                </Grid>
+                                                                            </DataTemplate>
+                                                                        </ItemsControl.ItemTemplate>
+                                                                    </ItemsControl>
+                                                                </StackPanel>
+
+                                                            </StackPanel>
+                                                        </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
@@ -222,7 +363,6 @@
             </Border>
         </Grid>
 
-        <!-- Кнопки -->
         <DockPanel Grid.Row="1" Margin="0,12,0,0">
             <Button Content="Применить"
                     Width="140"
