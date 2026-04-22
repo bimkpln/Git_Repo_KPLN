@@ -50,45 +50,18 @@ namespace KPLN_Publication.PdfWorker
         {
             // временные файлы создаются в папке приложения
             PdfContentToBlackWhiteConverter grayscaleConverter = new PdfContentToBlackWhiteConverter();
-            PdfReader reader = new PdfReader(pdfPathIn);
-
+            using (PdfReader reader = new PdfReader(pdfPathIn))
             using (FileStream fsOutput = new FileStream(pdfPathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+            using (PdfStamper stamper = new PdfStamper(reader, fsOutput))
             {
-                Document document = new Document(reader.GetPageSizeWithRotation(1));
-                PdfWriter writer = PdfWriter.GetInstance(document, fsOutput);
-
-                document.Open();
-
-                PdfContentByte cb = writer.DirectContent;
-
                 int numberOfPages = reader.NumberOfPages;
 
                 for (int pageNumber = 1; pageNumber <= numberOfPages; pageNumber++)
                 {
-                    iTextSharp.text.Rectangle pageSizeWithRotation = reader.GetPageSizeWithRotation(pageNumber);
-
-                    document.SetPageSize(pageSizeWithRotation);
-                    document.NewPage();
-
-                    // >>> CONVERT CURRENT PAGE TO GRAYSCALE
+                    // >>> CONVERT CURRENT PAGE TO GRAYSCALE IN-PLACE
                     grayscaleConverter.Convert(reader, pageNumber, _excludeColors);
                     // <<<<
-
-                    PdfImportedPage page = writer.GetImportedPage(reader, pageNumber);
-
-                    if (pageSizeWithRotation.Rotation == 90 || pageSizeWithRotation.Rotation == 270)
-                    {
-                        cb.AddTemplate(page, 0, -1f, 1f, 0, 0, pageSizeWithRotation.Height);
-                    }
-                    else
-                    {
-                        cb.AddTemplate(page, 1f, 0, 0, 1f, 0, 0);
-                    }
                 }
-
-                document.Close();
-                writer.Close();
-                reader.Close();
             }
         }
 
@@ -101,45 +74,18 @@ namespace KPLN_Publication.PdfWorker
         {
             // временные файлы создаются в папке приложения
             PdfContentToBlackWhiteConverter grayscaleConverter = new PdfContentToBlackWhiteConverter();
-            PdfReader reader = new PdfReader(pdfPathIn);
-
+            using (PdfReader reader = new PdfReader(pdfPathIn))
             using (FileStream fsOutput = new FileStream(pdfPathOut, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+            using (PdfStamper stamper = new PdfStamper(reader, fsOutput))
             {
-                Document document = new Document(reader.GetPageSizeWithRotation(1));
-                PdfWriter writer = PdfWriter.GetInstance(document, fsOutput);
-
-                document.Open();
-
-                PdfContentByte cb = writer.DirectContent;
-
                 int numberOfPages = reader.NumberOfPages;
 
                 for (int pageNumber = 1; pageNumber <= numberOfPages; pageNumber++)
                 {
-                    iTextSharp.text.Rectangle pageSizeWithRotation = reader.GetPageSizeWithRotation(pageNumber);
-
-                    document.SetPageSize(pageSizeWithRotation);
-                    document.NewPage();
-
-                    // >>> CONVERT CURRENT PAGE TO BORDERS HIDDEN
+                    // >>> CONVERT CURRENT PAGE TO BORDERS HIDDEN IN-PLACE
                     grayscaleConverter.ConvertWithHide(reader, pageNumber, _hideColors);
                     // <<<<
-
-                    PdfImportedPage page = writer.GetImportedPage(reader, pageNumber);
-
-                    if (pageSizeWithRotation.Rotation == 90 || pageSizeWithRotation.Rotation == 270)
-                    {
-                        cb.AddTemplate(page, 0, -1f, 1f, 0, 0, pageSizeWithRotation.Height);
-                    }
-                    else
-                    {
-                        cb.AddTemplate(page, 1f, 0, 0, 1f, 0, 0);
-                    }
                 }
-
-                document.Close();
-                writer.Close();
-                reader.Close();
             }
         }
 

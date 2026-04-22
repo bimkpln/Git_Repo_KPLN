@@ -348,9 +348,19 @@ namespace KPLN_Publication.PdfWorker
             //System.Diagnostics.Debug.WriteLine("Opr: " + xobjectName.ToString());
 
             PdfDictionary xobjects = _modifier.ResourceDictionary.GetAsDict(PdfName.XOBJECT);
-            PdfObject po = xobjects.Get(xobjectName);
+            if (xobjects == null)
+            {
+                return operands;
+            }
 
-            int n = (po as PdfIndirectReference).Number;
+            PdfObject po = xobjects.Get(xobjectName);
+            PdfIndirectReference indirectReference = po as PdfIndirectReference;
+            if (indirectReference == null)
+            {
+                return operands;
+            }
+
+            int n = indirectReference.Number;
 
             if (_convertedIndirectList.Contains(n))
             {
