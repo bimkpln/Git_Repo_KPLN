@@ -334,7 +334,7 @@ namespace KPLN_Tools
                     typeof(Command_AR_EvacuationRoutes).FullName,
                     "KPLN_Tools.Imagens.evacuationRoutesBig.png",
                     "KPLN_Tools.Imagens.evacuationRoutesSmall.png",
-                    "http://moodle");
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1350");
 
 
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
