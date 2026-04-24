@@ -41,26 +41,40 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             // Причина: Диспетчер проекта в ревите - это отдельный вид, uidoc.ActiveView - возвращает его.
             string activeViewName = string.Empty;
             string rWindTitle = RevitWindowUtil.GetRevitWindowTitle();
+            int index = 1;
             if (!string.IsNullOrWhiteSpace(rWindTitle))
             {
                 rWindTitle = rWindTitle.Replace("[", "");
                 rWindTitle = rWindTitle.Replace("]", "");
+                
+                // Проверка по расширению файла. У некоторых оно скрыто
                 string[] splitRWindTitle = rWindTitle.Split(new string[] {".rvt - "}, System.StringSplitOptions.None);
-                if (splitRWindTitle.Length != 1)
-                    activeViewName = splitRWindTitle[1];
-            }
+                
+                // Если не по расширению - то по имени ревит-пользователя
+                if (splitRWindTitle.Length == 1)
+                    splitRWindTitle = rWindTitle.Split(new string[] {$"{KPLN_Loader.Application.CurrentRevitUser.RevitUserName} - " }, System.StringSplitOptions.None);
 
+                // Если не по расширению - то по ещё хуже вариант - на фрагмент " - ", который запрещён в имени файла, но не факт, что его там нет
+                if (splitRWindTitle.Length == 1)
+                {
+                    splitRWindTitle = rWindTitle.Split(new string[] { " - " }, System.StringSplitOptions.None);
+                    // В начале тоже есть " - ", это имя самой программы ревит
+                    index = 2;
+                }
 
-            // Имя плана из окна винды - на тоненького
-            if (string.IsNullOrWhiteSpace(activeViewName))
-            {
-                MessageBox.Show(
-                    "Отправь разработчику - не удалось получить имя Revit-окна",
-                    "Ошибка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                // Если нет - дроп
+                if (splitRWindTitle.Length == 1 || splitRWindTitle.Length > 3)
+                {
+                    MessageBox.Show(
+                        "Отправь разработчику - не удалось получить имя Revit-окна",
+                        "Ошибка",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
 
-                return Result.Cancelled;
+                    return Result.Cancelled;
+                }
+                
+                activeViewName = splitRWindTitle[index];
             }
 
             
