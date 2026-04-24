@@ -856,8 +856,8 @@ namespace KPLN_Looker
                 (bic.Equals(BuiltInCategory.OST_GenericModel) && (familyName.StartsWith("208_") || familyName.StartsWith("209_")))
                 // Семейства ограждений (со всеми вложенными эл-тами), которые по форме зависят от проектов (могут разрабатывать все)
                 || (bic.Equals(BuiltInCategory.OST_StairsRailing) || bic.Equals(BuiltInCategory.OST_StairsRailingBaluster))
-                // Семейства соед. Деталей каб. Лотков производителей: Ostec, Dkc
-                || (bic.Equals(BuiltInCategory.OST_CableTrayFitting) && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc"))))
+                // Семейства соед. Деталей каб. Лотков производителей: Ostec, Dkc (КНС - к ним же)
+                || (bic.Equals(BuiltInCategory.OST_CableTrayFitting) && (familyName.ToLower().Contains("ostec") || familyName.ToLower().Contains("dkc") || familyName.ToLower().Contains("кнс"))))
                 return false;
 
             // Отлов семейств ферм, которые по форме зависят от проектов (могут разрабатывать КР)
@@ -892,7 +892,10 @@ namespace KPLN_Looker
             // Пусть надоедает юзеру, НО не крашит ревит
             if (!_lastDocRooms.ContainsKey(fileFullName))
             {
-                HtmlOutput.Print("Ошибка определения модели при анализе на соответсвие помещений. Отправь разработчику!", MessageType.Error);
+                HtmlOutput.Print("Ошибка определения модели при анализе на соответсвие помещений. Отправь разработчику!" +
+                    $"\n Сейчас синхронизируется файл по пути: \"{fileFullName}\"." +
+                    $"\n В словаре проектов такой набор: \"{string.Join("; ", _lastDocRooms.Keys)}\".",
+                    MessageType.Error);
                 return;
             }
 

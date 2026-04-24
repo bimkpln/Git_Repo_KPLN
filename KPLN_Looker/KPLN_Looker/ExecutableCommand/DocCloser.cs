@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
@@ -119,7 +120,29 @@ namespace KPLN_Looker.ExecutableCommand
                     args.Cancel();
                 else
                 {
-                    DBRevitDialog currentDBDialog = DBMainService.DBRevitDialogColl.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
+                    // Определение типа окна
+                    DBRevitDialog currentDBDialog = null;
+                    string userFriendlyDialogData = string.Empty;
+                    if (string.IsNullOrEmpty(args.DialogId))
+                    {
+                        TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
+                        currentDBDialog = DBMainService
+                            .DBRevitDialogColl
+                            .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
+
+                        userFriendlyDialogData = taskDialogShowingEventArgs.Message;
+                    }
+                    else
+                    {
+                        currentDBDialog = DBMainService
+                            .DBRevitDialogColl
+                            .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
+
+                        userFriendlyDialogData = args.DialogId;
+                    }
+
+
+                    // Обработка полученного окна
                     if (currentDBDialog != null)
                     {
                         if (Enum.TryParse(currentDBDialog.OverrideResult, out TaskDialogResult taskDialogResult))
