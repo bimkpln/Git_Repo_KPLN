@@ -8,6 +8,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
+using UIFramework;
 
 namespace KPLN_DefaultPanelExtension_Modify
 {
@@ -161,7 +162,30 @@ namespace KPLN_DefaultPanelExtension_Modify
                     new CmdSendToBitrix().Execute(_uiApp);
 
                 if (e.Item?.Id == _treeModelBtnId)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdTreeModel());
+                {
+                    // Определяю, открыт ли редактор групп
+                    bool isGroupEdition = false;
+                    Autodesk.Windows.RibbonControl ribbon = Autodesk.Windows.ComponentManager.Ribbon;
+                    foreach (var tab in ribbon.Tabs)
+                    {
+                        if (tab is RvtRibbonTab rvtTab && rvtTab.Key == "editgroup_mode")
+                        {
+                            isGroupEdition = true;
+                            break;
+                        }
+                    }
+
+
+                    // Если открыт - сразу запуск в ограниченном режиме
+                    if (isGroupEdition)
+                    {
+                        var cmd = new ExcCmdTreeModel() { IsUpdated = ! isGroupEdition };
+                        cmd.Execute(_uiApp);
+                    }
+                    // Если закрыт - стандартный запуск со всем функционалом
+                    else
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdTreeModel());
+                }
 
                 if (e.Item?.Id == _positionBtnId)
                     KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdListVPPositionStart(_selElems.ToArray()));

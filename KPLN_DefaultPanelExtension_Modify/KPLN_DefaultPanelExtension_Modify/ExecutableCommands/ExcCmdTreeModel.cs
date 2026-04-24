@@ -3,17 +3,15 @@ using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Loader.Common;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
 {
     internal class ExcCmdTreeModel : IExecutableCommand
     {
         internal const string PluginName = SelectionByModelExtCmd.PluginName;
+
+        internal bool IsUpdated { get; set; } = true;
 
         public Result Execute(UIApplication app)
         {
@@ -40,7 +38,7 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
 
                 // Вызываем метод ExecuteByUIApp, передавая аргументы
                 if (executeMethod != null)
-                    executeMethod.Invoke(instance, new object[] { app, ViewFilterMode.UserSelection });
+                    executeMethod.Invoke(instance, new object[] { app, ViewFilterMode.UserSelection, IsUpdated });
                 else
                     throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
             }
