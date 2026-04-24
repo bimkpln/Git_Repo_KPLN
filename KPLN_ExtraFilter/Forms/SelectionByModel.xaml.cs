@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.ViewModels;
@@ -20,9 +21,9 @@ namespace KPLN_ExtraFilter.Forms
 
         private TreeElementEntity _lastClickedEntity;
 
-        public SelectionByModel(UIApplication uiapp, ViewFilterMode viewFilterMode)
+        public SelectionByModel(UIApplication uiapp, ViewFilterMode viewFilterMode, bool isUpdateble)
         {
-            CurrentSelectionByModelVM = new SelectionByModelVM(this, uiapp, viewFilterMode);
+            CurrentSelectionByModelVM = new SelectionByModelVM(this, uiapp, viewFilterMode, isUpdateble);
 
             InitializeComponent();
 
@@ -32,6 +33,44 @@ namespace KPLN_ExtraFilter.Forms
             // Нет метода в API для отслеживания изменний в выборке юзера
             this.AddToCurrent.Visibility = System.Windows.Visibility.Hidden;
 #endif
+
+#region Блок настройки подписки на события окна на происходящие триггеры
+            if (isUpdateble)
+            {
+                // Создание ExternalEvent для переключения видов
+                ViewActivatedHandler viewHandler = new ViewActivatedHandler();
+                ExternalEvent viewExtEv = ExternalEvent.Create(viewHandler);
+
+                // Создание ExternalEvent для отписки от переключения видов (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
+                UnsubViewActHandler unsubViewHandler = new UnsubViewActHandler() { Handler = OnViewChanged };
+                ExternalEvent unsubViewExtEv = ExternalEvent.Create(unsubViewHandler);
+
+    #if !Debug2020 && !Revit2020
+                // Создание ExternalEvent для выделения эл-в
+                SelectionChangedHandler selHandler = new SelectionChangedHandler();
+                ExternalEvent selExtEv = ExternalEvent.Create(selHandler);
+
+                // Создание ExternalEvent для отписки от выбора эл-в (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
+                UnsubEventHandler unsubSelHandler = new UnsubEventHandler() { Handler = OnSelectionChanged };
+                ExternalEvent unsubSelExtEv = ExternalEvent.Create(unsubSelHandler);
+
+                // Доп настройки окна
+                this.SetExternalEvent(viewExtEv, viewHandler, selExtEv, selHandler);
+    #endif
+
+                // Подписываюсь на OnViewChanged
+                uiapp.ViewActivated += OnViewChanged;
+                // Подписываю окно на отписку (через ExternalEvent)
+                this.Closed += (s, e) => unsubViewExtEv.Raise();
+
+    #if !Debug2020 && !Revit2020
+                // Подписываюсь на SelectionChanged
+                uiapp.SelectionChanged += OnSelectionChanged;
+                // Подписываю окно на отписку (через ExternalEvent)
+                this.Closed += (s, e) => unsubSelExtEv.Raise();
+    #endif
+            }
+#endregion
         }
 
         /// <summary>
@@ -56,6 +95,12 @@ namespace KPLN_ExtraFilter.Forms
         public void RaiseUpdateSelChanged() => _selExtEv?.Raise();
 
         public void RaiseUpdateViewChanged() => _viewExtEv?.Raise();
+
+        private void OnViewChanged(object sender, ViewActivatedEventArgs e) => this.RaiseUpdateViewChanged();
+
+#if !Debug2020 && !Revit2020
+        private void OnSelectionChanged(object sender, Autodesk.Revit.UI.Events.SelectionChangedEventArgs e) => this.RaiseUpdateSelChanged();
+#endif
 
         private void CHB_Where_Workset_Checked(object sender, RoutedEventArgs e) => this.CB_FilterWS.Focus();
 

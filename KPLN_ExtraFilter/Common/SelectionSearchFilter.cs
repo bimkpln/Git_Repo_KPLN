@@ -4,6 +4,7 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.Forms.Entities;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 
 namespace KPLN_ExtraFilter.Common
@@ -127,49 +128,89 @@ namespace KPLN_ExtraFilter.Common
             return resultFilter;
         }
 
-        internal static ElementParameterFilter SearchByParamName(Document doc, Element userSelElem, string paramName)
+        internal static ElementFilter SearchByParamName(Document doc, Element userSelElem, string paramName)
         {
-            ElementParameterFilter resultFilter;
+            Parameter userSelParam = GetParameterFromElementOrType(doc, userSelElem, paramName) ?? throw new Exception(
+                    $"Поиск по параметру {paramName} для эл-та: {userSelElem.Id} - НЕВОЗМОЖЕН. " +
+                    $"Скорее всего параметр отсутствует у выбранного элемента");
+            
+            ElementId paramId = userSelParam.Id;
 
-            Parameter userSelParam = userSelElem.LookupParameter(paramName);
-            if (userSelParam == null && doc.GetElement(userSelElem.GetTypeId()) is Element typeElem)
-                userSelParam = typeElem.LookupParameter(paramName);
+            if (!userSelParam.HasValue)
+                return CreateFilterForEmptyParameter(paramId, userSelParam.StorageType);
 
-            if (userSelParam != null)
+            switch (userSelParam.StorageType)
             {
-                FilterRule rule = null;
-                switch (userSelParam.StorageType)
-                {
-                    case StorageType.ElementId:
-                        rule = ParameterFilterRuleFactory
-                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsElementId());
-                        break;
-                    case StorageType.String:
-#if Debug2020 || Revit2020
-                        rule = ParameterFilterRuleFactory
-                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsString(), false);
-#elif Debug2023 || Revit2023
-                        rule = ParameterFilterRuleFactory
-                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsString());
-#endif
-                        break;
-                    case StorageType.Double:
-                        rule = ParameterFilterRuleFactory
-                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsDouble(), 0.01);
-                        break;
-                    case StorageType.Integer:
-                        rule = ParameterFilterRuleFactory
-                            .CreateEqualsRule(userSelParam.Id, userSelParam.AsInteger());
-                        break;
-                }
+                case StorageType.ElementId:
+                    return CreateFilter(ParameterFilterRuleFactory.CreateEqualsRule(paramId, userSelParam.AsElementId()));
 
-                resultFilter = new ElementParameterFilter(rule);
+                case StorageType.String:
+                    string paramValue = userSelParam.AsString();
+
+                    if (string.IsNullOrEmpty(paramValue))
+                        return CreateStringEmptyOrNoValueFilter(paramId);
+
+                    return CreateStringEqualsFilter(paramId, paramValue);
+
+                case StorageType.Double:
+                    return CreateFilter(ParameterFilterRuleFactory.CreateEqualsRule(paramId, userSelParam.AsDouble(), 0.01));
+
+                case StorageType.Integer:
+                    return CreateFilter(ParameterFilterRuleFactory.CreateEqualsRule(paramId, userSelParam.AsInteger()));
+
+                default:
+                    throw new Exception(
+                        $"Поиск по параметру {paramName} для эл-та: {userSelElem.Id} - " +
+                        $"не удалось создать фильтр. Unsupported StorageType: {userSelParam.StorageType}");
             }
-            else
-                throw new Exception($"Поиск по параметру {paramName} для эл-та: {userSelElem.Id} - НЕВОЗМОЖЕН. Скорее всего параметр отсутсвует у выбранного элемента");
-
-            return resultFilter;
         }
+
+        private static Parameter GetParameterFromElementOrType(Document doc, Element element, string paramName)
+        {
+            Parameter param = element.LookupParameter(paramName);
+
+            if (param == null && doc.GetElement(element.GetTypeId()) is Element typeElem)
+                param = typeElem.LookupParameter(paramName);
+
+            return param;
+        }
+
+        private static ElementFilter CreateFilterForEmptyParameter(ElementId paramId, StorageType storageType)
+        {
+            FilterRule noValueRule = ParameterFilterRuleFactory.CreateHasNoValueParameterRule(paramId);
+
+            // Только текстовый параметр может быть либо без значения,
+            // либо иметь пустую строку как значение
+            if (storageType == StorageType.String)
+                return CreateStringEmptyOrNoValueFilter(paramId);
+
+            return CreateFilter(noValueRule);
+        }
+
+        private static ElementFilter CreateStringEmptyOrNoValueFilter(ElementId paramId)
+        {
+            ElementParameterFilter noValueFilter = CreateFilter(
+                ParameterFilterRuleFactory.CreateHasNoValueParameterRule(paramId));
+
+            ElementParameterFilter hasValueFilter = CreateFilter(
+                ParameterFilterRuleFactory.CreateHasValueParameterRule(paramId));
+
+            ElementParameterFilter emptyStringFilter = CreateStringEqualsFilter(paramId, string.Empty);
+
+            // Просто emptyStringFilter использовать нельзя:
+            // в некоторых случаях Revit начинает матчить слишком широко.
+            ElementFilter fullEmptyValueFilter = new LogicalAndFilter(hasValueFilter, emptyStringFilter);
+
+            return new LogicalOrFilter(noValueFilter, fullEmptyValueFilter);
+        }
+
+#if Debug2020 || Revit2020
+        private static ElementParameterFilter CreateStringEqualsFilter(ElementId paramId, string value) => CreateFilter(ParameterFilterRuleFactory.CreateEqualsRule(paramId, value, false));
+#else
+        private static ElementParameterFilter CreateStringEqualsFilter(ElementId paramId, string value) => CreateFilter(ParameterFilterRuleFactory.CreateEqualsRule(paramId, value));
+#endif
+
+        private static ElementParameterFilter CreateFilter(FilterRule rule) => new ElementParameterFilter(rule);
 
         internal static ElementWorksetFilter SearchByElemWorkset(Element userSelElem)
         {

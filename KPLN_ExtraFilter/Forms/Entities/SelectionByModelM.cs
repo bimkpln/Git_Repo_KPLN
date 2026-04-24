@@ -1,7 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.ExtensibleStorage;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
 using Newtonsoft.Json;
@@ -11,7 +9,6 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using System.Windows.Controls;
 
 namespace KPLN_ExtraFilter.Forms.Entities
 {
@@ -57,6 +54,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
         private TreeElementEntity[] _treeElemEntities;
 
+        private string _userMainStatus;
+        private bool _canRunMain = true;
+
+
         private bool _isWorkshared = false;
         private bool _canRun = false;
         private string _userHelp;
@@ -73,8 +74,24 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
             ICollection<ElementId> userSelIds = uiapp.ActiveUIDocument.Selection.GetElementIds();
             if (userSelIds.Count > 0)
-                UserSelElems = userSelIds.Select(id => Doc.GetElement(id));
-            
+            {
+                List<Element> durtyUserSelElems = userSelIds
+                    .Select(id => Doc.GetElement(id))
+                    .ToList();
+                
+                // Доп анализ на группы в выборке - нужно проваливаться допом внутрь
+                Group[] groupsInSel = durtyUserSelElems
+                    .Where(el => el is Group)
+                    .Cast<Group>()
+                    .ToArray();
+                foreach(Group group in groupsInSel)
+                {
+                    durtyUserSelElems.AddRange(group.GetMemberIds().Select(id => Doc.GetElement(id)));
+                }
+
+                UserSelElems = durtyUserSelElems;
+            }
+
             Where_ViewDocFilterMode = viewFilterMode;
         }
 
@@ -88,7 +105,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 if (value != _docActiveView && Where_ViewDocFilterMode == ViewFilterMode.CurrentView)
                 {
                     _docActiveView = value;
-                    
+
                     SetUserSelElems();
                     UpdateCanRunANDUserHelp();
                 }
@@ -98,15 +115,14 @@ namespace KPLN_ExtraFilter.Forms.Entities
         /// <summary>
         /// Пользовательский выбор из модели
         /// </summary>
-        public IEnumerable<Element> UserSelElems 
-        { 
-            get => _userSelElems; 
-            set 
+        public IEnumerable<Element> UserSelElems
+        {
+            get => _userSelElems;
+            set
             {
-                _userSelElems = value; 
+                _userSelElems = value;
                 SetUserSelElems();
-
-            } 
+            }
         }
 
         /// <summary>
@@ -318,7 +334,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 _how_SelectFilterMode = value;
                 NotifyPropertyChanged();
 
-                UpdateCanRunANDUserHelp();                
+                UpdateCanRunANDUserHelp();
             }
         }
 
@@ -349,6 +365,33 @@ namespace KPLN_ExtraFilter.Forms.Entities
         }
 
         /// <summary>
+        /// КЛЮЧЕВАЯ пользовательская подсказка
+        /// </summary>
+        public string UserMainStatus
+        {
+            get => _userMainStatus;
+            set
+            {
+                _userMainStatus = string.IsNullOrWhiteSpace(value) ? string.Empty : $"ВАЖНО: {value}";
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// КЛЮЧЕВОЙ маркер возможности запуска (верхнеуровневый блок запуска)
+        /// </summary>
+        public bool CanRunMain
+        {
+            get => _canRunMain;
+            set
+            {
+                _canRunMain = value;
+                NotifyPropertyChanged();
+                UpdateCanRunANDUserHelp();
+            }
+        }
+
+        /// <summary>
         /// Маркер возможности запуска
         /// </summary>
         public bool CanRun
@@ -359,8 +402,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 _canRun = value;
                 NotifyPropertyChanged();
 
-                if (_canRun)
-                    CreateTree();
+                CreateTree();
             }
         }
 
@@ -418,8 +460,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
             if (What_ParameterData && What_SelectedParameters.Count == 0 || What_SelectedParameters.Any(paramM => paramM.ParamM_SelectedParameter == null))
                 checkParam = false;
 
-            CanRun = checkElems && checkWs && checkCategory && checkParam;
-
+            CanRun = _canRunMain && checkElems && checkWs && checkCategory && checkParam;
 
 
             // Обновляю комментарий-подсказку пользователю
@@ -478,10 +519,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
                            $"{SelectionByModelExtCmd.PluginName}: Ошибка",
                            MessageBoxButton.OK,
                            MessageBoxImage.Error);
-                        
+
                         // Переключаю режим
                         Where_ViewDocFilterMode = ViewFilterMode.CurrentView;
-                        
+
                         // Устанавливаю фильтрацию
                         goto case ViewFilterMode.CurrentView;
                     }
@@ -538,7 +579,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
             Where_UserSelElems = elemsWithCat.ToArray();
             Cahce_UserSelElemsWithoutCatFilter = elemsNoCat.ToArray();
-            
+
             CreateTree();
         }
 
@@ -606,7 +647,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         {
             if (UserSelElems == null)
                 return;
-            
+
             if (What_ParameterData)
             {
                 foreach (var paramM in What_SelectedParameters)

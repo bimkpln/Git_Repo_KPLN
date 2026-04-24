@@ -379,6 +379,12 @@
 
 
                 <!-- Текстовые пометки -->
+                <TextBlock
+                    Style="{StaticResource TXT}"
+                    FontSize="10"
+                    Foreground="Red"
+                    MinHeight="50"
+                    Text="{Binding CurrentSelectionByModelM.UserMainStatus}"/>
                  <TextBlock
                      Style="{StaticResource TXT}"
                      FontSize="10"

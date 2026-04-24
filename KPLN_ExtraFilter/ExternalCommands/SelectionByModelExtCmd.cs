@@ -1,12 +1,12 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
-using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.Services;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
+using System;
 
 namespace KPLN_ExtraFilter.ExternalCommands
 {
@@ -18,67 +18,43 @@ namespace KPLN_ExtraFilter.ExternalCommands
         /// Имя плагина. Использую в KPLN_DefaultPanelExtension_Modify
         /// </summary>
         public const string PluginName = "Дерево элементов";
-        private SelectionByModel _mainForm;
 
-        public Result ExecuteByUIApp(UIApplication uiapp, ViewFilterMode viewFilterMode)
+        /// <summary>
+        /// Метод запуска плагина за пределами кнопки в ревит
+        /// </summary>
+        /// <param name="uiapp">UIApplication для запуска</param>
+        /// <param name="viewFilterMode">Предварительная настройка фильтрации элементов</param>
+        /// <param name="isUpdated">Настраивать ли обновления в окне</param>
+        /// <returns></returns>
+        public Result ExecuteByUIApp(UIApplication uiapp, ViewFilterMode viewFilterMode, bool isUpdateble)
         {
-            //Получение объектов приложения и документа
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Document doc = uidoc.Document;
+            try
+            {
+                SelectionByModel mainForm = new SelectionByModel(uiapp, viewFilterMode, isUpdateble);
+                WindowHandleSearch.MainWindowHandle.SetAsOwner(mainForm);
 
-            _mainForm = new SelectionByModel(uiapp, viewFilterMode);
-            WindowHandleSearch.MainWindowHandle.SetAsOwner(_mainForm);
-            
-            
-            // Создание ExternalEvent для переключения видов
-            ViewActivatedHandler viewHandler = new ViewActivatedHandler();
-            ExternalEvent viewExtEv = ExternalEvent.Create(viewHandler);
+                if (isUpdateble)
+                {
+                    if (ModuleData.RevitVersion == 2020)
+                        mainForm.ShowDialog();
+                    else
+                        mainForm.Show();
+                }
+                else
+                    mainForm.ShowDialog();
 
-            // Создание ExternalEvent для отписки от переключения видов (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
-            UnsubViewActHandler unsubViewHandler = new UnsubViewActHandler() { Handler = OnViewChanged };
-            ExternalEvent unsubViewExtEv = ExternalEvent.Create(unsubViewHandler);
+                // Счетчик факта запуска
+                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
-#if !Debug2020 && !Revit2020
-            // Создание ExternalEvent для выделения эл-в
-            SelectionChangedHandler selHandler = new SelectionChangedHandler();
-            ExternalEvent selExtEv = ExternalEvent.Create(selHandler);
-
-            // Создание ExternalEvent для отписки от выбора эл-в (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
-            UnsubEventHandler unsubSelHandler = new UnsubEventHandler() { Handler = OnSelectionChanged };
-            ExternalEvent unsubSelExtEv = ExternalEvent.Create(unsubSelHandler);
-            
-            // Доп настройки окна
-            _mainForm.SetExternalEvent(viewExtEv, viewHandler, selExtEv, selHandler);
-#endif
-
-            // Подписываюсь на OnViewChanged
-            uiapp.ViewActivated += OnViewChanged;
-            // Подписываю окно на отписку (через ExternalEvent)
-            _mainForm.Closed += (s, e) => unsubViewExtEv.Raise();
-
-#if !Debug2020 && !Revit2020
-            // Подписываюсь на SelectionChanged
-            uiapp.SelectionChanged += OnSelectionChanged;
-            // Подписываю окно на отписку (через ExternalEvent)
-            _mainForm.Closed += (s, e) => unsubSelExtEv.Raise();
-#endif
-
-
-            _mainForm.Show();
-
-
-            // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
-            return Result.Succeeded;
+                return Result.Succeeded;
+            }
+            catch (Exception ex)
+            {
+                HtmlOutput.PrintError(ex);
+                return Result.Failed;
+            }
         }
 
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => ExecuteByUIApp(commandData.Application, ViewFilterMode.CurrentView);
-
-        private void OnViewChanged(object sender, ViewActivatedEventArgs e) => _mainForm.RaiseUpdateViewChanged();
-
-#if !Debug2020 && !Revit2020
-        private void OnSelectionChanged(object sender, SelectionChangedEventArgs e) => _mainForm.RaiseUpdateSelChanged();
-#endif
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements) => ExecuteByUIApp(commandData.Application, ViewFilterMode.CurrentView, true);
     }
 }

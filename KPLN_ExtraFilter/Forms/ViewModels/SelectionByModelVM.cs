@@ -13,10 +13,13 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
     public sealed class SelectionByModelVM
     {
         private readonly SelectionByModel _mainWindow;
+        private readonly bool _isUpdateble;
 
-        public SelectionByModelVM(SelectionByModel mainWindow, UIApplication uiapp, ViewFilterMode viewFilterMode)
+        public SelectionByModelVM(SelectionByModel mainWindow, UIApplication uiapp, ViewFilterMode viewFilterMode, bool isUpdateble)
         {
             _mainWindow = mainWindow;
+            _isUpdateble = isUpdateble;
+
             // Чтение конфигурации последнего запуска
             object lastRunConfigObj = ConfigService.ReadConfigFile<SelectionByClickM>(ModuleData.RevitVersion, uiapp.ActiveUIDocument.Document, ConfigType.Memory);
             if (lastRunConfigObj != null && lastRunConfigObj is SelectionByModelM model)
@@ -29,6 +32,12 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             if (CurrentSelectionByModelM == null)
                 CurrentSelectionByModelM = new SelectionByModelM(uiapp, viewFilterMode);
 
+            // Настройка ограниченного режима
+            if (!_isUpdateble)
+            {
+                CurrentSelectionByModelM.UserMainStatus = "Выделение элементов в модели невозможно, т.к. вы в режиме редактирования группы";
+                CurrentSelectionByModelM.CanRunMain = false;
+            }
 
             DropUserParamCmd = new RelayCommand<object>(_ => DropUserParam());
             ModelSelectionCmd = new RelayCommand<object>(_ => ModelSelection());
