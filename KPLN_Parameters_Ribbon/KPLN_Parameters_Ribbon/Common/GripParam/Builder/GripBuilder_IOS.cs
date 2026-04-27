@@ -12,12 +12,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
         }
 
+        public GripBuilder_IOS(Document doc, string docMainTitle, string levelParamName, string sectionParamName, string corpsParamName) : base(doc, docMainTitle, levelParamName, sectionParamName, corpsParamName)
+        {
+        }
+
         public override void Prepare()
         {
             // Таска на подготовку солидов секций/этажей
             Task sectSolidPrepareTask = Task.Run(() =>
             {
-                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc);
+                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
             });
 
             List<BuiltInCategory> userCat = null;
@@ -108,6 +112,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .WhereElementIsNotElementType()
                     .Select(e => new InstanceGeomData(e)));
             }
+
             Task.WaitAll(elemsByHostPrepareTask);
 
             foreach (BuiltInCategory bic in userCat)

@@ -35,6 +35,11 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             SectionParamName = sectionParamName;
         }
 
+        public AbstrGripBuilder(Document doc, string docMainTitle, string levelParamName, string sectionParamName, string corpsParamName) : this (doc, docMainTitle, levelParamName, sectionParamName)
+        {
+            CorpsParamName = corpsParamName;
+        }
+
         /// <summary>
         /// Документ Ревит
         /// </summary>
@@ -54,6 +59,11 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// Имя параметра, в который осуществляется запись секции
         /// </summary>
         internal string SectionParamName { get; }
+
+        /// <summary>
+        /// Имя параметра, в который осуществляется запись корпуса
+        /// </summary>
+        internal string CorpsParamName { get; }
 
         /// <summary>
         /// Счетчик выпроненных операций по записи данных
@@ -187,13 +197,17 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         {
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
+                Parameter instElemDataCorpsParam = null;
                 Parameter instElemDataSectParam = instElemData.IEDElem.LookupParameter(SectionParamName);
                 Parameter instElemDataLvlParam = instElemData.IEDElem.LookupParameter(LevelParamName);
+                if (!string.IsNullOrEmpty(CorpsParamName))
+                    instElemDataCorpsParam = instElemData.IEDElem.LookupParameter(CorpsParamName);
+                
 
                 // Если залочен у общего вложенного, то 99%, что это он передаётся из родителя
                 if (instElemData.IEDElem is FamilyInstance famInst
                     && famInst.SuperComponent != null
-                    && (instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
+                    && ((instElemDataCorpsParam != null && instElemDataCorpsParam.IsReadOnly) || instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
                 {
                     ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
@@ -222,11 +236,13 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     }
                 }
 
-                if (instElemDataLvlParam.IsReadOnly || instElemDataSectParam.IsReadOnly)
-                    throw new GripParamExection($"У элемента id: {instElemData.IEDElem.Id} заблокирован один из параметров для записи захваток: {LevelParamName}, или {SectionParamName}");
+                if ((instElemDataCorpsParam != null && instElemDataCorpsParam.IsReadOnly) || instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly)
+                    throw new GripParamExection($"У элемента id: {instElemData.IEDElem.Id} заблокирован один из параметров для записи захваток: {LevelParamName}, или {SectionParamName}, или {CorpsParamName} (если он требуется)");
 
                 instElemDataLvlParam.Set(maxIntersectInstance.LSLevelData);
                 instElemDataSectParam.Set(maxIntersectInstance.LSSectionData);
+                if(!string.IsNullOrEmpty(CorpsParamName))
+                    instElemDataCorpsParam.Set(maxIntersectInstance.LSCorpsData);
                 instElemData.IsEmptyData = false;
 
                 pb.Update(++PbCounter, "Поиск по геометрии");
@@ -234,13 +250,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
             foreach (InstanceElemData instElemData in ElemsUnderLevel)
             {
+                Parameter instElemDataCorpsParam = null;
                 Parameter instElemDataSectParam = instElemData.IEDElem.LookupParameter(SectionParamName);
                 Parameter instElemDataLvlParam = instElemData.IEDElem.LookupParameter(LevelParamName);
+                if (!string.IsNullOrEmpty(CorpsParamName))
+                    instElemDataCorpsParam = instElemData.IEDElem.LookupParameter(CorpsParamName);
 
                 // Если залочен у общего вложенного, то 99%, что это он передаётся из родителя
                 if (instElemData.IEDElem is FamilyInstance famInst
                     && famInst.SuperComponent != null
-                    && (instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
+                    && ((instElemDataCorpsParam != null && instElemDataCorpsParam.IsReadOnly) || instElemDataSectParam.IsReadOnly || instElemDataLvlParam.IsReadOnly))
                 {
                     ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
@@ -273,6 +292,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
                 instElemDataLvlParam.Set(maxIntersectInstance.LSLevelData);
                 instElemDataSectParam.Set(maxIntersectInstance.LSSectionData);
+                if (!string.IsNullOrEmpty(CorpsParamName))
+                    instElemDataCorpsParam.Set(maxIntersectInstance.LSCorpsData);
                 instElemData.IsEmptyData = false;
 
 
@@ -421,9 +442,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <param name="hostElem">Хост</param>
         private void SetParameter(InstanceElemData instElemData, Element hostElem)
         {
+            string hostElemCorpsParamValue = "No Data";
             string hostElemSectParamValue = hostElem.LookupParameter(SectionParamName).AsString();
             string hostElemLevParamValue = hostElem.LookupParameter(LevelParamName).AsString();
-            if (hostElemSectParamValue == null
+            if (!string.IsNullOrEmpty(CorpsParamName))
+                hostElemCorpsParamValue = hostElem.LookupParameter(CorpsParamName).AsString();
+            
+            
+            if ((hostElemCorpsParamValue != "No Data" && (hostElemCorpsParamValue == null || string.IsNullOrEmpty(hostElemCorpsParamValue)))
+                || hostElemSectParamValue == null
                 || string.IsNullOrEmpty(hostElemSectParamValue)
                 || hostElemLevParamValue == null
                 || string.IsNullOrEmpty(hostElemLevParamValue))
@@ -434,6 +461,14 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             }
             else
             {
+                if (!string.IsNullOrEmpty(CorpsParamName))
+                {
+                    Parameter elemCorpsParam = instElemData.IEDElem.LookupParameter(CorpsParamName);
+                    // Вложенные семейства могут быть заблочены через формулу, для передачи из родительского
+                    if (!elemCorpsParam.IsReadOnly)
+                        elemCorpsParam.Set(hostElemCorpsParamValue);
+                }
+
                 Parameter elemSectParam = instElemData.IEDElem.LookupParameter(SectionParamName);
                 // Вложенные семейства могут быть заблочены через формулу, для передачи из родительского
                 if (!elemSectParam.IsReadOnly)

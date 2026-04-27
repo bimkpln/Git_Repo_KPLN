@@ -29,28 +29,34 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 // Посадить на конфиг под каждый файл
                 if (userDepartment == 2 || userDepartment == 8 && docPath.Contains("_АР"))
                 {
-                    if (docPath.StartsWith("ОБДН"))
+                    if (docPath.StartsWith("ОБДН_"))
                         gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", "SMNX_Секция");
                     
-                    else if (docPath.StartsWith("ИЗМЛ"))
+                    else if (docPath.StartsWith("ИЗМЛ_"))
                         gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", "КП_О_Секция");
                     
-                    else if (docPath.StartsWith("СЕТ_1"))
+                    else if (docPath.StartsWith("СЕТ_1_"))
                         gripBuilder = new GripBuilder_AR(doc, "СЕТ_1", "СМ_Этаж", "СМ_Секция");
                     
-                    else if (docPath.StartsWith("ОМК3"))
+                    else if (docPath.StartsWith("ОМК3_"))
                         gripBuilder = new GripBuilder_AR(doc, "ОМК3", "КП_О_Этаж", "КП_О_Секция");
+                    
+                    else if (docPath.StartsWith("СГРВН_"))
+                        gripBuilder = new GripBuilder_AR(doc, "СГРВН", "КП_О_Этаж", "КП_О_Секция", "КП_О_Корпус");
                 }
                 else if (userDepartment == 3 || userDepartment == 8 && docPath.Contains("_КР"))
                 {
-                    if (docPath.StartsWith("ИЗМЛ"))
+                    if (docPath.StartsWith("ИЗМЛ_"))
                         gripBuilder = new GripBuilder_KR(doc, "ИЗМЛ", "О_Этаж", "КП_О_Секция");
 
-                    else if (docPath.StartsWith("СЕТ_1"))
+                    else if (docPath.StartsWith("СЕТ_1_"))
                         gripBuilder = new GripBuilder_KR(doc, "СЕТ_1", "СМ_Этаж", "СМ_Секция");
 
-                    else if (docPath.StartsWith("ОМК3"))
+                    else if (docPath.StartsWith("ОМК3_"))
                         gripBuilder = new GripBuilder_KR(doc, "ОМК3", "О_Этаж", "КП_О_Секция");
+
+                    else if (docPath.StartsWith("СГРВН_"))
+                        gripBuilder = new GripBuilder_KR(doc, "СГРВН", "О_Этаж", "КП_О_Секция", "КП_О_Корпус");
                 }
                 else if (userDepartment == 4 
                          || userDepartment == 5 
@@ -67,20 +73,23 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                              || docPath.Contains("_АК")
                              || docPath.Contains("_АВ")))
                 {
-                    if (docPath.StartsWith("ОБДН"))
-                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН", "SMNX_Этаж", "SMNX_Секция");
+                    if (docPath.StartsWith("ОБДН_"))
+                        gripBuilder = new GripBuilder_IOS(doc, "ОБДН_", "SMNX_Этаж", "SMNX_Секция");
 
-                    else if (docPath.StartsWith("ИЗМЛ"))
+                    else if (docPath.StartsWith("ИЗМЛ_"))
                         gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", "КП_О_Секция");
 
-                    else if (docPath.StartsWith("ПШМ1"))
+                    else if (docPath.StartsWith("ПШМ1_"))
                         gripBuilder = new GripBuilder_IOS(doc, "ИЗМЛ", "КП_О_Этаж", "КП_О_Секция");
 
-                    else if (docPath.StartsWith("СЕТ_1"))
+                    else if (docPath.StartsWith("СЕТ_1_"))
                         gripBuilder = new GripBuilder_IOS(doc, "СЕТ_1", "СМ_Этаж", "СМ_Секция");
 
-                    else if (docPath.StartsWith("ОМК3"))
+                    else if (docPath.StartsWith("ОМК3_"))
                         gripBuilder = new GripBuilder_IOS(doc, "ОМК3", "КП_О_Этаж", "КП_О_Секция");
+
+                    else if (docPath.StartsWith("СГРВН_"))
+                        gripBuilder = new GripBuilder_IOS(doc, "СГРВН", "КП_О_Этаж", "КП_О_Секция", "КП_О_Корпус");
                 }
                 else
                 {
