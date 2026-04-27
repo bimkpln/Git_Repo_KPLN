@@ -397,9 +397,25 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.IFCRebarMarkSmall.png",
                     "http://moodle");
 
+                PushButtonData kr_SpecSumLog = CreateBtnData(
+                    Command_KR_SpecSum.PluginName,
+                    Command_KR_SpecSum.PluginName,
+                    "Плагин для подсчета строк в спецификациях",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_KR_SpecSum).FullName,
+                    "KPLN_Tools.Imagens.SpecSumSmall.png",
+                    "KPLN_Tools.Imagens.SpecSumSmall.png",
+                    "http://moodle");
+
 
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
                 krToolsPullDownBtn.AddPushButton(kr_IFCRebarMark);
+                krToolsPullDownBtn.AddPushButton(kr_SpecSumLog);
             }
             #endregion
 

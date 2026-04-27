@@ -228,6 +228,7 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
+    <Compile Include="ExternalCommands\Command_KR_SpecSum.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
       <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
@@ -389,6 +390,9 @@
     <Compile Include="Forms\SizeMismatchWindow.xaml.cs">
       <DependentUpon>SizeMismatchWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\SpecSumReportWindow.xaml.cs">
+      <DependentUpon>SpecSumReportWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\UserPathInputForm.xaml.cs">
       <DependentUpon>UserPathInputForm.xaml</DependentUpon>
     </Compile>
@@ -492,6 +496,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\SpecSumReportWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -532,6 +540,8 @@
     <EmbeddedResource Include="Imagens\changeElementsInLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelSmall.png" />
     <EmbeddedResource Include="Imagens\hiddenElementsFilterSmall.png" />
+    <EmbeddedResource Include="Imagens\SpecSumBig.png" />
+    <EmbeddedResource Include="Imagens\SpecSumSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
