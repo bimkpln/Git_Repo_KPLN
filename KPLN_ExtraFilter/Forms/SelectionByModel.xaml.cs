@@ -1,5 +1,4 @@
-﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.UI;
+﻿using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.Entities;
@@ -13,11 +12,13 @@ namespace KPLN_ExtraFilter.Forms
 {
     public partial class SelectionByModel : Window
     {
-        private ExternalEvent _viewExtEv;
+        private readonly ExternalEvent _viewExtEv;
         private ViewActivatedHandler _viewHandler;
 
-        private ExternalEvent _selExtEv;
+#if !Debug2020 && !Revit2020
+        private readonly ExternalEvent _selExtEv;
         private SelectionChangedHandler _selHandler;
+#endif
 
         private TreeElementEntity _lastClickedEntity;
 
@@ -34,43 +35,30 @@ namespace KPLN_ExtraFilter.Forms
             this.AddToCurrent.Visibility = System.Windows.Visibility.Hidden;
 #endif
 
-#region Блок настройки подписки на события окна на происходящие триггеры
+            #region Блок настройки подписки на события окна на происходящие триггеры
             if (isUpdateble)
             {
-                // Создание ExternalEvent для переключения видов
-                ViewActivatedHandler viewHandler = new ViewActivatedHandler();
-                ExternalEvent viewExtEv = ExternalEvent.Create(viewHandler);
+                _viewExtEv = FormEventSubscriptionHelper.CreateViewChangedEvent(handler =>
+                {
+                    _viewHandler = handler;
+                    _viewHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
+                });
 
-                // Создание ExternalEvent для отписки от переключения видов (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
-                UnsubViewActHandler unsubViewHandler = new UnsubViewActHandler() { Handler = OnViewChanged };
-                ExternalEvent unsubViewExtEv = ExternalEvent.Create(unsubViewHandler);
+                ExternalEvent unsubViewExtEv = FormEventSubscriptionHelper.CreateViewUnsubscribeEvent(OnViewChanged);
+                FormEventSubscriptionHelper.SubscribeViewChanged(uiapp, this, OnViewChanged, unsubViewExtEv);
 
-    #if !Debug2020 && !Revit2020
-                // Создание ExternalEvent для выделения эл-в
-                SelectionChangedHandler selHandler = new SelectionChangedHandler();
-                ExternalEvent selExtEv = ExternalEvent.Create(selHandler);
+#if !Debug2020 && !Revit2020
+                _selExtEv = FormEventSubscriptionHelper.CreateSelectionChangedEvent(handler =>
+                {
+                    _selHandler = handler;
+                    _selHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
+                });
 
-                // Создание ExternalEvent для отписки от выбора эл-в (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
-                UnsubEventHandler unsubSelHandler = new UnsubEventHandler() { Handler = OnSelectionChanged };
-                ExternalEvent unsubSelExtEv = ExternalEvent.Create(unsubSelHandler);
-
-                // Доп настройки окна
-                this.SetExternalEvent(viewExtEv, viewHandler, selExtEv, selHandler);
-    #endif
-
-                // Подписываюсь на OnViewChanged
-                uiapp.ViewActivated += OnViewChanged;
-                // Подписываю окно на отписку (через ExternalEvent)
-                this.Closed += (s, e) => unsubViewExtEv.Raise();
-
-    #if !Debug2020 && !Revit2020
-                // Подписываюсь на SelectionChanged
-                uiapp.SelectionChanged += OnSelectionChanged;
-                // Подписываю окно на отписку (через ExternalEvent)
-                this.Closed += (s, e) => unsubSelExtEv.Raise();
-    #endif
+                ExternalEvent unsubSelExtEv = FormEventSubscriptionHelper.CreateSelectionUnsubscribeEvent(OnSelectionChanged);
+                FormEventSubscriptionHelper.SubscribeSelectionChanged(uiapp, this, OnSelectionChanged, unsubSelExtEv);
+#endif
             }
-#endregion
+            #endregion
         }
 
         /// <summary>
@@ -78,28 +66,10 @@ namespace KPLN_ExtraFilter.Forms
         /// </summary>
         public SelectionByModelVM CurrentSelectionByModelVM { get; set; }
 
-        public void SetExternalEvent(ExternalEvent viewExtEv, ViewActivatedHandler viewHandler, ExternalEvent selExtEv, SelectionChangedHandler selHandler)
-        {
-            _viewExtEv = viewExtEv;
-            
-            _viewHandler = viewHandler;
-            _viewHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
-
-
-            _selExtEv = selExtEv;
-            
-            _selHandler = selHandler;
-            _selHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
-        }
-
-        public void RaiseUpdateSelChanged() => _selExtEv?.Raise();
-
-        public void RaiseUpdateViewChanged() => _viewExtEv?.Raise();
-
-        private void OnViewChanged(object sender, ViewActivatedEventArgs e) => this.RaiseUpdateViewChanged();
+        private void OnViewChanged(object sender, ViewActivatedEventArgs e) => _viewExtEv?.Raise();
 
 #if !Debug2020 && !Revit2020
-        private void OnSelectionChanged(object sender, Autodesk.Revit.UI.Events.SelectionChangedEventArgs e) => this.RaiseUpdateSelChanged();
+        private void OnSelectionChanged(object sender, Autodesk.Revit.UI.Events.SelectionChangedEventArgs e) => _selExtEv?.Raise();
 #endif
 
         private void CHB_Where_Workset_Checked(object sender, RoutedEventArgs e) => this.CB_FilterWS.Focus();

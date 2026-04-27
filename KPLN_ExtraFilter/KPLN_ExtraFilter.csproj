@@ -165,6 +165,7 @@
     <Compile Include="Forms\Entities\CollectionFilter.cs" />
     <Compile Include="Forms\Entities\WSEntity.cs" />
     <Compile Include="Forms\Converters\EnumToBooleanConverter.cs" />
+    <Compile Include="Forms\FormEventSubscriptionHelper.cs" />
     <Compile Include="Forms\SelectionByModel.xaml.cs">
       <DependentUpon>SelectionByModel.xaml</DependentUpon>
     </Compile>

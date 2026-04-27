@@ -1,6 +1,5 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
@@ -35,7 +34,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                 if (userSelFromFormElems.Count() == 0)
                     return Result.Cancelled;
 
-                
+
                 IEnumerable<ElementId> userSelFromFormIDs = userSelFromFormElems.Select(el => el.Id);
                 switch (_entity.How_SelectFilterMode)
                 {
@@ -47,7 +46,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                         resultIDToSelect = userSelFromDocIDs.Union(userSelFromFormIDs).ToArray();
                         break;
                 }
-                
+
                 if (resultIDToSelect != null)
                     uiDoc.Selection.SetElementIds(resultIDToSelect);
 

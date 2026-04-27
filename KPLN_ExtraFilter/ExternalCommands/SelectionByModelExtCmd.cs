@@ -34,12 +34,7 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 WindowHandleSearch.MainWindowHandle.SetAsOwner(mainForm);
 
                 if (isUpdateble)
-                {
-                    if (ModuleData.RevitVersion == 2020)
-                        mainForm.ShowDialog();
-                    else
-                        mainForm.Show();
-                }
+                    mainForm.Show();
                 else
                     mainForm.ShowDialog();
 

@@ -2,15 +2,16 @@
 using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.ViewModels;
-using KPLN_Library_Forms.Services;
 using System.Windows;
 
 namespace KPLN_ExtraFilter.Forms
 {
     public partial class SelectionByClickForm : Window
     {
-        private ExternalEvent _externalEvent;
+#if !Debug2020 && !Revit2020
+        private readonly ExternalEvent _externalEvent;
         private SelectionChangedHandler _handler;
+#endif
 
         public SelectionByClickForm(UIApplication uiapp, Element userSelElem)
         {
@@ -22,17 +23,15 @@ namespace KPLN_ExtraFilter.Forms
             DataContext = CurrentSelectionByClickVM;
 
 
-#region Блок настройки подписки на события окна на происходящие триггеры
+            #region Блок настройки подписки на события окна на происходящие триггеры
 #if !Debug2020 && !Revit2020
-            // Создание ExternalEvent для выделения эл-в
-            SelectionChangedHandler selHandler = new SelectionChangedHandler();
-            ExternalEvent selExtEv = ExternalEvent.Create(selHandler);
+            _externalEvent = FormEventSubscriptionHelper.CreateSelectionChangedEvent(handler =>
+            {
+                _handler = handler;
+                _handler.CurrentSelByClickVM = CurrentSelectionByClickVM;
+            });
 
-            // Создание ExternalEvent для отписки от выбора эл-в (конструкция для возвращения в контекст ревит, т.к. wpf из него выпадает)
-            UnsubEventHandler unsubHandler = new UnsubEventHandler() { Handler = OnSelectionChanged };
-            ExternalEvent unsubExtEv = ExternalEvent.Create(unsubHandler);
-
-            this.SetExternalEvent(selExtEv, selHandler);
+            ExternalEvent unsubExtEv = FormEventSubscriptionHelper.CreateSelectionUnsubscribeEvent(OnSelectionChanged);
 #endif
             // Предустановка
             if (userSelElem != null)
@@ -42,11 +41,7 @@ namespace KPLN_ExtraFilter.Forms
             }
 
 #if !Debug2020 && !Revit2020
-            // Подписываюсь на SelectionChanged
-            uiapp.SelectionChanged += OnSelectionChanged;
-            
-            // Подписываю окно на отписку (через ExternalEvent)
-            this.Closed += (s, e) => unsubExtEv.Raise();
+            FormEventSubscriptionHelper.SubscribeSelectionChanged(uiapp, this, OnSelectionChanged, unsubExtEv);
 #endif
 #endregion
         }
@@ -57,18 +52,8 @@ namespace KPLN_ExtraFilter.Forms
         public SelectionByClickVM CurrentSelectionByClickVM { get; set; }
 
 #if !Debug2020 && !Revit2020
-        private void OnSelectionChanged(object sender, Autodesk.Revit.UI.Events.SelectionChangedEventArgs e) => this.RaiseUpdate();
+        private void OnSelectionChanged(object sender, Autodesk.Revit.UI.Events.SelectionChangedEventArgs e) => _externalEvent?.Raise();
 #endif
-
-        public void SetExternalEvent(ExternalEvent externalEvent, SelectionChangedHandler handler)
-        {
-            _externalEvent = externalEvent;
-            
-            _handler = handler;
-            _handler.CurrentSelByClickVM = CurrentSelectionByClickVM;
-        }
-
-        public void RaiseUpdate() => _externalEvent?.Raise();
 
         /// <summary>
         /// Метод для фокуса на нужном CB. Триггер усложняет жизнь, для его обслуживания нужен доп. класс
