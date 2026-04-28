@@ -70,8 +70,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                         double mmMinZ = UnitUtils.ConvertFromInternalUnits(bbox.Min.Z, DisplayUnitType.DUT_MILLIMETERS);
                         double mmMaxZ = UnitUtils.ConvertFromInternalUnits(bbox.Max.Z, DisplayUnitType.DUT_MILLIMETERS);
 #else
-                        double mmMinZ = UnitUtils.ConvertFromInternalUnits(bbox.Min.Z, SpecTypeId.Length);
-                        double mmMaxZ = UnitUtils.ConvertFromInternalUnits(bbox.Max.Z, SpecTypeId.Length);
+                        double mmMinZ = UnitUtils.ConvertFromInternalUnits(bbox.Min.Z, UnitTypeId.Millimeters);
+                        double mmMaxZ = UnitUtils.ConvertFromInternalUnits(bbox.Max.Z, UnitTypeId.Millimeters);
 #endif
 
 
@@ -94,7 +94,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 #if Debug2020 || Revit2020
                             upLvlParam.Set(Math.Round(UnitUtils.ConvertFromInternalUnits(upLevelFromDoc.Elevation, DisplayUnitType.DUT_MILLIMETERS), 3).ToString());
 #else
-                            upLvlParam.Set(Math.Round(UnitUtils.ConvertFromInternalUnits(upLevelFromDoc.Elevation, SpecTypeId.Length), 3).ToString());
+                            upLvlParam.Set(Math.Round(UnitUtils.ConvertFromInternalUnits(upLevelFromDoc.Elevation, UnitTypeId.Millimeters), 3).ToString());
 #endif
 
 
@@ -107,7 +107,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 #if Debug2020 || Revit2020
                             downLvlParam.Set(Math.Round(UnitUtils.ConvertFromInternalUnits(downLevelFromDoc.Elevation, DisplayUnitType.DUT_MILLIMETERS), 3).ToString());
 #else
-                            downLvlParam.Set(Math.Round(UnitUtils.ConvertFromInternalUnits(downLevelFromDoc.Elevation, SpecTypeId.Length), 3).ToString());
+                            downLvlParam.Set(Math.Round(UnitUtils.ConvertFromInternalUnits(downLevelFromDoc.Elevation, UnitTypeId.Millimeters), 3).ToString());
 #endif
                     }
                 }
