@@ -2,12 +2,10 @@
 using Dapper;
 using KPLN_Loader.Core.Entities;
 using KPLN_Loader.Forms;
-using MySqlConnector;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SQLite;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -72,7 +70,9 @@ namespace KPLN_Loader.Services.Abstract
             string currentDate = DateTime.Now.ToString("yyyy/MM/dd_HH:mm");
             string sysUserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name.Split('\\').Last();
 
-            User currentUser = ExecuteQuery<User>($"SELECT * FROM {MainDB_Tables.Users} WHERE {nameof(User.SystemName)}='{sysUserName}';").FirstOrDefault();
+            User currentUser = ExecuteQuery<User>(
+                $"SELECT * FROM {MainDB_Tables.Users} WHERE {nameof(User.SystemName)} = @{nameof(User.SystemName)};",
+                new { SystemName = sysUserName }).FirstOrDefault();
             if (currentUser == null)
             {
                 LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled), false);
@@ -216,7 +216,13 @@ namespace KPLN_Loader.Services.Abstract
             try
             {
                 ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
-                    $"SET {nameof(User.LastConnectionDate)}='{currentUser.LastConnectionDate}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+                    $"SET {nameof(User.LastConnectionDate)} = @{nameof(User.LastConnectionDate)} " +
+                    $"WHERE {nameof(User.SystemName)} = @{nameof(User.SystemName)};",
+                    new
+                    {
+                        currentUser.LastConnectionDate,
+                        currentUser.SystemName,
+                    });
 
                 return true;
             }
@@ -241,12 +247,24 @@ namespace KPLN_Loader.Services.Abstract
                 case MainDB_LoaderDescriptions_RateType.Approval:
                     int apprRate = loaderDescription.ApprovalRate;
                     ExecuteNonQuery($"UPDATE {MainDB_Tables.LoaderDescriptions} " +
-                        $"SET {nameof(LoaderDescription.ApprovalRate)}='{++apprRate}' WHERE {nameof(LoaderDescription.Id)}='{loaderDescription.Id}';");
+                        $"SET {nameof(LoaderDescription.ApprovalRate)} = @{nameof(LoaderDescription.ApprovalRate)} " +
+                        $"WHERE {nameof(LoaderDescription.Id)} = @{nameof(LoaderDescription.Id)};",
+                        new
+                        {
+                            ApprovalRate = ++apprRate,
+                            loaderDescription.Id,
+                        });
                     break;
                 case MainDB_LoaderDescriptions_RateType.Disapproval:
                     int disapprRate = loaderDescription.DisapprovalRate;
                     ExecuteNonQuery($"UPDATE {MainDB_Tables.LoaderDescriptions} " +
-                        $"SET {nameof(LoaderDescription.DisapprovalRate)}='{--disapprRate}' WHERE {nameof(LoaderDescription.Id)}='{loaderDescription.Id}';");
+                        $"SET {nameof(LoaderDescription.DisapprovalRate)} = @{nameof(LoaderDescription.DisapprovalRate)} " +
+                        $"WHERE {nameof(LoaderDescription.Id)} = @{nameof(LoaderDescription.Id)};",
+                        new
+                        {
+                            DisapprovalRate = --disapprRate,
+                            loaderDescription.Id,
+                        });
                     break;
             }
         }
@@ -269,7 +287,13 @@ namespace KPLN_Loader.Services.Abstract
 
                     // Записываю в таблицу
                     ExecuteNonQuery($"UPDATE {MainDB_Tables.Users} " +
-                        $"SET {nameof(User.RevitUserName)}='{userName}' WHERE {nameof(User.SystemName)}='{currentUser.SystemName}';");
+                        $"SET {nameof(User.RevitUserName)} = @{nameof(User.RevitUserName)} " +
+                        $"WHERE {nameof(User.SystemName)} = @{nameof(User.SystemName)};",
+                        new
+                        {
+                            RevitUserName = userName,
+                            currentUser.SystemName,
+                        });
                 }
                 catch (Exception ex)
                 {
@@ -284,45 +308,27 @@ namespace KPLN_Loader.Services.Abstract
         #region Execute
         private void ExecuteNonQuery(string query, object parameters = null)
         {
-            const int maxRetries = 3;
-            int attempt = 0;
-            int timeSleep = 1000;
-
-            while (attempt < maxRetries)
-            {
-                try
+            ExecuteWithRetry(
+                connection =>
                 {
-                    using (IDbConnection connection = CreateConnection(_connectionStringOrPath))
-                    {
-                        connection.Open();
-                        connection.Execute(query, parameters);
-                        return;
-                    }
-                }
-                catch (MySqlException ex)
-                {
-                    attempt++;
-                    _logger.Warn($"Ошибка MySQL (попытка {attempt}/{maxRetries}): {ex.Message}");
-
-                    if (attempt >= maxRetries)
-                    {
-                        string errorMsg = $"Не удалось выполнить запрос к MySQL. " +
-                                          $"Попытки ({maxRetries} раза по {timeSleep / 1000} с) исчерпаны.\n\n{ex.Message}";
-
-                        ShowDialog("[KPLN]: Ошибка работы с MySQL БД", errorMsg);
-                        throw;
-                    }
-
-                    Thread.Sleep(timeSleep);
-                }
-            }
+                    connection.Execute(query, parameters);
+                    return true;
+                },
+                ex => $"Не удалось выполнить запрос к {DbProviderName}. {ex.Message}");
         }
 
         private IEnumerable<T> ExecuteQuery<T>(string query, object parameters = null)
         {
+            return ExecuteWithRetry(
+                connection => connection.Query<T>(query, parameters),
+                ex => $"Не удалось выполнить запрос к {DbProviderName}. {ex.Message}");
+        }
+
+        private TResult ExecuteWithRetry<TResult>(Func<IDbConnection, TResult> action, Func<TDbException, string> finalErrorMessageFactory)
+        {
             const int maxRetries = 3;
+            const int timeSleep = 1000;
             int attempt = 0;
-            int timeSleep = 1000;
 
             while (attempt < maxRetries)
             {
@@ -331,26 +337,27 @@ namespace KPLN_Loader.Services.Abstract
                     using (IDbConnection connection = CreateConnection(_connectionStringOrPath))
                     {
                         connection.Open();
-                        return connection.Query<T>(query, parameters);
+                        return action(connection);
                     }
                 }
-                catch (SQLiteException ex) when (ex.ErrorCode == (int)SQLiteErrorCode.Busy)
+                catch (Exception ex) when (ex is TDbException dbException && IsRetryable(dbException))
                 {
                     attempt++;
+                    _logger.Warn($"Ошибка {DbProviderName} (попытка {attempt}/{maxRetries}): {dbException.Message}");
+
                     if (attempt >= maxRetries)
                     {
-                        string errorMsg = $"База данных занята. Попытки выполнить запрос ({maxRetries} раза по {timeSleep / 1000} с) исчерпаны.";
+                        string errorMsg = finalErrorMessageFactory(dbException);
+                        string retryInfo = $"Попытки ({maxRetries} раза по {timeSleep / 1000} с) исчерпаны.";
 
-                        ShowDialog("[KPLN]: Ошибка работы с БД", errorMsg);
-
-                        throw new Exception(errorMsg);
+                        ShowDialog($"[KPLN]: Ошибка работы с {DbProviderName} БД", $"{errorMsg}\n\n{retryInfo}");
+                        throw new Exception(errorMsg, dbException);
                     }
 
                     Thread.Sleep(timeSleep);
                 }
             }
-
-            throw new Exception("Не удалось получить результатов. Отправь разработчику");
+            throw new Exception($"Не удалось выполнить операцию с {DbProviderName}. Отправь разработчику.");
         }
         #endregion
 
