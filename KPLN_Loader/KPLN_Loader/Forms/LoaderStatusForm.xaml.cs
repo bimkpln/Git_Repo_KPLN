@@ -67,25 +67,29 @@ namespace KPLN_Loader.Forms
                 _loaderDescription = loaderDescription;
                 tblInstruction.Text = _loaderDescription.Description;
 
-            string loaderDescriptionURL = _loaderDescription.InstructionURL;
-            if (loaderDescriptionURL != null)
-            {
-                tblInstruction.TextDecorations = TextDecorations.Underline;
-                tblInstruction.Foreground = new SolidColorBrush(Colors.Blue);
-            }
-        });
+                string loaderDescriptionURL = _loaderDescription.InstructionURL;
+                if (!string.IsNullOrEmpty(loaderDescriptionURL))
+                {
+                    tblInstruction.TextDecorations = TextDecorations.Underline;
+                    tblInstruction.Foreground = new SolidColorBrush(Colors.Blue);
+                }
+            });
         }
 
         /// <summary>
-        /// Добавляет маркер при дебаге модулей
+        /// Добавляет маркеры запуска
         /// </summary>
-        /// <param name="isDebugMode">Указатель</param>
-        internal void SetDebugStatus(bool isDebugMode)
+        /// <param name="isDebugMode">Указатель дебага</param>
+        /// <param name="isExtraNet">Указатель ExtraNet</param>
+        internal void SetStatuses(bool isDebugMode, bool isExtraNet)
         {
             Dispatcher.Invoke(() =>
             {
                 if (isDebugMode)
                     DebugModeTxt.Visibility = Visibility.Visible;
+                
+                if (isExtraNet)
+                    ExtraNetModeTxt.Visibility = Visibility.Visible;
             });
         }
 
@@ -128,12 +132,12 @@ namespace KPLN_Loader.Forms
         /// <summary>
         /// Обработчик события RiseStepProgress
         /// </summary>
-        private void Application_Progress(MainStatus mainStatus, string toolTip, Brush brush)
+        internal void Application_Progress(MainStatus mainStatus, string toolTip, Brush brush)
         {
             Dispatcher.Invoke(() =>
             {
                 
-                LoaderStatusEntity stEntity = _loaderStatusEntitys.Where(x => x.CurrentMainStatus == mainStatus).FirstOrDefault();
+                LoaderStatusEntity stEntity = _loaderStatusEntitys.FirstOrDefault(x => x.CurrentMainStatus == mainStatus);
                 if (stEntity != null)
                 {
                     stEntity.StrStatus = _statusDone;

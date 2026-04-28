@@ -12,6 +12,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Interop;
 
 namespace KPLN_Loader.Services
 {
@@ -40,14 +41,15 @@ namespace KPLN_Loader.Services
         ///</summary>
         private readonly string _revitVersion;
         private readonly Logger _logger;
-        private LoaderStatusForm _loaderStatusForm;
+        private readonly LoaderStatusForm _loaderStatusForm;
 
-        internal EnvironmentService(Logger logger, string revitVersion, string diteTime)
+        internal EnvironmentService(Logger logger, string revitVersion, string diteTime, LoaderStatusForm loaderStatusForm)
         {
             _logger = logger;
             _revitVersion = revitVersion;
             _applicationLocation = new DirectoryInfo(Path.Combine(_userLocation.FullName, "KPLN_Loader"));
             _sessionLocation = new DirectoryInfo(Path.Combine(_applicationLocation.FullName, $"{_revitVersion}_{diteTime}"));
+            _loaderStatusForm = loaderStatusForm;
             ModulesLocation = new DirectoryInfo(Path.Combine(_sessionLocation.FullName, "Modules"));
         }
 
@@ -131,50 +133,43 @@ namespace KPLN_Loader.Services
         }
 
         /// <summary>
-        /// Добавление привязки к окну
-        /// </summary>
-        internal EnvironmentService SetStatusForm(LoaderStatusForm loaderStatusForm)
-        {
-            _loaderStatusForm = loaderStatusForm;
-            return this;
-        }
-
-        /// <summary>
         /// Проверка наличия файла конфигурации и необходимых БД
         /// </summary>
-        internal EnvironmentService ConfigFileChecker()
+        internal bool ConfigFileChecker()
         {
             // Проверка наличия файла-конфига
             if (!File.Exists(Application.MainConfigPath))
             {
                 if(Application.IsExtraNet)
-                    SetErrorMsg_ToStatusForm($"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}." +
-                        $"\nОтправь скрин окна разработчику по почте \"bim@kpln.ru\"");
+                    return WriteAndLogErrorMsg(
+                        $"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}." +
+                            $"\nОтправь скрин окна разработчику по почте \"bim@kpln.ru\"");
                 else
-                    SetErrorMsg_ToStatusForm($"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}." +
-                        $"\nПроверь, подключен ли диск с помощью проводника, если нет - обратись к системному администратору");
+                    return WriteAndLogErrorMsg(
+                        $"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}." +
+                            $"\nПроверь, подключен ли диск с помощью проводника, если нет - обратись к системному администратору");
             }
 
 
             // Экстранет проверка на подключение к инет-БД
             if (Application.IsExtraNet)
-                CheckWebServerDB();
+                return CheckWebServerDB();
             // Интронет проверка и ни инет-БД, и на локальные БД (должны видеть обе). Проверка подключения битрикса
             else
             {
-                CheckWebServerDB();
-                CheckLocalDB();
-                CheckBitrixWebHooks();
+                // Для Р2020 нужны другие пакеты. На текущий момент - это архивная версия, в игнор
+                if(Application.RevitVersion == "2020")
+                    return CheckLocalDB() && CheckBitrixWebHooks();
+                else
+                    return CheckWebServerDB() && CheckLocalDB() && CheckBitrixWebHooks();
             }
-
-            return this;
         }
 
         /// <summary>
         /// Подготовка и очистка старых директорий для копирования
         /// </summary>
         /// <returns></returns>
-        internal EnvironmentService PreparingAndCliningDirectories()
+        internal bool PreparingAndCliningDirectories()
         {
             DirectoryInfo appDirInfo = Directory.CreateDirectory(_applicationLocation.FullName);
             int delDirCount = ClearDirectory(appDirInfo.FullName);
@@ -182,7 +177,7 @@ namespace KPLN_Loader.Services
             _logger.Info($"Директории успешно очищены от неиспользуемых папок! Удалено {delDirCount} корневых папок");
             Directory.CreateDirectory(ModulesLocation.FullName);
 
-            return this;
+            return true;
         }
 
         /// <summary>
@@ -276,12 +271,16 @@ namespace KPLN_Loader.Services
         /// <summary>
         /// Проверка подключения онлайн БД
         /// </summary>
-        private void CheckWebServerDB()
+        private bool CheckWebServerDB()
         {
             StringBuilder stringBuilder = new StringBuilder();
 
             foreach (DB_Config db in DatabaseConfigs)
             {
+                // Конфиг для интронет содержит все ссылки, а экстранет только онлайн бд
+                if (!db.Name.Contains("ExtraNet_"))
+                    continue;
+
                 try
                 {
                     new MySQLService(_logger, db.Path);
@@ -293,31 +292,39 @@ namespace KPLN_Loader.Services
             }
 
             if (stringBuilder.Length > 0)
-                SetErrorMsg_ToStatusForm(stringBuilder.ToString().TrimEnd());
+                return WriteAndLogErrorMsg(stringBuilder.ToString().TrimEnd());
+
+            return true;
         }
 
         /// <summary>
         /// Проверка наличия локальных БД
         /// </summary>
-        private void CheckLocalDB()
+        private bool CheckLocalDB()
         {
             StringBuilder stringBuilder = new StringBuilder();
 
             foreach (DB_Config db in DatabaseConfigs)
             {
+                // Конфиг для интронет содержит все ссылки, а экстранет только онлайн бд
+                if (db.Name.Contains("ExtraNet_"))
+                    continue;
+
                 string fullPath = db.Path;
                 if (!File.Exists(fullPath))
                     stringBuilder.Append($"Отсутствует файл: {fullPath}\r\n");
             }
 
             if (stringBuilder.Length > 0)
-                SetErrorMsg_ToStatusForm(stringBuilder.ToString().TrimEnd());
+                return WriteAndLogErrorMsg(stringBuilder.ToString().TrimEnd());
+
+            return true;
         }
 
         /// <summary>
         /// Проверка инициализации вебхуков
         /// </summary>
-        private void CheckBitrixWebHooks()
+        private bool CheckBitrixWebHooks()
         {
             StringBuilder stringBuilder = new StringBuilder();
 
@@ -328,27 +335,32 @@ namespace KPLN_Loader.Services
             }
 
             if (stringBuilder.Length > 0)
-                SetErrorMsg_ToStatusForm(stringBuilder.ToString().TrimEnd());
+                return WriteAndLogErrorMsg(stringBuilder.ToString().TrimEnd());
+
+            return true;
         }
 
         /// <summary>
-        /// Вывод и логирование ошибки, с привязкой к стартовому окну
+        /// Вывод и логирование ошибки
         /// </summary>
-        private void SetErrorMsg_ToStatusForm(string userErrorMsg)
+        private bool WriteAndLogErrorMsg(string userErrorMsg)
         {
             if (!string.IsNullOrEmpty(userErrorMsg))
             {
-                TaskDialog td = new TaskDialog("ОШИБКА")
+                _loaderStatusForm?.Dispatcher.Invoke(() => _loaderStatusForm.Close());
+                _logger.Error(userErrorMsg);
+                
+                TaskDialog td = new TaskDialog("Критическая ошибка окружения")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconWarning,
                     MainInstruction = userErrorMsg
                 };
                 td.Show();
 
-                _logger.Error(userErrorMsg);
-                _loaderStatusForm.Dispatcher.Invoke(() => _loaderStatusForm.Close());
-                throw new Exception(userErrorMsg);
+                return false;
             }
+
+            return true;
         }
 
         /// <summary>

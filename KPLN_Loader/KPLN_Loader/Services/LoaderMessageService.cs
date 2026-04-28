@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using Autodesk.Revit.UI;
+using System.Windows.Forms;
 
 namespace KPLN_Loader.Services
 {
@@ -13,6 +14,7 @@ namespace KPLN_Loader.Services
             internal const string InitializationFailed = "Инициализация не удалась. Проверьте подключение к интернету.";
             internal const string RestrictedAccess =
                 "Вам закрыт доступ к плагинам KPLN. Удалите плагин с компьютера, или отправьте запрос на почту \"bim@kpln.ru\".\n\n" +
+                "ВАЖНО: На работу Revit это никак не влияет, просто вкладка \"KPLN\" более недоступна.\n\n" +
                 "Для удаления перейдите пройдите по пути \"Панель управления\" -> \"Программы\" -> \"Удаление программы\".\n" +
                 "Далее поиском найдите \"KPLN_ExtraNet\" и нажмите \"Удалить\".";
             internal const string GlobalInitializationError = "Инициализация не удалась. Отправь в BIM-отдел KPLN: {0}";
@@ -31,7 +33,12 @@ namespace KPLN_Loader.Services
 
         internal static void ShowWarning(string text)
         {
-            MessageBox.Show(text, ErrorTitle, MessageBoxButtons.OKCancel, MessageBoxIcon.Warning);
+            TaskDialog td = new TaskDialog(ErrorTitle)
+            {
+                MainIcon = TaskDialogIcon.TaskDialogIconError,
+                MainInstruction = text
+            };
+            td.Show();
         }
     }
 }

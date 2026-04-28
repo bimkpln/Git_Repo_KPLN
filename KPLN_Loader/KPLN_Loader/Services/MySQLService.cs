@@ -27,5 +27,9 @@ namespace KPLN_Loader.Services
         protected override bool IsRetryable(MySqlException ex) => true;
 
         protected override string DbProviderName => "MySQL";
+
+        protected override string SqlTrueLiteral => "TRUE";
+
+        protected override string SqlFalseLiteral => "FALSE";
     }
 }

@@ -46,20 +46,35 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <TextBlock 
-            x:Name="DebugModeTxt"
+        <StackPanel
             Grid.Row="0" 
             Grid.Column="0"
-            Margin="5,0,0,0"
-            Text="DEBUG" 
-            Foreground="Red"
-            FontSize="10"
-            FontWeight="Bold"
-            VerticalAlignment="Center"
-            HorizontalAlignment="Left"
-            TextWrapping="Wrap"
-            DockPanel.Dock="Top"
-            Visibility="Hidden"/>
+            Orientation="Horizontal">
+            <TextBlock 
+                x:Name="DebugModeTxt"
+                Margin="5,0,0,0"
+                Text="DEBUG" 
+                Foreground="Red"
+                FontSize="10"
+                FontWeight="Bold"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                TextWrapping="Wrap"
+                DockPanel.Dock="Top"
+                Visibility="Hidden"/>
+            <TextBlock 
+                x:Name="ExtraNetModeTxt"
+                Margin="5,0,0,0"
+                Text="ExtraNet" 
+                Foreground="Orange"
+                FontSize="10"
+                FontWeight="Bold"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                TextWrapping="Wrap"
+                DockPanel.Dock="Top"
+                Visibility="Hidden"/>
+        </StackPanel>
         
         <TextBlock 
             x:Name="versionTxt"

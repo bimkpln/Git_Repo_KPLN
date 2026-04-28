@@ -14,7 +14,7 @@ namespace KPLN_Loader.Forms
     /// </summary>
     public partial class LoginForm : Window
     {
-        public LoginForm(IEnumerable<SubDepartment> subDepartments, bool isExrtraNet)
+        public LoginForm(IEnumerable<SubDepartment> subDepartments)
         {
             InitializeComponent();
 
@@ -22,7 +22,7 @@ namespace KPLN_Loader.Forms
             this.cbxDepartment.ItemsSource = subDepartments;
             CreatedWPFUser = new WPFUser();
 
-            if (isExrtraNet)
+            if (Application.IsExtraNet)
                 tbxCompany.IsEnabled = true;
             else
                 CreatedWPFUser.Company = "KPLN";
@@ -92,6 +92,8 @@ namespace KPLN_Loader.Forms
                 && tbxSurname.Text.Length > 2
                 && !string.IsNullOrWhiteSpace(tbxName.Text)
                 && tbxName.Text.Length > 2
+                && !string.IsNullOrWhiteSpace(tbxCompany.Text)
+                && tbxCompany.Text.Length > 3
                 && cbxDepartment.SelectedItem != null;
 
             // Обновляем состояние кнопки на основе результата проверки

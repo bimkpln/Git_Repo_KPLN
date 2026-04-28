@@ -54,7 +54,9 @@ namespace KPLN_Loader
         /// <summary>
         /// Основной путь к основным конфигам для работы всей экосистемы
         /// </summary>
-        public static string MainConfigPath;
+        public static string MainConfigPath { get; private set; }
+
+        internal static LoaderStatusForm LoaderStatusForm { get; private set; }
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
         /// <summary>
@@ -72,8 +74,6 @@ namespace KPLN_Loader
         /// </summary>
         public static List<(Autodesk.Windows.RibbonItem RItem, string IconBaseName, string KPLNPluginAssembleName)> KPLNStackButtonsForImageReverse = new List<(Autodesk.Windows.RibbonItem, string, string)>();
 #endif
-
-
 
         internal delegate void RiseStepProgress(MainStatus mainStatus, string toolTip, Brush brush);
         /// <summary>
@@ -111,261 +111,40 @@ namespace KPLN_Loader
         }
 
         public Result OnStartup(UIControlledApplication application)
-        {
+        {            
+            // Инит основных полей/свойств
             InitializeRuntimeSettings(application);
             InitializeInfrastructure();
             string mainDbPath = GetMainDbPath();
+            LoaderStatusForm = CreateStatusFormForLocalStartup(); 
 
-            _logger.Info($"Запуск в Revit {RevitVersion}. Версия модуля: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
-            InitializeEnvironment();
+            // Активация спец. окружения
+            if (!InitializeEnvironment())
+            {
+                _logger.Info($"Неудачная попытка создания окружения в Revit {RevitVersion}\n");
+                return Result.Failed;
+            }
+
+
+            // Активация модулей
             InitializeModuleLoader();
-
             Result startupResult = IsExtraNet
                 ? InitializeExtraNetStartup(application, mainDbPath)
                 : InitializeLocalStartup(application, mainDbPath);
-
+            
             if (startupResult != Result.Succeeded)
+            {
+                _logger.Info($"Неудачная попытка инициализации в Revit {RevitVersion}\n");
                 return startupResult;
+            }
 
+            
+            // Фиксация успешного итога
             _logger.Info($"Успешная инициализация в Revit {RevitVersion}\n");
             SubscribeEvents(application);
 
             return Result.Succeeded;
-        }
-
-        private void InitializeRuntimeSettings(UIControlledApplication application)
-        {
-            RevitVersion = application.ControlledApplication.VersionNumber;
-            _pahtToLoaderDll = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-
-#if ExtraNet
-            IsExtraNet = true;
-            MainConfigPath = _pahtToLoaderDll + "\\KPLN_ExtraNet_Loader_Config.json";
-            _ribbonName = "KPLN_ExtraNet";
-#else
-            IsExtraNet = false;
-            MainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
-            _ribbonName = "KPLN";
-#endif
-        }
-
-        private void InitializeInfrastructure()
-        {
-            LogManager.Setup().LoadConfigurationFromFile(_pahtToLoaderDll + "\\nlog.config");
-            _logger = LogManager.GetLogger("KPLN_Loader");
-
-            string windrive = Path.GetPathRoot(Environment.SystemDirectory);
-            MainCashFolder = $"{windrive}KPLN_Temp";
-
-            string logDirPath = $"{MainCashFolder}\\KPLN_Logs\\{RevitVersion}";
-            string logFileName = "KPLN_Loader";
-            LogManager.Configuration.Variables["loader_logdir"] = logDirPath;
-            LogManager.Configuration.Variables["loader_logfilename"] = logFileName;
-
-            Task.Run(() => ClearingOldLogs(_logger, logDirPath, logFileName, true));
-        }
-
-        private string GetMainDbPath() => EnvironmentService.DatabaseConfigs.FirstOrDefault(d => d.Name == EnvironmentService.DatabaseConfigs_LoaderMainDB).Path;
-
-        private void InitializeEnvironment()
-        {
-            _envService = new EnvironmentService(_logger, RevitVersion, _diteTime)
-                .ConfigFileChecker()
-                .PreparingAndCliningDirectories();
-
-            Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
-        }
-
-        private void InitializeModuleLoader()
-        {
-            _moduleLoader = new ModuleLoaderService(_logger, _ribbonName, _moduleInstances, (msg, isError) =>
-            {
-                LoadStatus?.Invoke(new LoaderEvantEntity(msg), isError ? Brushes.Red : Brushes.Black);
-            });
-        }
-
-        private Result InitializeExtraNetStartup(UIControlledApplication application, string mainDbPath)
-        {
-            try
-            {
-                _mysqlService = new MySQLService(_logger, mainDbPath);
-            }
-            catch (Exception ex)
-            {
-                LoaderMessageService.ShowWarning(
-                    $"{LoaderMessageService.UserMessages.DbConnectionFailedPrefix}\n" +
-                    $"{LoaderMessageService.UserMessages.ContactSupport}\n\n" +
-                    $"Текст ошибки: {ex.Message}");
-                return Result.Cancelled;
-            }
-
-            CurrentRevitUser = _mysqlService.Authorization(_envService, IsExtraNet);
-            if (CurrentRevitUser == null)
-            {
-                LoaderMessageService.ShowWarning(
-                    $"{LoaderMessageService.UserMessages.InitializationFailed}\n" +
-                    $"{LoaderMessageService.UserMessages.ContactSupport}");
-                return Result.Cancelled;
-            }
-
-            if (CurrentRevitUser.IsUserRestricted)
-            {
-                LoaderMessageService.ShowWarning(LoaderMessageService.UserMessages.RestrictedAccess);
-                return Result.Cancelled;
-            }
-
-            _mysqlService.SetUserLastConnectionDate(CurrentRevitUser);
-            CurrentSubDepartment = _mysqlService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
-
-            application.CreateRibbonTab(_ribbonName);
-            _logger.Info("Активация модулей для пользователя:");
-
-            string pathToModules = Path.Combine(_pahtToLoaderDll, @"Modules");
-            DirectoryInfo modulesDirectory = new DirectoryInfo(pathToModules);
-            _moduleLoader.LoadExtraNetModules(application, modulesDirectory);
-
-            return Result.Succeeded;
-        }
-
-        private Result InitializeLocalStartup(UIControlledApplication application, string mainDbPath)
-        {
-            LoaderStatusForm loaderStatusForm = null;
-            ManualResetEvent formReady = new ManualResetEvent(false);
-            Thread uiThread = new Thread(() =>
-            {
-                loaderStatusForm = new LoaderStatusForm(this);
-                loaderStatusForm.Show();
-                formReady.Set();
-                System.Windows.Threading.Dispatcher.Run();
-            });
-            uiThread.SetApartmentState(ApartmentState.STA);
-            uiThread.IsBackground = true;
-            uiThread.Start();
-            formReady.WaitOne();
-
-            try
-            {
-                _envService.SetStatusForm(loaderStatusForm);
-                Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
-
-                _sqliteService = new SQLiteService(_logger, mainDbPath);
-                CurrentRevitUser = _sqliteService.Authorization(_envService, IsExtraNet);
-                if (CurrentRevitUser == null)
-                {
-                    Progress?.Invoke(MainStatus.DbConnection, "Критическая ошибка пользователя! Подробнее - см. файл логов", System.Windows.Media.Brushes.Red);
-                    return Result.Cancelled;
-                }
-
-                application.CreateRibbonTab(_ribbonName);
-
-                loaderStatusForm.SetDebugStatus(CurrentRevitUser.IsDebugMode);
-                bool isUserDataUpdated = _sqliteService.SetUserLastConnectionDate(CurrentRevitUser);
-                CurrentSubDepartment = _sqliteService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
-                loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
-
-                LoaderDescription loaderDescription = _sqliteService.GetDescriptionForCurrentUser(CurrentRevitUser);
-                loaderStatusForm.SetInstruction(loaderDescription);
-                loaderStatusForm.LikeStatus += LoaderStatusForm_RiseLikeEvant;
-
-                if (isUserDataUpdated && CurrentSubDepartment != null)
-                    Progress?.Invoke(MainStatus.DbConnection, "Успешно!", System.Windows.Media.Brushes.Green);
-                else
-                    Progress?.Invoke(MainStatus.DbConnection, "Замечания при подключения к БД! Подробнее - см. файл логов", System.Windows.Media.Brushes.Orange);
-
-                LoadStatus?.Invoke(
-                    new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"),
-                    System.Windows.Media.Brushes.OrangeRed);
-                loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
-
-                _logger.Info("Подготовка, копирование библиотек и активация модулей для пользователя:");
-                IEnumerable<Module> userAllModules = _sqliteService.GetModulesForCurrentUser(CurrentRevitUser);
-                int uploadModules = _moduleLoader.LoadLocalModules(application, userAllModules, m => _envService.CopyModule(m, CurrentRevitUser.IsDebugMode));
-
-                if (uploadModules == userAllModules.Count())
-                    Progress?.Invoke(MainStatus.ModulesActivation, "Успешно!", System.Windows.Media.Brushes.Green);
-                else
-                    Progress?.Invoke(MainStatus.ModulesActivation, $"С замечаниями. Смотри файл логов KPLN_Loader: {MainCashFolder}\\KPLN_Logs\\", System.Windows.Media.Brushes.Orange);
-
-                loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Глобальная ошибка плагина загрузки: \n{ex}");
-                _logger.Info("Инициализация не удалась\n");
-                loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.Close());
-
-                Exception currentEx = ex.InnerException ?? ex;
-                LoaderMessageService.ShowWarning(string.Format(LoaderMessageService.UserMessages.GlobalInitializationError, currentEx.Message));
-                return Result.Cancelled;
-            }
-
-            loaderStatusForm.Start_WindowClose();
-            return Result.Succeeded;
-        }
-
-        private void SubscribeEvents(UIControlledApplication application)
-        {
-            application.Idling += OnIdling;
-            application.ControlledApplication.DocumentOpened += OnDocumentOpened;
-#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
-            application.ThemeChanged += OnThemeChanged;
-#endif
-        }
-
-        /// <summary>
-        /// Обработчик события RiseLikeEvant
-        /// </summary>
-        private void LoaderStatusForm_RiseLikeEvant(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription) => _sqliteService.SetLoaderDescriptionUserRank(rateType, loaderDescription);
-
-        /// <summary>
-        /// Метод для добавления иконки для кнопки в зависимости от темы
-        /// </summary>
-        /// <param name="iconBaseName">Чистое имя иконки</param>
-        /// <param name="size">Размер иконки</param>
-        public static ImageSource GetBtnImage_ByTheme(string assemblyName, string iconBaseName, int size)
-        {
-            string themeSuffix = string.Empty;
-
-            UITheme theme = UIThemeManager.CurrentTheme;
-            if (theme == UITheme.Dark)
-                themeSuffix = "_dark";
-
-            string fileName = $"{iconBaseName}{size}{themeSuffix}.png";
-            string uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
-
-            ImageSource result = null;
-            try
-            {
-                result = new BitmapImage(new Uri(uriString));
-            }
-            // Если нет дарк темы, то просто имя файла
-            catch (IOException)  
-            {
-                try
-                {
-                    fileName = $"{iconBaseName}{size}.png";
-                    uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
-                    var a = new Uri(uriString).AbsolutePath;
-                    var aa = new Uri(uriString).LocalPath;
-
-                    result = new BitmapImage(new Uri(uriString));
-                }
-                catch
-                {
-                    // Если его нет - подсвечиваю ошибку разработчику
-                    if (CurrentRevitUser != null && CurrentRevitUser.IsDebugMode)
-                    {
-                        MessageBox.Show($"Ошибка поиска картинки для плагина {assemblyName}. Имя картинки {fileName} " +
-                                $"Разработчик - проверь структуру хранения данных, картинки должны быть в папке \"Imagens\", и должны быть ресурсом (Resource)", 
-                            "Ошибка", 
-                            MessageBoxButtons.OK, 
-                            MessageBoxIcon.Error);
-                    }
-                }
-            }
-
-            return result;
         }
 
         /// <summary>
@@ -403,15 +182,293 @@ namespace KPLN_Loader
         }
 
         /// <summary>
-        /// Получить коллекцию модулей для пользователей типа ExtraNet (субчики)
+        /// Метод для добавления иконки для кнопки в зависимости от темы
         /// </summary>
-        /// <returns></returns>
-        internal void ExtraNetUserModules(UIControlledApplication application)
+        /// <param name="iconBaseName">Чистое имя иконки</param>
+        /// <param name="size">Размер иконки</param>
+        public static ImageSource GetBtnImage_ByTheme(string assemblyName, string iconBaseName, int size)
         {
-            string pathToModules = Path.Combine(_pahtToLoaderDll, @"Modules");
-            DirectoryInfo directoryInfo = new DirectoryInfo(pathToModules);
-            _moduleLoader.LoadExtraNetModules(application, directoryInfo);
-        }        
+            string themeSuffix = string.Empty;
+
+            UITheme theme = UIThemeManager.CurrentTheme;
+            if (theme == UITheme.Dark)
+                themeSuffix = "_dark";
+
+            string fileName = $"{iconBaseName}{size}{themeSuffix}.png";
+            string uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
+
+            ImageSource result = null;
+            try
+            {
+                result = new BitmapImage(new Uri(uriString));
+            }
+            // Если нет дарк темы, то просто имя файла
+            catch (IOException)
+            {
+                try
+                {
+                    fileName = $"{iconBaseName}{size}.png";
+                    uriString = $"pack://application:,,,/{assemblyName};component/Imagens/{fileName}";
+                    var a = new Uri(uriString).AbsolutePath;
+                    var aa = new Uri(uriString).LocalPath;
+
+                    result = new BitmapImage(new Uri(uriString));
+                }
+                catch
+                {
+                    // Если его нет - подсвечиваю ошибку разработчику
+                    if (CurrentRevitUser != null && CurrentRevitUser.IsDebugMode)
+                    {
+                        MessageBox.Show($"Ошибка поиска картинки для плагина {assemblyName}. Имя картинки {fileName} " +
+                                $"Разработчик - проверь структуру хранения данных, картинки должны быть в папке \"Imagens\", и должны быть ресурсом (Resource)",
+                            "Ошибка",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private void InitializeRuntimeSettings(UIControlledApplication application)
+        {
+            RevitVersion = application.ControlledApplication.VersionNumber;
+            _pahtToLoaderDll = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+
+#if ExtraNet
+            IsExtraNet = true;
+            MainConfigPath = _pahtToLoaderDll + "\\KPLN_ExtraNet_Loader_Config.json";
+            _ribbonName = "KPLN_ExtraNet";
+#else
+            IsExtraNet = false;
+#if DEBUG
+            MainConfigPath = @"Z:\Отдел BIM\Куцко Тимофей\KPLN_Loader_Config.json";
+#else
+            MainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
+#endif
+
+            _ribbonName = "KPLN";
+#endif
+        }
+
+        private void InitializeInfrastructure()
+        {
+            LogManager.Setup().LoadConfigurationFromFile(_pahtToLoaderDll + "\\nlog.config");
+            _logger = LogManager.GetLogger("KPLN_Loader");
+
+            string windrive = Path.GetPathRoot(Environment.SystemDirectory);
+            MainCashFolder = $"{windrive}KPLN_Temp";
+
+            string logDirPath = $"{MainCashFolder}\\KPLN_Logs\\{RevitVersion}";
+            string logFileName = "KPLN_Loader";
+            LogManager.Configuration.Variables["loader_logdir"] = logDirPath;
+            LogManager.Configuration.Variables["loader_logfilename"] = logFileName;
+
+            // Старт записи в лог
+            _logger.Info($"Запуск в Revit {RevitVersion}. Версия модуля: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}. Статус IsExtraNet: {IsExtraNet}");
+
+            Task.Run(() => ClearingOldLogs(_logger, logDirPath, logFileName, true));
+        }
+
+        private string GetMainDbPath() => EnvironmentService.DatabaseConfigs.FirstOrDefault(d => d.Name.Contains(EnvironmentService.DatabaseConfigs_LoaderMainDB)).Path;
+
+        private bool InitializeEnvironment()
+        {
+            _envService = new EnvironmentService(_logger, RevitVersion, _diteTime, LoaderStatusForm);
+
+            return _envService.ConfigFileChecker() && _envService.PreparingAndCliningDirectories();
+        }
+
+        private void InitializeModuleLoader()
+        {
+            _moduleLoader = new ModuleLoaderService(_logger, _ribbonName, _moduleInstances, (msg, isError) =>
+            {
+                LoadStatus?.Invoke(new LoaderEvantEntity(msg), isError ? Brushes.Red : Brushes.Black);
+            });
+        }
+
+        private Result InitializeExtraNetStartup(UIControlledApplication application, string mainDbPath)
+        {
+            // Проверка подключения к БД
+            try
+            {
+                _mysqlService = new MySQLService(_logger, mainDbPath);
+                Progress?.Invoke(MainStatus.Envirnment, "Успешно!", Brushes.Green);
+            }
+            catch (Exception ex)
+            {
+                LoaderMessageService.ShowWarning(
+                    $"{LoaderMessageService.UserMessages.DbConnectionFailedPrefix}\n" +
+                    $"{LoaderMessageService.UserMessages.ContactSupport}\n\n" +
+                    $"Текст ошибки: {ex.Message}");
+                return Result.Cancelled;
+            }
+
+            // Инициализация
+            try
+            {
+                CurrentRevitUser = _mysqlService.Authorization(_envService, IsExtraNet);
+                if (CurrentRevitUser == null)
+                {
+                    LoaderStatusForm?.Dispatcher.Invoke(() => LoaderStatusForm.Close());
+                
+                    LoaderMessageService.ShowWarning(
+                        $"{LoaderMessageService.UserMessages.InitializationFailed}\n" +
+                        $"{LoaderMessageService.UserMessages.ContactSupport}");
+                
+                    return Result.Cancelled;
+                }
+
+                if (CurrentRevitUser.IsUserRestricted)
+                {
+                    LoaderStatusForm?.Dispatcher.Invoke(() => LoaderStatusForm.Close());
+
+                    LoaderMessageService.ShowWarning(LoaderMessageService.UserMessages.RestrictedAccess);
+                
+                    return Result.Cancelled;
+                }
+
+                application.CreateRibbonTab(_ribbonName);
+            
+                LoaderStatusForm.SetStatuses(CurrentRevitUser.IsDebugMode, IsExtraNet);
+                bool isUserDataUpdated = _mysqlService.SetUserLastConnectionDate(CurrentRevitUser);
+                CurrentSubDepartment = _mysqlService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
+
+                LoaderDescription loaderDescription = _mysqlService.GetDescriptionForCurrentUser(CurrentRevitUser);
+                LoaderStatusForm.SetInstruction(loaderDescription);
+                LoaderStatusForm.LikeStatus += LoaderStatusForm_RiseLikeEvant;
+
+                if (isUserDataUpdated && CurrentSubDepartment != null)
+                    Progress?.Invoke(MainStatus.DbConnection, "Успешно!", Brushes.Green);
+                else
+                    Progress?.Invoke(MainStatus.DbConnection, "Замечания при подключения к БД! Подробнее - см. файл логов", Brushes.Orange);
+
+                LoadStatus?.Invoke(
+                        new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"),
+                        Brushes.OrangeRed);
+
+                _logger.Info("Активация модулей для пользователя:");
+
+                string pathToModules = Path.Combine(_pahtToLoaderDll, @"Modules");
+                DirectoryInfo modulesDirectory = new DirectoryInfo(pathToModules);
+                _moduleLoader.LoadExtraNetModules(application, modulesDirectory);
+                Progress?.Invoke(MainStatus.ModulesActivation, "Успешно!", Brushes.Green);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Глобальная ошибка плагина загрузки: \n{ex}");
+                _logger.Info("Инициализация не удалась\n");
+                LoaderStatusForm.Dispatcher.Invoke(() => LoaderStatusForm.Close());
+
+                Exception currentEx = ex.InnerException ?? ex;
+                LoaderMessageService.ShowWarning(string.Format(LoaderMessageService.UserMessages.GlobalInitializationError, currentEx.Message));
+                return Result.Cancelled;
+            }
+
+            LoaderStatusForm.Start_WindowClose();
+            return Result.Succeeded;
+        }
+
+        private Result InitializeLocalStartup(UIControlledApplication application, string mainDbPath)
+        {
+            try
+            {
+                Progress?.Invoke(MainStatus.Envirnment, "Успешно!", Brushes.Green);
+
+                _sqliteService = new SQLiteService(_logger, mainDbPath);
+                CurrentRevitUser = _sqliteService.Authorization(_envService, IsExtraNet);
+                if (CurrentRevitUser == null)
+                {
+                    Progress?.Invoke(MainStatus.DbConnection, "Критическая ошибка пользователя! Подробнее - см. файл логов", Brushes.Red);
+                    return Result.Cancelled;
+                }
+
+                application.CreateRibbonTab(_ribbonName);
+
+                LoaderStatusForm.SetStatuses(CurrentRevitUser.IsDebugMode, IsExtraNet);
+                bool isUserDataUpdated = _sqliteService.SetUserLastConnectionDate(CurrentRevitUser);
+                CurrentSubDepartment = _sqliteService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
+
+                LoaderDescription loaderDescription = _sqliteService.GetDescriptionForCurrentUser(CurrentRevitUser);
+                LoaderStatusForm.SetInstruction(loaderDescription);
+                LoaderStatusForm.LikeStatus += LoaderStatusForm_RiseLikeEvant;
+
+                if (isUserDataUpdated && CurrentSubDepartment != null)
+                    Progress?.Invoke(MainStatus.DbConnection, "Успешно!", Brushes.Green);
+                else
+                    Progress?.Invoke(MainStatus.DbConnection, "Замечания при подключения к БД! Подробнее - см. файл логов", Brushes.Orange);
+
+                LoadStatus?.Invoke(
+                    new LoaderEvantEntity($"Пользователь: [{CurrentRevitUser.Surname} {CurrentRevitUser.Name}], отдел [{CurrentSubDepartment.Code}]"),
+                    Brushes.OrangeRed);
+
+                _logger.Info("Подготовка, копирование библиотек и активация модулей для пользователя:");
+                IEnumerable<Module> userAllModules = _sqliteService.GetModulesForCurrentUser(CurrentRevitUser);
+                int uploadModules = _moduleLoader.LoadLocalModules(application, userAllModules, m => _envService.CopyModule(m, CurrentRevitUser.IsDebugMode));
+
+                if(userAllModules.Count() == 0)
+                {
+                    _logger.Error($"Модули отсутсвуют");
+                    Progress?.Invoke(MainStatus.ModulesActivation, $"Модули отсутсвуют. Обратись к разработчику!", Brushes.Red);
+                }
+                else if (uploadModules == userAllModules.Count())
+                    Progress?.Invoke(MainStatus.ModulesActivation, "Успешно!", Brushes.Green);
+                else
+                    Progress?.Invoke(MainStatus.ModulesActivation, $"С замечаниями. Смотри файл логов KPLN_Loader: {MainCashFolder}\\KPLN_Logs\\", Brushes.Orange);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Глобальная ошибка плагина загрузки: \n{ex}");
+                _logger.Info("Инициализация не удалась\n");
+                LoaderStatusForm.Dispatcher.Invoke(() => LoaderStatusForm.Close());
+
+                Exception currentEx = ex.InnerException ?? ex;
+                LoaderMessageService.ShowWarning(string.Format(LoaderMessageService.UserMessages.GlobalInitializationError, currentEx.Message));
+                return Result.Cancelled;
+            }
+
+            LoaderStatusForm.Start_WindowClose();
+            return Result.Succeeded;
+        }
+
+        /// <summary>
+        /// Создание и запуск статус-окна для локального старта.
+        /// </summary>
+        private LoaderStatusForm CreateStatusFormForLocalStartup()
+        {
+            LoaderStatusForm loaderStatusForm = null;
+            ManualResetEvent formReady = new ManualResetEvent(false);
+
+            Thread uiThread = new Thread(() =>
+            {
+                loaderStatusForm = new LoaderStatusForm(this);
+                loaderStatusForm.Show();
+                formReady.Set();
+                System.Windows.Threading.Dispatcher.Run();
+            });
+
+            uiThread.SetApartmentState(ApartmentState.STA);
+            uiThread.IsBackground = true;
+            uiThread.Start();
+            formReady.WaitOne();
+
+            return loaderStatusForm;
+        }
+
+        private void SubscribeEvents(UIControlledApplication application)
+        {
+            application.Idling += OnIdling;
+            application.ControlledApplication.DocumentOpened += OnDocumentOpened;
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            application.ThemeChanged += OnThemeChanged;
+#endif
+        }
+
+        /// <summary>
+        /// Обработчик события RiseLikeEvant
+        /// </summary>
+        private void LoaderStatusForm_RiseLikeEvant(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription) => _sqliteService.SetLoaderDescriptionUserRank(rateType, loaderDescription);
 
         /// <summary>
         /// Событие возникающее в режимах простоя Revit (когда приложению API становится безопасно обращаться к активному документу)

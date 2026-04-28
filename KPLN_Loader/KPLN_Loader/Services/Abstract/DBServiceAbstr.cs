@@ -45,6 +45,16 @@ namespace KPLN_Loader.Services.Abstract
         protected abstract string DbProviderName { get; }
 
         /// <summary>
+        /// SQL-литерал логического TRUE для текущего провайдера
+        /// </summary>
+        protected virtual string SqlTrueLiteral => "'True'";
+
+        /// <summary>
+        /// SQL-литерал логического FALSE для текущего провайдера
+        /// </summary>
+        protected virtual string SqlFalseLiteral => "'False'";
+
+        /// <summary>
         /// Кэширование коллекции отделов из БД
         /// </summary>
         private IEnumerable<SubDepartment> SubDepartments
@@ -75,7 +85,7 @@ namespace KPLN_Loader.Services.Abstract
                 new { SystemName = sysUserName }).FirstOrDefault();
             if (currentUser == null)
             {
-                LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled), false);
+                LoginForm loginForm = new LoginForm(SubDepartments.Where(s => s.IsAuthEnabled));
                 if ((bool)loginForm.ShowDialog())
                 {
                     int bitrixId = Task.Run(() => envService.GetUserBitrixId_ByNameAndSurname(loginForm.CreatedWPFUser.Name, loginForm.CreatedWPFUser.Surname)).Result;
@@ -116,7 +126,6 @@ namespace KPLN_Loader.Services.Abstract
                 _logger.Info($"Пользователь {currentUser.SystemName}: " +
                     $"{currentUser.Surname} {currentUser.Name} из отдела {GetSubDepartmentForCurrentUser(currentUser)?.Code} " +
                     $"успешно определен!");
-
             }
 
             if (currentUser.IsDebugMode)
@@ -143,15 +152,15 @@ namespace KPLN_Loader.Services.Abstract
             {
                 return ExecuteQuery<Module>(
                     $"SELECT * FROM {MainDB_Tables.Modules} " +
-                    $"WHERE {nameof(Module.IsEnabled)} = TRUE " +
-                    $"AND ({nameof(Module.IsLibraryModule)} = TRUE OR {nameof(Module.IsDebugMode)} = TRUE);");
+                    $"WHERE {nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
+                    $"AND ({nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR {nameof(Module.IsDebugMode)} = {SqlTrueLiteral});");
             }
 
             return ExecuteQuery<Module>(
                 $"SELECT * FROM {MainDB_Tables.Modules} " +
-                $"WHERE {nameof(Module.IsEnabled)} = TRUE " +
+                $"WHERE {nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
                 $"AND ({nameof(Module.SubDepartmentId)} = 1 OR {nameof(Module.SubDepartmentId)} = @{nameof(User.SubDepartmentId)}) " +
-                $"AND ({nameof(Module.IsLibraryModule)} = TRUE OR {nameof(Module.IsDebugMode)} = FALSE);",
+                $"AND ({nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR {nameof(Module.IsDebugMode)} = {SqlFalseLiteral});",
                 new { currentUser.SubDepartmentId });
         }
 

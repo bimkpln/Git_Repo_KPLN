@@ -75,9 +75,8 @@ namespace KPLN_Loader.Services
             return uploadModules;
         }
 
-        internal int LoadExtraNetModules(UIControlledApplication application, DirectoryInfo modulesDirectory)
+        internal void LoadExtraNetModules(UIControlledApplication application, DirectoryInfo modulesDirectory)
         {
-            int uploadModules = 0;
 
             foreach (DirectoryInfo dir in modulesDirectory.GetDirectories())
             {
@@ -86,7 +85,6 @@ namespace KPLN_Loader.Services
 
                 if (isModuleLoad)
                 {
-                    uploadModules++;
                     string msg = isLibrary
                         ? string.Format(LoaderMessageService.ModuleMessages.LibraryLoaded, dir.Name, moduleVersion, "активирован")
                         : string.Format(LoaderMessageService.ModuleMessages.ModuleLoaded, dir.Name, moduleVersion);
@@ -94,12 +92,8 @@ namespace KPLN_Loader.Services
                     PublishStatus(msg, false);
                 }
                 else
-                {
                     PublishStatus(string.Format(LoaderMessageService.ModuleMessages.MissingDll, dir.Name), true);
-                }
             }
-
-            return uploadModules;
         }
 
         private bool TryLoadFromDirectory(UIControlledApplication application, DirectoryInfo sourceDirectory, string moduleName, bool isLibrary, out string moduleVersion)

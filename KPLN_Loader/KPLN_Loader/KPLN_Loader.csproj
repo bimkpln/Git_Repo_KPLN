@@ -23,7 +23,7 @@
   <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Debug2023_ExtraNet' OR '$(Configuration)'=='Revit2023' OR '$(Configuration)'=='Revit2023_ExtraNet'">
     <RevitVer>2023</RevitVer>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024'">
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Debug2024_ExtraNet' OR '$(Configuration)'=='Revit2024' OR '$(Configuration)'=='Revit2024_ExtraNet'">
     <RevitVer>2024</RevitVer>
   </PropertyGroup>
   <!-- DEBUG CONFIGS -->
@@ -65,6 +65,12 @@
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <!-- PROJECT REFERENCES -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024_ExtraNet|x64'">
+    <DefineConstants>TRACE;DEBUG;Debug2024;Debug2024_ExtraNet;ExtraNet</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024_ExtraNet|x64'">
+    <DefineConstants>Revit2024;Revit2024_ExtraNet;ExtraNet</DefineConstants>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023_ExtraNet|x64'">
     <DefineConstants>TRACE;DEBUG;Debug2023;Debug2023_ExtraNet;ExtraNet</DefineConstants>
   </PropertyGroup>
