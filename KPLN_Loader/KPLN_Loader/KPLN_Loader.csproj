@@ -205,6 +205,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Core\MainDB_Tables.cs" />
     <Compile Include="Services\MySQLService.cs" />
+    <Compile Include="Services\LoaderMessageService.cs" />
+    <Compile Include="Services\ModuleLoaderService.cs" />
     <Compile Include="Services\Abstract\DBServiceAbstr.cs" />
     <Compile Include="Services\EnvironmentService.cs" />
     <Compile Include="Services\SQLiteService.cs" />
