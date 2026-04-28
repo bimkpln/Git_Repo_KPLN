@@ -9,7 +9,6 @@ using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_SQLiteWorker;
 using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
-using KPLN_Loader.Core.Entities;
 using KPLN_Looker.Comparers;
 using KPLN_Looker.ExecutableCommand;
 using KPLN_Looker.Services;
@@ -18,14 +17,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Controls;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Looker
 {
     public class Module : IExternalModule
-    {        
+    {
         /// <summary>
         /// Кэширование текущего пути мониторингового проекта (ЗА исключением файлов концепций)
         /// </summary>
@@ -77,7 +75,7 @@ namespace KPLN_Looker
         /// <summary>
         /// Счётчик помещений в модели. Ключ - имя ФХ/модели, значения - коллекция помещений
         /// </summary>
-        private static readonly Dictionary<string, Room[]> _lastDocRooms = new Dictionary<string, Room[]>();
+        private static readonly Dictionary<string, Room[]> _docRoomsDict = new Dictionary<string, Room[]>();
 
         public Module() { }
 
@@ -91,17 +89,14 @@ namespace KPLN_Looker
         /// <summary>
         /// Флаг запуска автопроверок (выключаем из модулей, которые запускают синхрон моделей)
         /// </summary>
-        public static bool RunAutoChecks { get; set; } = true;        
+        public static bool RunAutoChecks { get; set; } = true;
 
         /// <summary>
         /// Кэширование текущего проекта KPLN
         /// </summary>
         public static DBProject CurrentDBProject { get; private set; }
 
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
@@ -236,11 +231,7 @@ namespace KPLN_Looker
 
             // Кол-во помещений в текущей модели
             Room[] docRooms = GetDocRooms(doc);
-
-            if (_lastDocRooms.ContainsKey(fileFullName))
-                _lastDocRooms[fileFullName] = docRooms;
-            else
-                _lastDocRooms.Add(fileFullName, docRooms);
+            SetDocRoomsDict(fileFullName, docRooms);
             #endregion
 
 
@@ -398,11 +389,11 @@ namespace KPLN_Looker
             }
             else
             {
-                #if DEBUG
+#if DEBUG
                 // Глушу оповещение своих тестовых проектов (достаточно в режиме дебага, чтобы не нагружать остальных)
                 if (KPLN_Loader.Application.CurrentRevitUser.Id == 1 && _currentMonitoredDocFilePath_ExceptARKon.Contains("04_Модели для теста"))
                     return;
-                #endif
+#endif
 
                 BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name} " +
@@ -423,8 +414,8 @@ namespace KPLN_Looker
             if (doc == null) return;
 
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            if (_lastDocRooms.ContainsKey(fileFullName))
-                _lastDocRooms.Remove(fileFullName);
+            if (_docRoomsDict.ContainsKey(fileFullName))
+                _docRoomsDict.Remove(fileFullName);
         }
 
         /// <summary>
@@ -457,7 +448,7 @@ namespace KPLN_Looker
 
             UIDocument uidoc = new UIDocument(doc);
             Autodesk.Revit.DB.View activeView = args.CurrentActiveView;
-            
+
 
             #region Закрываю вид, если он для бим-отдела
             if (!(activeView is View3D _)
@@ -569,7 +560,7 @@ namespace KPLN_Looker
             #endregion
 
             string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            
+
             // Проверка помещений модели
             CheckAndSendError_RoomDeleted(doc, fileFullName);
 
@@ -780,6 +771,17 @@ namespace KPLN_Looker
         }
 
         /// <summary>
+        /// Добавление данных по помещениям в словарь (кэширование)
+        /// </summary>
+        private static void SetDocRoomsDict(string fileFullName, Room[] docRooms)
+        {
+            if (_docRoomsDict.ContainsKey(fileFullName))
+                _docRoomsDict[fileFullName] = docRooms;
+            else
+                _docRoomsDict.Add(fileFullName, docRooms);
+        }
+
+        /// <summary>
         /// Проверка семейства на наличие ошибки источника
         /// </summary>
         /// <param name="doc">Рeвит документ</param>
@@ -880,28 +882,39 @@ namespace KPLN_Looker
         private static void CheckAndSendError_RoomDeleted(Document doc, string fileFullName)
         {
             // Проверка, что это проект КПЛН стадии РД
-#if REVIT
             if (CurrentDBProject == null || CurrentDBProject.Stage != "РД") return;
-#endif
-            
-            
+
             Room[] updatedRoomColl = GetDocRooms(doc);
-            if (updatedRoomColl.Length == 0 && _lastDocRooms.ContainsKey(fileFullName) && _lastDocRooms[fileFullName].Length == 0)
+
+            // Случаются моменты, когда словарь пустой (возможно промахи, не совсем понятно).
+            // В таком случае - повторяю генерацию, и в игнор
+            if (!_docRoomsDict.Keys.Any())
+            {
+                SetDocRoomsDict(fileFullName, updatedRoomColl);
+                return;
+            }
+
+
+            // Если помещений нет И если проект уже ранее анализировался И тоже был пустым - в игнор
+            if (updatedRoomColl.Length == 0
+                && _docRoomsDict.ContainsKey(fileFullName)
+                && _docRoomsDict[fileFullName].Length == 0)
                 return;
 
+
             // Пусть надоедает юзеру, НО не крашит ревит
-            if (!_lastDocRooms.ContainsKey(fileFullName))
+            if (!_docRoomsDict.ContainsKey(fileFullName))
             {
                 HtmlOutput.Print("Ошибка определения модели при анализе на соответсвие помещений. Отправь разработчику!" +
                     $"\n Сейчас синхронизируется файл по пути: \"{fileFullName}\"." +
-                    $"\n В словаре проектов такой набор: \"{string.Join("; ", _lastDocRooms.Keys)}\".",
+                    $"\n В словаре проектов такой набор: \"{string.Join("; ", _docRoomsDict.Keys)}\".",
                     MessageType.Error);
                 return;
             }
 
 
             // Старая коллекция ID помещений
-            HashSet<ElementId> prevRoomIds = new HashSet<ElementId>(_lastDocRooms[fileFullName].Select(r =>
+            HashSet<ElementId> prevRoomIds = new HashSet<ElementId>(_docRoomsDict[fileFullName].Select(r =>
                 {
                     if (r != null && r.IsValidObject)
                         return r.Id;
@@ -912,8 +925,8 @@ namespace KPLN_Looker
 #endif
                     return new ElementId(errId);
                 }), ElementIdEqualityComparer.Instance);
-            
-            
+
+
             // Новая коллекция ID помещений
             HashSet<ElementId> currRoomIds = new HashSet<ElementId>(updatedRoomColl.Select(r => r.Id), ElementIdEqualityComparer.Instance);
 
@@ -924,7 +937,7 @@ namespace KPLN_Looker
 
             // Анализ: Удаленные
             IEnumerable<ElementId> removedIds = prevRoomIds.Where(id => !currRoomIds.Contains(id));
-            var removedRooms = _lastDocRooms[fileFullName].Where(r => removedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
+            var removedRooms = _docRoomsDict[fileFullName].Where(r => removedIds.Contains(r.Id, ElementIdEqualityComparer.Instance)).ToArray();
 
             // Анализ: Общее число изменений. Если его нет - игнор
             var changedRooms = addedRooms.Concat(removedRooms).ToArray();
@@ -932,7 +945,7 @@ namespace KPLN_Looker
 
 
             // Обновляем коллекцию кол-ва помещений
-            _lastDocRooms[fileFullName] = updatedRoomColl;
+            _docRoomsDict[fileFullName] = updatedRoomColl;
 
 
             // Проверка, что это модель АР
