@@ -1,0 +1,39 @@
+﻿<Window x:Class="KPLN_Tools.Forms.SheetFilterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Фильтр листов"
+        Height="200"
+        Width="620"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI"
+        Loaded="Window_Loaded">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="PromptTextBlock"
+                   Grid.Row="0"
+                   Margin="0,0,0,10"
+                   FontSize="16"
+                   TextWrapping="Wrap" />
+
+        <TextBox x:Name="FilterTextBox"
+                 Grid.Row="1"
+                 Height="34"
+                 Margin="0,0,0,18"
+                 FontSize="20"
+                 HorizontalContentAlignment="Center"
+                 VerticalContentAlignment="Center" />
+
+        <Button Grid.Row="2"
+                Height="34"
+                Content="OK"
+                IsDefault="True"
+                Click="OkButton_Click" />
+    </Grid>
+</Window>
+
