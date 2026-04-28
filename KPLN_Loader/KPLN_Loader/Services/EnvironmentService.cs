@@ -40,12 +40,11 @@ namespace KPLN_Loader.Services
         ///</summary>
         private readonly string _revitVersion;
         private readonly Logger _logger;
-        private readonly LoaderStatusForm _loaderStatusForm;
+        private LoaderStatusForm _loaderStatusForm;
 
-        internal EnvironmentService(Logger logger, LoaderStatusForm loaderStatusForm, string revitVersion, string diteTime)
+        internal EnvironmentService(Logger logger, string revitVersion, string diteTime)
         {
             _logger = logger;
-            _loaderStatusForm = loaderStatusForm;
             _revitVersion = revitVersion;
             _applicationLocation = new DirectoryInfo(Path.Combine(_userLocation.FullName, "KPLN_Loader"));
             _sessionLocation = new DirectoryInfo(Path.Combine(_applicationLocation.FullName, $"{_revitVersion}_{diteTime}"));
@@ -132,49 +131,40 @@ namespace KPLN_Loader.Services
         }
 
         /// <summary>
+        /// Добавление привязки к окну
+        /// </summary>
+        internal EnvironmentService SetStatusForm(LoaderStatusForm loaderStatusForm)
+        {
+            _loaderStatusForm = loaderStatusForm;
+            return this;
+        }
+
+        /// <summary>
         /// Проверка наличия файла конфигурации и необходимых БД
         /// </summary>
         internal EnvironmentService ConfigFileChecker()
         {
-            string userErrorMsg = string.Empty;
-            if (File.Exists(Application.MainConfigPath))
+            // Проверка наличия файла-конфига
+            if (!File.Exists(Application.MainConfigPath))
             {
-                StringBuilder stringBuilder = new StringBuilder();
-
-                // Проверка наличия БД
-                foreach (DB_Config db in DatabaseConfigs)
-                {
-                    string fullPath = db.Path;
-                    if (!File.Exists(fullPath))
-                        stringBuilder.Append($"Отсутствует файл: {fullPath}\r\n");
-                }
-
-                // Проверка инициализации вебхуков
-                foreach (Bitrix_Config bitr in BitrixConfigs)
-                {
-                    if (string.IsNullOrEmpty(bitr.Name) || string.IsNullOrEmpty(bitr.URL))
-                        stringBuilder.Append($"Не все вебхуки активированы. Отправь разработчику\r\n");
-                }
-
-                if (stringBuilder.Length > 0)
-                    userErrorMsg = stringBuilder.ToString().TrimEnd();
+                if(Application.IsExtraNet)
+                    SetErrorMsg_ToStatusForm($"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}." +
+                        $"\nОтправь скрин окна разработчику по почте \"bim@kpln.ru\"");
+                else
+                    SetErrorMsg_ToStatusForm($"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}." +
+                        $"\nПроверь, подключен ли диск с помощью проводника, если нет - обратись к системному администратору");
             }
+
+
+            // Экстранет проверка на подключение к инет-БД
+            if (Application.IsExtraNet)
+                CheckWebServerDB();
+            // Интронет проверка и ни инет-БД, и на локальные БД (должны видеть обе). Проверка подключения битрикса
             else
-                userErrorMsg = $"Отсутствует файл конфигураций баз данных: {Application.MainConfigPath}";
-
-            if (!string.IsNullOrEmpty(userErrorMsg))
             {
-                TaskDialog td = new TaskDialog("ОШИБКА")
-                {
-                    MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                    MainInstruction = userErrorMsg,
-                    MainContent = "Проверь, подключен ли диск с помощью проводника, если нет - обратись к системному администратору"
-                };
-                td.Show();
-
-                _logger.Error(userErrorMsg);
-                _loaderStatusForm.Dispatcher.Invoke(() => _loaderStatusForm.Close());
-                throw new Exception(userErrorMsg);
+                CheckWebServerDB();
+                CheckLocalDB();
+                CheckBitrixWebHooks();
             }
 
             return this;
@@ -281,6 +271,84 @@ namespace KPLN_Loader.Services
             }
 
             return dbList.ToArray();
+        }
+
+        /// <summary>
+        /// Проверка подключения онлайн БД
+        /// </summary>
+        private void CheckWebServerDB()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            foreach (DB_Config db in DatabaseConfigs)
+            {
+                try
+                {
+                    new MySQLService(_logger, db.Path);
+                }
+                catch
+                { 
+                    stringBuilder.Append($"Отсутствует подключение к БД: {db.Name}\r\n");
+                }
+            }
+
+            if (stringBuilder.Length > 0)
+                SetErrorMsg_ToStatusForm(stringBuilder.ToString().TrimEnd());
+        }
+
+        /// <summary>
+        /// Проверка наличия локальных БД
+        /// </summary>
+        private void CheckLocalDB()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            foreach (DB_Config db in DatabaseConfigs)
+            {
+                string fullPath = db.Path;
+                if (!File.Exists(fullPath))
+                    stringBuilder.Append($"Отсутствует файл: {fullPath}\r\n");
+            }
+
+            if (stringBuilder.Length > 0)
+                SetErrorMsg_ToStatusForm(stringBuilder.ToString().TrimEnd());
+        }
+
+        /// <summary>
+        /// Проверка инициализации вебхуков
+        /// </summary>
+        private void CheckBitrixWebHooks()
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+
+            foreach (Bitrix_Config bitr in BitrixConfigs)
+            {
+                if (string.IsNullOrEmpty(bitr.Name) || string.IsNullOrEmpty(bitr.URL))
+                    stringBuilder.Append($"Не все вебхуки активированы. Отправь разработчику\r\n");
+            }
+
+            if (stringBuilder.Length > 0)
+                SetErrorMsg_ToStatusForm(stringBuilder.ToString().TrimEnd());
+        }
+
+        /// <summary>
+        /// Вывод и логирование ошибки, с привязкой к стартовому окну
+        /// </summary>
+        private void SetErrorMsg_ToStatusForm(string userErrorMsg)
+        {
+            if (!string.IsNullOrEmpty(userErrorMsg))
+            {
+                TaskDialog td = new TaskDialog("ОШИБКА")
+                {
+                    MainIcon = TaskDialogIcon.TaskDialogIconWarning,
+                    MainInstruction = userErrorMsg
+                };
+                td.Show();
+
+                _logger.Error(userErrorMsg);
+                _loaderStatusForm.Dispatcher.Invoke(() => _loaderStatusForm.Close());
+                throw new Exception(userErrorMsg);
+            }
         }
 
         /// <summary>

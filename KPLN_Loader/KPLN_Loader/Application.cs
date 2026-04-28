@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -47,6 +46,16 @@ namespace KPLN_Loader
         /// Queue для команд на выполнение по событию "OnIdling"
         /// </summary>
         public static Queue<IExecutableCommand> OnIdling_CommandQueue = new Queue<IExecutableCommand>();
+        
+        /// <summary>
+        /// Глобальная пометка лоудера, на работу в закрытом окружении KPLN
+        /// </summary>
+        public static bool IsExtraNet { get; private set; }
+
+        /// <summary>
+        /// Основной путь к основным конфигам для работы всей экосистемы
+        /// </summary>
+        public static string MainConfigPath;
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
         /// <summary>
@@ -65,23 +74,15 @@ namespace KPLN_Loader
         public static List<(Autodesk.Windows.RibbonItem RItem, string IconBaseName, string KPLNPluginAssembleName)> KPLNStackButtonsForImageReverse = new List<(Autodesk.Windows.RibbonItem, string, string)>();
 #endif
 
-        /// <summary>
-        /// ВНУТРИ KPLN: Основной путь к основным конфигам для работы всей экосистемы
-        /// </summary>
-        public readonly static string MainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
 
-        /// <summary>
-        /// ДЛЯ СУБЧИКА: ID листа гугл таблицы, которая выступает в роли БД KPLN_Loader
-        /// </summary>
-        public readonly static string GTab_KPLNLoader_SheetId = "1sFx8Vd_n9RI9rNFUjtiJcfGK1rJo8v4Bb993dnrub-I";
 
-        internal delegate void RiseStepProgress(MainStatus mainStatus, string toolTip, System.Windows.Media.Brush brush);
+        internal delegate void RiseStepProgress(MainStatus mainStatus, string toolTip, Brush brush);
         /// <summary>
         /// Событие, которое посылает сигналы в форму статуса загрузки
         /// </summary>
         internal event RiseStepProgress Progress;
 
-        internal delegate void RiseLoadEvant(LoaderEvantEntity lModule, System.Windows.Media.Brush brush);
+        internal delegate void RiseLoadEvant(LoaderEvantEntity lModule, Brush brush);
         /// <summary>
         /// Событие, которое посылает сигналы в форму статуса загрузки
         /// </summary>
@@ -89,10 +90,10 @@ namespace KPLN_Loader
 
         private readonly static string _diteTime = DateTime.Now.ToString("dd/MM/yyyy_HH/mm/ss");
         private static string _pahtToLoaderDll;
-        private const string _ribbonName = "KPLN";
         private readonly List<IExternalModule> _moduleInstances = new List<IExternalModule>();
-        private SQLiteService _dbService;
-        private GTabService _gtabService;
+        private string _ribbonName;
+        private SQLiteService _sqliteService;
+        private MySQLService _mysqlService;
         private EnvironmentService _envService;
         private Logger _logger;
 
@@ -111,14 +112,26 @@ namespace KPLN_Loader
 
         public Result OnStartup(UIControlledApplication application)
         {
-            // Создание панели Revit
-            application.CreateRibbonTab(_ribbonName);
-            
             RevitVersion = application.ControlledApplication.VersionNumber;
             _pahtToLoaderDll = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
+
+#if ExtraNet
+            IsExtraNet = true;
+            MainConfigPath = _pahtToLoaderDll + "\\KPLN_ExtraNet_Loader_Config.json";
+            _ribbonName = "KPLN_ExtraNet";
+#else
+            IsExtraNet = false;
+            MainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
+            _ribbonName = "KPLN";
+#endif
+
+            // Получение пути к основному конифгу
+            string mainDBPath = EnvironmentService.DatabaseConfigs.FirstOrDefault(d => d.Name == EnvironmentService.DatabaseConfigs_LoaderMainDB).Path;
+
+
             #region Настройка NLog
-            // Данный логгер должен содержать все настройки для каждого отдельного плагина. Это связано с инициализацией dll самим ревитом.
+            // Данный логгер может так создаваться, т.к. это 100% первый инстанс. В остальных случаях - нужно настраивать через LogFactory
             LogManager.Setup().LoadConfigurationFromFile(_pahtToLoaderDll + "\\nlog.config");
             _logger = LogManager.GetLogger("KPLN_Loader");
 
@@ -130,15 +143,81 @@ namespace KPLN_Loader
             LogManager.Configuration.Variables["loader_logdir"] = logDirPath;
             LogManager.Configuration.Variables["loader_logfilename"] = logFileName;
             #endregion
-            
-            Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileName));
+
+
+            Task clearingLogs = Task.Run(() => ClearingOldLogs(_logger, logDirPath, logFileName, true));
 
             _logger.Info($"Запуск в Revit {RevitVersion}. Версия модуля: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
-            // Определяю сеть и определяю сценарии загрузки
-            string domainName = IPGlobalProperties.GetIPGlobalProperties().DomainName;
+
+            #region Подготовка и проверка окружения
+            _envService = new EnvironmentService(_logger, RevitVersion, _diteTime)
+                .ConfigFileChecker()
+                .PreparingAndCliningDirectories();
+
+            Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
+            #endregion
+            
+
+            // Для пользователей извне
+            if (IsExtraNet)
+            {
+                #region Подготовка/создание пользователя
+                try
+                {
+                    _mysqlService = new MySQLService(_logger, mainDBPath);
+                }
+                catch (Exception ex) 
+                {
+                    MessageBox.Show(
+                        $"Подключение к БД не состоялось. Проверьте подключение к интернету. \n" +
+                            $"Если подключение к интернету в порядке - отправьте письмо на почту \"bim@kpln.ru\" со скриншотом проблемы.\n\n" +
+                            $"Текст ошибки: {ex.Message}",
+                        "Ошибка KPLN",
+                        MessageBoxButtons.OKCancel,
+                        MessageBoxIcon.Warning);
+                    return Result.Cancelled;
+                }
+
+
+                CurrentRevitUser = _mysqlService.Authorization(_envService, IsExtraNet);
+                if (CurrentRevitUser == null)
+                {
+                    MessageBox.Show(
+                        $"Инициализация не удалась. Проверьте подключение к интернету. \n" +
+                            $"Если подключение к интернету в порядке - отправьте письмо на почту \"bim@kpln.ru\" со скриншотом проблемы",
+                        "Ошибка KPLN",
+                        MessageBoxButtons.OKCancel,
+                        MessageBoxIcon.Warning);
+
+                    return Result.Cancelled;
+                }
+                else if (CurrentRevitUser.IsUserRestricted)
+                {
+                    MessageBox.Show(
+                        $"Вам закрыт доступ к плагинам KPLN. Удалите плагин с компьютера, или отправьте запрос на почту \"bim@kpln.ru\". \n\n" +
+                            $"Для удаления перейдите пройдите по пути \"Панель управления\" -> \"Программы\" -> \"Удаление программы\".\n" +
+                            $"Далее поиском найдите \"KPLN_ExtraNet\" и нажмите \"Удалить\".",
+                        "Ошибка KPLN",
+                        MessageBoxButtons.OKCancel,
+                        MessageBoxIcon.Warning);
+
+                    return Result.Cancelled;
+                }
+
+                _mysqlService.SetUserLastConnectionDate(CurrentRevitUser);
+                CurrentSubDepartment = _mysqlService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
+                #endregion
+
+                // Создание панели Revit
+                application.CreateRibbonTab(_ribbonName);
+
+                // Активация модулей для пользователя
+                _logger.Info("Активация модулей для пользователя:");
+                ExtraNetUserModules(application);
+            }
             // Для KPLN (с копированием модулей и стартовым окном)
-            if (domainName.Equals("stinproject.local"))
+            else
             {
                 LoaderStatusForm loaderStatusForm = null;
                 ManualResetEvent formReady = new ManualResetEvent(false);
@@ -156,32 +235,30 @@ namespace KPLN_Loader
 
                 try
                 {
-                    #region Подготовка и проверка окружения
-                    _envService = new EnvironmentService(_logger, loaderStatusForm, RevitVersion, _diteTime)
-                        .ConfigFileChecker()
-                        .PreparingAndCliningDirectories();
-
+                    //Привязка к окну
+                    _envService.SetStatusForm(loaderStatusForm);
                     Progress?.Invoke(MainStatus.Envirnment, "Успешно!", System.Windows.Media.Brushes.Green);
-                    #endregion
 
                     #region Подготовка/создание пользователя
                     
-                    string mainDBPath = EnvironmentService.DatabaseConfigs.FirstOrDefault(d => d.Name == EnvironmentService.DatabaseConfigs_LoaderMainDB).Path;
-                    _dbService = new SQLiteService(_logger, mainDBPath);
-                    CurrentRevitUser = _dbService.Authorization(_envService);
+                    _sqliteService = new SQLiteService(_logger, mainDBPath);
+                    CurrentRevitUser = _sqliteService.Authorization(_envService, IsExtraNet);
                     if (CurrentRevitUser == null)
                     {
                         Progress?.Invoke(MainStatus.DbConnection, "Критическая ошибка пользователя! Подробнее - см. файл логов", System.Windows.Media.Brushes.Red);
                         return Result.Cancelled;
                     }
 
+                    // Создание панели Revit
+                    application.CreateRibbonTab(_ribbonName);
+
                     loaderStatusForm.SetDebugStatus(CurrentRevitUser.IsDebugMode);
-                    bool isUserDataUpdated = _dbService.SetUserLastConnectionDate(CurrentRevitUser);
-                    CurrentSubDepartment = _dbService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
+                    bool isUserDataUpdated = _sqliteService.SetUserLastConnectionDate(CurrentRevitUser);
+                    CurrentSubDepartment = _sqliteService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
                     loaderStatusForm.Dispatcher.Invoke(() => loaderStatusForm.UpdateLayout());
 
                     // Добавление пользовательской инструкции
-                    LoaderDescription loaderDescription = _dbService.GetDescriptionForCurrentUser(CurrentRevitUser);
+                    LoaderDescription loaderDescription = _sqliteService.GetDescriptionForCurrentUser(CurrentRevitUser);
                     loaderStatusForm.SetInstruction(loaderDescription);
                     loaderStatusForm.LikeStatus += LoaderStatusForm_RiseLikeEvant;
 
@@ -201,7 +278,7 @@ namespace KPLN_Loader
                     _logger.Info("Подготовка, копирование библиотек и активация модулей для пользователя:");
 
                     // Коллекция модулей из БД
-                    IEnumerable<Module> userAllModules = _dbService.GetModulesForCurrentUser(CurrentRevitUser);
+                    IEnumerable<Module> userAllModules = _sqliteService.GetModulesForCurrentUser(CurrentRevitUser);
                     // Подсчет загруженных модулей
                     int uploadModules = 0;
                     // Флаг на факт загрузки модуля
@@ -307,7 +384,7 @@ namespace KPLN_Loader
                             if (!isModuleLoad)
                             {
                                 // Вывод в окно пользователя и лог
-                                string msg = $"Модуль/библиотека {module.Name} - не активирован. Отсутсвует dll для активации";
+                                string msg = $"Модуль/библиотека {module.Name} - не активирован. Отсутствует dll для активации";
                                 _logger.Error(msg);
                                 LoadStatus?.Invoke(new LoaderEvantEntity(msg), System.Windows.Media.Brushes.Red);
                             }
@@ -347,22 +424,7 @@ namespace KPLN_Loader
 
                 loaderStatusForm.Start_WindowClose();
             }
-            // Для всех остальных
-            else
-            {
-                #region Подготовка/создание пользователя
-                _gtabService = new GTabService(_logger, GTab_KPLNLoader_SheetId, RevitVersion);
-                CurrentRevitUser = _gtabService.Authorization();
-                if (CurrentRevitUser == null)
-                    return Result.Cancelled;
-
-                CurrentSubDepartment = _gtabService.GetSubDepartmentForCurrentUser(CurrentRevitUser);
-                #endregion
-
-                // Активация модулей для пользователя
-                _logger.Info("Активация модулей для пользователя:");
-                ExtraNetUserModules(application);
-            }
+            
 
             _logger.Info($"Успешная инициализация в Revit {RevitVersion}\n");
 
@@ -381,7 +443,7 @@ namespace KPLN_Loader
         /// <summary>
         /// Обработчик события RiseLikeEvant
         /// </summary>
-        private void LoaderStatusForm_RiseLikeEvant(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription) => _dbService.SetLoaderDescriptionUserRank(rateType, loaderDescription);
+        private void LoaderStatusForm_RiseLikeEvant(MainDB_LoaderDescriptions_RateType rateType, LoaderDescription loaderDescription) => _sqliteService.SetLoaderDescriptionUserRank(rateType, loaderDescription);
 
         /// <summary>
         /// Проверка имени dll-модуля на возможность корректной подгрузки
@@ -439,6 +501,40 @@ namespace KPLN_Loader
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Очистка от старых логов
+        /// </summary>
+        /// <param name="logPath">Путь к логам</param>
+        public static void ClearingOldLogs(Logger logger, string logPath, string logName, bool writeClearingStatus = false)
+        {
+            if (Directory.Exists(logPath))
+            {
+                int cnt = 0;
+                DirectoryInfo logDI = new DirectoryInfo(logPath);
+                foreach (FileInfo log in logDI.EnumerateFiles())
+                {
+                    if (log.CreationTime.Date < DateTime.Now.AddDays(-5) && log.Name.Contains(logName))
+                    {
+                        try
+                        {
+                            log.Delete();
+                            cnt++;
+                        }
+                        // Ошибка будет только если файл занят
+                        catch (UnauthorizedAccessException) { }
+                        catch (Exception ex)
+                        {
+                            if (writeClearingStatus)
+                                logger.Error($"При попытке очистки старых логов произошла ошибка: {ex.Message}");
+                        }
+                    }
+                }
+
+                if (writeClearingStatus)
+                    logger.Info($"Очистка от старых логов произведена успешно! Удалено {cnt}");
+            }
         }
 
         /// <summary>
@@ -529,42 +625,11 @@ namespace KPLN_Loader
                 if (!isModuleLoad)
                 {
                     // Вывод в окно пользователя и лог
-                    string msg = $"Модуль/библиотека {moduleName} - не активирован. Отсутсвует dll для активации";
+                    string msg = $"Модуль/библиотека {moduleName} - не активирован. Отсутствует dll для активации";
                     _logger.Error(msg);
                 }
             }
-        }
-
-        /// <summary>
-        /// Очистка от старых логов
-        /// </summary>
-        /// <param name="logPath">Путь к логам</param>
-        private void ClearingOldLogs(string logPath, string logName)
-        {
-            if (Directory.Exists(logPath))
-            {
-                int cnt = 0;
-                DirectoryInfo logDI = new DirectoryInfo(logPath);
-                foreach (FileInfo log in logDI.EnumerateFiles())
-                {
-                    if (log.CreationTime.Date < DateTime.Now.AddDays(-5) && log.Name.Contains(logName))
-                    {
-                        try
-                        {
-                            log.Delete();
-                            cnt++;
-                        }
-                        // Ошибка будет только если файл занят
-                        catch (UnauthorizedAccessException) { }
-                        catch (Exception ex)
-                        {
-                            _logger.Error($"При попытке очистки старых логов произошла ошибка: {ex.Message}");
-                        }
-                    }
-                }
-                _logger.Info($"Очистка от старых логов произведена успешно! Удалено {cnt}");
-            }
-        }
+        }        
 
         /// <summary>
         /// Событие возникающее в режимах простоя Revit (когда приложению API становится безопасно обращаться к активному документу)
@@ -608,9 +673,9 @@ namespace KPLN_Loader
                 return;
             
             if (CurrentRevitUser.IsExtraNet)
-                _gtabService.SetRevitUserName(app.Username, CurrentRevitUser);
+                _mysqlService.SetRevitUserName(app.Username, CurrentRevitUser);
             else
-                _dbService.SetRevitUserName(app.Username, CurrentRevitUser);
+                _sqliteService.SetRevitUserName(app.Username, CurrentRevitUser);
         }
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
