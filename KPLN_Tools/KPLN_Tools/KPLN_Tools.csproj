@@ -387,6 +387,9 @@
     <Compile Include="Forms\NodeManagerSettingsCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerSettingsCategoryWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\SheetFilterWindow.xaml.cs">
+      <DependentUpon>SheetFilterWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\SizeMismatchWindow.xaml.cs">
       <DependentUpon>SizeMismatchWindow.xaml</DependentUpon>
     </Compile>
@@ -493,6 +496,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\ScanProgressWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\SheetFilterWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

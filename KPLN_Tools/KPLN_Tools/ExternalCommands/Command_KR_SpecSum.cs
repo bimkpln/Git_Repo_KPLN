@@ -17,9 +17,14 @@ namespace KPLN_Tools
     {
         internal const string PluginName = "Сумма спецификаций";
 
-        private const string RequiredFieldName = "МассаОбщ";
         private const string TargetParamName = "Орг.КомплектЧертежей";
-        private const string TargetParamValue = "КЖ";
+        private const string DefaultTargetParamValue = "КЖ";
+
+        private static readonly string[] TargetFieldNames =
+        {
+            "МассаОбщ",
+            "МассаВсего"
+        };
 
         private static readonly string[] GeneralDataFieldNames =
         {
@@ -46,6 +51,18 @@ namespace KPLN_Tools
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
+            SheetFilterWindow sheetFilterWindow = new SheetFilterWindow(
+                TargetParamName,
+                DefaultTargetParamValue);
+
+            bool? sheetFilterResult = sheetFilterWindow.ShowDialog();
+            if (sheetFilterResult != true)
+            {
+                return Result.Cancelled;
+            }
+
+            string targetParamValue = sheetFilterWindow.FilterValue;
+
             List<ViewSheet> sheets = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewSheet))
                 .Cast<ViewSheet>()
@@ -54,13 +71,17 @@ namespace KPLN_Tools
             SheetFilterResult filterResult = CollectSheetsByParamContains(
                 doc,
                 TargetParamName,
-                TargetParamValue);
+                targetParamValue);
 
             if (filterResult.Sheets.Count == 0)
             {
                 TaskDialog.Show(
                     PluginName,
-                    "Не найдено листов, у которых параметр 'Орг.КомплектЧертежей' содержит 'КЖ'.");
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Не найдено листов, у которых параметр '{0}' содержит '{1}'.",
+                        TargetParamName,
+                        targetParamValue));
                 return Result.Cancelled;
             }
 
@@ -124,7 +145,7 @@ namespace KPLN_Tools
                         continue;
                     }
 
-                    if (ScheduleHasFieldName(schedule, RequiredFieldName))
+                    if (ScheduleHasAnyFieldName(schedule, TargetFieldNames))
                     {
                         int scheduleId = IDHelper.ElIdInt(schedule.Id);
                         if (!matchedSchedules.ContainsKey(scheduleId))
