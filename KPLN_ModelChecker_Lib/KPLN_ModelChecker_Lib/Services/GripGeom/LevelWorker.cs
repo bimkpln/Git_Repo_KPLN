@@ -28,7 +28,7 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom
 #if Debug2020 || Revit2020
                 double mmMidElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, DisplayUnitType.DUT_MILLIMETERS);
 #else
-                double mmMidElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, SpecTypeId.Length);
+                double mmMidElev = UnitUtils.ConvertFromInternalUnits(levels[mid].Elevation, UnitTypeId.Millimeters);
 #endif
 
                 double diff = mmMidElev - mmElev;

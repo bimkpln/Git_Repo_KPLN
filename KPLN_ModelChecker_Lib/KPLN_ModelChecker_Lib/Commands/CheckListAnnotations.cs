@@ -228,7 +228,12 @@ namespace KPLN_ModelChecker_Lib.Commands
         {
             foreach (string currentName in _exceptionFamilyNameList)
             {
+#if Debug2020 || Revit2020
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName, true);
+#else
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_PARAM), currentName);
+#endif
+
                 ElementParameterFilter eFilter = new ElementParameterFilter(fRule);
                 currentColl.WherePasses(eFilter);
             }

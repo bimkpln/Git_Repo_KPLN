@@ -12,6 +12,7 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
     {
         private static readonly Guid _lvlParamGuid = new Guid("9eabf56c-a6cd-4b5c-a9d0-e9223e19ea3f");
         private static readonly Guid _sectParamGuid = new Guid("b3aaab47-69d0-4e1c-9d70-c0d6907961cc");
+        private static readonly Guid _corpsParamGuid = new Guid("3f509328-1c21-4bf8-a156-dc71ec7242fd");
 
         private static readonly Guid _upLvlParam = new Guid("a5a5776e-f3db-4755-bb23-88ccb9632ced");
         private static readonly Guid _downLvlParam = new Guid("c033134a-9b0c-49c9-b389-8a94314ddedb");
@@ -37,6 +38,11 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
         public string LSSectionData { get; private set; }
 
         /// <summary>
+        /// Значение параметра корпуса
+        /// </summary>
+        public string LSCorpsData { get; private set; }
+
+        /// <summary>
         /// Физическая привязка к уровню выше. Null - если бесконечность (уровень кровли)
         /// </summary>
         public Level LSUpLevelFromModel { get; private set; }
@@ -56,7 +62,7 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
         /// </summary>
         public Outline BBoxOutline { get; private set; }
 
-        private LevelAndSectionSolid(Element elem, Solid solid, string sectionData, string levelData, Level upLevelFromModel, Level downLevelFromModel)
+        private LevelAndSectionSolid(Element elem, Solid solid, Level upLevelFromModel, Level downLevelFromModel, string levelData, string sectionData)
         {
             LSElement = elem;
             LSSolid = solid;
@@ -69,11 +75,16 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
             BBoxOutline = GeometryWorker.CreateOutline_ByBBoxANDExpand(LSBBox, new XYZ(2, 2, 2));
         }
 
+        private LevelAndSectionSolid(Element elem, Solid solid, Level upLevelFromModel, Level downLevelFromModel, string levelData, string sectionData, string corpsData) : this (elem, solid, upLevelFromModel, downLevelFromModel, levelData, sectionData)
+        {
+            LSCorpsData = corpsData;
+        }
+
         /// <summary>
         /// Подготовка коллекции солидов с данными по секциям
         /// </summary>
         /// <param name="doc">Revit-документ</param>
-        public static List<LevelAndSectionSolid> PrepareSolids(Document doc)
+        public static List<LevelAndSectionSolid> PrepareSolids(Document doc, bool isCorpsData)
         {
             List<LevelAndSectionSolid> result = new List<LevelAndSectionSolid>();
 
@@ -133,13 +144,17 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
 
                     foreach (Element elem in subElems)
                     {
+                        Parameter cElemParam = elem.get_Parameter(_corpsParamGuid);
                         Parameter sElemParam = elem.get_Parameter(_sectParamGuid);
                         Parameter lElemParam = elem.get_Parameter(_lvlParamGuid);
                         Parameter upLvlParam = elem.get_Parameter(_upLvlParam);
                         Parameter downLvlParam = elem.get_Parameter(_downLvlParam);
 
-                        if (sElemParam == null || lElemParam == null || upLvlParam == null || downLvlParam == null)
-                            throw new CheckerException($"У элемента с id: {elem.Id} нет одного из параметров. " +
+                        if (isCorpsData && (cElemParam == null || sElemParam == null || lElemParam == null || upLvlParam == null || downLvlParam == null))
+                            throw new CheckerException($"У элемента с id: {elem.Id} из модели {linkDoc.Title} нет одного из параметров. " +
+                                $"Проверь наличие: 1. КП_О_Этаж; 2. КП_О_Секция;  3. КП_О_Корпус; 4. ПЗ_Верхний уровень; 5. ПЗ_Нижний уровень");
+                        else if (sElemParam == null || lElemParam == null || upLvlParam == null || downLvlParam == null)
+                            throw new CheckerException($"У элемента с id: {elem.Id} из модели {linkDoc.Title} нет одного из параметров. " +
                                 $"Проверь наличие: 1. КП_О_Этаж; 2. КП_О_Секция; 3. ПЗ_Верхний уровень; 4. ПЗ_Нижний уровень");
 
                         Solid elemSolid = GeometryWorker.GetRevitElemUniontSolid(elem, lDocTrans)
@@ -159,7 +174,10 @@ namespace KPLN_ModelChecker_Lib.Services.GripGeom.Core
                             downLvl = LevelWorker.BinaryFindExactLevel(orderedLvls, downLvlParamDataDouble);
 
                         // Допускаю null в значениях уровней. Такое может быть для граничных боксов
-                        result.Add(new LevelAndSectionSolid(elem, elemSolid, sElemParam.AsString(), lElemParam.AsString(), upLvl, downLvl));
+                        if (isCorpsData)
+                            result.Add(new LevelAndSectionSolid(elem, elemSolid, upLvl, downLvl, lElemParam.AsString(), sElemParam.AsString(), cElemParam.AsString()));
+                        else
+                            result.Add(new LevelAndSectionSolid(elem, elemSolid, upLvl, downLvl, lElemParam.AsString(), sElemParam.AsString()));
                     }
                 }
             }
