@@ -1,4 +1,9 @@
-﻿using Microsoft.Win32;
+﻿
+
+
+
+
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -10,7 +15,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 
-namespace KPLN_Tools.Forms
+namespace KPLN_ModelChecker_User.Forms
 {
     internal enum SpecSumReportItemKind
     {
@@ -411,4 +416,7 @@ namespace KPLN_Tools.Forms
         }
     }
 }
+
+
+
 
