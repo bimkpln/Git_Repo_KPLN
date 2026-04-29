@@ -70,6 +70,15 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="KPLN_Library_Forms">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_Library_PluginActivityWorker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\2020\KPLN_Library_PluginActivityWorker.dll</HintPath>
+    </Reference>
+    <Reference Include="KPLN_Library_SQLiteWorker">
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+    </Reference>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
       <Private>False</Private>
@@ -110,24 +119,12 @@
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
       <ItemGroup>
-        <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
           <HintPath>..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ExtensibleStorage">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\Debug\$(RevitVer)\KPLN_Library_ExtensibleStorage.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
@@ -170,6 +167,7 @@
   <ItemGroup>
     <Compile Include="Common\CheckDimension_OpenView.cs" />
     <Compile Include="Common\CheckLevelOfInstanceData.cs" />
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="Common\WPFEntity_ExportToExcel.cs" />
     <Compile Include="ExecutableCommand\CommandSelectElements.cs" />
     <Compile Include="ExecutableCommand\CommandWPFEntity_SetApprComm.cs" />
@@ -189,6 +187,7 @@
     <Compile Include="ExternalCommands\CommandCheckMonolith.cs" />
     <Compile Include="ExternalCommands\CommandCheckWetZones.cs" />
     <Compile Include="ExternalCommands\CommandCheckLaunchDate.cs" />
+    <Compile Include="ExternalCommands\Command_KR_SpecSum.cs" />
     <Compile Include="ExternalCommands\OldVers\CommandCheckLevelOfInstances.cs" />
     <Compile Include="ExternalCommands\CommandCheckMEPHeight.cs" />
     <Compile Include="Forms\CheckMainForm.xaml.cs">
@@ -206,6 +205,12 @@
     </Compile>
     <Compile Include="Forms\OutputMainForm.xaml.cs">
       <DependentUpon>OutputMainForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SheetFilterWindow.xaml.cs">
+      <DependentUpon>SheetFilterWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\SpecSumReportWindow.xaml.cs">
+      <DependentUpon>SpecSumReportWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\WetZoneParameterSelect.xaml.cs">
       <DependentUpon>WetZoneParameterSelect.xaml</DependentUpon>
@@ -265,6 +270,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\SheetFilterWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\SpecSumReportWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\WetZoneParameterSelect.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -308,6 +321,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\checkHolesOnLists.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\SpecSum.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,7 +1,7 @@
-﻿<Window x:Class="KPLN_Tools.Forms.SpecSumReportWindow"
+﻿<Window x:Class="KPLN_ModelChecker_User.Forms.SpecSumReportWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Сумма спецификаций"
+        Title="KPLN. Сумма спецификаций"
         Height="720"
         Width="1100"
         WindowStartupLocation="CenterScreen"
@@ -52,5 +52,3 @@
         </StackPanel>
     </Grid>
 </Window>
-
-

@@ -211,6 +211,31 @@ namespace KPLN_ModelChecker_User
                 DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 3 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
+
+
+
+
+
+
+            AddPushButtonData(
+                "KR_SpecSum",
+                Command_KR_SpecSum.PluginName,
+                "Плагин для подсчета строк в спецификациях.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(Command_KR_SpecSum).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.SpecSum.png",
+                _mainContextualHelp,
+                DBMainService.CurrentDBUser.SubDepartmentId ==3 || DBMainService.CurrentDBUser.SubDepartmentId == 8
+                );
+
+
+
+
+
+
+
+
             AddPushButtonData(
                 "CheckMirrored",
                 checkMirroredInstances.PluginName,
