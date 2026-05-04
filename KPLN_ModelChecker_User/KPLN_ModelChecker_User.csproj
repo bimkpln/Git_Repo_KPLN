@@ -165,6 +165,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\CheckSchedules_OpenView.cs" />
     <Compile Include="Common\CheckDimension_OpenView.cs" />
     <Compile Include="Common\CheckLevelOfInstanceData.cs" />
     <Compile Include="Common\IDHelper.cs" />
@@ -180,6 +181,7 @@
     <Compile Include="ExternalCommands\CommandCheckFlatsAreaCompare.cs" />
     <Compile Include="ExternalCommands\CommandCheckHoles.cs" />
     <Compile Include="ExternalCommands\CommandCheckHolesOnLists.cs" />
+    <Compile Include="ExternalCommands\CommandCheckSchedules.cs" />
     <Compile Include="ExternalCommands\CommandCheckMainLines.cs" />
     <Compile Include="ExternalCommands\CommandCheckLinks.cs" />
     <Compile Include="ExternalCommands\CommandCheckMirroredInstances.cs" />
@@ -324,6 +326,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Source\SpecSum.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Source\schedules.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

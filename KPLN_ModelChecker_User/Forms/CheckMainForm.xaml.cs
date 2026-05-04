@@ -192,8 +192,12 @@ namespace KPLN_ModelChecker_User.Forms
                     if (wpfEntity.Element != null)
                     {
                         // Для поиска вида размеров - нельзя использовать обработчики событий, поэтому - через отдельный метод
-                        if (wpfEntity.Element is Dimension || wpfEntity.Element is DimensionType) CheckDimension_OpenView.OpenViewForDimensions(_application, wpfEntity.Element);
-                        else KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(new List<Element>(1) { wpfEntity.Element }));
+                        if (wpfEntity.Element is Dimension || wpfEntity.Element is DimensionType) 
+                            CheckDimension_OpenView.OpenViewForDimensions(_application, wpfEntity.Element);
+                        else if (wpfEntity.Element is ViewSchedule)
+                            CheckSchedules_OpenView.OpenViewForViewSchedules(_application, wpfEntity.Element);
+                        else 
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(new List<Element>(1) { wpfEntity.Element }));
                     }
                     else
                         KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));

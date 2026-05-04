@@ -35,6 +35,7 @@ namespace KPLN_ModelChecker_User
             CheckFlatsAreaCompare checkFlatsAreaCompare = new CheckFlatsAreaCompare();
             CheckHoles checkHoles = new CheckHoles();
             CheckHolesOnLists checkHolesOnLists = new CheckHolesOnLists();
+            CheckSchedules checkSchedules = new CheckSchedules();
             CommandCheckLevelOfInstances сommandCheckLevelOfInstances = new CommandCheckLevelOfInstances(new ExtensibleStorageEntity(
                 CommandCheckLevelOfInstances.PluginName,
                 "KPLN_CheckLevelOfInstances",
@@ -56,6 +57,7 @@ namespace KPLN_ModelChecker_User
                 checkFlatsAreaCompare.ESEntity,
                 checkHoles.ESEntity,
                 checkHolesOnLists.ESEntity,
+                checkSchedules.ESEntity,
                 CommandCheckLevelOfInstances.ESEntity,
                 checkLinks.ESEntity,
                 checkMEPHeight.ESEntity,
@@ -211,11 +213,17 @@ namespace KPLN_ModelChecker_User
                 DBMainService.CurrentDBUser.SubDepartmentId == 2 || DBMainService.CurrentDBUser.SubDepartmentId == 3 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
-
-
-
-
-
+            AddPushButtonData(
+                "CheckSchedules",
+                checkSchedules.PluginName,
+                "Проверить спецификации на наличие черезмерного фильтрования и составные спецификации.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckSchedules).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.schedules.png",
+                _mainContextualHelp,
+                true
+                );
 
             AddPushButtonData(
                 "KR_SpecSum",
@@ -228,13 +236,6 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 DBMainService.CurrentDBUser.SubDepartmentId ==3 || DBMainService.CurrentDBUser.SubDepartmentId == 8
                 );
-
-
-
-
-
-
-
 
             AddPushButtonData(
                 "CheckMirrored",
