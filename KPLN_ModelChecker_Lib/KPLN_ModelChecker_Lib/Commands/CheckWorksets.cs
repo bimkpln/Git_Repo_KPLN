@@ -2,7 +2,6 @@
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace KPLN_ModelChecker_Lib.Commands

@@ -293,6 +293,7 @@
     <Compile Include="Commands\CheckListAnnotations.cs" />
     <Compile Include="Commands\CheckMEPHeight.cs" />
     <Compile Include="Commands\CheckMirroredInstances.cs" />
+    <Compile Include="Commands\CheckSchedules.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesEntity.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesHoleData.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesMEPData.cs" />
