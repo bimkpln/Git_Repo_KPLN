@@ -714,7 +714,7 @@ namespace KPLN_ModelChecker_User
 
         private static string FormatNumber(double value)
         {
-            return value.ToString("0.00", CultureInfo.InvariantCulture).Replace(".", ",");
+            return value.ToString("0.00", CultureInfo.InvariantCulture).Replace(".", ",") + " кг";
         }
 
         private static string FormatPercent(double value)
