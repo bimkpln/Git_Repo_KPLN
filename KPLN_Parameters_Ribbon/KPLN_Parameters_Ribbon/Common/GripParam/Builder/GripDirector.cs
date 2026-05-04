@@ -21,51 +21,78 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public void BuildWriter()
         {
-            _builder.Prepare();
-            _builder.Check(_builder.Doc);
+            Progress_Single pb = null;
 
-            string format = "{0} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
-            Progress_Single pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по геометрии", format, false);
             try
             {
-                // Заполняю уровни с учетом секций по геометрии
+                _builder.Prepare();
+                _builder.Check(_builder.Doc);
+
+                string format = "{0} из " + _builder.AllElementsCount + " элементов обработано";
+
+                // 1. Заполняю уровни с учетом секций по геометрии
                 using (Transaction t = new Transaction(_builder.Doc))
                 {
                     t.Start($"{_builder.DocMainTitle}: Параметры захваток_Geom");
+
+                    pb = new Progress_Single(
+                        $"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по геометрии",
+                        format,
+                        false);
 
                     pb.SetProggresValues(_builder.AllElementsCount, 0);
                     pb.ShowProgress();
 
                     _builder.ExecuteGripParams_ByGeom(pb);
 
-                    pb.Dispose();
-
                     t.Commit();
+
+                    pb.Close();
+                    pb.Dispose();
+                    pb = null;
                 }
 
-                // Заполняю уровни с учетом секций по основанию
+                // 2. Заполняю уровни с учетом секций по основанию
                 using (Transaction t = new Transaction(_builder.Doc))
                 {
                     t.Start($"{_builder.DocMainTitle}: Параметры захваток_Host");
 
-                    format = "{0} из " + _builder.AllElementsCount.ToString() + " элементов обработано";
-                    pb = new Progress_Single($"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по основанию", format, true);
+                    format = "{0} из " + _builder.AllElementsCount + " элементов обработано";
+
+                    pb = new Progress_Single(
+                        $"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по основанию",
+                        format,
+                        false); // ВАЖНО: OK не показываем во время процесса
+
                     pb.SetProggresValues(_builder.AllElementsCount, _builder.PbCounter);
                     pb.ShowProgress();
 
                     _builder.ExecuteGripParams_ByHost(pb);
-                    pb.SetBtn_Ok_Enabled();
 
                     t.Commit();
-                }
-            }
-            catch (Exception ex)
-            {
-                pb.Dispose();
-                throw ex;
-            }
 
-            _builder.CheckNotExecutedElems();
+                    pb.Close();
+                    pb.Dispose();
+                    pb = null;
+                }
+
+                _builder.CheckNotExecutedElems();
+            }
+            catch
+            {
+                if (pb != null)
+                {
+                    if (!pb.IsDisposed)
+                    {
+                        pb.Close();
+                        pb.Dispose();
+                    }
+
+                    pb = null;
+                }
+
+                throw; // ВАЖНО: не throw ex;
+            }
         }
     }
 }

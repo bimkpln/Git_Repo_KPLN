@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -135,7 +137,22 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .Select(e => new InstanceElemData(e)));
             }
 
-            Task.WaitAll(sectSolidPrepareTask);
+
+            try
+            {
+                Task.WaitAll(sectSolidPrepareTask);
+            }
+            catch (AggregateException ex)
+            {
+                var checkerEx = ex.InnerExceptions
+                    .OfType<CheckerException>()
+                    .FirstOrDefault();
+
+                if (checkerEx != null)
+                    throw checkerEx;
+
+                throw;
+            }
         }
     }
 }

@@ -89,7 +89,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         }
 
         /// <summary>
-        /// Коллекция элементов под уровне
+        /// Коллекция элементов под уровнем
         /// </summary>
         public List<InstanceElemData> ElemsUnderLevel
         {
@@ -107,7 +107,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         }
 
         /// <summary>
-        /// Коллекция лестниц
+        /// Коллекция всех элементов
         /// </summary>
         public List<InstanceElemData> AllElements
         {
@@ -176,15 +176,19 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// </summary>
         public virtual void Check(Document doc)
         {
+            ElementId[] elIds = AllElements.Select(e => e.IEDElem.Id).ToArray();
+            ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, elIds);
+            ElementId[] notAvailableIds = elIds.Except(availableWSElemsId).ToArray();
+            
+            if (notAvailableIds.Any())
+                throw new GripParamExection($"Возможность изменения ограничена для {notAvailableIds.Length} элементов. " +
+                    $"Попроси коллег ОСВОБОДИТЬ все забранные рабочие наборы и элементы, примеры элементов:\n" +
+                    $"{notAvailableIds.FirstOrDefault()}");
+
             Task elemsOnLevelCheckTask = Task.Run(() => CheckElemParams(ElemsOnLevel));
             Task elemsByHostCheckTask = Task.Run(() => CheckElemParams(ElemsByHost));
             Task elemsUnderLevelCheckTask = Task.Run(() => CheckElemParams(ElemsUnderLevel));
             Task elemsStairsElemsCheckTask = Task.Run(() => CheckElemParams(StairsElems));
-
-            ICollection<ElementId> availableWSElemsId = WorksharingUtils.CheckoutElements(doc, AllElements.Select(e => e.IEDElem.Id).ToArray());
-            int errorCount = AllElementsCount - availableWSElemsId.Count;
-            if (errorCount > 0)
-                throw new GripParamExection($"Возможность изменения ограничена для {errorCount} элементов. Попроси коллег ОСВОБОДИТЬ все забранные рабочие наборы и элементы\n");
 
             Task.WaitAll(new Task[] { elemsOnLevelCheckTask, elemsByHostCheckTask, elemsUnderLevelCheckTask, elemsStairsElemsCheckTask });
         }

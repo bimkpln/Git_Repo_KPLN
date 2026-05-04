@@ -1,6 +1,8 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -98,16 +100,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Wall))
                 .Cast<Wall>()
-                .Where(x =>
-                    ElemsUnderLevel.Any(ent => !ent.IEDElem.Id.Equals(x.Id)))
                 .Select(e => new InstanceGeomData(e)));
 
             // Категория "Перекрытия" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(Floor))
                 .Cast<Floor>()
-                .Where(x =>
-                    ElemsUnderLevel.Any(ent => !ent.IEDElem.Id.Equals(x.Id)))
                 .Select(e => new InstanceGeomData(e)));
 
             // Семейства "Обобщенные модели" над уровнем
@@ -155,7 +153,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => x.SuperComponent == null)
                 .Select(e => new InstanceGeomData(e)));
 
-            Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask, elemsUnderLevelPrepareTask);
+            try
+            {
+                Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask, elemsUnderLevelPrepareTask);
+            }
+            catch (AggregateException ex)
+            {
+                var checkerEx = ex.InnerExceptions
+                    .OfType<CheckerException>()
+                    .FirstOrDefault();
+
+                if (checkerEx != null)
+                    throw checkerEx;
+
+                throw;
+            }
         }
     }
 }

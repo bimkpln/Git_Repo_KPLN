@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -146,7 +148,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
                 .Select(e => new InstanceGeomData(e)));
 
-            Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask);
+            try
+            {
+                Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask);
+            }
+            catch (AggregateException ex)
+            {
+                var checkerEx = ex.InnerExceptions
+                    .OfType<CheckerException>()
+                    .FirstOrDefault();
+
+                if (checkerEx != null)
+                    throw checkerEx;
+
+                throw;
+            }
         }
     }
 }
