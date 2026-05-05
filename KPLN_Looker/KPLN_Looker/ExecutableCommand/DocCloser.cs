@@ -2,8 +2,8 @@
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_Bitrix24Worker;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -126,7 +126,7 @@ namespace KPLN_Looker.ExecutableCommand
                     if (string.IsNullOrEmpty(args.DialogId))
                     {
                         TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-                        currentDBDialog = DBMainService
+                        currentDBDialog = SQLiteMainService
                             .DBRevitDialogColl
                             .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
 
@@ -134,7 +134,7 @@ namespace KPLN_Looker.ExecutableCommand
                     }
                     else
                     {
-                        currentDBDialog = DBMainService
+                        currentDBDialog = SQLiteMainService
                             .DBRevitDialogColl
                             .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
 
