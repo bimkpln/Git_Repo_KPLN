@@ -57,9 +57,9 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="KPLN_Library_SQLiteWorker, Version=1.4.10.0, Culture=neutral, processorArchitecture=AMD64">
+    <Reference Include="KPLN_Library_DBWorker, Version=1.4.10.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
     </Reference>
     <Reference Include="KPLN_Loader">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Loader\KPLN_Loader\bin\Revit2020\KPLN_Loader.dll</HintPath>
@@ -93,7 +93,6 @@
     <Compile Include="Commands\_iDataProcessor.cs" />
     <Compile Include="Commands\_ExtensibleStorageHelper.cs" />
     <Compile Include="Common\DockablePreferences.cs" />
-    <Compile Include="Common\UserPreferences.cs" />
     <Compile Include="Commands\PlaceHoleOnWallCommand.cs" />
     <Compile Include="Commands\_ExternalEventHandler.cs" />
     <Compile Include="Forms\DockableManagerForm.xaml.cs">

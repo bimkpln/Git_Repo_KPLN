@@ -27,10 +27,9 @@ namespace KPLN_HoleManager.Forms
     {
         UIApplication _uiApp;     
 
-        private readonly DBWorkerService _dbWorkerService; 
-        string userFullName; 
-        string departmentName;
-        bool manyHolesButton;
+        private readonly string _userFullName;
+        private readonly string _departmentName;
+        private bool _manyHolesButton;
 
         // Данные статусов в названия кнопок
         private readonly ButtonDataViewModel _buttonDataViewModel; 
@@ -62,8 +61,8 @@ namespace KPLN_HoleManager.Forms
  
             // Получаем данные из БД
             _dbWorkerService = new DBWorkerService();            
-            userFullName = _dbWorkerService.UserFullName;
-            departmentName = _dbWorkerService.DepartmentName;
+            _userFullName = _dbWorkerService.UserFullName;
+            _departmentName = _dbWorkerService.DepartmentName;
 
             // Кнопки характерные для отдела
             AddDepartmentButtons();
@@ -81,7 +80,7 @@ namespace KPLN_HoleManager.Forms
 
             Document doc = _uiApp.ActiveUIDocument.Document;
             List<ElementId> familyInstanceIds = _iDataProcessor.GetFamilyInstanceIds(doc);
-            List<int> statusCounts = _iDataProcessor.StatusHoleTask(doc, familyInstanceIds, userFullName, departmentName);
+            List<int> statusCounts = _iDataProcessor.StatusHoleTask(doc, familyInstanceIds, _userFullName, _departmentName);
 
             _buttonDataViewModel.UpdateStatusCounts(statusCounts);
         }
@@ -153,7 +152,7 @@ namespace KPLN_HoleManager.Forms
             InfoHolePanel.Children.Clear();
             InfoHolePanel.RowDefinitions.Clear();
 
-            manyHolesButton = (bool)((Button)sender).CommandParameter;
+            _manyHolesButton = (bool)((Button)sender).CommandParameter;
 
             try
             {
@@ -172,7 +171,7 @@ namespace KPLN_HoleManager.Forms
                 // Если выбрана обычная стена
                 if (selectedElement is Wall wall)
                 {
-                    ProcessHolePlacement(uiDoc, wall, manyHolesButton);
+                    ProcessHolePlacement(uiDoc, wall, _manyHolesButton);
                     return;
                 }
                 // Если выбран RevitLinkInstance
@@ -197,7 +196,7 @@ namespace KPLN_HoleManager.Forms
 
                     if (linkedElement is Wall linkedWall)
                     {
-                        ProcessHolePlacement(uiDoc, linkedWall, manyHolesButton);
+                        ProcessHolePlacement(uiDoc, linkedWall, _manyHolesButton);
                         return;
                     }
                 }
@@ -226,7 +225,7 @@ namespace KPLN_HoleManager.Forms
 
             if (settings == null)
             {
-                var holeWindow = new sChoiseHole(_uiApp, wall, userFullName, departmentName, manyHolesButton);
+                var holeWindow = new sChoiseHole(_uiApp, wall, _userFullName, _departmentName, manyHolesButton);
                 holeWindow.ShowDialog();
             }
 
@@ -236,20 +235,20 @@ namespace KPLN_HoleManager.Forms
                 {
                     _ExternalEventHandler.Instance.Raise((app) =>
                     {
-                        PlaceHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, departmentName, settings[3], settings[4]);
+                        PlaceHoleOnWallCommand.Execute(app, _userFullName, _departmentName, wall, _departmentName, settings[3], settings[4]);
                     });
                 }
                 else
                 {
                     _ExternalEventHandler.Instance.Raise((app) =>
                     {
-                        PlaceAllHoleOnWallCommand.Execute(app, userFullName, departmentName, wall, departmentName, settings[3], settings[4]);
+                        PlaceAllHoleOnWallCommand.Execute(app, _userFullName, _departmentName, wall, _departmentName, settings[3], settings[4]);
                     });
                 }
             }
             else
             {
-                var holeWindow = new sChoiseHole(_uiApp, wall, userFullName, departmentName, manyHolesButton);
+                var holeWindow = new sChoiseHole(_uiApp, wall, _userFullName, _departmentName, manyHolesButton);
                 holeWindow.ShowDialog();
             }
         }
@@ -257,7 +256,7 @@ namespace KPLN_HoleManager.Forms
         // XAML. Обработчик для кнопки "Настройка плагина"
         public void HolePluginSettings(object sender, RoutedEventArgs e)
         {
-            var dockableManagerFormSettings = new DockableManagerFormSettings(userFullName, departmentName);
+            var dockableManagerFormSettings = new DockableManagerFormSettings(_userFullName, _departmentName);
             dockableManagerFormSettings.ShowDialog();
         }
 
@@ -292,11 +291,11 @@ namespace KPLN_HoleManager.Forms
             // Фильтруем сообщения по выбранному статусу
             List<List<string>> filteredMessages = null;
 
-            if (departmentName == "BIM") 
+            if (_departmentName == "BIM") 
             {
                 filteredMessages = holeTaskMessages
                     .Where(messageParts => (messageParts[10] == selectedStatus))
-                    .OrderByDescending(messageParts => messageParts[1] == userFullName)
+                    .OrderByDescending(messageParts => messageParts[1] == _userFullName)
                     .ThenBy(messageParts =>
                     {
                         string departmentIn = messageParts[3];
@@ -327,8 +326,8 @@ namespace KPLN_HoleManager.Forms
                 if (selectedStatus == "Без статуса") 
                 {
                     filteredMessages = holeTaskMessages
-                        .Where(messageParts => (messageParts[10] == selectedStatus) && (messageParts[3] == departmentName))
-                        .OrderByDescending(messageParts => messageParts[1] == userFullName)
+                        .Where(messageParts => (messageParts[10] == selectedStatus) && (messageParts[3] == _departmentName))
+                        .OrderByDescending(messageParts => messageParts[1] == _userFullName)
                         .ThenBy(messageParts =>
                         {
                             string departmentFrom = messageParts[4];
@@ -345,10 +344,10 @@ namespace KPLN_HoleManager.Forms
                 else if (selectedStatus == "Подтверждение")
                 {
                     filteredMessages = holeTaskMessages
-                    .Where(messageParts => (messageParts[10] == selectedStatus) && ((messageParts[3] == departmentName) || (messageParts[4] == departmentName)))                    
-                    .OrderByDescending(messageParts => messageParts[3] == departmentName)
-                    .OrderByDescending(messageParts => messageParts[1] == userFullName)
-                    .ThenBy(messageParts => messageParts[3] != departmentName) 
+                    .Where(messageParts => (messageParts[10] == selectedStatus) && ((messageParts[3] == _departmentName) || (messageParts[4] == _departmentName)))                    
+                    .OrderByDescending(messageParts => messageParts[3] == _departmentName)
+                    .OrderByDescending(messageParts => messageParts[1] == _userFullName)
+                    .ThenBy(messageParts => messageParts[3] != _departmentName) 
                     .ThenBy(messageParts =>
                     {
                         string departmentIn = messageParts[3];
@@ -376,10 +375,10 @@ namespace KPLN_HoleManager.Forms
                 else if (selectedStatus == "Ошибки")
                 {
                     filteredMessages = holeTaskMessages
-                    .Where(messageParts => (messageParts[10] == selectedStatus) && ((messageParts[3] == departmentName) || (messageParts[4] == departmentName)))
-                    .OrderByDescending(messageParts => messageParts[4] == departmentName)
-                    .OrderByDescending(messageParts => messageParts[1] == userFullName)
-                    .ThenBy(messageParts => messageParts[4] != departmentName)
+                    .Where(messageParts => (messageParts[10] == selectedStatus) && ((messageParts[3] == _departmentName) || (messageParts[4] == _departmentName)))
+                    .OrderByDescending(messageParts => messageParts[4] == _departmentName)
+                    .OrderByDescending(messageParts => messageParts[1] == _userFullName)
+                    .ThenBy(messageParts => messageParts[4] != _departmentName)
                     .ThenBy(messageParts =>
                     {
                         string departmentFrom = messageParts[4];
@@ -407,10 +406,10 @@ namespace KPLN_HoleManager.Forms
                 else if (selectedStatus == "Утверждено")
                 {
                     filteredMessages = holeTaskMessages
-                    .Where(messageParts => (messageParts[10] == selectedStatus) && ((messageParts[3] == departmentName) || (messageParts[4] == departmentName)))
-                    .OrderByDescending(messageParts => messageParts[4] == departmentName)
-                    .OrderByDescending(messageParts => messageParts[1] == userFullName)
-                    .ThenBy(messageParts => messageParts[4] != departmentName)
+                    .Where(messageParts => (messageParts[10] == selectedStatus) && ((messageParts[3] == _departmentName) || (messageParts[4] == _departmentName)))
+                    .OrderByDescending(messageParts => messageParts[4] == _departmentName)
+                    .OrderByDescending(messageParts => messageParts[1] == _userFullName)
+                    .ThenBy(messageParts => messageParts[4] != _departmentName)
                     .ThenBy(messageParts =>
                     {
                         string departmentFrom = messageParts[4];
@@ -466,7 +465,7 @@ namespace KPLN_HoleManager.Forms
                 textBlock.Inlines.Add(new Run($"{data}. ") { FontWeight = FontWeights.Bold, Foreground = Brushes.MediumBlue });
 
                 var nameRun = new Run(name) { FontWeight = FontWeights.Bold };
-                if (name == userFullName)
+                if (name == _userFullName)
                 {
                     nameRun.Foreground = Brushes.Purple;
                     nameRun.TextDecorations = TextDecorations.Underline;
@@ -480,7 +479,7 @@ namespace KPLN_HoleManager.Forms
                 textBlock.Inlines.Add(new Run(" ("));
 
                 var departamentFromRun = new Run(departamentFrom) { FontWeight = FontWeights.Bold };
-                if (departamentFrom == departmentName)
+                if (departamentFrom == _departmentName)
                 {
                     departamentFromRun.Foreground = Brushes.MediumBlue;
                 }
@@ -493,7 +492,7 @@ namespace KPLN_HoleManager.Forms
                 textBlock.Inlines.Add(new Run(" -> "));
 
                 var departamentInRun = new Run(departamentIn) { FontWeight = FontWeights.Bold };
-                if (departamentIn == departmentName)
+                if (departamentIn == _departmentName)
                 {
                     departamentInRun.Foreground = Brushes.MediumBlue;
                 }
@@ -532,7 +531,7 @@ namespace KPLN_HoleManager.Forms
                 {
                     newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(250, 245, 180));
 
-                    if (departamentFrom == departmentName)
+                    if (departamentFrom == _departmentName)
                     {
                         newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(250, 245, 135));
                         newButton.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(189, 183, 107));                         
@@ -542,7 +541,7 @@ namespace KPLN_HoleManager.Forms
                 {
                     newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 190, 175));
 
-                    if (departamentIn == departmentName)
+                    if (departamentIn == _departmentName)
                     {
                         newButton.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(253, 151, 119));
                         newButton.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(178, 34, 34));
@@ -666,8 +665,8 @@ namespace KPLN_HoleManager.Forms
                             ExtensibleStorageHelper.AddChatMessage(
                                     holeInstance,
                                     DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                                    userFullName,
-                                    departmentName,
+                                    _userFullName,
+                                    _departmentName,
                                     departamentFrom,
                                     departamentIn,
                                     wallID,
@@ -718,8 +717,8 @@ namespace KPLN_HoleManager.Forms
                         ExtensibleStorageHelper.AddChatMessage(
                                 holeInstance,
                                 DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                                userFullName,
-                                departmentName,
+                                _userFullName,
+                                _departmentName,
                                 departamentFrom,
                                 departamentIn,
                                 wallID,
@@ -766,7 +765,7 @@ namespace KPLN_HoleManager.Forms
                     };
 
                     // Добавляем элементы в панель
-                    if (departmentName != "BIM")
+                    if (_departmentName != "BIM")
                     {
                         if (selectedStatus == "Без статуса")
                         {
@@ -774,7 +773,7 @@ namespace KPLN_HoleManager.Forms
                         }
                         else if (selectedStatus == "Подтверждение")
                         {
-                            if (departmentName != departamentFrom)
+                            if (_departmentName != departamentFrom)
                             {
                                 yesButton.Margin = new Thickness(6, 0, 3, 0);
                                 decisionPanel.Children.Add(yesButton);
@@ -787,7 +786,7 @@ namespace KPLN_HoleManager.Forms
                         }
                         else if (selectedStatus == "Ошибки")
                         {
-                            if (departmentName == departamentFrom)
+                            if (_departmentName == departamentFrom)
                             {
                                 decisionPanel.Children.Add(yesButton);
                             }
@@ -798,7 +797,7 @@ namespace KPLN_HoleManager.Forms
                         }
                         else if (selectedStatus == "Утверждено")
                         {
-                            if (departmentName == departamentIn || departmentName == departamentFrom || userFullName == name)
+                            if (_departmentName == departamentIn || _departmentName == departamentFrom || _userFullName == name)
                             {
                                 noButton.Margin = new Thickness(6, 0, 15, 0);
                                 decisionPanel.Children.Add(noButton);
@@ -945,8 +944,8 @@ namespace KPLN_HoleManager.Forms
                         ExtensibleStorageHelper.AddChatMessage(
                             holeInstance,
                             DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                            userFullName,
-                            departmentName,
+                            _userFullName,
+                            _departmentName,
                             departamentFrom,
                             departamentIn,
                             wallID,
