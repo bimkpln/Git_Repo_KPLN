@@ -68,33 +68,17 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
         public SelectionByModelM(UIApplication uiapp, ViewFilterMode viewFilterMode)
         {
+            UIApp = uiapp;
             Doc = uiapp.ActiveUIDocument.Document;
             IsWorkshared = Doc.IsWorkshared || Doc.IsDetached;
             DocActiveView = Doc.ActiveView;
 
-            ICollection<ElementId> userSelIds = uiapp.ActiveUIDocument.Selection.GetElementIds();
-            if (userSelIds.Count > 0)
-            {
-                List<Element> durtyUserSelElems = userSelIds
-                    .Select(id => Doc.GetElement(id))
-                    .ToList();
-                
-                // Доп анализ на группы в выборке - нужно проваливаться допом внутрь
-                Group[] groupsInSel = durtyUserSelElems
-                    .Where(el => el is Group)
-                    .Cast<Group>()
-                    .ToArray();
-                foreach(Group group in groupsInSel)
-                {
-                    durtyUserSelElems.AddRange(group.GetMemberIds().Select(id => Doc.GetElement(id)));
-                }
-
-                UserSelElems = durtyUserSelElems;
-            }
-
+            UserSelElems = GetElemsFromGroup(UIApp, Doc);
             Where_ViewDocFilterMode = viewFilterMode;
         }
 
+        public UIApplication UIApp { get; set; }
+        
         public Document Doc { get; set; }
 
         public View DocActiveView
@@ -509,7 +493,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 case ViewFilterMode.UserSelection:
                     if (UserSelElems != null && UserSelElems.Any())
                     {
-                        fic = new FilteredElementCollector(Doc, UserSelElems.Select(el => el.Id).ToArray());
+                        fic = new FilteredElementCollector(Doc, GetElemsFromGroup(UIApp, Doc).Select(el => el.Id).ToArray());
                         break;
                     }
                     else
@@ -581,6 +565,34 @@ namespace KPLN_ExtraFilter.Forms.Entities
             Cahce_UserSelElemsWithoutCatFilter = elemsNoCat.ToArray();
 
             CreateTree();
+        }
+
+        /// <summary>
+        /// Получить коллекцию элементов из группы (включая саму группу)
+        /// </summary>
+        private static IEnumerable<Element> GetElemsFromGroup(UIApplication uiapp, Document doc)
+        {
+            ICollection<ElementId> userSelIds = uiapp.ActiveUIDocument.Selection.GetElementIds();
+            if (userSelIds.Count > 0)
+            {
+                List<Element> durtyUserSelElems = userSelIds
+                    .Select(id => doc.GetElement(id))
+                    .ToList();
+
+                // Доп анализ на группы в выборке - нужно проваливаться допом внутрь
+                Group[] groupsInSel = durtyUserSelElems
+                    .Where(el => el is Group)
+                    .Cast<Group>()
+                    .ToArray();
+                foreach (Group group in groupsInSel)
+                {
+                    durtyUserSelElems.AddRange(group.GetMemberIds().Select(id => doc.GetElement(id)));
+                }
+
+                return durtyUserSelElems;
+            }
+
+            return null;
         }
 
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
