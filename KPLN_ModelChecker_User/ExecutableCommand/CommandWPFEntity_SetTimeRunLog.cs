@@ -1,8 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_ExtensibleStorage;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,6 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 {
     internal class CommandWPFEntity_SetTimeRunLog : IExecutableCommand
     {
-        private readonly DBUser _currentDbUser;
         private readonly DateTime _closeTime;
         private readonly ExtensibleStorageBuilder _esBuilderRun;
 
@@ -20,16 +19,13 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
         {
             _esBuilderRun = esBuilderRun;
             _closeTime = closeTime;
-
-            UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-            _currentDbUser = userDbService.GetCurrentDBUser();
         }
 
         public Result Execute(UIApplication app)
         {
             // Игнорирую специалистов BIM-отдела
 #if Revit2020 || Revit2023
-            if (_currentDbUser.SubDepartmentId == 8) 
+            if (SQLiteMainService.CurrentDBUser.SubDepartmentId == 8) 
                 return Result.Cancelled;
 #endif
 
@@ -51,7 +47,7 @@ namespace KPLN_ModelChecker_User.ExecutableCommand
 
                 }
 
-                if (allAvailableWSElems) 
+                if (allAvailableWSElems)
                 {
                     ExtensibleStorageBuilder esBuilder = new ExtensibleStorageBuilder(_esBuilderRun.Guid, _esBuilderRun.FieldName, _esBuilderRun.StorageName);
                     esBuilder.SetStorageData_TimeRunLog(piElem, app.Application.Username, _closeTime);

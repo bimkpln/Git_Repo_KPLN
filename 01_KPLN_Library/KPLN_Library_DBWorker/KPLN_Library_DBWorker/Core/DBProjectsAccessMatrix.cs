@@ -1,0 +1,34 @@
+﻿using KPLN_Library_DBWorker.Core.Abstractions;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace KPLN_Library_DBWorker.Core
+{
+    /// <summary>
+    /// Строка матрицы допуска к проектам KPLN
+    /// </summary>
+    public class DBProjectsAccessMatrix : IDBEntity
+    {
+        #region Столбцы из БД
+        [Key]
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Проект, к которому файл относится
+        /// </summary>
+        [ForeignKey(nameof(DBProject))]
+        public int ProjectId { get; set; }
+
+        /// <summary>
+        /// Пользователь, которому открыт доступ к проекту
+        /// </summary>
+        [ForeignKey(nameof(DBUser))]
+        public int UserId { get; set; }
+        #endregion
+
+        /// <summary>
+        /// Привязка к БД из DB_Enumerator
+        /// </summary>
+        public static DBEnumerator CurrentDB { get; } = DBEnumerator.ProjectsAccessMatrix;
+    }
+}

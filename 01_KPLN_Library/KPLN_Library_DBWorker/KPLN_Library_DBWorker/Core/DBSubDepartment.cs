@@ -1,0 +1,42 @@
+﻿using KPLN_Library_DBWorker.Core.Abstractions;
+using System.ComponentModel.DataAnnotations;
+
+namespace KPLN_Library_DBWorker.Core
+{
+    /// <summary>
+    /// Класс отдела KPLN
+    /// </summary>
+    public class DBSubDepartment : IDBEntity
+    {
+        #region Столбцы из БД
+        [Key]
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Код отдела
+        /// </summary>
+        public string Code { get; set; }
+
+        /// <summary>
+        /// Имя отдела
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Отображение влк/выкл (True/False) для окна авторизации. В БД тип данных текст, преобразование происходит в Dapper
+        /// </summary>
+        public bool IsAuthEnabled { get; set; }
+
+        /// <summary>
+        /// Ссыока на ID родительского отдела (например ИТП - входит в состав ОВ, ПТ - в состав ВК, АВ - в состав СС)
+        /// </summary>
+        public int DependentSubDepId { get; set; }
+        #endregion
+
+        /// <summary>
+        /// Привязка к БД из DB_Enumerator
+        /// </summary>
+        public static DBEnumerator CurrentDB { get; } = DBEnumerator.SubDepartments;
+
+    }
+}

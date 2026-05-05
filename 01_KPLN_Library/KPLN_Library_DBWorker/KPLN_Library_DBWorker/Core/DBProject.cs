@@ -1,0 +1,71 @@
+﻿using KPLN_Library_DBWorker.Core.Abstractions;
+using System.ComponentModel.DataAnnotations;
+
+namespace KPLN_Library_DBWorker.Core
+{
+    /// <summary>
+    /// Класс проекта KPLN
+    /// </summary>
+    public class DBProject : IDBEntity
+    {
+        #region Столбцы из БД
+        [Key]
+        public int Id { get; set; }
+
+        /// <summary>
+        /// Имя проекта
+        /// </summary>
+        public string Name { get; set; }
+
+        /// <summary>
+        /// Код (аббревиатура) проекта
+        /// </summary>
+        public string Code { get; set; }
+        
+        /// <summary>
+        /// Стадия проектирования
+        /// </summary>
+        public string Stage { get; set; }
+
+        /// <summary>
+        /// Версия используемого Revit
+        /// </summary>
+        public int RevitVersion { get; set; }
+
+        /// <summary>
+        /// Путь к корневой папке
+        /// </summary>
+        public string MainPath { get; set; }
+
+        /// <summary>
+        /// Путь Revit-Server
+        /// </summary>
+        public string RevitServerPath { get; set; }
+
+        /// <summary>
+        /// Путь Revit-Server №2
+        /// </summary>
+        public string RevitServerPath2 { get; set; }
+
+        /// <summary>
+        /// Путь Revit-Server №3
+        /// </summary>
+        public string RevitServerPath3 { get; set; }
+
+        /// <summary>
+        /// Путь Revit-Server №4
+        /// </summary>
+        public string RevitServerPath4 { get; set; }
+
+        /// <summary>
+        /// Режим блокировки проекта под набор разрешенных пользователей вкл/выкл (True/False). В БД тип данных текст, преобразование происходит в Dapper
+        /// </summary>
+        public bool IsClosed { get; set; }
+        #endregion
+
+        /// <summary>
+        /// Привязка к БД из DB_Enumerator
+        /// </summary>
+        public static DBEnumerator CurrentDB { get; } = DBEnumerator.Projects;
+    }
+}
