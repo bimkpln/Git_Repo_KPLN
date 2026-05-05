@@ -112,8 +112,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -128,8 +128,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -144,8 +144,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -160,8 +160,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2020\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -176,8 +176,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -192,8 +192,8 @@
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2024\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>

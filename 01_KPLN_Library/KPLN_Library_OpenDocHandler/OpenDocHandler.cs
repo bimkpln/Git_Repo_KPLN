@@ -2,9 +2,9 @@
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_OpenDocHandler.Core;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -79,7 +79,7 @@ namespace KPLN_Library_OpenDocHandler
                 if (string.IsNullOrEmpty(args.DialogId))
                 {
                     TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-                    currentDBDialog = DBMainService
+                    currentDBDialog = SQLiteMainService
                         .DBRevitDialogColl
                         .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
                     
@@ -87,7 +87,7 @@ namespace KPLN_Library_OpenDocHandler
                 }
                 else
                 {
-                    currentDBDialog = DBMainService
+                    currentDBDialog = SQLiteMainService
                         .DBRevitDialogColl
                         .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
 
