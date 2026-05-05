@@ -1,7 +1,7 @@
-﻿using KPLN_Library_Forms.Common;
+﻿using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
+using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -27,10 +27,10 @@ namespace KPLN_Library_Forms.UIFactory
             switch (showClosedProjects)
             {
                 case true:
-                    projectsColl = DBMainService.ProjectDbService.GetDBProjects_ByRVersion(rVersion);
+                    projectsColl = SQLiteMainService.SQLitePrjServiceInst.GetDBProjects_ByRVersion(rVersion);
                     break;
                 case false:
-                    projectsColl = DBMainService.ProjectDbService.GetDBProjects_ByRVersionANDOpened(rVersion);
+                    projectsColl = SQLiteMainService.SQLitePrjServiceInst.GetDBProjects_ByRVersionANDOpened(rVersion);
                     break;
             }
 

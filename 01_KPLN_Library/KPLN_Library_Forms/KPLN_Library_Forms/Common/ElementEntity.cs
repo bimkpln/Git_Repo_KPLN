@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker.Core;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -57,7 +57,7 @@ namespace KPLN_Library_Forms.Common
         /// <summary>
         /// Имя элемента, отображаемое пользователю
         /// </summary>
-        public string Name 
+        public string Name
         {
             get => _name;
             private set
