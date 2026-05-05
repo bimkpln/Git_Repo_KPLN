@@ -1,12 +1,12 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_BIMTools_Ribbon.Forms.Models;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using Microsoft.Win32;
 using RevitServerAPILib;
 using System.Collections.Generic;
@@ -69,7 +69,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
             else
             {
                 // Добавляю общее имя конфига
-                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(ExchangeService.RevitDocExchangesDbService.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
+                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(SQLiteMainService.SQLiteRevitDocExchangesServiceInst.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
+                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(SQLiteMainService.SQLiteRevitDocExchangesServiceInst.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
                 SettingName = DBRevitDocExchWrapper.SettingName;
 
                 // Проверяю на триггер копирования - базы данных не будут совпадать
@@ -474,7 +475,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if (!System.IO.File.Exists(_sqliteService.CurrentDBFullPath))
             {
                 _sqliteService.CreateDbFile();
-                int idFromDB = ExchangeService.RevitDocExchangesDbService.CreateDBRevitDocExchanges(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                int idFromDB = SQLiteMainService.SQLiteRevitDocExchangesServiceInst.CreateDBRevitDocExchanges(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                 DBRevitDocExchWrapper.Id = idFromDB;
             }
 
@@ -493,7 +494,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        ExchangeService.RevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                        SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
                     }
                     break;
@@ -509,7 +510,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        ExchangeService.RevitDocExchangesDbService.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                        SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
                     }
                     break;

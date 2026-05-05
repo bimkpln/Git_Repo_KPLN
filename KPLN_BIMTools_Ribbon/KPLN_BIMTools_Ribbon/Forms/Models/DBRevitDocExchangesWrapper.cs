@@ -1,4 +1,4 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_DBWorker.Core;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -41,15 +41,15 @@ namespace KPLN_BIMTools_Ribbon.Forms.Models
         }
 
         public string SettingName
-        {  
+        {
             get => CurrentDBRevitDocExchanges.SettingName;
             set
             {
                 CurrentDBRevitDocExchanges.SettingName = value;
                 OnPropertyChanged();
-            } 
+            }
         }
-        
+
         public string SettingResultPath
         {
             get => CurrentDBRevitDocExchanges.SettingResultPath;
@@ -82,7 +82,7 @@ namespace KPLN_BIMTools_Ribbon.Forms.Models
 
         public bool IsSelected
         {
-            get => _isSelected; 
+            get => _isSelected;
             set
             {
                 _isSelected = value;

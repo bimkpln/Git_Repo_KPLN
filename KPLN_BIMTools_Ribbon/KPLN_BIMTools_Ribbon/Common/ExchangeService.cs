@@ -6,20 +6,18 @@ using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_BIMTools_Ribbon.Forms;
 using KPLN_BIMTools_Ribbon.Forms.Models;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_OpenDocHandler;
 using KPLN_Library_OpenDocHandler.Core;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace KPLN_BIMTools_Ribbon.Common
 {
@@ -34,19 +32,7 @@ namespace KPLN_BIMTools_Ribbon.Common
         private protected OpenOptions _openOptions;
         private protected SaveAsOptions _saveAsOptions;
 
-        private static RevitDocExchangesDbService _revitDocExchangesDbService;
-
         private string _currentDocName;
-
-        internal static RevitDocExchangesDbService RevitDocExchangesDbService
-        {
-            get
-            {
-                if (_revitDocExchangesDbService == null)
-                    _revitDocExchangesDbService = (RevitDocExchangesDbService)new CreatorRevitDocExchangesDbService().CreateService();
-                return _revitDocExchangesDbService;
-            }
-        }
 
         internal static UIControlledApplication RevitUIControlledApp { get; set; }
 
@@ -155,23 +141,25 @@ namespace KPLN_BIMTools_Ribbon.Common
             {
                 docExchangeModuleName = $"Автостарт: {revitDocExchangeEnum}";
 
-                IEnumerable<int> docExchIdsFromModuleAS = DBMainService.ModuleAutostartDbService
-                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(DBMainService.CurrentDBUser.Id, ModuleData.RevitVersion, DB_Enumerator.RevitDocExchanges.ToString())
+                IEnumerable<int> docExchIdsFromModuleAS = SQLiteMainService
+                    .SQLiteModuleAutostartServiceInst
+                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(SQLiteMainService.CurrentDBUser.Id, ModuleData.RevitVersion, DBEnumerator.RevitDocExchanges.ToString())
                     .Select(mas => mas.DBTableKeyId);
                 if (docExchIdsFromModuleAS.Count() == 0)
                     return;
 
-                IEnumerable<DBRevitDocExchanges> docExcs = RevitDocExchangesDbService
+                IEnumerable<DBRevitDocExchanges> docExcs = SQLiteMainService
+                    .SQLiteRevitDocExchangesServiceInst
                     .GetDBRevitDocExchanges_ByIdCol(docExchIdsFromModuleAS);
                 if (docExcs.Count() == 0)
                     return;
-                
+
                 dbRevitDocExchanges = docExcs
                     .Select(dExc => new DBRevitDocExchangesWrapper(dExc))
                     .ToArray();
 
                 int prjId = docExcs.FirstOrDefault().ProjectId;
-                DBProject dBProject = DBMainService.ProjectDbService.GetDBProject_ByProjectId(prjId);
+                DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByProjectId(prjId);
                 _sourceProjectName = dBProject.Name;
 
                 configNames = $"Автостарт: {string.Join("; ", dbRevitDocExchanges.Select(de => de.SettingName))}";
@@ -234,8 +222,8 @@ namespace KPLN_BIMTools_Ribbon.Common
                                     // Убеждаюсь и обрабатываю ревит-сервер
                                     else if (CheckPathFoRevitServer(config.PathTo))
                                         isRevitServerFile = true;
-                                    
-                                    
+
+
                                     // Если ничего из вышеописанного - то ошибка
                                     if (isRevitServerFile == isKPLNServerFile)
                                     {
@@ -360,18 +348,18 @@ namespace KPLN_BIMTools_Ribbon.Common
             if (CountProcessedDocs < CountSourceDocs || CountProcessedDocs == 0)
             {
                 BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                    DBMainService.CurrentDBUser,
+                    SQLiteMainService.CurrentDBUser,
                     $"Модуль: [b]{moduleName}\n[/b]" +
                     $"Анализируемые конфигурации: {configNames}\n" +
                     $"Статус: Отработано с ошибками.\n" +
                     $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]\n" +
-                    $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
+                    $"Ошибки: См. файл логов у пользователя {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name}.\n" +
                     $"Путь к логам у пользователя: {Module.CurrentLoggerFullName}");
             }
             else
             {
                 BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                    DBMainService.CurrentDBUser,
+                    SQLiteMainService.CurrentDBUser,
                     $"Модуль: [b]{moduleName}\n[/b]" +
                     $"Анализируемые конфигурации: {configNames}\n" +
                     $"Статус: Отработано без ошибок.\n" +

@@ -1,7 +1,7 @@
 ﻿using KPLN_BIMTools_Ribbon.Forms.Commands;
 using KPLN_BIMTools_Ribbon.Forms.Models;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using RevitServerAPILib;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -20,7 +20,7 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
 
         private readonly DBManager _dBManagerForm;
-        
+
         private DBProjectWrapper _createdDBProject;
 
         public ICommand SetServerPathCommand { get; }
@@ -74,8 +74,8 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                 #region Верификация
                 // Проверка на пустые значения
                 if (string.IsNullOrEmpty(DBPrjWrapper.WrName)
-                    || (string.IsNullOrEmpty(DBPrjWrapper.WrCode) 
-                        || DBPrjWrapper.WrCode.Any(c => char.IsLower(c)) 
+                    || (string.IsNullOrEmpty(DBPrjWrapper.WrCode)
+                        || DBPrjWrapper.WrCode.Any(c => char.IsLower(c))
                         || DBPrjWrapper.WrCode.Any(c => char.IsSeparator(c) || c == '~' || c == '/'))
                     || string.IsNullOrEmpty(DBPrjWrapper.WrStage)
                     || (DBPrjWrapper.WrRevitVersion != 2020 && DBPrjWrapper.WrRevitVersion != 2023 & DBPrjWrapper.WrRevitVersion != 2024)
@@ -92,8 +92,8 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                 }
 
                 // Проверка на эквивалентные проекты в БД
-                IEnumerable <DBProject> dbrjColl = DBMainService
-                    .ProjectDbService
+                IEnumerable<DBProject> dbrjColl = SQLiteMainService
+                    .SQLitePrjServiceInst
                     .GetDBProjects_ByRVersion(DBPrjWrapper.WrRevitVersion);
 
                 IEnumerable<DBProject> dbrjColl_EqualCodeANDStage = dbrjColl
@@ -179,7 +179,7 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                 #endregion
 
                 // Создание
-                Task<int> createTask = DBMainService.ProjectDbService.CreateDBDocument(new DBProject
+                Task<int> createTask = SQLiteMainService.SQLitePrjServiceInst.CreateDBDocument(new DBProject
                 {
                     Name = DBPrjWrapper.WrName,
                     Code = DBPrjWrapper.WrCode,

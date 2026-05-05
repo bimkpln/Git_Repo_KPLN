@@ -4,8 +4,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using RevitServerAPILib;
+using KPLN_Library_DBWorker.Core;
 using System;
 using System.Threading;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
@@ -67,7 +66,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 {
                     // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
                     Thread.Sleep(2000);
-                    
+
                     doc = app.OpenDocumentFile(
                         modelPathFrom,
                         _openOptions);
@@ -78,14 +77,14 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
                     Print(msg, MessageType.Warning);
                     Module.CurrentLogger.Error(msg);
-                    
+
                     return null;
                 }
                 catch (Exception ex)
                 {
                     Module.CurrentLogger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). Нужно вмешаться человеку, " +
                         $"ошибка при открытии: {ex.Message}");
-                    
+
                     return null;
                 }
 
@@ -118,12 +117,12 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
             // Для обработки старых конфигов, чтобы не писал об ошибках
             if (configNameChangeFind == "🔐")
                 return newPath;
-            
+
             if (!newPath.Contains(configNameChangeFind))
             {
                 Print(
                     $"Внимание - в модели по пути \'{docTitle}\' нет совпадения в имени \'{configNameChangeFind}\' для замены на \'{rsConfigData.NameChangeSet}\'. " +
-                        $"Модель сохранена со СТАРЫМ именем.", 
+                        $"Модель сохранена со СТАРЫМ именем.",
                     MessageType.Warning);
                 return newPath;
             }

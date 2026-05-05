@@ -1,9 +1,8 @@
-﻿using KPLN_BIMTools_Ribbon.Common;
-using KPLN_BIMTools_Ribbon.Core.SQLite;
+﻿using KPLN_BIMTools_Ribbon.Core.SQLite;
 using KPLN_BIMTools_Ribbon.Forms.Models;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -44,10 +43,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
 
             // Получаю исходную версию сущностей из БД
-            _dbRevitDocExchWrappers = new ObservableCollection<DBRevitDocExchangesWrapper>(ExchangeService.RevitDocExchangesDbService
-                    .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
-                    .OrderBy(dExc => dExc.SettingName)
-                    .Select(dExc => new DBRevitDocExchangesWrapper(dExc)));
+            _dbRevitDocExchWrappers = new ObservableCollection<DBRevitDocExchangesWrapper>(SQLiteMainService
+                .SQLiteRevitDocExchangesServiceInst
+                .GetDBRevitDocExchanges_ByExchangeTypeANDDBProject(_revitDocExchangeEnum, _project)
+                .OrderBy(dExc => dExc.SettingName)
+                .Select(dExc => new DBRevitDocExchangesWrapper(dExc)));
 
             FiltereDBRevitDocExchdWrappers = CollectionViewSource.GetDefaultView(_dbRevitDocExchWrappers);
             FiltereDBRevitDocExchdWrappers.Filter = FilterItemsPredicate;
@@ -55,9 +55,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
             // Устанавливаю описание/коллекции в зависимости от алгоритма запуска
             if (_isAutoStartConfig)
             {
-                _dbModuleAutostarArrForUser = DBMainService
-                    .ModuleAutostartDbService
-                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(DBMainService.CurrentDBUser.Id, ModuleData.RevitVersion, _project.Id, _moduleId, DB_Enumerator.RevitDocExchanges.ToString())
+                _dbModuleAutostarArrForUser = SQLiteMainService
+                    .SQLiteModuleAutostartServiceInst
+                    .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(SQLiteMainService.CurrentDBUser.Id, ModuleData.RevitVersion, _project.Id, _moduleId, DBEnumerator.RevitDocExchanges.ToString())
                     .ToArray();
 
                 // Взвожу галку, если конфиг в списке
@@ -112,8 +112,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     if (selectedExchWr == null) continue;
 
                     if (!selectedExchWr.IsSelected)
-                        DBMainService
-                            .ModuleAutostartDbService
+                        SQLiteMainService
+                            .SQLiteModuleAutostartServiceInst
                             .DeleteDBModuleAutostarts(dBModuleAutostart);
                 }
 
@@ -122,16 +122,16 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 var selectedDocExch = SelectedDBExchWrappers
                     .Select(docExch => new DBModuleAutostart()
                     {
-                        UserId = DBMainService.CurrentDBUser.Id,
+                        UserId = SQLiteMainService.CurrentDBUser.Id,
                         RevitVersion = ModuleData.RevitVersion,
                         ProjectId = _project.Id,
                         ModuleId = _moduleId,
-                        DBTableName = DB_Enumerator.RevitDocExchanges.ToString(),
+                        DBTableName = DBEnumerator.RevitDocExchanges.ToString(),
                         DBTableKeyId = docExch.Id,
                     });
 
-                DBMainService
-                    .ModuleAutostartDbService
+                SQLiteMainService
+                    .SQLiteModuleAutostartServiceInst
                     .BulkCreateDBModuleAutostarts(selectedDocExch);
             }
 
@@ -270,7 +270,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void DeleteDBRevitDocExchange(IEnumerable<DBRevitDocExchangesWrapper> docExchWrappers)
         {
-            ExchangeService.RevitDocExchangesDbService.DeleteDBRevitDocExchange_ByIdColl(docExchWrappers.Select(docExch => docExch.Id));
+            SQLiteMainService.SQLiteRevitDocExchangesServiceInst.DeleteDBRevitDocExchange_ByIdColl(docExchWrappers.Select(docExch => docExch.Id));
 
             foreach (DBRevitDocExchangesWrapper docExchWrapper in docExchWrappers)
             {

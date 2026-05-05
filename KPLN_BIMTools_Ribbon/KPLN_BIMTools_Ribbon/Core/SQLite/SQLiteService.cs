@@ -1,7 +1,7 @@
 ﻿using Dapper;
 using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Data;

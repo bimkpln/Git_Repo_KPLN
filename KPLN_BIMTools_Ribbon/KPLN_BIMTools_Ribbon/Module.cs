@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_BIMTools_Ribbon.Common;
 using KPLN_BIMTools_Ribbon.ExternalCommands;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Loader.Common;
 using NLog;
 using NLog.Config;
@@ -54,7 +54,7 @@ namespace KPLN_BIMTools_Ribbon
 
             CommandRVTExchange.SetStaticEnvironment(application);
 
-            Task clearingLogs = Task.Run(() => ClearingOldLogs(logDirPath, logFileKey));
+            Task clearingLogs = Task.Run(() => KPLN_Loader.Application.ClearingOldLogs(CurrentLogger, logDirPath, logFileKey, true));
 
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "BIM");
@@ -285,35 +285,6 @@ namespace KPLN_BIMTools_Ribbon
             // Регистрация кнопки для смены иконок
             KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
 #endif
-        }
-
-        /// <summary>
-        /// Очистка от старых логов
-        /// </summary>
-        /// <param name="logPath">Путь к логам</param>
-        [Obsolete("02.03.2026: Замени на ClearingOldLogs из KPLN_Loader")]
-        private void ClearingOldLogs(string logPath, string logName)
-        {
-            if (Directory.Exists(logPath))
-            {
-                DirectoryInfo logDI = new DirectoryInfo(logPath);
-                foreach (FileInfo log in logDI.EnumerateFiles())
-                {
-                    if (log.CreationTime.Date < DateTime.Now.AddDays(-5) && log.Name.Contains(logName))
-                    {
-                        try
-                        {
-                            log.Delete();
-                        }
-                        // Ошибка будет только если файл занят
-                        catch (UnauthorizedAccessException) { }
-                        catch (Exception ex)
-                        {
-                            CurrentLogger.Error($"При попытке очистки старых логов произошла ошибка: {ex.Message}");
-                        }
-                    }
-                }
-            }
         }
 
         private void AutoRun(string externalCommand, RevitDocExchangeEnum exchangeEnum)
