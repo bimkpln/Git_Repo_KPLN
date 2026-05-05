@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker;
+using KPLN_Library_DBWorker;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
@@ -51,7 +51,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         _checkerEntitiesCollHeap.AddRange(CheckFamilyAndTypeDuplicateName(currentFam, elemColl));
 
                         // Проверка пути семейства - ТОЛЬКО для спецов BIM-отдела
-                        if (DBMainService.CurrentDBUser.SubDepartmentId == 8)
+                        if (SQLiteMainService.CurrentDBUser.SubDepartmentId == 8)
                         {
                             CheckerEntity checkFamilyPath = CheckFamilyPath(CheckDocument, currentFam);
                             if (checkFamilyPath != null)
@@ -115,7 +115,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 #if Debug2020 || Revit2020
             BuiltInCategory currentBIC = (BuiltInCategory)currentCat.Id.IntegerValue;                    
 #else
-            BuiltInCategory currentBIC = currentCat.BuiltInCategory;                    
+            BuiltInCategory currentBIC = currentCat.BuiltInCategory;
 #endif
 
 
@@ -367,8 +367,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                     DisplayUnitType.DUT_MILLIMETERS);
 #endif
 #if !Revit2020 && !Debug2020
-            typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
-                        new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+                typeThickness = UnitUtils.ConvertFromInternalUnits(floorType.get_Parameter(BuiltInParameter.FLOOR_ATTR_DEFAULT_THICKNESS_PARAM).AsDouble(),
+                            new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
 #endif
             else if (elemType is WallType wallType)
             {

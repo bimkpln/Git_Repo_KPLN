@@ -1,8 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using KPLN_ModelChecker_Lib.Services;
@@ -46,7 +46,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 
         public override Element[] GetElemsToCheck()
         {
-            if (CheckDocument.Title.Contains("СЕТ_1")) 
+            if (CheckDocument.Title.Contains("СЕТ_1"))
             {
                 _isHolesFunc = fi =>
 #if Debug2020 || Revit2020
@@ -54,8 +54,8 @@ namespace KPLN_ModelChecker_Lib.Commands
 #else
                     fi.Category.BuiltInCategory == BuiltInCategory.OST_Windows
 #endif
-                    && (fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие") 
-                    || fi.Symbol.FamilyName.StartsWith("231_Отверстие") 
+                    && (fi.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие")
+                    || fi.Symbol.FamilyName.StartsWith("231_Отверстие")
                     || fi.Symbol.FamilyName.StartsWith("231_Проем"));
             }
             else
@@ -77,7 +77,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .Where(_isHolesFunc)
                 .ToArray();
 
-             return holesFamInsts;
+            return holesFamInsts;
         }
 
         /// <summary>
@@ -207,17 +207,17 @@ namespace KPLN_ModelChecker_Lib.Commands
 
 
             List<View> docViewColl = new List<View>();
-            foreach(ViewSheet vSheet in selVSheets)
+            foreach (ViewSheet vSheet in selVSheets)
             {
                 ICollection<ElementId> allViewPorts = vSheet.GetAllViewports();
                 foreach (ElementId vpId in allViewPorts)
                 {
                     Viewport vp = (Viewport)CheckDocument.GetElement(vpId);
                     View view = CheckDocument.GetElement(vp.ViewId) as View;
-                    if (view.ViewType == ViewType.FloorPlan 
-                        || view.ViewType == ViewType.Section 
-                        || view.ViewType == ViewType.ProjectBrowser 
-                        || view.ViewType == ViewType.Detail 
+                    if (view.ViewType == ViewType.FloorPlan
+                        || view.ViewType == ViewType.Section
+                        || view.ViewType == ViewType.ProjectBrowser
+                        || view.ViewType == ViewType.Detail
                         || view.ViewType == ViewType.EngineeringPlan)
                         docViewColl.Add(view);
                 }
@@ -225,7 +225,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             bool isKRDoc = false;
             string fileFullName = GetFileFullName(CheckDocument);
-            DBSubDepartment prjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
+            DBSubDepartment prjDBSubDepartment = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
             if (prjDBSubDepartment != null)
                 isKRDoc = prjDBSubDepartment.Code == "КР";
 
@@ -317,13 +317,13 @@ namespace KPLN_ModelChecker_Lib.Commands
                     if (typeFloorElem != null)
                         continue;
                 }
-                
-                
+
+
                 if (isKRModel || !_krHostNames_StartWith.Any(prefix => (bool)hostElem.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.StartsWith(prefix)))
                 {
                     Level fiLvl = CheckDocument.GetElement(fi.LevelId) as Level;
-                    
-                    string info = $"Уровень элемента: \"{fiLvl.Name}\". Сделай так, чтобы отверстие было видно на необходимом листе." ;
+
+                    string info = $"Уровень элемента: \"{fiLvl.Name}\". Сделай так, чтобы отверстие было видно на необходимом листе.";
                     if (!isKRModel)
                         info = $"Уровень элемента: \"{fiLvl.Name}\". Сделай так, чтобы отверстие было видно на необходимом листе." +
                             $"\nИНФО: Обрати внимание, что основа у элемента - \"{hostElem.Name}\".";
@@ -362,7 +362,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 IList<ElementId> depElemIds = elem.GetDependentElements(filter);
                 if (depElemIds.Count == 0)
                 {
-                    if (isKRModel 
+                    if (isKRModel
                         || !_krHostNames_StartWith.Any(prefix => (bool)hostElem.get_Parameter(BuiltInParameter.ELEM_TYPE_PARAM)?.AsValueString()?.StartsWith(prefix)))
                         result.Add(new CheckerEntity(
                             elem,
@@ -387,12 +387,12 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                 // Анализ марок на привязку к видам на листах
                 bool tagNotOnList = true;
-                foreach(ElementId elId in depElemIds)
+                foreach (ElementId elId in depElemIds)
                 {
-                    IndependentTag indTag = (IndependentTag)CheckDocument.GetElement(elId) 
+                    IndependentTag indTag = (IndependentTag)CheckDocument.GetElement(elId)
                         ?? throw new CheckerException($"Обратись к разработчику - не удалось получить марку. Id: {elId}");
-                    
-                    View tagView = (View)CheckDocument.GetElement(indTag.OwnerViewId) 
+
+                    View tagView = (View)CheckDocument.GetElement(indTag.OwnerViewId)
                         ?? throw new CheckerException($"Обратись к разработчику - не удалось получить вид. Id: {elId}");
 
                     if (docViewIdColl.Contains(tagView.Id))
