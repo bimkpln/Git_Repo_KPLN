@@ -1,12 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static KPLN_Classificator.ApplicationConfig;
 
 namespace KPLN_Classificator.Data
@@ -20,8 +18,6 @@ namespace KPLN_Classificator.Data
         private string userName;
         private string fileName;
         private string date;
-
-        public static UserDbService LatRunUserDbService = (UserDbService)new CreatorUserDbService().CreateService();
 
         public override string ToString()
         {
@@ -114,9 +110,9 @@ namespace KPLN_Classificator.Data
 
         private string getUserNameFromSourse()
         {
-            DBUser dBUser = LatRunUserDbService.GetCurrentDBUser();
+            DBUser dBUser = SQLiteMainService.CurrentDBUser;
             return $"{dBUser.Name} {dBUser.Surname}";
-        } 
+        }
 
 
         private string getCurrentTime()
