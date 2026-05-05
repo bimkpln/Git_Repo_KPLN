@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker;
 using KPLN_FamilyManager.Forms;
+using KPLN_Library_DBWorker;
 using System;
 
 namespace KPLN_FamilyManager.Docking
@@ -38,7 +38,7 @@ namespace KPLN_FamilyManager.Docking
         {
             if (_paneInstance != null) return;
 
-            var current = DBMainService.CurrentUserDBSubDepartment;
+            var current = SQLiteMainService.CurrentUserDBSubDepartment;
             string currentStr = current != null ? $"{current.Code}" : "Нет данных";
 
             _paneInstance = new FamilyManager(currentStr);

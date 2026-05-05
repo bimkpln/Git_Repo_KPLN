@@ -2,6 +2,7 @@
 using KPLN_FamilyManager.Common;
 using KPLN_FamilyManager.Docking;
 using KPLN_FamilyManager.ExternalCommands;
+using KPLN_Library_DBWorker;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.IO;
@@ -40,7 +41,7 @@ namespace KPLN_FamilyManager
             else
                 panel = _uiContrApp.CreateRibbonPanel(tabName, panelName);
 
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 8 || true)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8 || true)
             {
                 PushButtonData familyManagerPanel = CreateBtnData(
                     CommandFamilyManager.PluginName,
