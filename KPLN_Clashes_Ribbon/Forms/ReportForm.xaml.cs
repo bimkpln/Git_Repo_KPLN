@@ -5,8 +5,8 @@ using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.ExternalEventHandler;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_DBWorker;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -115,7 +115,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         docCheck = false;
                     else
                     {
-                        string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(uiapp.ActiveUIDocument.Document);
+                        string fileFullName = KPLN_Library_DBWorker.FactoryParts.SQLite.SQLiteDocService.GetFileFullName(uiapp.ActiveUIDocument.Document);
                         string docTitle = fileFullName.Split('/').LastOrDefault().Split(new[] {".rvt"}, StringSplitOptions.None).FirstOrDefault();
                         if (string.IsNullOrEmpty(docTitle))
                             return true;
@@ -524,7 +524,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                         BitrixMessageSender
                             .SendMsgToTask_ByTaskId(
                             delegBitrixTaskId,
-                            $"Пользователь <{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}> " +
+                            $"Пользователь <{SQLiteMainService.CurrentDBUser.Name} {SQLiteMainService.CurrentDBUser.Surname}> " +
                                 $"делегировал вам коллизию из отчета: \"{_currentReport.Name}\" " +
                                 $"с именем: \"{currentItem.Name}\""));
 

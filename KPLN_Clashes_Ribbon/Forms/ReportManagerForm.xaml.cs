@@ -5,8 +5,8 @@ using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.ExternalEventHandler;
 using KPLN_Clashes_Ribbon.Services;
 using KPLN_Clashes_Ribbon.Tools;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -54,7 +54,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             UpdateReportGroups();
 
-            if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                 btnAddGroup.Visibility = Visibility.Visible;
             else
                 btnAddGroup.Visibility = Visibility.Collapsed;
@@ -219,7 +219,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+                if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     Report report = (sender as System.Windows.Controls.Button).DataContext as Report;
                     _sqliteService_MainDB.DeleteReportAndReportItems_ByReportId(report);
@@ -241,7 +241,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddReport(object sender, RoutedEventArgs args)
         {
-            if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                 int repInstIndex = 0;
@@ -517,7 +517,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+                if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     group.Status = Core.ClashesMainCollection.KPItemStatus.Closed;
@@ -539,32 +539,9 @@ namespace KPLN_Clashes_Ribbon.Forms
         }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         private void OnButtonImportStatus(object sender, RoutedEventArgs args)
         {
-            if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
 
             string NormalizeTitle(string s)
             {
@@ -951,7 +928,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void OnBtnAddGroup(object sender, RoutedEventArgs args)
         {
-            if (DBMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id != 8) { return; }
 
             ReportManagerCreateGroupForm groupCreateForm = new ReportManagerCreateGroupForm(this);
 
@@ -1075,7 +1052,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             if (dialog.DialogResult == Core.ClashesMainCollection.KPTaskDialogResult.Ok)
             {
-                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+                if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                 {
                     ReportGroup group = (sender as System.Windows.Controls.Button).DataContext as ReportGroup;
                     _sqliteService_MainDB.DeleteReportGroupAndReportsAndReportItems_ByReportGroupId(group.Id);
@@ -1147,7 +1124,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     return;
                 }
 
-                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{DBMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{subDepartmentBtn.Id}/");
+                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{SQLiteMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{subDepartmentBtn.Id}/");
             }
         }
     }

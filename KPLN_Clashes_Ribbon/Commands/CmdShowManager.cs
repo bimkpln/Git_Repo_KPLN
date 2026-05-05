@@ -4,10 +4,11 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Clashes_Ribbon.ExternalEventHandler;
 using KPLN_Clashes_Ribbon.Forms;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
+using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
@@ -29,14 +30,14 @@ namespace KPLN_Clashes_Ribbon.Commands
                 if (uidoc != null)
                 {
                     Document doc = uidoc.Document;
-                    string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-                    dBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, ModuleData.RevitVersion);
+                    string fileFullName = SQLiteDocService.GetFileFullName(doc);
+                    dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, ModuleData.RevitVersion);
                 }
 
                 if (uidoc == null || dBProject == null)
                 {
                     // Для пользователей бим-отдела - показываю все проекты, включая архивные
-                    bool isBIMUser = DBMainService.CurrentUserDBSubDepartment.Id == 8;
+                    bool isBIMUser = SQLiteMainService.CurrentUserDBSubDepartment.Id == 8;
 
                     ElementSinglePick selectedProjectForm = SelectDbProject.CreateForm(null, ModuleData.RevitVersion, isBIMUser);
                     if ((bool)selectedProjectForm.ShowDialog())

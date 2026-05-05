@@ -1,7 +1,6 @@
 ﻿using KPLN_Clashes_Ribbon.Services;
-using KPLN_Library_SQLiteWorker;
+using KPLN_Library_DBWorker;
 using System;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -217,7 +216,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             {
                 _isGroupEnabled = value;
                 NotifyPropertyChanged();
-                
+
                 _fill = Fill_Default;
             }
         }
@@ -249,7 +248,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+                if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                     return IsGroupEnabled;
 
                 return System.Windows.Visibility.Collapsed;
@@ -269,7 +268,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             {
                 _isGroupEnabled = value;
                 NotifyPropertyChanged();
-                
+
                 _fill = Fill_Default;
             }
         }

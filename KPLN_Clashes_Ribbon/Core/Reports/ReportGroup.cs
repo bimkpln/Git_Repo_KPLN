@@ -1,6 +1,6 @@
-﻿using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
+﻿using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
+using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -32,7 +32,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private SolidColorBrush _fill;
         private bool _isEnabled = true;
         private bool _isExpandedItem = false;
-        private static ProjectDbService _libProjectDbService;
+        private static SQLitePrjService _libProjectDbService;
         private string _searchText = string.Empty;
 
         private int _bitrixTaskIdAR;
@@ -388,7 +388,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+                if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                     return System.Windows.Visibility.Visible;
 
                 return System.Windows.Visibility.Collapsed;
@@ -399,7 +399,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+                if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
                     return System.Windows.Visibility.Visible;
                 else
                     return System.Windows.Visibility.Collapsed;
@@ -425,22 +425,17 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        private void NotifySelectedPropertyChanged(string name)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
         /// <summary>
         /// Синглтон сервис из библиотеки KPLN_Library_SQLiteWorker
         /// </summary>
-        private static ProjectDbService LibProjectDbService
+        private static SQLitePrjService LibProjectDbService
         {
             get
             {
                 if (_libProjectDbService == null)
                 {
-                    CreatorProjectDbService creatorPrjDbService = new CreatorProjectDbService();
-                    _libProjectDbService = (ProjectDbService)creatorPrjDbService.CreateService();
+                    var creatorPrjDbService = new SQLiteCreatorPrjService();
+                    _libProjectDbService = (SQLitePrjService)creatorPrjDbService.CreateService();
                 }
 
                 return _libProjectDbService;

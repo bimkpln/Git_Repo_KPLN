@@ -1,6 +1,6 @@
 ﻿using KPLN_Clashes_Ribbon.Core.Reports;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -49,9 +49,9 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                     $"'{rGroup.Name}', " +
                     $"'{KPItemStatus.New}', " +
                     $"'{CurrentTime}', " +
-                    $"'{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}', " +
+                    $"'{SQLiteMainService.CurrentDBUser.Name} {SQLiteMainService.CurrentDBUser.Surname}', " +
                     $"'{CurrentTime}', " +
-                    $"'{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}', " +
+                    $"'{SQLiteMainService.CurrentDBUser.Name} {SQLiteMainService.CurrentDBUser.Surname}', " +
                     $"'{rGroup.BitrixTaskIdAR}', " +
                     $"'{rGroup.BitrixTaskIdKR}', " +
                     $"'{rGroup.BitrixTaskIdOV}', " +
@@ -94,9 +94,9 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
                 Status = KPItemStatus.New.ToString(),
                 Path = groupDbFi.FullName,
                 DateCreated = CurrentTime,
-                UserCreated = DBMainService.CurrentDBUser.SystemName,
+                UserCreated = SQLiteMainService.CurrentDBUser.SystemName,
                 DateLast = CurrentTime,
-                UserLast = DBMainService.CurrentDBUser.SystemName
+                UserLast = SQLiteMainService.CurrentDBUser.SystemName
             };
 
             return ExecuteInsertWithId(query, parameters);
@@ -165,7 +165,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         public void UpdateReportGroup_MarksLastChange_ByGroupId(int groupId) =>
             ExecuteNonQuery(
                 $"UPDATE {MainDB_Enumerator.ReportGroups} " +
-                $"SET {nameof(ReportGroup.DateLast)}='{CurrentTime}', {nameof(ReportGroup.UserLast)}='{DBMainService.CurrentDBUser.Name} {DBMainService.CurrentDBUser.Surname}' " +
+                $"SET {nameof(ReportGroup.DateLast)}='{CurrentTime}', {nameof(ReportGroup.UserLast)}='{SQLiteMainService.CurrentDBUser.Name} {SQLiteMainService.CurrentDBUser.Surname}' " +
                 $"WHERE Id={groupId}");
 
         /// <summary>
@@ -177,7 +177,7 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
             ExecuteNonQuery(
                 $"UPDATE {MainDB_Enumerator.Reports} " +
                 $"SET {nameof(Report.DateLast)}='{CurrentTime}', " +
-                    $"{nameof(Report.UserLast)}='{DBMainService.CurrentDBUser.SystemName}', " +
+                    $"{nameof(Report.UserLast)}='{SQLiteMainService.CurrentDBUser.SystemName}', " +
                     $"{nameof(Report.Status)}='{mainStatus}' " +
                 $"WHERE Id={reportId}");
         #endregion

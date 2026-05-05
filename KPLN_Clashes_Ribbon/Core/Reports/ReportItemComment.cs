@@ -1,10 +1,9 @@
-﻿using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Core.Reports
 {
@@ -12,7 +11,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
     {
         public ReportItemComment(string message)
         {
-            UserSystemName = DBMainService.CurrentDBUser.SystemName;
+            UserSystemName = SQLiteMainService.CurrentDBUser.SystemName;
             Time = DateTime.Now.ToString();
             Message = message;
         }
@@ -45,9 +44,9 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get
             {
-                DBUser dBUser = DBMainService.UserDbService.GetDBUser_ByUserName(UserSystemName);
+                DBUser dBUser = SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ByUserName(UserSystemName);
                 return $"{dBUser.Surname} {dBUser.Name}";
-            } 
+            }
         }
 
         /// <summary>
