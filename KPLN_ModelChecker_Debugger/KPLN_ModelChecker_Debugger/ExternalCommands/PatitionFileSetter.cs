@@ -6,7 +6,6 @@ using KPLN_ModelChecker_Lib.Services.GripGeom;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_ModelChecker_Debugger.ExternalCommands

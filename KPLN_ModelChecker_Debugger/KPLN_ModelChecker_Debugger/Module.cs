@@ -1,8 +1,5 @@
 ﻿using Autodesk.Revit.UI;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
-using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -14,20 +11,6 @@ namespace KPLN_ModelChecker_Debugger
     public class Module : IExternalModule
     {
         private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
-        private static DBUser _currentDBUser;
-
-        internal static DBUser CurrentDBUser
-        {
-            get
-            {
-                if (_currentDBUser == null)
-                {
-                    UserDbService userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-                    _currentDBUser = userDbService.GetCurrentDBUser();
-                }
-                return _currentDBUser;
-            }
-        }
 
         public Result Close()
         {
