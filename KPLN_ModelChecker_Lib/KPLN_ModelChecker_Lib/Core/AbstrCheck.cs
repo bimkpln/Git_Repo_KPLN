@@ -55,9 +55,15 @@ namespace KPLN_ModelChecker_Lib.Core
         public CheckerEntity[] CheckerEntitiesColl { get; private protected set; }
 
         /// <summary>
-        /// Метка быстрого выбора элементов в модели, без использования окна
+        /// Метка ошибки, если нет элементов для анализа
         /// </summary>
-        public bool OnlySelectOnModel { get; set; } = false;
+        public bool WarningIfNoElemsOnModel { get; set; } = true;
+
+        /// <summary>
+        /// Метка особого режима, при котором список формируется полными данными, 
+        /// НО для анализа текст не нужен, а нужны только элементы
+        /// </summary>
+        public bool OnlyElemsInModel { get; set; } = false;
 
         /// <summary>
         /// Ссылка на Revit-документ

@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
@@ -34,11 +35,49 @@ namespace KPLN_ModelChecker_Lib.Commands
                     new Guid("46808d8d-6447-4502-983c-819fcc5d0b1e"));
         }
 
-        public override Element[] GetElemsToCheck() =>
-            new FilteredElementCollector(CheckDocument)
+        public override Element[] GetElemsToCheck()
+        {
+            // Обрабатываю пользовательскую выборку листов
+            List<Element> result = new List<Element>();
+            List<ElementId> selIds = CheckUIApp.ActiveUIDocument.Selection.GetElementIds().ToList();
+            if (selIds.Count > 0)
+            {
+                foreach (ElementId selId in selIds)
+                {
+                    Element elem = CheckDocument.GetElement(selId);
+
+#if Debug2020 || Revit2020
+                    int catId = elem.Category.Id.IntegerValue;
+                    if (catId.Equals((int)BuiltInCategory.OST_Sheets))
+#else
+                    if (elem.Category.BuiltInCategory == BuiltInCategory.OST_Sheets)
+#endif
+                    {
+                        ViewSheet curViewSheet = elem as ViewSheet;
+                        result.Add(curViewSheet);
+                    }
+                }
+
+                if (result.Count == 0)
+                {
+                    TaskDialog.Show(
+                        "Ошибка", 
+                        "В выборке нет ни одного листа. Либо выбери листы, либо сними выборку, чтобы проанализировались вообще все листы", 
+                        TaskDialogCommonButtons.Ok);
+
+                    WarningIfNoElemsOnModel = false;
+                    return new Element[0];
+                }
+                else
+                    return result.ToArray();
+            }
+            
+            
+            return new FilteredElementCollector(CheckDocument)
                 .OfClass(typeof(ViewSheet))
                 .Where(el => el is ViewSheet vsh && !vsh.IsTemplate && !vsh.IsPlaceholder)
                 .ToArray();
+        }
 
         private protected override CheckResultStatus Set_CheckerEntitiesHeap(Element[] elemColl)
         {

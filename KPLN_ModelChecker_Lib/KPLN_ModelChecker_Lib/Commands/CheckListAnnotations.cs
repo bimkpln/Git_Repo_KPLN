@@ -84,7 +84,12 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                 if (result.Count == 0)
                 {
-                    TaskDialog.Show("Ошибка", "В выборке нет ни одного листа :(", TaskDialogCommonButtons.Ok);
+                    TaskDialog.Show(
+                        "Ошибка", 
+                        "В выборке нет ни одного листа :(", 
+                        TaskDialogCommonButtons.Ok);
+
+                    WarningIfNoElemsOnModel = false;
                     return new Element[0];
                 }
 
@@ -100,7 +105,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 if (CheckUIApp.ActiveUIDocument.ActiveView is ViewSheet viewSheet)
                 {
                     result.Add(viewSheet);
-                    OnlySelectOnModel = true;
+                    OnlyElemsInModel = true;
                 }
                 else
                 {
@@ -113,7 +118,7 @@ namespace KPLN_ModelChecker_Lib.Commands
             else
             {
                 result.Add(CheckUIApp.ActiveUIDocument.ActiveView);
-                OnlySelectOnModel = true;
+                OnlyElemsInModel = true;
             }
 
 

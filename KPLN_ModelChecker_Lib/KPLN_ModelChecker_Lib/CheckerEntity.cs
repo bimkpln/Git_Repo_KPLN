@@ -3,7 +3,6 @@ using Autodesk.Revit.DB.Architecture;
 using KPLN_ModelChecker_Lib.Common;
 using System.Collections.Generic;
 using System.Linq;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace KPLN_ModelChecker_Lib
 {
