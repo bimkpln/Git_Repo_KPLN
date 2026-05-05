@@ -1,7 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.ExternalCommands;
 using KPLN_OpeningHoleManager.Forms;
@@ -90,7 +91,7 @@ namespace KPLN_OpeningHoleManager
             CurrentUIApplication = new UIApplication(args.Document.Application);
 
             CurrentFileName = openViewFileName;
-            DBProject openViewDBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, ModuleData.RevitVersion);
+            DBProject openViewDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, ModuleData.RevitVersion);
             if (openViewDBProject == null)
                 return;
 

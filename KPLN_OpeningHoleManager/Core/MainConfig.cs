@@ -2,9 +2,9 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker;
 using KPLN_Library_ConfigWorker.Core;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
-using KPLN_OpeningHoleManager.Services;
 using System;
 
 namespace KPLN_OpeningHoleManager.Core
@@ -93,7 +93,7 @@ namespace KPLN_OpeningHoleManager.Core
 
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-            DBProject dBProject = MainDBService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
+            DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
             if (dBProject != null)
                 _configType = ConfigType.Shared;
 

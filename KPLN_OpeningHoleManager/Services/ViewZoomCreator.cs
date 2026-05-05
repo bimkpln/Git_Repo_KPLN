@@ -1,12 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
+using KPLN_Library_DBWorker;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Windows.Controls;
-using System.Xml.Linq;
 
 namespace KPLN_OpeningHoleManager.Services
 {
@@ -22,7 +20,7 @@ namespace KPLN_OpeningHoleManager.Services
             get
             {
                 if (_viewForObserveName == null)
-                    _viewForObserveName = $"OHM_В_{MainDBService.CurrentDBUser.RevitUserName}";
+                    _viewForObserveName = $"OHM_В_{SQLiteMainService.CurrentDBUser.RevitUserName}";
 
                 return _viewForObserveName;
             }
@@ -35,18 +33,18 @@ namespace KPLN_OpeningHoleManager.Services
         {
             if (ignoreFullyVisible)
                 return null;
-            
+
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
 
             BoundingBoxXYZ hostElemsBbox = SumBBox(elemsToObserve);
-            
+
             View activeView = uidoc.ActiveView;
             // Если уже открыт 3д-вид, или разрез - то можно игнорировать процесс создания нового вида
             if (activeView is View3D || activeView is ViewSection)
             {
-                
-                foreach(Element elem in elemsToObserve)
+
+                foreach (Element elem in elemsToObserve)
                 {
                     if (IsElementFullyVisibleOnView(elem, activeView))
                         return null;
@@ -162,7 +160,7 @@ namespace KPLN_OpeningHoleManager.Services
 
             #region Настройка фильтров по имени типа
             string filterName = $"OHM_Стена = !*{string.Join(" ИЛИ !*", ARKRElemsWorker.ARKRHostNames_StartWith)}";
-            
+
             ParameterFilterElement[] docFilters = new FilteredElementCollector(doc)
                 .OfClass(typeof(ParameterFilterElement))
                 .Cast<ParameterFilterElement>()
@@ -197,7 +195,7 @@ namespace KPLN_OpeningHoleManager.Services
 
             view3D.AddFilter(viewFilterId);
             view3D.SetFilterVisibility(viewFilterId, false);
-#endregion
+            #endregion
         }
 
         /// <summary>
@@ -278,12 +276,12 @@ namespace KPLN_OpeningHoleManager.Services
             double degToRadian = Math.PI * 2 / 360;
             double angleHorizR = angleHorizD * degToRadian;
             double angleVertR = angleVertD * degToRadian;
-            
+
             double a = Math.Cos(angleVertR);
             double b = Math.Cos(angleHorizR);
             double c = Math.Sin(angleHorizR);
             double d = Math.Sin(angleVertR);
-            
+
             return new XYZ(a * b, a * c, d);
         }
     }

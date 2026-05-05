@@ -1,8 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_ModelChecker_Lib.Services;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
@@ -13,6 +14,7 @@ using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -472,7 +474,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     continue;
 
                 // Проверяю по типу отдела файла, стоит ли его анализировать
-                int openDocPrjDBSubDepartmentId = MainDBService.Get_DBDocumentSubDepartment(openDoc).Id;
+                int openDocPrjDBSubDepartmentId = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(openDoc.PathName).Id;
                 switch (openDocPrjDBSubDepartmentId)
                 {
                     case 2:
@@ -631,7 +633,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
 
                     // Создаю сущность AROpeningHoleEntity
-                    AROpeningHoleEntity arEntity = new AROpeningHoleEntity(null, ohe_Shape, MainDBService.Get_DBDocumentSubDepartment(iosElemEnt.IOS_LinkDocument).Code, arkrElemEnt.IEDElem, docCoord)
+                    AROpeningHoleEntity arEntity = new AROpeningHoleEntity(null, ohe_Shape, SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(iosElemEnt.IOS_LinkDocument.PathName).Code, arkrElemEnt.IEDElem, docCoord)
                         .SetFamilyPathAndName(doc)
                         as AROpeningHoleEntity;
 
@@ -889,7 +891,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     continue;
                 }
 
-                AROpeningHoleEntity arEntity = new AROpeningHoleEntity(null, iosTask.OHE_Shape, MainDBService.Get_DBDocumentSubDepartment(iosTask.OHE_LinkDocument).Code, hostElem, arDocCoord)
+                AROpeningHoleEntity arEntity = new AROpeningHoleEntity(null, iosTask.OHE_Shape, SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(iosTask.OHE_LinkDocument.PathName).Code, hostElem, arDocCoord)
                     .SetFamilyPathAndName(doc)
                     as AROpeningHoleEntity;
 
@@ -986,7 +988,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 // Подготовка отверстий ЛИБО по предварительно выбранным, ЛИБО на весь документ сразу
                 Selection selection = uidoc.Selection;
                 ICollection<ElementId> selIds = selection.GetElementIds();
-                
+
                 Element[] docHoleColl = selIds
                     .Select(id => doc.GetElement(id))
                     .OfType<FamilyInstance>()
