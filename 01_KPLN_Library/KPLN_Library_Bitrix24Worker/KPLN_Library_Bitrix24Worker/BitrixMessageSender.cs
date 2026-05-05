@@ -1,5 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
+﻿using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Loader.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -20,7 +20,6 @@ namespace KPLN_Library_Bitrix24Worker
     /// </summary>
     public class BitrixMessageSender
     {
-        private static UserDbService _userDbService;
         /// <summary>
         /// Лучше заменить на ссылку на KPLN_Loader. Пока захаркодил, т.к. KPLN_Loader нужно всем переустановить (21.10.2025)
         /// </summary>
@@ -30,20 +29,6 @@ namespace KPLN_Library_Bitrix24Worker
         /// </summary>
         private protected static readonly string _bitrixConfigs_MainWebHookName = "MainWebHook";
         private static Bitrix_Config[] _bitrixConfigs;
-
-        /// <summary>
-        /// Ссылка на пользователя
-        /// </summary>
-        private static UserDbService CurrentUserDbService
-        {
-            get
-            {
-                if (_userDbService == null)
-                    _userDbService = (UserDbService)new CreatorUserDbService().CreateService();
-
-                return _userDbService;
-            }
-        }
 
         /// <summary>
         /// Коллекция десерилизованныйх данных по настройкам Bitrix
@@ -102,12 +87,12 @@ namespace KPLN_Library_Bitrix24Worker
             // Собираю данные по пользователям битрикс
             int bitrixUserIdSender = await GetDBUserBitrixId_ByDBUser(dBUserSender);
             List<int> bitrixUserIdsReceiver = new List<int>();
-            foreach(var user in dBUsersReceiver)
+            foreach (var user in dBUsersReceiver)
             {
                 bitrixUserIdsReceiver.Add(await GetDBUserBitrixId_ByDBUser(user));
             }
-            
-            if (bitrixUserIdSender == -1 || bitrixUserIdsReceiver.Any(id => id == -1)) 
+
+            if (bitrixUserIdSender == -1 || bitrixUserIdsReceiver.Any(id => id == -1))
                 throw new Exception("\n[KPLN]: Ошибка получения ID пользователя Bitrix\n\n");
 
 
@@ -152,7 +137,7 @@ namespace KPLN_Library_Bitrix24Worker
                             chatID = item.id;
                     }
 
-                        
+
                     // Чат не найден. Создаю
                     if (string.IsNullOrEmpty(chatID))
                     {
@@ -182,7 +167,7 @@ namespace KPLN_Library_Bitrix24Worker
                         string responseGetImgContent = await responseGetImg.Content.ReadAsStringAsync();
                         dynamic jResp = JsonConvert.DeserializeObject(responseGetImgContent);
 
-                        string detailUrl = jResp?.result?.DETAIL_URL; 
+                        string detailUrl = jResp?.result?.DETAIL_URL;
                         string downloadUrl = jResp?.result?.DOWNLOAD_URL;
                         string name = jResp?.result?.NAME;
 
@@ -231,7 +216,7 @@ namespace KPLN_Library_Bitrix24Worker
                     HttpResponseMessage response = await client.PostAsync($"{WebHookUrl}/im.message.add", contentMsg);
                     if (!response.IsSuccessStatusCode)
                         throw new Exception("\n[KPLN]: Ошибка отправик сообщения в чат Bitrix\n\n");
-                    
+
                     // Читаю итог
                     string responseMsgContent = await response.Content.ReadAsStringAsync();
                     if (string.IsNullOrEmpty(responseMsgContent))
@@ -852,7 +837,7 @@ namespace KPLN_Library_Bitrix24Worker
                 if (id == -1)
                     throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД - не удалось получить id-пользователя Bitrix\n\n");
 
-                CurrentUserDbService.UpdateDBUser_BitrixUserID(dBUser, id);
+                SQLiteMainService.SQLiteUserServiceInst.UpdateDBUser_BitrixUserID(dBUser, id);
             }
             catch (Exception ex)
             {
