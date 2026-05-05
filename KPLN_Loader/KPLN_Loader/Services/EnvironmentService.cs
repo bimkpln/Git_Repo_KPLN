@@ -161,7 +161,9 @@ namespace KPLN_Loader.Services
                 if(Application.RevitVersion == "2020")
                     return CheckLocalDB() && CheckBitrixWebHooks();
                 else
-                    return CheckWebServerDB() && CheckLocalDB() && CheckBitrixWebHooks();
+                    return CheckLocalDB() && CheckBitrixWebHooks();
+                    // Переключить, когда с бегетом определюсь
+                    //return CheckWebServerDB() && CheckLocalDB() && CheckBitrixWebHooks();
             }
         }
 

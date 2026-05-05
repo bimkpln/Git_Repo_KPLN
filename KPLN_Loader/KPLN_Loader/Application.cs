@@ -243,9 +243,9 @@ namespace KPLN_Loader
 #else
             IsExtraNet = false;
 #if DEBUG
-            MainConfigPath = @"Z:\Отдел BIM\Куцко Тимофей\KPLN_Loader_Config.json";
+            MainConfigPath = _pahtToLoaderDll + "\\KPLN_Loader_Config.json";
 #else
-            MainConfigPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_Config.json";
+            MainConfigPath = _pahtToLoaderDll + "\\KPLN_Loader_Config.json";
 #endif
 
             _ribbonName = "KPLN";

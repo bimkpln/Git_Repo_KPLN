@@ -1,0 +1,33 @@
+{
+  "DatabaseConfig": {
+    "DBConnections": {
+      "Loader_MainDB": {
+        "Name": "Loader_MainDB",
+        "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_Loader_MainDB.db",
+        "Description": "Конечный путь к основной базе данных (информация о пользователях, проектах и т.д.)"
+      },
+      "ExtraNet_Loader_MainDB": {
+        "Name": "ExtraNet_Loader_MainDB",
+        "Path": "Server=timakuk4.beget.tech;Port=3306;Database=timakuk4_maindb;User ID=timakuk4_maindb;Password=cF!4F6*d!ph*;SslMode=None;",
+        "Description": "Конечный путь к основной базе данных (информация о пользователях, проектах и т.д.)"
+      },
+      "Clashes_MainDB": {
+        "Name": "Clashes_MainDB",
+        "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_Clashes_MainDB.db",
+        "Description": "Конечный путь к базе данных для модуля ClashDetective"
+      },
+      "TaskManager_MainDB": {
+        "Name": "TaskManager",
+        "Path": "Z:\\Отдел BIM\\03_Скрипты\\08_Базы данных\\KPLN_TaskManager.db",
+        "Description": "Конечный путь к базе данных для модуля TaskManager"
+      }
+    }
+  },
+
+  "BitrixConfig": {
+    "WEBHooks": {
+      "Name": "MainWebHook",
+      "URL": "https://kpln.bitrix24.ru/rest/1310/3ot6gv6ci3v0tf2p"
+    }
+  }
+}

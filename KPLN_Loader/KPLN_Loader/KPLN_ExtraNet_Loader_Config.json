@@ -1,0 +1,11 @@
+{
+  "DatabaseConfig" : {
+    "DBConnections": {
+      "ExtraNet_Loader_MainDB": {
+        "Name": "ExtraNet_Loader_MainDB",
+        "Path": "Server=timakuk4.beget.tech;Port=3306;Database=timakuk4_maindb;User ID=timakuk4_maindb;Password=cF!4F6*d!ph*;SslMode=None;",
+        "Description": "Конечный путь к основной базе данных (информация о пользователях, проектах и т.д.)"
+      }
+    }
+  }
+}
