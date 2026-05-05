@@ -1,6 +1,6 @@
-﻿using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using System;
 using System.Threading.Tasks;
 
@@ -32,34 +32,36 @@ namespace KPLN_Library_PluginActivityWorker
 
 
             // Для режима дебага и пользователей из вне - игнор
-            if (DBMainService.CurrentDBUser.IsDebugMode || DBMainService.CurrentDBUser.IsExtraNet) return;
+            if (SQLiteMainService.CurrentDBUser.IsDebugMode || SQLiteMainService.CurrentDBUser.IsExtraNet) return;
 
 
             // Обработка плагина по отделу и имени
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-            DBPluginActivity currentPluginActivity = DBMainService.PluginActivityDbService.GetDBPluginActivity_ByModuleNameAndSubDep(clearPluginName, DBMainService.CurrentDBUser.SubDepartmentId);
+            DBPluginActivity currentPluginActivity = SQLiteMainService
+                .SQLitePluginActivityServiceInst
+                .GetDBPluginActivity_ByModuleNameAndSubDep(clearPluginName, SQLiteMainService.CurrentDBUser.SubDepartmentId);
             if (currentPluginActivity == null)
             {
-                DBModule currentModule = DBMainService.ModuleDbService.GetDBModule_ByFiDirName(moduleName)
+                DBModule currentModule = SQLiteMainService.SQLiteModuleServiceInst.GetDBModule_ByFiDirName(moduleName)
                     ?? throw new Exception($"Не удалось найти модуль по имени '{moduleName}'. Проверь БД, или ошибка при создании плагина.");
 
                 currentPluginActivity = new DBPluginActivity()
                 {
                     ModuleId = currentModule.Id,
                     PluginName = clearPluginName,
-                    SubDepartmentId = DBMainService.CurrentDBUser.SubDepartmentId,
+                    SubDepartmentId = SQLiteMainService.CurrentDBUser.SubDepartmentId,
                     UsageCount = 1,
                     LastActivityDate = currentDate,
                 };
 
-                DBMainService.PluginActivityDbService.CreateDBPluginActivity(currentPluginActivity);
+                SQLiteMainService.SQLitePluginActivityServiceInst.CreateDBPluginActivity(currentPluginActivity);
                 return;
             }
 
             currentPluginActivity.UsageCount++;
             currentPluginActivity.LastActivityDate = currentDate;
 
-            DBMainService.PluginActivityDbService.UpdatePluginActivity_ByPluginActivityAndSubDep(currentPluginActivity, DBMainService.CurrentDBUser.SubDepartmentId);
+            SQLiteMainService.SQLitePluginActivityServiceInst.UpdatePluginActivity_ByPluginActivityAndSubDep(currentPluginActivity, SQLiteMainService.CurrentDBUser.SubDepartmentId);
         }
     }
 }
