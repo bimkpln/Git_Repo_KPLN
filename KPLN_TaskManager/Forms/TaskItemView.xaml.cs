@@ -2,9 +2,9 @@
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_DBWorker;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_SQLiteWorker;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.ExecutableCommand;
 using KPLN_TaskManager.Services;
@@ -31,7 +31,7 @@ namespace KPLN_TaskManager.Forms
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
 
             CurrentTaskItemEntity = taskItemEntity;
-            
+
             DataContext = CurrentTaskItemEntity;
 
             CurrentTaskComments = new ObservableCollection<TaskItemEntity_Comment>(TMDBService.GetComments_ByTaskItem(CurrentTaskItemEntity));
@@ -106,15 +106,15 @@ namespace KPLN_TaskManager.Forms
         /// </summary>
         private void SetUserAccessLevel()
         {
-            bool isDepSubDep = DBMainService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id);
-            
+            bool isDepSubDep = SQLiteMainService.DBSubDepartmentColl.Any(sd => sd.DependentSubDepId == SQLiteMainService.CurrentUserDBSubDepartment.Id);
+
             // Настройка выбора отдела ОТ в завиисмости от наличия подчиненных подотделов
             CreateDepCBox.IsEnabled = isDepSubDep;
 
             bool isNewTask = CurrentTaskItemEntity.Id == 0;
-            IsCreatorEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
-            bool isFullEditable = DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
-                || DBMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId
+            IsCreatorEditable = SQLiteMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId || isDepSubDep;
+            bool isFullEditable = SQLiteMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.CreatedTaskDepartmentId
+                || SQLiteMainService.CurrentUserDBSubDepartment.Id == CurrentTaskItemEntity.DelegatedDepartmentId
                 || isDepSubDep;
 
             HeaderTBox.IsEnabled = IsCreatorEditable;
@@ -285,7 +285,7 @@ namespace KPLN_TaskManager.Forms
             if (CurrentTaskItemEntity.Id == 0)
             {
                 int nextIdFromDB = TMDBService.GetNextId();
-                
+
                 CurrentTaskItemEntity.CreatedTaskData = GetCurrentData();
                 CurrentTaskItemEntity.LastChangeData = GetCurrentData();
                 CurrentTaskItemEntity.Id = nextIdFromDB;
@@ -298,7 +298,7 @@ namespace KPLN_TaskManager.Forms
                 });
                 createItemTask.Wait();
 
-                if(!CurrentTaskItemEntity.TE_ImageBufferColl.All(buff => buff.ImageBuffer == null || buff.ImageBuffer.Length == 0))
+                if (!CurrentTaskItemEntity.TE_ImageBufferColl.All(buff => buff.ImageBuffer == null || buff.ImageBuffer.Length == 0))
                     TM_IBDBService.CreateDBTaskEntity_ImageBufferItem(CurrentTaskItemEntity);
 
                 Module.MainMenuViewer.LoadTaskData();
@@ -384,7 +384,7 @@ namespace KPLN_TaskManager.Forms
 
             TaskItemEntity_Comment logComment = new TaskItemEntity_Comment(
                 CurrentTaskItemEntity.Id,
-                DBMainService.CurrentDBUser.Id,
+                SQLiteMainService.CurrentDBUser.Id,
                 logMsg,
                 GetCurrentData());
 
@@ -442,8 +442,8 @@ namespace KPLN_TaskManager.Forms
                 CurrentTaskItemEntity.TE_ImageBuffer_Current = 0;
             else
                 CurrentTaskItemEntity.TE_ImageBuffer_Current++;
-            
-            
+
+
             Button btn = (Button)sender;
             if (btn.DataContext is ImgLargeFrom imgForm)
                 imgForm.ILF_TaskImageSource = CurrentTaskItemEntity.TaskImageSource;
@@ -549,8 +549,8 @@ namespace KPLN_TaskManager.Forms
                         taskBodyWithElems,
                         CurrentTaskItemEntity.BitrixParentTaskId,
                         "BIM_Менеджер задач",
-                        DBMainService.CurrentDBUser.BitrixUserID,
-                        DBMainService.UserDbService.GetDBUser_ById(CurrentTaskItemEntity.DelegatedTaskUserId).BitrixUserID);
+                        SQLiteMainService.CurrentDBUser.BitrixUserID,
+                        SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ById(CurrentTaskItemEntity.DelegatedTaskUserId).BitrixUserID);
             });
 
             string newTaskIDResult = newTaskID.Result;
@@ -585,7 +585,7 @@ namespace KPLN_TaskManager.Forms
             #endregion
 
             #region Загрузка рисунка в задачу
-            if (CurrentTaskItemEntity.TE_ImageBufferColl == null 
+            if (CurrentTaskItemEntity.TE_ImageBufferColl == null
                 || CurrentTaskItemEntity.TE_ImageBufferColl.All(buff => buff.ImageBuffer == null || buff.ImageBuffer.Length == 0))
             {
                 this.Show();
@@ -613,7 +613,7 @@ namespace KPLN_TaskManager.Forms
 
 
             // Привязывю картинки с задачей
-            foreach(Task<string> bitrUploadTask in bitrUploadTasks)
+            foreach (Task<string> bitrUploadTask in bitrUploadTasks)
             {
                 string loadImgToBitrDisk = bitrUploadTask.Result;
                 if (loadImgToBitrDisk != null
@@ -655,7 +655,7 @@ namespace KPLN_TaskManager.Forms
             System.Windows.Controls.Button taskBtn = sender as System.Windows.Controls.Button;
             if (taskBtn.DataContext is TaskItemEntity tiEnt)
             {
-                if (DBMainService.CurrentDBUser.BitrixUserID == -1 || DBMainService.CurrentDBUser.BitrixUserID == 0)
+                if (SQLiteMainService.CurrentDBUser.BitrixUserID == -1 || SQLiteMainService.CurrentDBUser.BitrixUserID == 0)
                 {
                     MessageBox.Show(
                         $"Не удалось получить ID-пользователя из Bitrix. Обратись к разработчику",
@@ -666,7 +666,7 @@ namespace KPLN_TaskManager.Forms
                     return;
                 }
 
-                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{DBMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{tiEnt.BitrixTaskId}/");
+                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{SQLiteMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{tiEnt.BitrixTaskId}/");
             }
         }
 
@@ -691,11 +691,11 @@ namespace KPLN_TaskManager.Forms
 
             TaskEntity_ImageBuffer newTE_IMB = new TaskEntity_ImageBuffer(CurrentTaskItemEntity.TE_ImageBufferColl.Count, CurrentTaskItemEntity.Id, resultBit);
             CurrentTaskItemEntity.TE_ImageBufferColl.Add(newTE_IMB);
-            
-            
+
+
             // Проверка на одинаковые id у рисунка
             var idGrouping = CurrentTaskItemEntity.TE_ImageBufferColl.GroupBy(ib => ib.Id);
-            foreach(var group in idGrouping)
+            foreach (var group in idGrouping)
             {
                 if (group.Count() != 1)
                 {
@@ -756,9 +756,9 @@ namespace KPLN_TaskManager.Forms
             }
             else
             {
-                ImgExpander.IsEnabled= false;
+                ImgExpander.IsEnabled = false;
                 ImgExpander.IsExpanded = false;
             }
-        }        
+        }
     }
 }

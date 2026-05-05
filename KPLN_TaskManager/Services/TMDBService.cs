@@ -1,5 +1,4 @@
-﻿using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_DBWorker.Core;
 using KPLN_TaskManager.Common;
 using Microsoft.Office.Interop.Excel;
 using System.Collections.Generic;

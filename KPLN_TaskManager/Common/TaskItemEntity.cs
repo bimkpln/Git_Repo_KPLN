@@ -1,6 +1,6 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_TaskManager.Services;
 using System;
 using System.Collections.Generic;
@@ -43,7 +43,7 @@ namespace KPLN_TaskManager.Common
         private string _lastChangeData;
         private ImageSource _imageSource;
 
-        
+
         private int _te_ImageBuffer_Current = 0;
         private List<TaskEntity_ImageBuffer> _teImageBuffer = new List<TaskEntity_ImageBuffer>();
         private SolidColorBrush _fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 190, 104));
@@ -392,7 +392,7 @@ namespace KPLN_TaskManager.Common
             get
             {
                 string crDepCode = string.Empty;
-                DBSubDepartment dBSubDepartment = DBMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == CreatedTaskDepartmentId);
+                DBSubDepartment dBSubDepartment = SQLiteMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == CreatedTaskDepartmentId);
                 if (dBSubDepartment != null)
                     crDepCode = dBSubDepartment.Code;
 
@@ -408,7 +408,7 @@ namespace KPLN_TaskManager.Common
             get
             {
                 string delegDepCode = string.Empty;
-                DBSubDepartment dBSubDepartment = DBMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == DelegatedDepartmentId);
+                DBSubDepartment dBSubDepartment = SQLiteMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == DelegatedDepartmentId);
                 if (dBSubDepartment != null)
                     delegDepCode = dBSubDepartment.Code;
 
@@ -420,7 +420,7 @@ namespace KPLN_TaskManager.Common
         {
             get
             {
-                DBUser user = DBMainService.UserDbService.GetDBUser_ById(CreatedTaskUserId);
+                DBUser user = SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ById(CreatedTaskUserId);
                 return $"{user.Surname} {user.Name}";
             }
         }
@@ -487,11 +487,11 @@ namespace KPLN_TaskManager.Common
         {
             get
             {
-                return DBMainService
+                return SQLiteMainService
                  .DBSubDepartmentColl
                  .Where(sd =>
-                     sd.Id == DBMainService.CurrentUserDBSubDepartment.Id
-                     || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id)
+                     sd.Id == SQLiteMainService.CurrentUserDBSubDepartment.Id
+                     || sd.DependentSubDepId == SQLiteMainService.CurrentUserDBSubDepartment.Id)
                  .ToArray();
             }
         }
@@ -501,7 +501,7 @@ namespace KPLN_TaskManager.Common
         /// </summary>
         public DBSubDepartment[] DBSubDepartmentColl_Input
         {
-            get => DBMainService.DBSubDepartmentColl;
+            get => SQLiteMainService.DBSubDepartmentColl;
         }
 
         /// <summary>
@@ -514,8 +514,8 @@ namespace KPLN_TaskManager.Common
                 if (DelegatedDepartmentId == 0 || DelegatedDepartmentId == -1)
                     return new List<DBUser>(1) { new DBUser() { Id = -2, Surname = "<Сначала выбери отдел>" } };
 
-                List<DBUser> delSubDepUserColl = DBMainService
-                    .UserDbService
+                List<DBUser> delSubDepUserColl = SQLiteMainService
+                    .SQLiteUserServiceInst
                     .GetDBUsers_BySubDepID(DelegatedDepartmentId)
                     .OrderBy(x => x.Surname)
                     .ToList();
@@ -612,7 +612,7 @@ namespace KPLN_TaskManager.Common
             foreach (RevitLinkInstance inst in rlInsts)
             {
                 string instName = inst.Name;
-                DBSubDepartment rlSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(instName);
+                DBSubDepartment rlSubDep = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(instName);
                 if (rlSubDep.Id == depId)
                 {
                     // Чистка от доп. параметров в имени линка

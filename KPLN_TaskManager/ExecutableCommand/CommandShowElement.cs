@@ -1,12 +1,11 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_Loader.Common;
 using KPLN_TaskManager.Common;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace KPLN_TaskManager.ExecutableCommand
@@ -36,13 +35,13 @@ namespace KPLN_TaskManager.ExecutableCommand
 #else
                 if (long.TryParse(strId, out long id))
 #endif
-                elemIds.Add(new ElementId(id));
+                    elemIds.Add(new ElementId(id));
                 else
                     HtmlOutput.Print($"Ошибка парсинга данных - скинь разработчику! {strId} - НЕ число", MessageType.Error);
             }
 
             StringBuilder sb = new StringBuilder();
-            foreach(ElementId id in elemIds)
+            foreach (ElementId id in elemIds)
             {
                 Element elem = doc.GetElement(id);
                 if (elem == null)
@@ -51,11 +50,11 @@ namespace KPLN_TaskManager.ExecutableCommand
 
             if (sb.Length > 0)
             {
-                DBUser createdUser = DBMainService.UserDbService.GetDBUser_ById(_taskItemEntity.CreatedTaskUserId);
+                DBUser createdUser = SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ById(_taskItemEntity.CreatedTaskUserId);
 
                 string errorId = string.Join(", ", sb.ToString());
                 HtmlOutput.Print($"Проект не содержит id из списка. Либо элементы уже удалены, либо они находятся в связи: {errorId}.\n" +
-                    $"Уточни информацию у постановщика {createdUser.Name} {createdUser.Surname}, либо открой указанную в задаче модель", 
+                    $"Уточни информацию у постановщика {createdUser.Name} {createdUser.Surname}, либо открой указанную в задаче модель",
                     MessageType.Error);
             }
             else

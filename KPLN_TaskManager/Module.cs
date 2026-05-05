@@ -1,8 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Loader.Common;
 using KPLN_TaskManager.ExternalCommands;
 using KPLN_TaskManager.Forms;
@@ -93,9 +93,9 @@ namespace KPLN_TaskManager
                 ? ModelPathUtils.ConvertModelPathToUserVisiblePath(CurrentDoc.GetWorksharingCentralModelPath())
                 : CurrentDoc.PathName;
 
-            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
+            CurrnetDocSubDep = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
 
-            CurrentDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
+            CurrentDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
             if (CurrentDBProject == null)
                 return;
 
@@ -122,13 +122,13 @@ namespace KPLN_TaskManager
             CurrentUIApplication = new UIApplication(CurrentDoc.Application);
 
             CurrentFileName = openViewFileName;
-            DBProject openViewDBProject = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
+            DBProject openViewDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, RevitVersion);
             if (openViewDBProject == null)
                 return;
 
             CurrentDBProject = openViewDBProject;
 
-            CurrnetDocSubDep = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
+            CurrnetDocSubDep = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(CurrentDoc.PathName);
 
             // Возможно стоит заблочить, нужен дальнейший анализ. Оно конечно удобно, но при переключениях между видами, когда будет много тасок - будет лишний оверхед. Достаточно обновить список вручную,
             // и плюсом - они обновятся, если открыть отдельно таску.  

@@ -1,5 +1,5 @@
-﻿using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -88,7 +88,7 @@ namespace KPLN_TaskManager.Common
         /// </summary>
         private DBUser CurrentDBUser
         {
-            get => DBMainService.UserDbService.GetDBUser_ById(DBUserId);
+            get => SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ById(DBUserId);
         }
         #endregion
 

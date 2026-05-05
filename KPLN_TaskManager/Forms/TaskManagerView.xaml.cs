@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.Services;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using KPLN_TaskManager.Common;
 using KPLN_TaskManager.Services;
 using System.Collections.Generic;
@@ -30,12 +30,12 @@ namespace KPLN_TaskManager.Forms
 
         public TaskManagerView()
         {
-            _subDepsForUser = DBMainService.DBSubDepartmentColl
-                .Where(sd => sd.Id == DBMainService.CurrentUserDBSubDepartment.Id || sd.DependentSubDepId == DBMainService.CurrentUserDBSubDepartment.Id)
+            _subDepsForUser = SQLiteMainService.DBSubDepartmentColl
+                .Where(sd => sd.Id == SQLiteMainService.CurrentUserDBSubDepartment.Id || sd.DependentSubDepId == SQLiteMainService.CurrentUserDBSubDepartment.Id)
                 .ToArray();
 
             InitializeComponent();
-            
+
             DataContext = this;
         }
 
@@ -139,9 +139,9 @@ namespace KPLN_TaskManager.Forms
                 bool userProp = GetUserPropValue(task);
 
                 // Поиск по отделу и подотделу
-                bool isInputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.DelegatedDepartmentId
+                bool isInputSubDepTask = SQLiteMainService.CurrentUserDBSubDepartment.Id == task.DelegatedDepartmentId
                     || _subDepsForUser.Any(sdu => task.DelegatedDepartmentId == sdu.Id);
-                bool isOutputSubDepTask = DBMainService.CurrentUserDBSubDepartment.Id == task.CreatedTaskDepartmentId 
+                bool isOutputSubDepTask = SQLiteMainService.CurrentUserDBSubDepartment.Id == task.CreatedTaskDepartmentId
                     || _subDepsForUser.Any(sdu => task.CreatedTaskDepartmentId == sdu.Id);
 
                 if (SubDepDependence == "AllSuDepTask")
@@ -215,7 +215,7 @@ namespace KPLN_TaskManager.Forms
                 return;
             }
 
-            TaskItemEntity taskItemEntity = new TaskItemEntity(Module.CurrentDBProject.Id, DBMainService.CurrentDBUser.Id, DBMainService.CurrentUserDBSubDepartment.Id);
+            TaskItemEntity taskItemEntity = new TaskItemEntity(Module.CurrentDBProject.Id, SQLiteMainService.CurrentDBUser.Id, SQLiteMainService.CurrentUserDBSubDepartment.Id);
 
             // Открываю окно
             TaskItemView taskItemView = new TaskItemView(taskItemEntity);
@@ -281,58 +281,58 @@ namespace KPLN_TaskManager.Forms
         private bool GetUserPropValue(TaskItemEntity task)
         {
             //Для бим-отдела верстка на лету под спецов, чтобы они видели замечания по своим отделам
-            if (DBMainService.CurrentUserDBSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
-                switch (DBMainService.CurrentDBUser.Surname)
+                switch (SQLiteMainService.CurrentDBUser.Surname)
                 {
                     case "Куцко":
                         return true;
                     case "Коломиец":
                         goto case "Федосеева";
                     case "Федосеева":
-                        return task.DelegatedDepartmentId == 2 
-                            || task.CreatedTaskDepartmentId == 2 
-                            || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
+                        return task.DelegatedDepartmentId == 2
+                            || task.CreatedTaskDepartmentId == 2
+                            || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
                     case "Тарчоков":
                         goto case "Ямковой";
                     case "Ямковой":
-                        return task.DelegatedDepartmentId == 3 
+                        return task.DelegatedDepartmentId == 3
                             || task.CreatedTaskDepartmentId == 3
-                            || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
+                            || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
                     case "Садовская":
                         return task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
                             || task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
                             || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21
                             || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22
-                            || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
+                            || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
                     case "Чичева":
                         return task.DelegatedDepartmentId == 4 || task.CreatedTaskDepartmentId == 4
                             || task.DelegatedDepartmentId == 6 || task.CreatedTaskDepartmentId == 6
                             || task.DelegatedDepartmentId == 20 || task.CreatedTaskDepartmentId == 20
-                            || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
+                            || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
                 }
             }
 
             //Для руководителей - верстка на лету под их отделы, чтобы они видели замечания по своим отделам
-            if (DBMainService.CurrentDBUser.Surname == "Кудрова")
+            if (SQLiteMainService.CurrentDBUser.Surname == "Кудрова")
                 return task.DelegatedDepartmentId == 4 || task.CreatedTaskDepartmentId == 4
                     || task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
                     || task.DelegatedDepartmentId == 20 || task.CreatedTaskDepartmentId == 20
                     || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21
-                    || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
-            else if (DBMainService.CurrentDBUser.Surname == "Тамарин")
+                    || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
+            else if (SQLiteMainService.CurrentDBUser.Surname == "Тамарин")
                 return task.DelegatedDepartmentId == 5 || task.CreatedTaskDepartmentId == 5
                     || task.DelegatedDepartmentId == 21 || task.CreatedTaskDepartmentId == 21
-                    || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
-            else if (DBMainService.CurrentDBUser.Surname == "Колодий")
+                    || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
+            else if (SQLiteMainService.CurrentDBUser.Surname == "Колодий")
                 return task.DelegatedDepartmentId == 6 || task.CreatedTaskDepartmentId == 6
                     || task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
                     || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22
-                    || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
-            else if (DBMainService.CurrentDBUser.Surname == "Алиев")
+                    || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
+            else if (SQLiteMainService.CurrentDBUser.Surname == "Алиев")
                 return task.DelegatedDepartmentId == 7 || task.CreatedTaskDepartmentId == 7
                     || task.DelegatedDepartmentId == 22 || task.CreatedTaskDepartmentId == 22
-                    || task.CreatedTaskUserId == DBMainService.CurrentDBUser.Id;
+                    || task.CreatedTaskUserId == SQLiteMainService.CurrentDBUser.Id;
 
             return true;
         }
