@@ -1,6 +1,7 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Parameters_Ribbon.Common.GripParam;
 using KPLN_Parameters_Ribbon.Common.GripParam.Builder;
 using System;
@@ -22,7 +23,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             Document doc = uiapp.ActiveUIDocument.Document;
 
             AbstrGripBuilder gripBuilder = null;
-            int userDepartment = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser.SubDepartmentId;
+            int userDepartment = SQLiteMainService.CurrentDBUser.SubDepartmentId;
             try
             {
                 string docPath = doc.Title.ToUpper();
@@ -31,16 +32,16 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 {
                     if (docPath.StartsWith("ОБДН_"))
                         gripBuilder = new GripBuilder_AR(doc, "ОБДН", "SMNX_Этаж", "SMNX_Секция");
-                    
+
                     else if (docPath.StartsWith("ИЗМЛ_"))
                         gripBuilder = new GripBuilder_AR(doc, "ИЗМЛ", "КП_О_Этаж", "КП_О_Секция");
-                    
+
                     else if (docPath.StartsWith("СЕТ_1_"))
                         gripBuilder = new GripBuilder_AR(doc, "СЕТ_1", "СМ_Этаж", "СМ_Секция");
-                    
+
                     else if (docPath.StartsWith("ОМК3_"))
                         gripBuilder = new GripBuilder_AR(doc, "ОМК3", "КП_О_Этаж", "КП_О_Секция");
-                    
+
                     else if (docPath.StartsWith("СГРВН_"))
                         gripBuilder = new GripBuilder_AR(doc, "СГРВН", "КП_О_Этаж", "КП_О_Секция", "КП_О_Корпус");
                 }
@@ -58,17 +59,17 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     else if (docPath.StartsWith("СГРВН_"))
                         gripBuilder = new GripBuilder_KR(doc, "СГРВН", "О_Этаж", "КП_О_Секция", "КП_О_Корпус");
                 }
-                else if (userDepartment == 4 
-                         || userDepartment == 5 
-                         || userDepartment == 6 
-                         || userDepartment == 7 
-                         || userDepartment == 8 
-                         && (docPath.Contains("_ОВ") 
-                             || docPath.Contains("_ВК") 
-                             || docPath.Contains("_АУПТ") 
+                else if (userDepartment == 4
+                         || userDepartment == 5
+                         || userDepartment == 6
+                         || userDepartment == 7
+                         || userDepartment == 8
+                         && (docPath.Contains("_ОВ")
+                             || docPath.Contains("_ВК")
+                             || docPath.Contains("_АУПТ")
                              || docPath.Contains("_ПТ")
-                             || docPath.Contains("_ЭОМ") 
-                             || docPath.Contains("_СС") 
+                             || docPath.Contains("_ЭОМ")
+                             || docPath.Contains("_СС")
                              || docPath.Contains("_ПБ")
                              || docPath.Contains("_АК")
                              || docPath.Contains("_АВ")))
@@ -119,10 +120,10 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                         for (int i = 0; i < errorElements.Count; i++)
                         {
                             if (i > 0)
-                                errorIdCollBuilder.Append(","); 
-                            if (i > 0 && i % 12 == 0) 
+                                errorIdCollBuilder.Append(",");
+                            if (i > 0 && i % 12 == 0)
                                 errorIdCollBuilder.AppendLine();
-                            
+
                             errorIdCollBuilder.Append(errorElements[i]);
                         }
 
@@ -139,8 +140,8 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 if (gpe.ErrorElements == null)
                     msg = $"ОШИБКА:\n{gpe.ErrorMessage}";
                 else
-                    msg = $"ОШИБКА:\n{gpe.ErrorMessage}\nДля элементов:\n{string.Join(", ",  gpe.ErrorElements.Select(e => e.Id.ToString()))}";
-                
+                    msg = $"ОШИБКА:\n{gpe.ErrorMessage}\nДля элементов:\n{string.Join(", ", gpe.ErrorElements.Select(e => e.Id.ToString()))}";
+
                 TaskDialog taskDialog = new TaskDialog("ОШИБКА: Выполни инструкцию")
                 {
                     MainContent = msg,
