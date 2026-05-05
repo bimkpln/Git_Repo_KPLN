@@ -1,4 +1,4 @@
-﻿using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+﻿using KPLN_Library_DBWorker.Core;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 

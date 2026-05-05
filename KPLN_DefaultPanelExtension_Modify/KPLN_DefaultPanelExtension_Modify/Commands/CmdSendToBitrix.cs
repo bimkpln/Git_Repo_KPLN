@@ -4,10 +4,10 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_DefaultPanelExtension_Modify.Forms;
 using KPLN_DefaultPanelExtension_Modify.Forms.Models;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -143,16 +143,16 @@ namespace KPLN_DefaultPanelExtension_Modify.Commands
             #endregion
 
             // Обработка данных по пользователям
-            IEnumerable<DBUser> dbUsers = DBMainService.UserDbService.GetDBUsers()
+            IEnumerable<DBUser> dbUsers = SQLiteMainService.SQLiteUserServiceInst.GetDBUsers()
                 .OrderByDescending(user => user.SubDepartmentId)
                 .ThenBy(user => user.Surname);
 
             // Обработка данных по отделам
-            IEnumerable<DBSubDepartment> dbSubDeps = DBMainService.SubDepartmentDbService.GetDBSubDepartments();
+            IEnumerable<DBSubDepartment> dbSubDeps = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartments();
 
             #region Подготовка и формирование окна
             ObservableCollection<SendMsgToBitrix_UserEntity> modelsForForm = new ObservableCollection<SendMsgToBitrix_UserEntity>(dbUsers
-                .Select(user => new SendMsgToBitrix_UserEntity(user, DBMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == user.SubDepartmentId))));
+                .Select(user => new SendMsgToBitrix_UserEntity(user, SQLiteMainService.DBSubDepartmentColl.FirstOrDefault(sd => sd.Id == user.SubDepartmentId))));
 
             SendMsgToBitrix form = new SendMsgToBitrix(modelsForForm);
             WindowHandleSearch.MainWindowHandle.SetAsOwner(form);
@@ -172,7 +172,7 @@ namespace KPLN_DefaultPanelExtension_Modify.Commands
                     $"[u]ID элемента/-ов:[/u] {elemIds}";
 
                 IEnumerable<SendMsgToBitrix_UserEntity> selectedUsers = form.CurrentViewModel.SelectedElements;
-                string msg = $"Данные от [b]{DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}[/b] из отдела {DBMainService.CurrentUserDBSubDepartment.Code}\n\n" +
+                string msg = $"Данные от [b]{SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name}[/b] из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n\n" +
                     $"[b]Данные по элементу:[/b]\n{form.CurrentViewModel.MessageToSend_MainData}\n\n";
                 if (!string.IsNullOrEmpty(form.CurrentViewModel.MessageToSend_UserComment))
                     msg += $"[b]Комментарий:[/b]\n {form.CurrentViewModel.MessageToSend_UserComment}";
@@ -200,7 +200,7 @@ namespace KPLN_DefaultPanelExtension_Modify.Commands
                 // Отправляем сообщение
                 Task<bool> bitrSendMsgTask = Task<string[]>.Run(() =>
                 {
-                    return BitrixMessageSender.SendMsg_ToUsersChat(DBMainService.CurrentDBUser, selectedUsers.Select(se => se.DBUser), msg, imgId); ;
+                    return BitrixMessageSender.SendMsg_ToUsersChat(SQLiteMainService.CurrentDBUser, selectedUsers.Select(se => se.DBUser), msg, imgId); ;
                 });
                 bitrSendMsgTask.Wait();
 
