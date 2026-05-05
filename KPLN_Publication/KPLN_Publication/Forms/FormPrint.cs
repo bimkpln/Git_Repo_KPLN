@@ -12,7 +12,7 @@ Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
 using Autodesk.Revit.DB;
-using KPLN_Library_SQLiteWorker;
+using KPLN_Library_DBWorker;
 using KPLN_Publication.Common;
 using System;
 using System.Collections.Generic;
@@ -47,7 +47,7 @@ namespace KPLN_Publication
             this.CancelButton = btnCancel;
             this.pluginVersion.Text = $"v.{ModuleData.Version}";
 
-            int userDepartment = DBMainService.CurrentDBUser.SubDepartmentId;
+            int userDepartment = SQLiteMainService.CurrentDBUser.SubDepartmentId;
             if (userDepartment == 2 || userDepartment == 8)
                 this.checkBoxExcludeBorders.Enabled = true;
 

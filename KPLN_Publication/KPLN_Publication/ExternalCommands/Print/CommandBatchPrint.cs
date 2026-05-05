@@ -2,8 +2,8 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using KPLN_Library_DBWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Forms;
 using KPLN_Publication.Forms;
 using KPLN_Publication.Forms.MVVMCore;
@@ -173,7 +173,7 @@ namespace KPLN_Publication.ExternalCommands.Print
             }
 #endif
 
-                logger.Write($"Пользователь {DBMainService.CurrentDBUser.Id}-{DBMainService.CurrentDBUser.Name}-{DBMainService.CurrentDBUser.Surname}");
+                logger.Write($"Пользователь {SQLiteMainService.CurrentDBUser.Id}-{SQLiteMainService.CurrentDBUser.Name}-{SQLiteMainService.CurrentDBUser.Surname}");
 
                 YayPrintSettings printSettings = YayPrintSettings.GetSavedPrintSettings(selSheets.Any());
                 FormPrint form = new FormPrint(mainDoc, allEntities, printSettings);
