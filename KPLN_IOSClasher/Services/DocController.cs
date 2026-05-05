@@ -1,8 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_IOSClasher.Core;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
+using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -54,10 +55,10 @@ namespace KPLN_IOSClasher.Services
             IsDocumentAnalyzing = false;
             if (doc != null)
             {
-                string fileName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+                string fileName = SQLiteDocService.GetFileFullName(doc);
 
                 // Глобальный игнор стадии АФК, ПД, АН. Они никогда не проверяются (стадии П+ под вопросом, но чаще всего там только магистрали, пока оставлю так)
-                DBProject currentDBPrj = DBMainService.ProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(fileName, Module.RevitVersion);
+                DBProject currentDBPrj = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(fileName, Module.RevitVersion);
                 if (currentDBPrj == null
                     || currentDBPrj.Stage.Equals("АФК") 
                     || currentDBPrj.Stage.Equals("ПД") 
@@ -67,30 +68,30 @@ namespace KPLN_IOSClasher.Services
                     return;
                 }
                 
-                DBProjectsIOSClashMatrix[] prjMatrix = DBMainService.PrjIOSClashMatrixDbService.GetDBProjectMatrix_ByProject(currentDBPrj).ToArray();
+                DBProjectsIOSClashMatrix[] prjMatrix = SQLiteMainService.SQLitePrjOSClashMatrixServiceInst.GetDBProjectMatrix_ByProject(currentDBPrj).ToArray();
                 // Это - затычка. Когда перейдём на схему контроля по всем проектам, эту часть нужно заменить, т.к. все объекты, кроме
                 // тех, на которые есть исключения - игнорируются, а этого быть не должно
                 if (prjMatrix.Count() == 0)
                     return;
                 else
                 {
-                    int dbDocId = DBMainService.DocDbService.GetDBDocuments_ByFileFullPath(fileName).Id;
+                    int dbDocId = SQLiteMainService.SQLiteDocServiceInst.GetDBDocuments_ByFileFullPath(fileName).Id;
 
                     // Игнор по ID модели
                     if (prjMatrix.Any(prj => prj.ExceptionDocumentId == dbDocId))
                         return;
                     // Игнор по всему отделу
-                    else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == DBMainService.CurrentDBUser.SubDepartmentId))
+                    else if (prjMatrix.Any(prj => prj.ExceptionSubDepartmentId == SQLiteMainService.CurrentDBUser.SubDepartmentId))
                         return;
                     // Игнор по отдельным пользователям
                     else
-                        IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == DBMainService.CurrentDBUser.Id);
+                        IsDocumentAnalyzing = !prjMatrix.Any(prj => prj.ExceptionUserId == SQLiteMainService.CurrentDBUser.Id);
                     
                 }
 
                 if (IsDocumentAnalyzing)
                 {
-                    DBSubDepartment openDocPrjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileName);
+                    DBSubDepartment openDocPrjDBSubDepartment = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(fileName);
                     int openDocPrjDBSubDepartmentId = openDocPrjDBSubDepartment == null ? -1 : openDocPrjDBSubDepartment.Id;
                     
                     CheckDocDBSubDepartmentId = openDocPrjDBSubDepartmentId;
@@ -98,8 +99,8 @@ namespace KPLN_IOSClasher.Services
             }
 #endif
 #if Debug
-            string fileNameDebug = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
-            DBSubDepartment openDocPrjDBSubDepartmentDebug = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileNameDebug);
+            string fileNameDebug = SQLiteDocService.GetFileFullName(doc);
+            DBSubDepartment openDocPrjDBSubDepartmentDebug = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(fileNameDebug);
             int openDocPrjDBSubDepartmentIdDebug = openDocPrjDBSubDepartmentDebug == null ? -1 : openDocPrjDBSubDepartmentDebug.Id;
             CheckDocDBSubDepartmentId = openDocPrjDBSubDepartmentIdDebug;
             IsDocumentAnalyzing = false;
@@ -155,10 +156,10 @@ namespace KPLN_IOSClasher.Services
                 {
                     if (openDoc.IsLinked || openDoc.Title != doc.Title)
                     {
-                        string fileFullName = KPLN_Library_SQLiteWorker.FactoryParts.DocumentDbService.GetFileFullName(doc);
+                        string fileFullName = SQLiteDocService.GetFileFullName(doc);
 
                         // Анализирую модели ИОС разделов на пересечение с создаваемыми
-                        DBSubDepartment openDocPrjDBSubDepartment = DBMainService.SubDepartmentDbService.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
+                        DBSubDepartment openDocPrjDBSubDepartment = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(fileFullName);
                         int openDocPrjDBSubDepartmentId = openDocPrjDBSubDepartment == null ? -1 : openDocPrjDBSubDepartment.Id;
                         switch (openDocPrjDBSubDepartmentId)
                         {
@@ -259,7 +260,7 @@ namespace KPLN_IOSClasher.Services
                         intersectedPoints.Add(ent);
                     }
                 }
-                catch 
+                catch
                 {
                     HtmlOutput.Print($"Не удалось определить точки пересечения со связями. Отправь ошибку разработчику.", MessageType.Error);
                 }
@@ -386,7 +387,7 @@ namespace KPLN_IOSClasher.Services
                         addedElem.Id.IntegerValue,
                         elemToCheck.Id.IntegerValue,
                         linkInstanceId,
-                        DBMainService.CurrentDBUser,
+                        SQLiteMainService.CurrentDBUser,
                         intersectionSolid);
 #else
                     return new IntersectPointEntity(
@@ -394,7 +395,7 @@ namespace KPLN_IOSClasher.Services
                         addedElem.Id.Value,
                         elemToCheck.Id.Value,
                         linkInstanceId,
-                        DBMainService.CurrentDBUser,
+                        SQLiteMainService.CurrentDBUser,
                         intersectionSolid);
 #endif
                 }

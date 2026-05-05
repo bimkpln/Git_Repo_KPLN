@@ -2,8 +2,8 @@
 using Autodesk.Revit.UI;
 using KPLN_IOSClasher.Core;
 using KPLN_IOSClasher.Services;
+using KPLN_Library_DBWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -107,7 +107,7 @@ namespace KPLN_IOSClasher.ExecutableCommand
                     if (linkElemInst is RevitLinkInstance linkInst)
                     {
                         XYZ oldPoint = ParseStringToXYZ(pointElem.get_Parameter(PointCoord_Param).AsString());
-                        result.Add(pointElem.Id, new IntersectPointEntity(oldPoint, firstElemId, secondElemId, linkId, DBMainService.CurrentDBUser));
+                        result.Add(pointElem.Id, new IntersectPointEntity(oldPoint, firstElemId, secondElemId, linkId, SQLiteMainService.CurrentDBUser));
                     }
                     else
                         throw new FormatException($"Отправь разработчику: Не удалось конвертировать id-связь в RevitLinkInstance для эл-та с id:{pointElem.Id}");

@@ -5,7 +5,7 @@ using Autodesk.Revit.UI.Events;
 using KPLN_IOSClasher.Core;
 using KPLN_IOSClasher.ExecutableCommand;
 using KPLN_IOSClasher.Services;
-using KPLN_Library_SQLiteWorker;
+using KPLN_Library_DBWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -23,9 +23,9 @@ namespace KPLN_IOSClasher
         {
 #if Revit
             //Фильтрация по разделам
-            if (DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("АР")
-                || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("КР")
-                || DBMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM"))
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("АР")
+                || SQLiteMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("КР")
+                || SQLiteMainService.CurrentUserDBSubDepartment.Code.ToUpper().Contains("BIM"))
                 return Result.Succeeded;
 #endif
             RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
