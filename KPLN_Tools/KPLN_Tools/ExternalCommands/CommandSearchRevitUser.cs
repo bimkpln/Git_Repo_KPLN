@@ -1,8 +1,8 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Tools.Forms;
 using System.Linq;
 
@@ -14,47 +14,17 @@ namespace KPLN_Tools.ExternalCommands
     {
         internal const string PluginName = "Найти пользователя";
 
-        private static UserDbService _userDbService;
-        private static SubDepartmentDbService _subDepartmentDbService;
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             
-            UserSearch searchForm = new UserSearch(UserDbService
+            UserSearch searchForm = new UserSearch(SQLiteMainService
+                .SQLiteUserServiceInst
                 .GetDBUsers()
-                .Select(dbu => new Forms.Models.VM_UserEntity(dbu, SubDepartmentDbService.GetDBSubDepartment_ByDBUser(dbu))));
+                .Select(dbu => new Forms.Models.VM_UserEntity(dbu, SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByDBUser(dbu))));
             searchForm.ShowDialog();
 
             return Result.Succeeded;
-        }
-
-        internal UserDbService UserDbService
-        {
-            get
-            {
-                if (_userDbService == null)
-                {
-                    CreatorUserDbService creatorUserDbService = new CreatorUserDbService();
-                    _userDbService = (UserDbService)creatorUserDbService.CreateService();
-                }
-                
-                return _userDbService;
-            }
-        }
-
-        internal SubDepartmentDbService SubDepartmentDbService
-        {
-            get
-            {
-                if (_subDepartmentDbService == null)
-                {
-                    CreatorSubDepartmentDbService creatorSubDepartmentDbService = new CreatorSubDepartmentDbService();
-                    _subDepartmentDbService = (SubDepartmentDbService)creatorSubDepartmentDbService.CreateService();
-                }
-
-                return _subDepartmentDbService;
-            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
 using KPLN_Tools.Common.LinkManager;
@@ -247,7 +248,7 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты АР
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 2 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 2 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 PulldownButton arToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины АР",
@@ -349,7 +350,7 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты КР
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 3 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 3 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины КР",
@@ -403,9 +404,9 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты ОВВК
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 4
-                || DBWorkerService.CurrentDBUserSubDepartment.Id == 5
-                || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 4
+                || SQLiteMainService.CurrentUserDBSubDepartment.Id == 5
+                || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины ОВВК",
@@ -530,7 +531,7 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты СС
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 7 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 7 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 PulldownButton ssToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины СС",
@@ -599,7 +600,7 @@ namespace KPLN_Tools
             #endregion
 
             #region Инструменты ЭОМ
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id == 6 || DBWorkerService.CurrentDBUserSubDepartment.Id == 8)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 6 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
                 PulldownButton eomToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины ЭОМ",
@@ -639,7 +640,7 @@ namespace KPLN_Tools
 
             #region Отдельные кнопки
             // Отверстия только для ИОС
-            if (DBWorkerService.CurrentDBUserSubDepartment.Id != 2 && DBWorkerService.CurrentDBUserSubDepartment.Id != 3)
+            if (SQLiteMainService.CurrentUserDBSubDepartment.Id != 2 && SQLiteMainService.CurrentUserDBSubDepartment.Id != 3)
             {
                 PulldownButton holesPullDownBtn = CreatePulldownButtonInRibbon(
                     "Отверстия",

@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
@@ -37,7 +38,7 @@ namespace KPLN_Tools.ExecutableCommand
 
                 _controller = new ApartmentManagerExternalController();
                 _window = new ApartmentManagerWindow(
-                    DBWorkerService.CurrentDBUserSubDepartment.Id,
+                    SQLiteMainService.CurrentUserDBSubDepartment.Id,
                     _controller,
                     _sessionPresetData != null ? _sessionPresetData.Clone() : null);
 

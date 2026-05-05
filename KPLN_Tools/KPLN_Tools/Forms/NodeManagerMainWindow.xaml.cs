@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Tools.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -13,7 +14,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,7 +21,6 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Xml.Linq;
 using Transform = Autodesk.Revit.DB.Transform;
 
 
@@ -296,7 +295,7 @@ namespace KPLN_Tools.Forms
             IsSuperUser = IsUserInTestList();
             BtnSettings.IsEnabled = IsSuperUser;
 
-            var currentUser = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser;
+            var currentUser = SQLiteMainService.CurrentDBUser;
             if (currentUser != null)
             {
                 _userName = GetUserNameFromMainDb(currentUser.Id);
@@ -352,7 +351,7 @@ namespace KPLN_Tools.Forms
 #else
             try
             {
-                var currentUser = KPLN_Library_SQLiteWorker.DBMainService.CurrentDBUser;
+                var currentUser = SQLiteMainService.CurrentDBUser;
                 if (currentUser == null)
                     return false;
 

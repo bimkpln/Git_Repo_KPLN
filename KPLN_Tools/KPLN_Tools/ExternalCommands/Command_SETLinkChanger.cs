@@ -4,9 +4,9 @@ using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.Exceptions;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
@@ -18,8 +18,6 @@ namespace KPLN_Tools.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     class Command_SETLinkChanger : IExternalCommand
     {
-        private static DBRevitDialog[] _dbRevitDialogs = null;
-
         private readonly string _serverOLDPath = "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\";
         private readonly string _rsOLDPath = "192.168.0.5";
         private readonly string _rsOLDRKPath = "rs01";
@@ -38,12 +36,6 @@ namespace KPLN_Tools.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            if (_dbRevitDialogs == null)
-            {
-                RevitDialogDbService currentRevitDialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
-                _dbRevitDialogs = currentRevitDialogDbService.GetDBRevitDialogs().ToArray();
-            }
-
             //Get application and documnet objects
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
@@ -280,10 +272,10 @@ namespace KPLN_Tools.ExternalCommands
                 if (string.IsNullOrEmpty(args.DialogId))
                 {
                     TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
+                    currentDBDialog = SQLiteMainService.DBRevitDialogColl.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
                 }
                 else
-                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
+                    currentDBDialog = SQLiteMainService.DBRevitDialogColl.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
 
                 if (currentDBDialog == null)
                     HtmlOutput.Print($"Окно {args.DialogId} не удалось обработать. Необходим контроль со стороны человека", MessageType.Error);

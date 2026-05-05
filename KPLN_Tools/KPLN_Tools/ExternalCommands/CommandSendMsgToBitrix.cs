@@ -3,9 +3,9 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using KPLN_Tools.Forms.Models;
 using System.Collections.Generic;
@@ -155,14 +155,14 @@ namespace KPLN_Tools.ExternalCommands
             #endregion
 
             // Обработка данных по пользователям
-            IEnumerable<DBUser> dbUsers = DBWorkerService.CurrentUserDbService.GetDBUsers();
+            IEnumerable<DBUser> dbUsers = SQLiteMainService.SQLiteUserServiceInst.GetDBUsers();
 
             // Обработка данных по отделам
-            IEnumerable<DBSubDepartment> dbSubDeps = DBWorkerService.CurrentSubDepartmentDbService.GetDBSubDepartments();
+            IEnumerable<DBSubDepartment> dbSubDeps = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartments();
 
             #region Подготовка и формирование окна
             ObservableCollection<SendMsgToBitrix_UserEntity> modelsForForm = new ObservableCollection<SendMsgToBitrix_UserEntity>(dbUsers
-                .Select(user => new SendMsgToBitrix_UserEntity(user, DBWorkerService.CurrentSubDepartmentDbService.GetDBSubDepartment_ByDBUser(user)))
+                .Select(user => new SendMsgToBitrix_UserEntity(user, SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByDBUser(user)))
                 .OrderByDescending(user => user.DBSubDepartment.Id)
                 .ThenBy(user => user.DBUser.Id));
 
@@ -185,7 +185,7 @@ namespace KPLN_Tools.ExternalCommands
                 IEnumerable<SendMsgToBitrix_UserEntity> selectedUsers = form.CurrentViewModel.SelectedElements;
                 foreach (SendMsgToBitrix_UserEntity entity in selectedUsers)
                 {
-                    string msg = $"Данные от [b]{DBWorkerService.CurrentDBUser.Surname} {DBWorkerService.CurrentDBUser.Name}[/b] из отдела {DBWorkerService.CurrentDBUserSubDepartment.Code}\n\n" +
+                    string msg = $"Данные от [b]{SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name}[/b] из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n\n" +
                         $"[b]Данные по элементу:[/b]\n{form.CurrentViewModel.MessageToSend_MainData}\n\n";
                     if (!string.IsNullOrEmpty(form.CurrentViewModel.MessageToSend_UserComment))
                         msg += $"[b]Комментарий:[/b]\n {form.CurrentViewModel.MessageToSend_UserComment}";

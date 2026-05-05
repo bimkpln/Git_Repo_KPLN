@@ -3,10 +3,10 @@ using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.Exceptions;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_Lib.WorksetUtil;
 using KPLN_Tools.Common.LinkManager;
@@ -21,8 +21,6 @@ namespace KPLN_Tools.ExecutableCommand
     internal class CommandLinkChanger_Start : IExecutableCommand
     {
         internal protected static UIControlledApplication RevitUIControlledApp { get; set; }
-        
-        private static DBRevitDialog[] _dbRevitDialogs = null;
 
         private readonly LinkManagerEntity[] _linkChangeEntityColl;
         private readonly StringBuilder _sbErrResult = new StringBuilder();
@@ -32,12 +30,6 @@ namespace KPLN_Tools.ExecutableCommand
         public CommandLinkChanger_Start(LinkManagerEntity[] linkChangeEntityColl)
         {
             _linkChangeEntityColl = linkChangeEntityColl;
-
-            if (_dbRevitDialogs == null)
-            {
-                RevitDialogDbService currentRevitDialogDbService = (RevitDialogDbService)new CreatorRevitDialogtDbService().CreateService();
-                _dbRevitDialogs = currentRevitDialogDbService.GetDBRevitDialogs().ToArray();
-            }
         }
 
 
@@ -105,10 +97,10 @@ namespace KPLN_Tools.ExecutableCommand
                 if (string.IsNullOrEmpty(args.DialogId))
                 {
                     TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
+                    currentDBDialog = SQLiteMainService.DBRevitDialogColl.FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
                 }
                 else
-                    currentDBDialog = _dbRevitDialogs.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
+                    currentDBDialog = SQLiteMainService.DBRevitDialogColl.FirstOrDefault(rd => args.DialogId.Contains(rd.DialogId));
 
                 if (currentDBDialog == null)
                     HtmlOutput.Print($"Окно \"{args.DialogId}\" не удалось обработать. Необходим контроль со стороны человека", MessageType.Error);
@@ -169,7 +161,7 @@ namespace KPLN_Tools.ExecutableCommand
         private void LoadNewLinks(Document doc)
         {
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandRLinkManager.PluginName}_Загрузить связи", ModuleData.ModuleName).ConfigureAwait(false);
-            
+
             // Коллекция RevitLinkInstance, для которых нужны отдельные РН
             List<RevitLinkInstance> instForWS = new List<RevitLinkInstance>();
             using (Transaction t = new Transaction(doc, $"KPLN: Загрузить связи"))
@@ -233,12 +225,12 @@ namespace KPLN_Tools.ExecutableCommand
             // Создание отдельного РН, если нужно.
             if (instForWS.Count() > 0)
                 WorksetSetService.ExecuteFromService(
-                    doc, 
-                    instForWS, 
-                    Array.Empty<DirectShape>(), 
-                    Array.Empty<PointCloudInstance>(), 
-                    Array.Empty<ImportInstance>(), 
-                    false, 
+                    doc,
+                    instForWS,
+                    Array.Empty<DirectShape>(),
+                    Array.Empty<PointCloudInstance>(),
+                    Array.Empty<ImportInstance>(),
+                    false,
                     false);
         }
 
@@ -317,7 +309,7 @@ namespace KPLN_Tools.ExecutableCommand
                             }
                             #endregion
 
-                            if (!LoadRLI_Service.CheckWSAvailable(doc, linkType)) 
+                            if (!LoadRLI_Service.CheckWSAvailable(doc, linkType))
                             {
                                 _sbErrResult.AppendLine($"Занят рабочий набор, в которой размещена связь: {linkUpdateEntity.UpdatedLinkPath}. Нужно попросить коллег освободить РН");
                                 continue;

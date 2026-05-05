@@ -76,6 +76,10 @@
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Data.SQLite, Version=2.0.3.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Data.SQLite.2.0.3\lib\net471\System.Data.SQLite.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="UIFramework">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
       <Private>False</Private>
@@ -101,10 +105,6 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data.SQLite, Version=1.0.118.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
-      <HintPath>..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\lib\net46\System.Data.SQLite.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Transactions" />
@@ -129,8 +129,8 @@
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
       <ItemGroup>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\2023\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
@@ -153,8 +153,8 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
@@ -169,8 +169,8 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
@@ -201,8 +201,8 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
@@ -272,7 +272,6 @@
     <Compile Include="Forms\Models\Core\ARPG_TZ_MainData.cs" />
     <Compile Include="Forms\Models\Core\ARPG_TZ_FlatData.cs" />
     <Compile Include="Common\ButtonAvailable_UserSelect.cs" />
-    <Compile Include="Common\DBWorkerService.cs" />
     <Compile Include="Common\LinkManager\CoordinateType.cs" />
     <Compile Include="Common\LinkManager\EntityStatus.cs" />
     <Compile Include="Common\LinkManager\LinkManagerUpdateEntity.cs" />
@@ -666,11 +665,4 @@
     </Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets" Condition="Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>Данный проект ссылается на пакеты NuGet, отсутствующие на этом компьютере. Используйте восстановление пакетов NuGet, чтобы скачать их.  Дополнительную информацию см. по адресу: http://go.microsoft.com/fwlink/?LinkID=322105. Отсутствует следующий файл: {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Stub.System.Data.SQLite.Core.NetFramework.1.0.118.0\build\net46\Stub.System.Data.SQLite.Core.NetFramework.targets'))" />
-  </Target>
 </Project>

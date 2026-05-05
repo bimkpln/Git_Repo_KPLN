@@ -1,7 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using KPLN_Library_ConfigWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Tools.Common;
 using KPLN_Tools.Common.OVVK_System;
 using System;
@@ -29,7 +30,7 @@ namespace KPLN_Tools.Forms
 
             ModelPath docModelPath = _doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-            _dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
+            _dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
 
             if (_dBProject != null)
                 _configType = ConfigType.Shared;

@@ -1,10 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Tools.Common;
 using KPLN_Tools.Common.LinkManager;
 using KPLN_Tools.ExecutableCommand;
 using KPLN_Tools.Forms.Models.Core;
@@ -31,7 +31,7 @@ namespace KPLN_Tools.Forms
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
             string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
 
-            DBProject dBProject = DBWorkerService.CurrentProjectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
+            DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
             if (dBProject != null) InitialDirectoryForOpenFileDialog = dBProject.MainPath;
             else InitialDirectoryForOpenFileDialog = Path.GetPathRoot(Environment.SystemDirectory);
 
