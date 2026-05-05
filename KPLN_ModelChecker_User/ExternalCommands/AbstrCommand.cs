@@ -56,9 +56,9 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     && CommandCheck.CheckerEntitiesColl.Length > 0 
                     && showMainForm)
                 {
-                    if (CommandCheck.OnlySelectOnModel)
+                    if (CommandCheck.OnlyElemsInModel)
                         SelectElemsInModelResult<T>(uiapp);
-                    else
+                    else if (CommandCheck.WarningIfNoElemsOnModel)
                         ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
                 }
                 else if (showSuccsessText)
