@@ -1,13 +1,13 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_DBWorker;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_OpenDocHandler;
 using KPLN_Library_OpenDocHandler.Core;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_Library_SQLiteWorker;
 using KPLN_ModelChecker_Batch.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Core;
@@ -173,8 +173,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     || SelectedPresets == "Preset_SS"
                     || SelectedPresets == "Preset_EOM")
                 {
-                    removeCheckNames.Add(checkMirroredInstancesName);                    
-                    
+                    removeCheckNames.Add(checkMirroredInstancesName);
+
                     removeCheckNames.Add(checkFlatsAreaCompareName);
                     removeCheckNames.Add(checkHolesName);
                 }
@@ -196,7 +196,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 }
             }
         }
-        
+
         private void Info(object parameter)
         {
             // Получаем выбранные элементы
@@ -404,14 +404,14 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         {
                             check.CurrentAbstrCheck.Set_UIAppData(_uiapp, doc);
                             checkName = check.Name;
-                            
-                            
+
+
                             if (!check.IsChecked)
                             {
                                 CurrentLogger.Info($"Пользователь выбрал игнорировать проверку с именем: \"{checkName}\"");
                                 continue;
                             }
-                            
+
 
                             CurrentLogger.Info($"Начинаю проверку с именем: \"{checkName}\"");
 
@@ -460,7 +460,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         private static void SendResultMsg(string fileNames, string checkNames, string excelFilePath)
         {
             BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                DBMainService.CurrentDBUser,
+                SQLiteMainService.CurrentDBUser,
                 $"Модуль: [b]{PluginName}\n[/b]" +
                 $"Анализируемые файлы: {fileNames}\n" +
                 $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
@@ -474,13 +474,13 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         private static void SendResultErrorMsg(string fileNames, string checkNames, string excelFilePath)
         {
             BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                DBMainService.CurrentDBUser,
+                SQLiteMainService.CurrentDBUser,
                 $"Модуль: [b]{PluginName}\n[/b]" +
                 $"Анализируемые файлы: {fileNames}\n" +
                 $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
                 $"Статус: Отработано с глобальными ошибками.\n" +
-                $"Ошибки: См. файл логов у пользователя {DBMainService.CurrentDBUser.Surname} {DBMainService.CurrentDBUser.Name}.\n" +
+                $"Ошибки: См. файл логов у пользователя {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name}.\n" +
                 $"Путь к логам у пользователя: C:\\KPLN_Temp\\KPLN_Logs\\{ModuleData.RevitVersion}");
         }
 

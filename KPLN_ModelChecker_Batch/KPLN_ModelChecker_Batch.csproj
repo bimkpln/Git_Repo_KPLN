@@ -88,8 +88,8 @@
       <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="KPLN_Library_SQLiteWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
+    <Reference Include="KPLN_Library_DBWorker">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_PluginActivityWorker">
