@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_ConfigWorker.Core;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
-using KPLN_Library_SQLiteWorker.FactoryParts;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,6 @@ namespace KPLN_Library_ConfigWorker
     /// </summary>
     public static class ConfigService
     {
-        private static readonly ProjectDbService _projectDbService = (ProjectDbService)new CreatorProjectDbService().CreateService();
         private static readonly string _localConfigFolder = $"{Path.GetPathRoot(Environment.SystemDirectory)}KPLN_Temp";
 
         /// <summary>
@@ -139,7 +138,7 @@ namespace KPLN_Library_ConfigWorker
                     string resultPath;
                     if (strDocModelPath.Contains("RSN:"))
                     {
-                        DBProject dBProject = _projectDbService.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, revitVersion);
+                        DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, revitVersion);
                         resultPath = $"Z:\\KPLN_Temp\\KPLN_Config\\{dBProject.Code}\\{configName}.json";
                     }
                     else
