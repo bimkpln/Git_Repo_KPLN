@@ -2,11 +2,11 @@
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
-using KPLN_Library_SQLiteWorker;
-using KPLN_Library_SQLiteWorker.Core.SQLiteData;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -43,7 +43,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private string _smallDebugMessage;
         private string _debugMessage;
 
-        public ManyDocumentsSelectionWindow(UIApplication uiApp,Document mainDocument,Dictionary<string, Tuple<string, string, string, string, View>> viewOnlyTemplateChanges, bool leaveOpened, bool useRevitServer)
+        public ManyDocumentsSelectionWindow(UIApplication uiApp, Document mainDocument, Dictionary<string, Tuple<string, string, string, string, View>> viewOnlyTemplateChanges, bool leaveOpened, bool useRevitServer)
         {
             InitializeComponent();
 
@@ -550,12 +550,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 if (string.IsNullOrEmpty(args.DialogId))
                 {
                     TaskDialogShowingEventArgs taskDialogShowingEventArgs = args as TaskDialogShowingEventArgs;
-                    currentDBDialog = DBMainService
+                    currentDBDialog = SQLiteMainService
                         .DBRevitDialogColl
                         .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.Message) && taskDialogShowingEventArgs.Message.Contains(rd.Message));
                 }
                 else
-                    currentDBDialog = DBMainService
+                    currentDBDialog = SQLiteMainService
                         .DBRevitDialogColl
                         .FirstOrDefault(rd => !string.IsNullOrEmpty(rd.DialogId) && args.DialogId.Contains(rd.DialogId));
 
