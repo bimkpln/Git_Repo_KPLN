@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_User.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,8 +55,10 @@ namespace KPLN_ModelChecker_User.Forms
                 {
                     var lower = g.First();
                     var uppers = g.Skip(1);
-                    var key = string.Join("_", new[] { lower.Id.IntegerValue }
-                        .Concat(uppers.Select(u => u.Id.IntegerValue).OrderBy(x => x)));
+
+                    var key = string.Join("_", new[] { IDHelper.ElIdValue(lower.Id) }
+                        .Concat(uppers.Select(u => IDHelper.ElIdValue(u.Id)).OrderBy(x => x)));
+
                     return key;
                 })
                 .Select(g => g.First())
@@ -144,7 +147,7 @@ namespace KPLN_ModelChecker_User.Forms
 
                 if (lower != null && familyInstance != null)
                 {
-                    var key = $"{lower.Id.IntegerValue}_{familyInstance.Id.IntegerValue}";
+                    var key = $"{IDHelper.ElIdValue(lower.Id)}_{IDHelper.ElIdValue(familyInstance.Id)}";
                     return new { Lower = lower, FamilyInstance = familyInstance, Key = key };
                 }
 
@@ -245,7 +248,7 @@ namespace KPLN_ModelChecker_User.Forms
         
             var labelBlock = new TextBlock
             {
-                Text = $"{el.Id.IntegerValue} ({type}) ",
+                Text = $"{IDHelper.ElIdValue(el.Id)} ({type}) ",
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -287,7 +290,7 @@ namespace KPLN_ModelChecker_User.Forms
 
             var labelBlock = new TextBlock
             {
-                Text = $"{el.Id.IntegerValue} ({type}) ",
+                Text = $"{IDHelper.ElIdValue(el.Id)} ({type}) ",
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -363,7 +366,10 @@ namespace KPLN_ModelChecker_User.Forms
             var uniqueGroups = groups
                 .GroupBy(group =>
                 {
-                    var ids = group.Select(e => e.Id.IntegerValue).OrderBy(x => x);
+                    var ids = group
+                        .Select(e => IDHelper.ElIdValue(e.Id))
+                        .OrderBy(x => x);
+
                     return string.Join("_", ids);
                 })
                 .Select(g => g.First())
@@ -385,11 +391,11 @@ namespace KPLN_ModelChecker_User.Forms
 
                     if (el is FamilyInstance familyInstance)
                     {
-                        result += $"    ID {el.Id.IntegerValue} ({familyInstance.Symbol.Family.Name})\n";
+                        result += $"    ID {IDHelper.ElIdValue(el.Id)} ({familyInstance.Symbol.Family.Name})\n";
                     }
                     else
                     {
-                        result += $"    ID {el.Id.IntegerValue} ({type}) [Этаж {floor}. Квартира {kv}]\n";
+                        result += $"    ID {IDHelper.ElIdValue(el.Id)} ({type}) [Этаж {floor}. Квартира {kv}]\n";
                     }
                 }
             }
