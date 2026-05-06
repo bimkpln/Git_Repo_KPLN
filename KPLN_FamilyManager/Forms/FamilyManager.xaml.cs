@@ -507,6 +507,7 @@ namespace KPLN_FamilyManager.Forms
         private const string ITEM_ERROR = "ОШИБКА";
         private const string DB_PATH = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_FamilyManager.db";
         private const string RFA_ROOT = @"X:\BIM\3_Семейства";
+        private const int PROJECT_UNIVERSAL_ID = 1;
         private List<FamilyManagerRecord> _records;
 
         private const string BIM = "BIM";
@@ -2780,7 +2781,7 @@ namespace KPLN_FamilyManager.Forms
                 if ((dirName.IndexOf("архив", StringComparison.OrdinalIgnoreCase) >= 0)
                 || (dirName.IndexOf("8_Библиотека семейств Самолета", StringComparison.OrdinalIgnoreCase) >= 0)
                 || (dirName.IndexOf("000_Семейства квартир", StringComparison.OrdinalIgnoreCase) >= 0))
-                                continue;
+                    continue;
 
                 IEnumerable<string> subdirs = Enumerable.Empty<string>();
                 IEnumerable<string> files = Enumerable.Empty<string>();
@@ -3332,7 +3333,6 @@ namespace KPLN_FamilyManager.Forms
         {
             const int FILTER_NOT_SELECTED = 0; // Ничего не выбрано
             const int FILTER_UNIVERSAL = -2;   // Только универсальные
-            const int PROJECT_UNIVERSAL_ID = 1;
 
             var depDb = DepForDb(depUi);
             IEnumerable<FamilyManagerRecord> all = _records ?? Enumerable.Empty<FamilyManagerRecord>();
@@ -3791,12 +3791,36 @@ namespace KPLN_FamilyManager.Forms
             spText.Children.Add(nameRun);
             spText.Children.Add(subRun);
 
+            if (rec.Project != PROJECT_UNIVERSAL_ID)
+            {
+                var projectRun = new TextBlock
+                {
+                    Text = "Проект: " + ResolveProjectName(rec.Project),
+                    Opacity = 0.75,
+                    Margin = new Thickness(0, 2, 0, 0),
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                };
+
+                spText.Children.Add(projectRun);
+            }
+
             Grid.SetColumn(spText, 2);
             grid.Children.Add(spText);
 
             ToolTipService.SetToolTip(btn, BuildFamilyTooltip(rec));
 
             return btn;
+        }
+
+        // Интерфейс универсального отдела. Имя проекта для карточки
+        private string ResolveProjectName(int projectId)
+        {
+            if (projectId <= 0)
+                return "Проект не задан";
+
+            return _projectsById.TryGetValue(projectId, out var projectName) && !string.IsNullOrWhiteSpace(projectName)
+                ? projectName
+                : $"Проект {projectId}";
         }
 
         // Интерфейс универсального отдела. Преобразование категорий
