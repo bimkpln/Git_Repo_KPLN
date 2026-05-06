@@ -397,8 +397,20 @@ namespace KPLN_ModelChecker_User
 
             double totalSum = 0.0;
             int foundValues = 0;
+            int lastRowNumber = bodyData.LastRowNumber;
 
-            for (int row = bodyData.FirstRowNumber; row <= bodyData.LastRowNumber; row++)
+            try
+            {
+                if (schedule.Definition.ShowGrandTotal)
+                {
+                    lastRowNumber--;
+                }
+            }
+            catch
+            {
+            }
+
+            for (int row = bodyData.FirstRowNumber; row <= lastRowNumber; row++)
             {
                 double? lastNumericValue = null;
 
