@@ -6,7 +6,11 @@
         Height="700"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
-        Background="White">
+        Background="White" Topmost="True">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
 
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Bottom"
@@ -35,11 +39,44 @@
                                 Padding="12"
                                 Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock Text="{Binding HeaderText}"
-                                           FontSize="18"
-                                           FontWeight="Bold"
-                                           TextWrapping="Wrap"
-                                           Margin="0,0,0,10"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding HeaderText}"
+                                               FontSize="18"
+                                               FontWeight="Bold"
+                                               TextWrapping="Wrap"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,12,0"/>
+
+                                    <StackPanel Grid.Column="1"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <Button Content="Показать"
+                                                Width="86"
+                                                Height="28"
+                                                Margin="0,0,6,0"
+                                                Visibility="{Binding CanNavigateToElement, Converter={StaticResource BoolToVis}}"
+                                                Click="NavigateToElement_Click"/>
+
+                                        <Button Content="Удалить остатки"
+                                                Width="120"
+                                                Height="28"
+                                                Margin="0,0,6,0"
+                                                Visibility="{Binding CanDeleteRemnants, Converter={StaticResource BoolToVis}}"
+                                                Click="DeleteRemnants_Click"/>
+
+                                        <Button Content="Вернуть 2D"
+                                                Width="92"
+                                                Height="28"
+                                                Visibility="{Binding CanRestore2D, Converter={StaticResource BoolToVis}}"
+                                                Click="Restore2DFamily_Click"/>
+                                    </StackPanel>
+                                </Grid>
 
                                 <ItemsControl ItemsSource="{Binding Lines}">
                                     <ItemsControl.ItemTemplate>
