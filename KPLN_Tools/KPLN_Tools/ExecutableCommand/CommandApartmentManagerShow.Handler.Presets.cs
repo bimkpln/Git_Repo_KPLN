@@ -119,11 +119,11 @@ namespace KPLN_Tools.ExecutableCommand
         private string BuildLowerConstraintTextForPlan(Document doc, ViewPlan plan)
         {
             if (plan == null)
-                return "Ещё не проставлено ни одного 2D-семейства";
+                return "Нет ни одного 2D-семейства";
 
             List<FamilyInstance> apartments = GetPlacedApartmentInstancesForPlan(doc, plan);
             if (apartments.Count == 0)
-                return "Ещё не проставлено ни одного 2D-семейства";
+                return "Нет ни одного 2D-семейства";
 
             HashSet<string> levelNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -139,7 +139,7 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             if (levelNames.Count == 0)
-                return "Ещё не проставлено ни одного 2D-семейства";
+                return "Нет ни одного 2D-семейства";
 
             return string.Join(", ", levelNames.OrderBy(x => x));
         }
