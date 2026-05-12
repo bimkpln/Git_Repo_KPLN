@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
@@ -98,8 +100,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                     .ToArray();
 
 
-                #region Проверка кол-ва фильтров в спеке
-                List<CheckerEntity> schTooManyFilters = SchedulesTooManyFilters(CheckDocument, schInsts);
+                #region Проверка кол-ва и качества фильтров в спеке
+                List<CheckerEntity> schTooManyFilters = SchedulesCheckFilters(CheckDocument, schInsts);
                 if (schTooManyFilters != null && schTooManyFilters.Any())
                     _checkerEntitiesCollHeap.AddRange(schTooManyFilters);
                 #endregion
@@ -126,18 +128,28 @@ namespace KPLN_ModelChecker_Lib.Commands
             return CheckResultStatus.Succeeded;
         }
 
-        private List<CheckerEntity> SchedulesTooManyFilters(Document doc, ScheduleSheetInstance[] schInsts)
+        private List<CheckerEntity> SchedulesCheckFilters(Document doc, ScheduleSheetInstance[] schInsts)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
 
+            // Метка проверки спек ИОС
+            string fileFullName = SQLiteDocService.GetFileFullName(doc);
+            var dbDoc = SQLiteMainService.SQLiteDocServiceInst.GetDBDocuments_ByFileFullPath(fileFullName);
+            bool isIOS = dbDoc != null && dbDoc.SubDepartmentId != 2 && dbDoc.SubDepartmentId != 3 && dbDoc.SubDepartmentId != 8;
+            isIOS = true;
+
+            // Проход по всем спекам на листе
             foreach (var schinst in schInsts)
             {
                 Element elem = doc.GetElement(schinst.ScheduleId);
                 if (elem != null && elem is ViewSchedule vsch) 
                 {
+                    string schName = vsch.Name;
+                    string schNameLowerCase = vsch.Name.ToLower();
                     ScheduleDefinition def = vsch.Definition;
                     int filterCount = def.GetFilterCount();
 
+                    // Проверяю кол-во фильтров в спеке
                     if (filterCount >= _filterErrorCount)
                     {
                         result.Add(new CheckerEntity(
@@ -154,6 +166,46 @@ namespace KPLN_ModelChecker_Lib.Commands
                             $"В спецификации \"{vsch.Name}\" задано {filterCount} фильтров (порог предупреждения: {_filterWarnCount})",
                             $"Стоит проверить, нельзя ли упростить логику фильтрации.")
                             .Set_Status(ErrorStatus.Warning));
+                    }
+
+                    // Проверяю наличие нужных фильтров ИОС в спеке
+                    if (isIOS)
+                    {
+                        bool haveFilterWithIOSField = false;
+                        var schFilters = def.GetFilters();
+                        for (int i = 0; i < schFilters.Count; i++)
+                        {
+                            var schField = def.GetField(i);
+                            if (schField == null)
+                                continue;
+
+                            if (doc.GetElement(schField.ParameterId) is SharedParameterElement shParam)
+                            {
+                                
+                                haveFilterWithIOSField = shParam.Name.Equals("КП_И_Включение в спецификацию") 
+                                    && schFilters[i].FilterType == ScheduleFilterType.LessThanOrEqual
+                                    && schFilters[i].GetIntegerValue() == 1;
+                                
+                                break;
+                            }
+
+                        }
+                        
+                        if(!haveFilterWithIOSField 
+                            && !schNameLowerCase.Contains("эксплик")
+                            && !schNameLowerCase.Contains("шапка спец")
+                            && !schNameLowerCase.Contains("показатели систем")
+                            && !schNameLowerCase.Contains("количество листов")
+                            && !schNameLowerCase.Contains("документ"))
+                        {
+                            result.Add(new CheckerEntity(
+                                vsch,
+                                $"ИОС: Нет обязательного фильтра",
+                                $"В спецификации \"{vsch.Name}\" нет фильтра по параметру \"КП_И_Включение в спецификацию\", либо он добавлен с ошибкой в условиях",
+                                $"Данный параметр снимает технические элементы и обязателен для всех спецификаций по объёмам для ИОС. " +
+                                    $"Единственно правильный вариант, который ИСКЛЮЧАЕТ все технические элементы из спецификации это \"Меньше или равно -> Да\"")
+                                .Set_Status(ErrorStatus.Warning));
+                        }
                     }
                 }
             }
