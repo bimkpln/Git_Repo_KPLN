@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:KPLN_Tools.Forms"
         Title="KPLN. Менеджер квартир"
-        Width="1540" Height="830" ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Width="1540" Height="700" ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         FontFamily="Century Gothic" UseLayoutRounding="True" SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="ClearType">
 
@@ -262,7 +262,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0" Text="Смещение снизу:" Width="180" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Смещение снизу:" FontWeight="Bold" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="2" Text="{Binding PresetsVm.BaseOffsetText, UpdateSourceTrigger=PropertyChanged}" Height="24" Padding="3"
                                              PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_Pasting"/>
                                 </Grid>
@@ -274,15 +274,81 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Column="0" Text="Неприсоединённая высота:" Width="180" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="0" Text="Неприсоединённая высота:" FontWeight="Bold" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="2" Text="{Binding PresetsVm.WallHeightText, UpdateSourceTrigger=PropertyChanged}" Height="24" Padding="3"
                                              PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_Pasting"/>
                                 </Grid>
                             </Grid>
                         </GroupBox>
 
-                        <GroupBox Header="Выбор типов">
-                            <ItemsControl ItemsSource="{Binding PresetsVm.Assignments}" Margin="10">
+                        <GroupBox Header="Типы стен" Margin="0,0,0,10">
+                            <ItemsControl ItemsSource="{Binding PresetsVm.WallAssignments}" Margin="10">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="4"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Grid.Row="0" FontWeight="Bold" Text="{Binding Label}" TextWrapping="Wrap"/>
+                                            <ComboBox Grid.Row="2" ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedValue}"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </GroupBox>
+
+                        <GroupBox Header="Стены (Шахта)" Margin="0,0,0,10"
+                                  Visibility="{Binding PresetsVm.HasShaftWallMarkers, Converter={StaticResource BoolToVis}}">
+                            <Grid Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="Тип стены:" FontWeight="Bold" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="2" ItemsSource="{Binding PresetsVm.ShaftWallTypeOptions}" SelectedItem="{Binding PresetsVm.SelectedShaftWallType}"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Окна" Margin="0,0,0,10">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="Тип окна:" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="2" ItemsSource="{Binding PresetsVm.WindowTypeOptions}" SelectedItem="{Binding PresetsVm.SelectedWindowType}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="Высота нижнего бруса:" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="2" Text="{Binding PresetsVm.WindowSillHeightText, UpdateSourceTrigger=PropertyChanged}" Height="24" Padding="3"
+                                             PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_Pasting"/>
+                                </Grid>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Двери">
+                            <ItemsControl ItemsSource="{Binding PresetsVm.DoorAssignments}" Margin="10">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="0,0,0,8">

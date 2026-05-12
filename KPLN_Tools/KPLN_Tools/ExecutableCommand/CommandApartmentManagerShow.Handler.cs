@@ -101,6 +101,8 @@ namespace KPLN_Tools.ExecutableCommand
             public WallType WallType { get; set; }
             public int ThicknessMm { get; set; }
             public List<Line> AxisLines { get; set; }
+            public WallType ShaftWallType { get; set; }
+            public List<Line> ShaftAxisLines { get; set; }
         }
 
         private class ApartmentProcessState
@@ -114,10 +116,13 @@ namespace KPLN_Tools.ExecutableCommand
             public bool HasCreatedWalls { get; set; }
             public bool HasCreatedRooms { get; set; }
             public bool HasInstalledDoors { get; set; }
+            public bool HasInstalledWindows { get; set; }
             public int SkippedRoomsCount { get; set; }
             public int SkippedWallsCount { get; set; }
             public int SkippedDoorsCount { get; set; }
+            public int SkippedWindowsCount { get; set; }
             public List<string> FurnitureErrors { get; set; }
+            public List<string> ErrorMessages { get; set; }
             public bool HasRoomAreaMismatch { get; set; }
             public bool HasDeletedRoomMismatch { get; set; }
 
@@ -127,6 +132,7 @@ namespace KPLN_Tools.ExecutableCommand
                 NavigationElementIds = new List<ElementId>();
                 CreatedElementIds = new List<ElementId>();
                 FurnitureErrors = new List<string>();
+                ErrorMessages = new List<string>();
             }
         }
 
@@ -214,6 +220,26 @@ namespace KPLN_Tools.ExecutableCommand
             public XYZ LocalPoint { get; set; }
             public string RoomCategory { get; set; }
             public string Comment { get; set; }
+            public bool IsEntranceDoor { get; set; }
+        }
+
+        private class FamilyWindowMarker
+        {
+            public XYZ LocalP0 { get; set; }
+            public XYZ LocalP1 { get; set; }
+        }
+
+        private class FamilyShaftWallMarker
+        {
+            public XYZ ProjectP0 { get; set; }
+            public XYZ ProjectP1 { get; set; }
+        }
+
+        private class HelperLineCandidate
+        {
+            public XYZ P0 { get; set; }
+            public XYZ P1 { get; set; }
+            public bool StyleMatched { get; set; }
         }
 
         private class DoorTypeMirrorEnsureResult
@@ -240,6 +266,11 @@ namespace KPLN_Tools.ExecutableCommand
             public FamilySymbol DoorSymbol { get; set; }
             public XYZ InsertPoint { get; set; }
             public FamilyInstance RelatedRoom2D { get; set; }
+            public XYZ InteriorReferencePoint { get; set; }
+            public XYZ SourceHandDirection { get; set; }
+            public XYZ SourceFacingDirection { get; set; }
+            public bool IsEntranceDoor { get; set; }
+            public List<string> Diagnostics { get; set; }
             public bool RequiresOppositeDoorTypeAfterWallFlip { get; set; }
         }
 
@@ -251,6 +282,28 @@ namespace KPLN_Tools.ExecutableCommand
             public PreparedApartmentDoors()
             {
                 Doors = new List<PreparedDoorPlacement>();
+            }
+        }
+
+        private class PreparedWindowPlacement
+        {
+            public ElementId ApartmentId { get; set; }
+            public FamilySymbol WindowSymbol { get; set; }
+            public Line SourceLine { get; set; }
+            public XYZ InsertPoint { get; set; }
+            public XYZ ReferenceDirection { get; set; }
+            public double SillHeightInternal { get; set; }
+            public List<string> Diagnostics { get; set; }
+        }
+
+        private class PreparedApartmentWindows
+        {
+            public ElementId ApartmentId { get; set; }
+            public List<PreparedWindowPlacement> Windows { get; set; }
+
+            public PreparedApartmentWindows()
+            {
+                Windows = new List<PreparedWindowPlacement>();
             }
         }
 

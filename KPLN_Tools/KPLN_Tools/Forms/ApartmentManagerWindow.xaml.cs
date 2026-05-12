@@ -51,6 +51,9 @@ namespace KPLN_Tools.Forms
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
 
+        public string WindowType { get; set; }
+        public int WindowSillHeight { get; set; }
+
         public string EntryDoor { get; set; }
         public string BathroomDoor { get; set; }
         public string RoomDoor { get; set; }
@@ -71,6 +74,8 @@ namespace KPLN_Tools.Forms
                 WallTypeByThickness = WallTypeByThickness != null
                     ? new Dictionary<int, string>(WallTypeByThickness)
                     : new Dictionary<int, string>(),
+                WindowType = WindowType,
+                WindowSillHeight = WindowSillHeight,
                 EntryDoor = EntryDoor,
                 BathroomDoor = BathroomDoor,
                 RoomDoor = RoomDoor,
@@ -112,6 +117,8 @@ namespace KPLN_Tools.Forms
                     BaseOffset = 0,
                     WallHeight = 3000,
                     WallTypeByThickness = new Dictionary<int, string>(),
+                    WindowType = "Не выбрано",
+                    WindowSillHeight = 900,
                     EntryDoor = "Не выбрано",
                     BathroomDoor = "Не выбрано",
                     RoomDoor = "Не выбрано",

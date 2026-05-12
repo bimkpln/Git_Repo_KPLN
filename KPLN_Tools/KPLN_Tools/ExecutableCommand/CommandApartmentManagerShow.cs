@@ -1,18 +1,11 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_Library_DBWorker;
-using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
-using System.Collections.Generic;
-using System.Data.SQLite;
-using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Threading;
 
 namespace KPLN_Tools.ExecutableCommand
 {

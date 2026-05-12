@@ -36,7 +36,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             List<Line> preparedAxisLines = SnapNewLinesToExistingWalls(wallAxisLines, existingWalls, connectTol);
             preparedAxisLines = MergeCollinearLines(preparedAxisLines);
-            preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls);
+            preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls, apartmentWallThicknessInternal);
             preparedAxisLines = MergeCollinearLines(preparedAxisLines);
 
             if (preparedAxisLines.Count == 0)
@@ -278,6 +278,8 @@ namespace KPLN_Tools.ExecutableCommand
                         Line axis = Line.CreateBound(insertPoint, insertPoint + XYZ.BasisZ);
                         ElementTransformUtils.RotateElement(doc, created.Id, axis, angle);
                     }
+
+                    ApplyFamilyInstanceFlipState(nestedFi, created, debugMessages);
                 }
                 catch (Exception ex)
                 {
@@ -285,6 +287,225 @@ namespace KPLN_Tools.ExecutableCommand
                         debugMessages.Add("Ошибка копирования вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + ": " + ex.Message);
                 }
             }
+        }
+
+        private static void ApplyFamilyInstanceFlipState(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
+        {
+            if (source == null || target == null)
+                return;
+
+            ApplyHandFlipState(source, target, debugMessages);
+            ApplyFacingFlipState(source, target, debugMessages);
+        }
+
+        private static void ApplyHandFlipState(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
+        {
+            bool sourceValue;
+            bool targetValue;
+
+            if (!TryGetHandFlipped(source, out sourceValue))
+                return;
+
+            if (!TryGetHandFlipped(target, out targetValue))
+                return;
+
+            if (sourceValue == targetValue)
+                return;
+
+            if (!CanFlipHand(target))
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Невозможно повторить flipHand у вложенного элемента ID = " + GetElementIdValue(source.Id) + ": созданный тип не поддерживает flipHand.");
+                return;
+            }
+
+            try
+            {
+                target.flipHand();
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось применить flipHand к вложенному элементу ID = " + GetElementIdValue(source.Id) + ": " + ex.Message);
+            }
+        }
+
+        private static void ApplyFacingFlipState(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
+        {
+            bool sourceValue;
+            bool targetValue;
+
+            if (!TryGetFacingFlipped(source, out sourceValue))
+                return;
+
+            if (!TryGetFacingFlipped(target, out targetValue))
+                return;
+
+            if (sourceValue == targetValue)
+                return;
+
+            if (!CanFlipFacing(target))
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Невозможно повторить flipFacing у вложенного элемента ID = " + GetElementIdValue(source.Id) + ": созданный тип не поддерживает flipFacing.");
+                return;
+            }
+
+            try
+            {
+                target.flipFacing();
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось применить flipFacing к вложенному элементу ID = " + GetElementIdValue(source.Id) + ": " + ex.Message);
+            }
+        }
+
+        private static bool TryGetHandFlipped(FamilyInstance fi, out bool value)
+        {
+            value = false;
+
+            if (fi == null)
+                return false;
+
+            try
+            {
+                value = fi.HandFlipped;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool TryGetFacingFlipped(FamilyInstance fi, out bool value)
+        {
+            value = false;
+
+            if (fi == null)
+                return false;
+
+            try
+            {
+                value = fi.FacingFlipped;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool CanFlipHand(FamilyInstance fi)
+        {
+            if (fi == null)
+                return false;
+
+            try
+            {
+                return fi.CanFlipHand;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool CanFlipFacing(FamilyInstance fi)
+        {
+            if (fi == null)
+                return false;
+
+            try
+            {
+                return fi.CanFlipFacing;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static XYZ GetFamilyInstanceHandDirection2D(FamilyInstance fi, Transform fallbackTransform)
+        {
+            if (fi != null)
+            {
+                try
+                {
+                    XYZ hand = fi.HandOrientation;
+                    if (hand != null)
+                    {
+                        XYZ normalized = Normalize2D(hand);
+                        if (normalized != null)
+                            return normalized;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            if (fallbackTransform == null && fi != null)
+            {
+                try
+                {
+                    fallbackTransform = fi.GetTransform();
+                }
+                catch
+                {
+                }
+            }
+
+            if (fallbackTransform != null)
+            {
+                XYZ basisX = fallbackTransform.BasisX;
+                if (basisX != null)
+                    return Normalize2D(basisX);
+            }
+
+            return null;
+        }
+
+        private static XYZ GetFamilyInstanceFacingDirection2D(FamilyInstance fi, Transform fallbackTransform)
+        {
+            if (fi != null)
+            {
+                try
+                {
+                    XYZ facing = fi.FacingOrientation;
+                    if (facing != null)
+                    {
+                        XYZ normalized = Normalize2D(facing);
+                        if (normalized != null)
+                            return normalized;
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            if (fallbackTransform == null && fi != null)
+            {
+                try
+                {
+                    fallbackTransform = fi.GetTransform();
+                }
+                catch
+                {
+                }
+            }
+
+            if (fallbackTransform != null)
+            {
+                XYZ basisY = fallbackTransform.BasisY;
+                if (basisY != null)
+                    return Normalize2D(basisY);
+            }
+
+            return null;
         }
 
 
@@ -488,9 +709,15 @@ namespace KPLN_Tools.ExecutableCommand
 
             foreach (PreparedDoorPlacement preparedDoor in apartmentDoors.Doors)
             {
+                if (preparedDoor == null)
+                    continue;
+
                 preparedDoor.RequiresOppositeDoorTypeAfterWallFlip = false;
 
-                if (preparedDoor == null || preparedDoor.InsertPoint == null || preparedDoor.RelatedRoom2D == null)
+                if (preparedDoor.IsEntranceDoor)
+                    continue;
+
+                if (preparedDoor.InsertPoint == null || preparedDoor.RelatedRoom2D == null)
                     continue;
 
                 Wall hostWall;
@@ -546,7 +773,8 @@ namespace KPLN_Tools.ExecutableCommand
 
 
 
-        private int PlaceDoorsForApartment(Document doc, PreparedApartmentDoors apartmentDoors, List<Wall> createdWallsForApartment, Level baseLevel,
+        private int PlaceDoorsForApartment(Document doc, PreparedApartmentDoors apartmentDoors, List<Wall> createdWallsForApartment,
+            List<ExistingWallLineInfo> existingWallsOnLevel, Level baseLevel, List<string> debugMessages, ApartmentProcessState state,
             List<ElementId> createdDoorIds = null)
         {
             if (doc == null || apartmentDoors == null || createdWallsForApartment == null || baseLevel == null)
@@ -566,56 +794,1154 @@ namespace KPLN_Tools.ExecutableCommand
                 Wall hostWall;
                 XYZ projectedPoint;
                 double distanceToWallAxis;
+                bool hostFromExistingWall;
 
-                bool foundHost = TryFindBestHostWallForDoor(
-                    preparedDoor.InsertPoint,
+                bool foundHost = TryFindHostWallForDoorPlacement(
+                    doc,
+                    preparedDoor,
                     createdWallsForApartment,
+                    existingWallsOnLevel,
                     maxDistanceToWallAxis,
                     out hostWall,
                     out projectedPoint,
-                    out distanceToWallAxis);
+                    out distanceToWallAxis,
+                    out hostFromExistingWall);
 
                 if (!foundHost || hostWall == null || projectedPoint == null)
+                {
+                    AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
+
+                    string doorKind = preparedDoor.IsEntranceDoor ? "входной двери" : "двери";
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Не найдена стена-хост для " + doorKind +
+                        " ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                        " квартиры ID = " + GetElementIdValue(preparedDoor.ApartmentId) + ". " +
+                        BuildDoorHostSearchDiagnostic(doc, preparedDoor, existingWallsOnLevel, createdWallsForApartment, maxDistanceToWallAxis));
+
                     continue;
+                }
 
                 FamilySymbol symbolToPlace = preparedDoor.DoorSymbol;
 
-                if (preparedDoor.RequiresOppositeDoorTypeAfterWallFlip)
-                    symbolToPlace = GetOppositeDoorSymbol(doc, symbolToPlace);
-
-                if (symbolToPlace == null)
-                    continue;
-
-                if (!symbolToPlace.IsActive)
+                if (preparedDoor.IsEntranceDoor && !hostFromExistingWall)
                 {
-                    symbolToPlace.Activate();
-                    doc.Regenerate();
+                    if (IsWallInList(hostWall, createdWallsForApartment))
+                    {
+                        AlignCreatedEntranceHostAxisOutside(doc, hostWall, preparedDoor, projectedPoint, debugMessages, state);
+                    }
+                    else
+                    {
+                        AddApartmentDiagnostic(
+                            state,
+                            debugMessages,
+                            "Входная дверь ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                            ": стена-хост ID = " + GetElementIdValue(hostWall.Id) +
+                            " определена как созданная, но ее нет в списке стен, созданных для этой квартиры. Разворот стены пропущен.");
+                    }
                 }
 
-                FamilyInstance createdDoor = doc.Create.NewFamilyInstance(
-                    projectedPoint,
-                    symbolToPlace,
-                    hostWall,
-                    baseLevel,
-                    Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                bool useOppositeDoorType = preparedDoor.IsEntranceDoor
+                    ? preparedDoor.RequiresOppositeDoorTypeAfterWallFlip
+                    : preparedDoor.RequiresOppositeDoorTypeAfterWallFlip ||
+                      (hostFromExistingWall &&
+                       ShouldUseOppositeDoorTypeForExistingHost(hostWall, preparedDoor, projectedPoint));
+
+                if (useOppositeDoorType)
+                {
+                    FamilySymbol originalSymbol = symbolToPlace;
+                    symbolToPlace = GetOppositeDoorSymbol(doc, symbolToPlace);
+
+                    if (preparedDoor.IsEntranceDoor &&
+                        originalSymbol != null &&
+                        symbolToPlace != null &&
+                        GetElementIdValue(originalSymbol.Id) != GetElementIdValue(symbolToPlace.Id))
+                    {
+                        AddApartmentDiagnostic(
+                            state,
+                            debugMessages,
+                            "Входная дверь ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                            ": из-за направления стены-хоста выбран противоположный тип '" +
+                            BuildDoorTypeDisplayName(symbolToPlace) +
+                            "' вместо '" + BuildDoorTypeDisplayName(originalSymbol) + "'.");
+                    }
+                }
+
+                if (preparedDoor.IsEntranceDoor)
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Входная дверь ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                        ": хост = " + (hostFromExistingWall ? "существующая стена" : "созданная стена") +
+                        " ID = " + GetElementIdValue(hostWall.Id) +
+                        ", расстояние до оси = " + FormatLengthMm(distanceToWallAxis) +
+                        ", точка вставки = " + FormatPointMm(projectedPoint) +
+                        ", наружу квартиры = " + FormatVector2D(preparedDoor.InteriorReferencePoint != null ? Normalize2D(projectedPoint - preparedDoor.InteriorReferencePoint) : null) +
+                        ", нормаль оси стены = " + FormatVector2D(GetWallAxisNormal2D(hostWall)) +
+                        ", тип перед вставкой = '" + BuildDoorTypeDisplayName(symbolToPlace) +
+                        "', противоположный тип применен = " + useOppositeDoorType + ".");
+                }
+
+                if (symbolToPlace == null)
+                {
+                    AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
+
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Для двери ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                        " не удалось определить итоговый тип перед вставкой.");
+                    continue;
+                }
+
+                try
+                {
+                    if (!symbolToPlace.IsActive)
+                    {
+                        symbolToPlace.Activate();
+                        doc.Regenerate();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
+
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Не удалось активировать тип двери '" + BuildDoorTypeDisplayName(symbolToPlace) +
+                        "' для 2D-двери ID = " + GetElementIdValue(preparedDoor.Door2DId) + ": " + ex.Message);
+                    continue;
+                }
+
+                FamilyInstance createdDoor = null;
+
+                try
+                {
+                    createdDoor = CreateDoorFamilyInstance(
+                        doc,
+                        projectedPoint,
+                        symbolToPlace,
+                        hostWall,
+                        baseLevel,
+                        preparedDoor,
+                        debugMessages);
+                }
+                catch (Exception ex)
+                {
+                    AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
+
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Ошибка вставки двери ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                        " в стену ID = " + GetElementIdValue(hostWall.Id) +
+                        ", тип '" + BuildDoorTypeDisplayName(symbolToPlace) + "': " + ex.Message);
+                    continue;
+                }
 
                 if (createdDoor != null)
                 {
+                    if (preparedDoor.IsEntranceDoor)
+                        OrientEntranceDoorBy2DSource(doc, createdDoor, preparedDoor, hostWall, projectedPoint, debugMessages, state);
+
                     installedCount++;
 
                     if (createdDoorIds != null)
                         createdDoorIds.Add(createdDoor.Id);
+                }
+                else
+                {
+                    AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
+
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Revit не создал дверь ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                        " в стене ID = " + GetElementIdValue(hostWall.Id) +
+                        ", тип '" + BuildDoorTypeDisplayName(symbolToPlace) + "'.");
                 }
             }
 
             return installedCount;
         }
 
-        private bool TryFindBestHostWallForDoor(XYZ doorPoint, List<Wall> candidateWalls, double maxDistanceToWallAxis, out Wall bestWall, out XYZ bestProjectedPoint, out double bestDistance)
+        private int PlaceWindowsForApartment(Document doc, PreparedApartmentWindows apartmentWindows, List<Wall> createdWallsForApartment,
+            List<ExistingWallLineInfo> existingWallsOnLevel, Level baseLevel, List<string> debugMessages, ApartmentProcessState state,
+            List<ElementId> createdWindowIds = null)
+        {
+            if (doc == null || apartmentWindows == null || apartmentWindows.Windows == null || apartmentWindows.Windows.Count == 0 || baseLevel == null)
+                return 0;
+
+            int installedCount = 0;
+            double maxDistanceToWallAxis = ConvertMmToInternal(2000);
+
+            foreach (PreparedWindowPlacement preparedWindow in apartmentWindows.Windows)
+            {
+                if (preparedWindow == null || preparedWindow.InsertPoint == null || preparedWindow.WindowSymbol == null)
+                    continue;
+
+                Wall hostWall;
+                XYZ projectedPoint;
+                double distanceToWallAxis;
+                bool hostFromExistingWall;
+
+                bool foundHost = TryFindHostWallForWindowPlacement(
+                    doc,
+                    preparedWindow,
+                    createdWallsForApartment,
+                    existingWallsOnLevel,
+                    maxDistanceToWallAxis,
+                    out hostWall,
+                    out projectedPoint,
+                    out distanceToWallAxis,
+                    out hostFromExistingWall);
+
+                if (!foundHost || hostWall == null || projectedPoint == null)
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Не найдена стена-хост для окна квартиры ID = " +
+                        GetElementIdValue(preparedWindow.ApartmentId) +
+                        ". Точка = " + FormatPointMm(preparedWindow.InsertPoint) +
+                        ", линия = " + FormatPointMm(preparedWindow.SourceLine != null ? preparedWindow.SourceLine.GetEndPoint(0) : null) +
+                        " -> " + FormatPointMm(preparedWindow.SourceLine != null ? preparedWindow.SourceLine.GetEndPoint(1) : null) +
+                        ". Ближайшая созданная: " + BuildNearestWallDiagnostic(preparedWindow.InsertPoint, createdWallsForApartment, false, maxDistanceToWallAxis) +
+                        ". Ближайшая существующая: " + BuildNearestWallDiagnostic(preparedWindow.InsertPoint, GetExistingWallsFromLineInfo(doc, existingWallsOnLevel), true, maxDistanceToWallAxis));
+                    continue;
+                }
+
+                FamilySymbol symbolToPlace = preparedWindow.WindowSymbol;
+
+                try
+                {
+                    if (!symbolToPlace.IsActive)
+                    {
+                        symbolToPlace.Activate();
+                        doc.Regenerate();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Не удалось активировать тип окна '" + BuildWindowTypeDisplayName(symbolToPlace) +
+                        "' для квартиры ID = " + GetElementIdValue(preparedWindow.ApartmentId) + ": " + ex.Message);
+                    continue;
+                }
+
+                FamilyInstance createdWindow = null;
+
+                try
+                {
+                    createdWindow = CreateWindowFamilyInstance(
+                        doc,
+                        projectedPoint,
+                        symbolToPlace,
+                        hostWall,
+                        baseLevel,
+                        preparedWindow.ReferenceDirection,
+                        debugMessages);
+                }
+                catch (Exception ex)
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Ошибка вставки окна квартиры ID = " + GetElementIdValue(preparedWindow.ApartmentId) +
+                        " в стену ID = " + GetElementIdValue(hostWall.Id) +
+                        ", тип '" + BuildWindowTypeDisplayName(symbolToPlace) + "': " + ex.Message);
+                    continue;
+                }
+
+                if (createdWindow == null)
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Revit не создал окно квартиры ID = " + GetElementIdValue(preparedWindow.ApartmentId) +
+                        " в стене ID = " + GetElementIdValue(hostWall.Id) +
+                        ", тип '" + BuildWindowTypeDisplayName(symbolToPlace) + "'.");
+                    continue;
+                }
+
+                if (!TrySetWindowSillHeight(createdWindow, preparedWindow.SillHeightInternal))
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Окно ID = " + GetElementIdValue(createdWindow.Id) +
+                        " создано, но не удалось задать параметр 'Высота нижнего бруса'.");
+                }
+
+                installedCount++;
+
+                if (createdWindowIds != null)
+                    createdWindowIds.Add(createdWindow.Id);
+            }
+
+            return installedCount;
+        }
+
+        private static FamilyInstance CreateWindowFamilyInstance(Document doc, XYZ projectedPoint, FamilySymbol symbolToPlace, Wall hostWall,
+            Level baseLevel, XYZ referenceDirection, List<string> debugMessages)
+        {
+            if (doc == null || projectedPoint == null || symbolToPlace == null || hostWall == null)
+                return null;
+
+            XYZ refDir = referenceDirection;
+            if (refDir == null)
+                refDir = GetWallAxisDirection2D(hostWall);
+
+            if (refDir != null)
+            {
+                try
+                {
+                    return doc.Create.NewFamilyInstance(
+                        projectedPoint,
+                        symbolToPlace,
+                        refDir,
+                        hostWall,
+                        Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                }
+                catch (Exception ex)
+                {
+                    if (debugMessages != null)
+                        debugMessages.Add("Вставка окна с referenceDirection не сработала, используется стандартная вставка: " + ex.Message);
+                }
+            }
+
+            return doc.Create.NewFamilyInstance(
+                projectedPoint,
+                symbolToPlace,
+                hostWall,
+                baseLevel,
+                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+        }
+
+        private static bool TrySetWindowSillHeight(FamilyInstance window, double sillHeightInternal)
+        {
+            if (window == null || sillHeightInternal <= 0)
+                return false;
+
+            Parameter p = window.LookupParameter("Высота нижнего бруса");
+            if (p == null)
+                p = window.LookupParameter("Sill Height");
+
+            if (p == null)
+            {
+                try
+                {
+                    p = window.get_Parameter(BuiltInParameter.INSTANCE_SILL_HEIGHT_PARAM);
+                }
+                catch
+                {
+                    p = null;
+                }
+            }
+
+            if (p == null || p.IsReadOnly || p.StorageType != StorageType.Double)
+                return false;
+
+            try
+            {
+                p.Set(sillHeightInternal);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool TryFindHostWallForWindowPlacement(Document doc, PreparedWindowPlacement preparedWindow, List<Wall> createdWallsForApartment,
+            List<ExistingWallLineInfo> existingWallsOnLevel, double maxDistanceToWallAxis, out Wall hostWall, out XYZ projectedPoint,
+            out double distanceToWallAxis, out bool hostFromExistingWall)
+        {
+            hostWall = null;
+            projectedPoint = null;
+            distanceToWallAxis = double.MaxValue;
+            hostFromExistingWall = false;
+
+            if (preparedWindow == null || preparedWindow.InsertPoint == null)
+                return false;
+
+            if (TryFindBestHostWallForWindow(
+                preparedWindow,
+                createdWallsForApartment,
+                maxDistanceToWallAxis,
+                false,
+                out hostWall,
+                out projectedPoint,
+                out distanceToWallAxis))
+            {
+                hostFromExistingWall = false;
+                return true;
+            }
+
+            List<Wall> existingWallCandidates = GetExistingWallsFromLineInfo(doc, existingWallsOnLevel);
+            if (TryFindBestHostWallForWindow(
+                preparedWindow,
+                existingWallCandidates,
+                maxDistanceToWallAxis,
+                true,
+                out hostWall,
+                out projectedPoint,
+                out distanceToWallAxis))
+            {
+                hostFromExistingWall = true;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryFindBestHostWallForWindow(PreparedWindowPlacement preparedWindow, List<Wall> candidateWalls, double maxDistanceToWallAxis,
+            bool includeWallHalfWidth, out Wall bestWall, out XYZ bestProjectedPoint, out double bestDistance)
         {
             bestWall = null;
             bestProjectedPoint = null;
             bestDistance = double.MaxValue;
+            double bestScore = double.MaxValue;
+
+            if (preparedWindow == null || preparedWindow.InsertPoint == null || candidateWalls == null || candidateWalls.Count == 0)
+                return false;
+
+            XYZ windowDir = preparedWindow.ReferenceDirection;
+
+            foreach (Wall wall in candidateWalls)
+            {
+                if (wall == null)
+                    continue;
+
+                Line wallLine = GetWallAxisLine(wall);
+                if (wallLine == null)
+                    continue;
+
+                XYZ wallDir = Normalize2D(wallLine.GetEndPoint(1) - wallLine.GetEndPoint(0));
+                if (wallDir == null)
+                    continue;
+
+                double parallelPenalty = 0;
+                if (windowDir != null)
+                {
+                    double parallel = Math.Abs(Dot2D(windowDir, wallDir));
+                    if (parallel < 0.80)
+                        continue;
+
+                    parallelPenalty = (1.0 - parallel) * ConvertMmToInternal(500);
+                }
+
+                XYZ projectedPoint;
+                double distance;
+                if (!TryProjectPointToSegment2D(preparedWindow.InsertPoint, wallLine, out projectedPoint, out distance))
+                    continue;
+
+                double wallHalfWidth = includeWallHalfWidth ? GetWallHalfWidth(wall) : 0;
+                double allowedDistance = maxDistanceToWallAxis + wallHalfWidth;
+
+                if (distance > allowedDistance)
+                    continue;
+
+                double score = Math.Max(0, distance - wallHalfWidth) + parallelPenalty;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestDistance = distance;
+                    bestWall = wall;
+                    bestProjectedPoint = projectedPoint;
+                }
+            }
+
+            return bestWall != null;
+        }
+
+        private static void AddPreparedDoorDiagnostics(ApartmentProcessState state, List<string> debugMessages, PreparedDoorPlacement preparedDoor)
+        {
+            if (preparedDoor == null || preparedDoor.Diagnostics == null || preparedDoor.Diagnostics.Count == 0)
+                return;
+
+            foreach (string diagnostic in preparedDoor.Diagnostics)
+                AddApartmentDiagnostic(state, debugMessages, diagnostic);
+        }
+
+        private string BuildDoorHostSearchDiagnostic(Document doc, PreparedDoorPlacement preparedDoor, List<ExistingWallLineInfo> existingWallsOnLevel,
+            List<Wall> createdWallsForApartment, double maxDistanceToWallAxis)
+        {
+            if (preparedDoor == null)
+                return "";
+
+            List<Wall> existingWallCandidates = GetExistingWallsFromLineInfo(doc, existingWallsOnLevel);
+
+            string existingText = BuildNearestWallDiagnostic(
+                preparedDoor.InsertPoint,
+                existingWallCandidates,
+                true,
+                maxDistanceToWallAxis);
+
+            string createdText = BuildNearestWallDiagnostic(
+                preparedDoor.InsertPoint,
+                createdWallsForApartment,
+                false,
+                maxDistanceToWallAxis);
+
+            return "Точка 2D = " + FormatPointMm(preparedDoor.InsertPoint) +
+                   ", существующих стен-кандидатов = " + existingWallCandidates.Count +
+                   ", созданных стен-кандидатов = " + (createdWallsForApartment != null ? createdWallsForApartment.Count : 0) +
+                   ". Ближайшая существующая: " + existingText +
+                   ". Ближайшая созданная: " + createdText;
+        }
+
+        private string BuildNearestWallDiagnostic(XYZ doorPoint, List<Wall> walls, bool includeWallHalfWidth, double maxDistanceToWallAxis)
+        {
+            if (doorPoint == null)
+                return "нет точки двери";
+
+            if (walls == null || walls.Count == 0)
+                return "нет стен";
+
+            Wall nearestWall = null;
+            XYZ nearestProjectedPoint = null;
+            double nearestDistance = double.MaxValue;
+
+            foreach (Wall wall in walls)
+            {
+                if (wall == null)
+                    continue;
+
+                Line wallLine = GetWallAxisLine(wall);
+                if (wallLine == null)
+                    continue;
+
+                XYZ projectedPoint;
+                double distance;
+                if (!TryProjectPointToSegment2D(doorPoint, wallLine, out projectedPoint, out distance))
+                    continue;
+
+                if (distance < nearestDistance)
+                {
+                    nearestDistance = distance;
+                    nearestWall = wall;
+                    nearestProjectedPoint = projectedPoint;
+                }
+            }
+
+            if (nearestWall == null)
+                return "не удалось спроецировать на стены";
+
+            double wallHalfWidth = includeWallHalfWidth ? GetWallHalfWidth(nearestWall) : 0;
+            double allowedDistance = maxDistanceToWallAxis + wallHalfWidth;
+
+            return "ID = " + GetElementIdValue(nearestWall.Id) +
+                   ", расстояние до оси = " + FormatLengthMm(nearestDistance) +
+                   ", половина толщины = " + FormatLengthMm(wallHalfWidth) +
+                   ", допуск = " + FormatLengthMm(allowedDistance) +
+                   ", проекция = " + FormatPointMm(nearestProjectedPoint);
+        }
+
+        private static string FormatPointMm(XYZ point)
+        {
+            if (point == null)
+                return "<нет>";
+
+            return "(" +
+                   Math.Round(ConvertInternalToMm(point.X)).ToString("0") + "; " +
+                   Math.Round(ConvertInternalToMm(point.Y)).ToString("0") + "; " +
+                   Math.Round(ConvertInternalToMm(point.Z)).ToString("0") + ") мм";
+        }
+
+        private static string FormatLengthMm(double valueInternal)
+        {
+            return Math.Round(ConvertInternalToMm(valueInternal)).ToString("0") + " мм";
+        }
+
+        private static string FormatVector2D(XYZ vector)
+        {
+            if (vector == null)
+                return "<нет>";
+
+            return "(" +
+                   Math.Round(vector.X, 3).ToString("0.###") + "; " +
+                   Math.Round(vector.Y, 3).ToString("0.###") + ")";
+        }
+
+        private static bool ShouldUseOppositeDoorTypeForExistingHost(Wall hostWall, PreparedDoorPlacement preparedDoor, XYZ projectedPoint)
+        {
+            if (hostWall == null || preparedDoor == null || projectedPoint == null)
+                return false;
+
+            XYZ referencePoint = null;
+
+            if (preparedDoor.IsEntranceDoor)
+            {
+                referencePoint = preparedDoor.InteriorReferencePoint;
+            }
+            else if (preparedDoor.RelatedRoom2D != null)
+            {
+                referencePoint = GetClosestPointOnRoomRectangle(preparedDoor.RelatedRoom2D, preparedDoor.InsertPoint) ??
+                                 GetRoomCenterPoint(preparedDoor.RelatedRoom2D);
+            }
+
+            if (referencePoint == null)
+                referencePoint = preparedDoor.InteriorReferencePoint;
+
+            if (referencePoint == null)
+                return false;
+
+            Line wallAxis = GetWallAxisLine(hostWall);
+            if (wallAxis == null)
+                return false;
+
+            XYZ wallDir = Normalize2D(wallAxis.GetEndPoint(1) - wallAxis.GetEndPoint(0));
+            if (wallDir == null)
+                return false;
+
+            XYZ wallNormal = new XYZ(-wallDir.Y, wallDir.X, 0);
+            XYZ toReference = referencePoint - projectedPoint;
+
+            return Dot2D(toReference, wallNormal) > 0;
+        }
+
+        private static bool IsWallInList(Wall wall, List<Wall> walls)
+        {
+            if (wall == null || walls == null || walls.Count == 0)
+                return false;
+
+            long wallId = GetElementIdValue(wall.Id);
+
+            foreach (Wall candidate in walls)
+            {
+                if (candidate == null)
+                    continue;
+
+                if (GetElementIdValue(candidate.Id) == wallId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool ShouldUseOppositeEntranceDoorType(Wall hostWall, PreparedDoorPlacement preparedDoor, XYZ projectedPoint)
+        {
+            if (hostWall == null || preparedDoor == null || projectedPoint == null)
+                return false;
+
+            XYZ interiorPoint = preparedDoor.InteriorReferencePoint;
+            if (interiorPoint == null)
+                return false;
+
+            XYZ outward = Normalize2D(projectedPoint - interiorPoint);
+            XYZ wallNormal = GetWallAxisNormal2D(hostWall);
+
+            if (outward == null || wallNormal == null)
+                return false;
+
+            return Dot2D(outward, wallNormal) > 0;
+        }
+
+        private static void AlignCreatedEntranceHostAxisOutside(Document doc, Wall hostWall, PreparedDoorPlacement preparedDoor, XYZ projectedPoint,
+            List<string> debugMessages, ApartmentProcessState state)
+        {
+            if (hostWall == null || preparedDoor == null || projectedPoint == null || preparedDoor.InteriorReferencePoint == null)
+                return;
+
+            XYZ outward = Normalize2D(projectedPoint - preparedDoor.InteriorReferencePoint);
+            XYZ wallNormal = GetWallAxisNormal2D(hostWall);
+
+            if (wallNormal == null || outward == null)
+                return;
+
+            if (Dot2D(wallNormal, outward) <= 0)
+                return;
+
+            try
+            {
+                LocationCurve lc = hostWall.Location as LocationCurve;
+                Line wallAxis = GetWallAxisLine(hostWall);
+                if (lc == null || wallAxis == null)
+                    return;
+
+                lc.Curve = Line.CreateBound(
+                    wallAxis.GetEndPoint(1),
+                    wallAxis.GetEndPoint(0));
+
+                preparedDoor.RequiresOppositeDoorTypeAfterWallFlip = true;
+
+                if (doc != null)
+                    doc.Regenerate();
+
+                AddApartmentDiagnostic(
+                    state,
+                    debugMessages,
+                    "Входная дверь ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                    ": ось созданной стены-хоста развернута по внешней стороне квартиры. Было нормаль оси = " +
+                    FormatVector2D(wallNormal) + ", наружу квартиры = " + FormatVector2D(outward) + ".");
+            }
+            catch (Exception ex)
+            {
+                AddApartmentDiagnostic(
+                    state,
+                    debugMessages,
+                    "Не удалось развернуть ось созданной стены-хоста для входной двери ID = " +
+                    GetElementIdValue(preparedDoor.Door2DId) + ": " + ex.Message);
+            }
+        }
+
+        private static XYZ GetWallAxisNormal2D(Wall wall)
+        {
+            XYZ wallDir = GetWallAxisDirection2D(wall);
+            if (wallDir == null)
+                return null;
+
+            return new XYZ(-wallDir.Y, wallDir.X, 0);
+        }
+
+        private static XYZ GetWallAxisDirection2D(Wall wall)
+        {
+            Line wallAxis = GetWallAxisLine(wall);
+            if (wallAxis == null)
+                return null;
+
+            return Normalize2D(wallAxis.GetEndPoint(1) - wallAxis.GetEndPoint(0));
+        }
+
+        private static FamilyInstance CreateDoorFamilyInstance(Document doc, XYZ projectedPoint, FamilySymbol symbolToPlace, Wall hostWall,
+            Level baseLevel, PreparedDoorPlacement preparedDoor, List<string> debugMessages)
+        {
+            if (doc == null || projectedPoint == null || symbolToPlace == null || hostWall == null)
+                return null;
+
+            if (preparedDoor != null && preparedDoor.IsEntranceDoor)
+            {
+                XYZ referenceDirection = GetEntranceDoorReferenceDirection(hostWall, preparedDoor);
+                if (referenceDirection != null)
+                {
+                    try
+                    {
+                        return doc.Create.NewFamilyInstance(
+                            projectedPoint,
+                            symbolToPlace,
+                            referenceDirection,
+                            hostWall,
+                            Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (debugMessages != null)
+                            debugMessages.Add("Вставка входной двери с referenceDirection не сработала, используется стандартная вставка: " + ex.Message);
+                    }
+                }
+            }
+
+            return doc.Create.NewFamilyInstance(
+                projectedPoint,
+                symbolToPlace,
+                hostWall,
+                baseLevel,
+                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+        }
+
+        private static XYZ GetEntranceDoorReferenceDirection(Wall hostWall, PreparedDoorPlacement preparedDoor)
+        {
+            XYZ wallDir = GetWallAxisDirection2D(hostWall);
+            if (wallDir == null)
+                return null;
+
+            if (preparedDoor != null && preparedDoor.SourceHandDirection != null)
+            {
+                double along = Dot2D(preparedDoor.SourceHandDirection, wallDir);
+                if (Math.Abs(along) > 0.25)
+                    return along >= 0 ? wallDir : new XYZ(-wallDir.X, -wallDir.Y, 0);
+            }
+
+            return wallDir;
+        }
+
+        private bool TryFindHostWallForDoorPlacement(Document doc, PreparedDoorPlacement preparedDoor, List<Wall> createdWallsForApartment,
+            List<ExistingWallLineInfo> existingWallsOnLevel, double maxDistanceToWallAxis, out Wall hostWall, out XYZ projectedPoint,
+            out double distanceToWallAxis, out bool hostFromExistingWall)
+        {
+            hostWall = null;
+            projectedPoint = null;
+            distanceToWallAxis = double.MaxValue;
+            hostFromExistingWall = false;
+
+            if (preparedDoor == null || preparedDoor.InsertPoint == null)
+                return false;
+
+            if (preparedDoor.IsEntranceDoor)
+            {
+                List<Wall> existingWallCandidates = GetExistingWallsFromLineInfo(doc, existingWallsOnLevel);
+                if (TryFindBestHostWallForDoor(
+                    preparedDoor.InsertPoint,
+                    existingWallCandidates,
+                    maxDistanceToWallAxis,
+                    true,
+                    out hostWall,
+                    out projectedPoint,
+                    out distanceToWallAxis))
+                {
+                    hostFromExistingWall = true;
+                    return true;
+                }
+            }
+
+            if (TryFindBestHostWallForDoor(
+                preparedDoor.InsertPoint,
+                createdWallsForApartment,
+                maxDistanceToWallAxis,
+                out hostWall,
+                out projectedPoint,
+                out distanceToWallAxis))
+            {
+                hostFromExistingWall = false;
+                return true;
+            }
+
+            if (!preparedDoor.IsEntranceDoor)
+            {
+                List<Wall> existingWallCandidates = GetExistingWallsFromLineInfo(doc, existingWallsOnLevel);
+                if (TryFindBestHostWallForDoor(
+                    preparedDoor.InsertPoint,
+                    existingWallCandidates,
+                    maxDistanceToWallAxis,
+                    true,
+                    out hostWall,
+                    out projectedPoint,
+                    out distanceToWallAxis))
+                {
+                    hostFromExistingWall = true;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static List<Wall> GetExistingWallsFromLineInfo(Document doc, List<ExistingWallLineInfo> existingWallsOnLevel)
+        {
+            List<Wall> result = new List<Wall>();
+            if (doc == null || existingWallsOnLevel == null || existingWallsOnLevel.Count == 0)
+                return result;
+
+            HashSet<long> usedIds = new HashSet<long>();
+
+            foreach (ExistingWallLineInfo info in existingWallsOnLevel)
+            {
+                if (info == null || info.WallId == null || info.WallId == ElementId.InvalidElementId)
+                    continue;
+
+                long idValue = GetElementIdValue(info.WallId);
+                if (usedIds.Contains(idValue))
+                    continue;
+
+                Wall wall = doc.GetElement(info.WallId) as Wall;
+                if (wall == null)
+                    continue;
+
+                usedIds.Add(idValue);
+                result.Add(wall);
+            }
+
+            return result;
+        }
+
+        private class EntranceDoorOrientationCandidate
+        {
+            public string Name { get; set; }
+            public bool HandFlip { get; set; }
+            public bool FacingFlip { get; set; }
+            public double Score { get; set; }
+            public XYZ HandDirection { get; set; }
+            public XYZ FacingDirection { get; set; }
+        }
+
+        private static void OrientEntranceDoorBy2DSource(Document doc, FamilyInstance createdDoor, PreparedDoorPlacement preparedDoor,
+            Wall hostWall, XYZ projectedDoorPoint, List<string> debugMessages, ApartmentProcessState state)
+        {
+            if (createdDoor == null || preparedDoor == null)
+                return;
+
+            XYZ toInterior = null;
+            if (preparedDoor.InteriorReferencePoint != null && projectedDoorPoint != null)
+                toInterior = Normalize2D(preparedDoor.InteriorReferencePoint - projectedDoorPoint);
+
+            XYZ outward = null;
+            if (preparedDoor.InteriorReferencePoint != null && projectedDoorPoint != null)
+                outward = Normalize2D(projectedDoorPoint - preparedDoor.InteriorReferencePoint);
+
+            XYZ wallNormal = GetWallAxisNormal2D(hostWall);
+
+            XYZ initialHand = GetFamilyInstanceHandDirection2D(createdDoor, null);
+            XYZ initialFacing = GetFamilyInstanceFacingDirection2D(createdDoor, null);
+
+            bool canFlipHand = CanFlipHand(createdDoor);
+            bool canFlipFacing = CanFlipFacing(createdDoor);
+
+            List<EntranceDoorOrientationCandidate> candidates = new List<EntranceDoorOrientationCandidate>();
+            bool handState = false;
+            bool facingState = false;
+
+            AddEntranceDoorOrientationCandidate(candidates, "без flip", handState, facingState, createdDoor, preparedDoor, toInterior);
+
+            if (canFlipHand && TryFlipDoorHand(doc, createdDoor, debugMessages))
+            {
+                handState = true;
+                AddEntranceDoorOrientationCandidate(candidates, "flipHand", handState, facingState, createdDoor, preparedDoor, toInterior);
+            }
+
+            if (canFlipFacing && TryFlipDoorFacing(doc, createdDoor, debugMessages))
+            {
+                facingState = true;
+                AddEntranceDoorOrientationCandidate(
+                    candidates,
+                    handState ? "flipHand+flipFacing" : "flipFacing",
+                    handState,
+                    facingState,
+                    createdDoor,
+                    preparedDoor,
+                    toInterior);
+            }
+
+            if (handState && TryFlipDoorHand(doc, createdDoor, debugMessages))
+            {
+                handState = false;
+                AddEntranceDoorOrientationCandidate(
+                    candidates,
+                    facingState ? "flipFacing" : "без flip",
+                    handState,
+                    facingState,
+                    createdDoor,
+                    preparedDoor,
+                    toInterior);
+            }
+
+            if (facingState && TryFlipDoorFacing(doc, createdDoor, debugMessages))
+            {
+                facingState = false;
+                AddEntranceDoorOrientationCandidate(candidates, "без flip", handState, facingState, createdDoor, preparedDoor, toInterior);
+            }
+
+            EntranceDoorOrientationCandidate best = candidates
+                .OrderByDescending(x => x.Score)
+                .FirstOrDefault();
+
+            if (best != null)
+            {
+                if (best.HandFlip)
+                    TryFlipDoorHand(doc, createdDoor, debugMessages);
+
+                if (best.FacingFlip)
+                    TryFlipDoorFacing(doc, createdDoor, debugMessages);
+            }
+
+            OrientEntranceDoorOutside(createdDoor, preparedDoor.InteriorReferencePoint, projectedDoorPoint, debugMessages);
+
+            XYZ finalHand = GetFamilyInstanceHandDirection2D(createdDoor, null);
+            XYZ finalFacing = GetFamilyInstanceFacingDirection2D(createdDoor, null);
+
+            AddApartmentDiagnostic(
+                state,
+                debugMessages,
+                "Ориентация входной двери ID = " + GetElementIdValue(preparedDoor.Door2DId) +
+                ": наружу квартиры = " + FormatVector2D(outward) +
+                ", нормаль оси стены = " + FormatVector2D(wallNormal) +
+                ", 2D hand = " + FormatVector2D(preparedDoor.SourceHandDirection) +
+                ", 2D facing = " + FormatVector2D(preparedDoor.SourceFacingDirection) +
+                ", 3D было hand = " + FormatVector2D(initialHand) +
+                ", facing = " + FormatVector2D(initialFacing) +
+                ", canFlipHand = " + canFlipHand +
+                ", canFlipFacing = " + canFlipFacing +
+                ", выбран вариант = '" + (best != null ? best.Name : "<нет>") +
+                "', 3D стало hand = " + FormatVector2D(finalHand) +
+                ", facing = " + FormatVector2D(finalFacing) +
+                ". Варианты: " + FormatEntranceDoorOrientationCandidates(candidates) + ".");
+        }
+
+        private static void AddEntranceDoorOrientationCandidate(List<EntranceDoorOrientationCandidate> candidates, string name, bool handFlip, bool facingFlip,
+            FamilyInstance createdDoor, PreparedDoorPlacement preparedDoor, XYZ toInterior)
+        {
+            if (candidates == null || createdDoor == null || preparedDoor == null)
+                return;
+
+            XYZ hand = GetFamilyInstanceHandDirection2D(createdDoor, null);
+            XYZ facing = GetFamilyInstanceFacingDirection2D(createdDoor, null);
+
+            double score = 0;
+            int sourceTerms = 0;
+
+            if (preparedDoor.SourceHandDirection != null && hand != null)
+            {
+                score += Dot2D(preparedDoor.SourceHandDirection, hand);
+                sourceTerms++;
+            }
+
+            if (preparedDoor.SourceFacingDirection != null && facing != null)
+            {
+                score += Dot2D(preparedDoor.SourceFacingDirection, facing);
+                sourceTerms++;
+            }
+
+            if (preparedDoor.SourceHandDirection != null && preparedDoor.SourceFacingDirection != null && hand != null && facing != null)
+            {
+                double sourceCross = Cross2D(preparedDoor.SourceFacingDirection, preparedDoor.SourceHandDirection);
+                double targetCross = Cross2D(facing, hand);
+
+                if (Math.Abs(sourceCross) > 0.01 && Math.Abs(targetCross) > 0.01)
+                    score += Math.Sign(sourceCross) == Math.Sign(targetCross) ? 1.5 : -1.5;
+            }
+
+            if (preparedDoor.IsEntranceDoor && toInterior != null && facing != null)
+            {
+                score += 6.0 * Dot2D(facing, new XYZ(-toInterior.X, -toInterior.Y, 0));
+            }
+            else if (toInterior != null && facing != null)
+            {
+                if (sourceTerms == 0)
+                    score += Dot2D(facing, toInterior);
+                else
+                    score += 0.4 * Dot2D(facing, toInterior);
+            }
+
+            candidates.Add(new EntranceDoorOrientationCandidate
+            {
+                Name = name,
+                HandFlip = handFlip,
+                FacingFlip = facingFlip,
+                Score = score,
+                HandDirection = hand,
+                FacingDirection = facing
+            });
+        }
+
+        private static string FormatEntranceDoorOrientationCandidates(List<EntranceDoorOrientationCandidate> candidates)
+        {
+            if (candidates == null || candidates.Count == 0)
+                return "<нет>";
+
+            return string.Join("; ", candidates
+                .Select(x =>
+                    x.Name +
+                    " score=" + Math.Round(x.Score, 3).ToString("0.###") +
+                    " hand=" + FormatVector2D(x.HandDirection) +
+                    " facing=" + FormatVector2D(x.FacingDirection))
+                .Distinct()
+                .ToArray());
+        }
+
+        private static bool TryFlipDoorHand(Document doc, FamilyInstance createdDoor, List<string> debugMessages)
+        {
+            if (createdDoor == null)
+                return false;
+
+            if (!CanFlipHand(createdDoor))
+                return false;
+
+            try
+            {
+                createdDoor.flipHand();
+                if (doc != null)
+                    doc.Regenerate();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось выполнить flipHand для входной двери ID = " + GetElementIdValue(createdDoor.Id) + ": " + ex.Message);
+
+                return false;
+            }
+        }
+
+        private static bool TryFlipDoorFacing(Document doc, FamilyInstance createdDoor, List<string> debugMessages)
+        {
+            if (createdDoor == null)
+                return false;
+
+            if (!CanFlipFacing(createdDoor))
+                return false;
+
+            try
+            {
+                createdDoor.flipFacing();
+                if (doc != null)
+                    doc.Regenerate();
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось выполнить flipFacing для входной двери ID = " + GetElementIdValue(createdDoor.Id) + ": " + ex.Message);
+
+                return false;
+            }
+        }
+
+        private static void OrientEntranceDoorOutside(FamilyInstance createdDoor, XYZ interiorReferencePoint, XYZ projectedDoorPoint, List<string> debugMessages)
+        {
+            if (createdDoor == null || interiorReferencePoint == null || projectedDoorPoint == null)
+                return;
+
+            XYZ outward = Normalize2D(projectedDoorPoint - interiorReferencePoint);
+            if (outward == null)
+                return;
+
+            XYZ facing;
+            try
+            {
+                facing = Normalize2D(createdDoor.FacingOrientation);
+            }
+            catch
+            {
+                return;
+            }
+
+            if (facing == null || Dot2D(facing, outward) > 0)
+                return;
+
+            if (!CanFlipFacing(createdDoor))
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Входная дверь ID = " + GetElementIdValue(createdDoor.Id) + " не поддерживает flipFacing для разворота наружу.");
+                return;
+            }
+
+            try
+            {
+                createdDoor.flipFacing();
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось развернуть входную дверь ID = " + GetElementIdValue(createdDoor.Id) + " наружу: " + ex.Message);
+            }
+        }
+
+        private bool TryFindBestHostWallForDoor(XYZ doorPoint, List<Wall> candidateWalls, double maxDistanceToWallAxis, out Wall bestWall, out XYZ bestProjectedPoint, out double bestDistance)
+        {
+            return TryFindBestHostWallForDoor(
+                doorPoint,
+                candidateWalls,
+                maxDistanceToWallAxis,
+                false,
+                out bestWall,
+                out bestProjectedPoint,
+                out bestDistance);
+        }
+
+        private bool TryFindBestHostWallForDoor(XYZ doorPoint, List<Wall> candidateWalls, double maxDistanceToWallAxis, bool includeWallHalfWidth,
+            out Wall bestWall, out XYZ bestProjectedPoint, out double bestDistance)
+        {
+            bestWall = null;
+            bestProjectedPoint = null;
+            bestDistance = double.MaxValue;
+            double bestScore = double.MaxValue;
 
             if (doorPoint == null || candidateWalls == null || candidateWalls.Count == 0)
                 return false;
@@ -639,11 +1965,19 @@ namespace KPLN_Tools.ExecutableCommand
                 if (!TryProjectPointToSegment2D(doorPoint, wallLine, out projectedPoint, out distance))
                     continue;
 
-                if (distance > maxDistanceToWallAxis)
+                double wallHalfWidth = includeWallHalfWidth ? GetWallHalfWidth(wall) : 0;
+                double allowedDistance = maxDistanceToWallAxis + wallHalfWidth;
+
+                if (distance > allowedDistance)
                     continue;
 
-                if (distance < bestDistance)
+                double score = includeWallHalfWidth
+                    ? Math.Max(0, distance - wallHalfWidth)
+                    : distance;
+
+                if (score < bestScore || (Math.Abs(score - bestScore) < 1e-9 && distance < bestDistance))
                 {
+                    bestScore = score;
                     bestDistance = distance;
                     bestWall = wall;
                     bestProjectedPoint = projectedPoint;
@@ -651,6 +1985,21 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return bestWall != null && bestProjectedPoint != null;
+        }
+
+        private static double GetWallHalfWidth(Wall wall)
+        {
+            if (wall == null)
+                return 0;
+
+            try
+            {
+                return wall.Width / 2.0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
 
         private bool TryProjectPointToSegment2D(XYZ point, Line segment, out XYZ projectedPoint, out double distance)
@@ -678,7 +2027,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             double x = a.X + ab.X * t;
             double y = a.Y + ab.Y * t;
-            double z = a.Z + (b.Z - a.Z) * t;
+            double z = point.Z;
 
             projectedPoint = new XYZ(x, y, z);
             distance = Distance2D(point, projectedPoint);
@@ -782,6 +2131,17 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
+        private static WallType FindWallTypeByName(Document doc, string selectedWallTypeName)
+        {
+            if (doc == null || string.IsNullOrWhiteSpace(selectedWallTypeName))
+                return null;
+
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(WallType))
+                .Cast<WallType>()
+                .FirstOrDefault(x => x != null && string.Equals(x.Name, selectedWallTypeName, StringComparison.OrdinalIgnoreCase));
+        }
+
         private FamilySymbol GetOppositeDoorSymbol(Document doc, FamilySymbol currentSymbol)
         {
             if (doc == null || currentSymbol == null || currentSymbol.Family == null)
@@ -818,6 +2178,8 @@ namespace KPLN_Tools.ExecutableCommand
         private static List<ExistingWallLineInfo> GetExistingWallLinesOnLevel(Document doc, ElementId levelId)
         {
             List<ExistingWallLineInfo> result = new List<ExistingWallLineInfo>();
+            Level targetLevel = doc != null ? doc.GetElement(levelId) as Level : null;
+            double? targetElevation = targetLevel != null ? (double?)targetLevel.Elevation : null;
 
             IEnumerable<Wall> walls = new FilteredElementCollector(doc)
                 .OfClass(typeof(Wall))
@@ -828,7 +2190,7 @@ namespace KPLN_Tools.ExecutableCommand
                 if (wall == null)
                     continue;
 
-                if (wall.LevelId != levelId)
+                if (!WallBelongsToOrCrossesLevel(wall, levelId, targetElevation))
                     continue;
 
                 LocationCurve lc = wall.Location as LocationCurve;
@@ -841,6 +2203,13 @@ namespace KPLN_Tools.ExecutableCommand
 
                 XYZ p0 = line.GetEndPoint(0);
                 XYZ p1 = line.GetEndPoint(1);
+
+                if (targetElevation.HasValue)
+                {
+                    p0 = new XYZ(p0.X, p0.Y, targetElevation.Value);
+                    p1 = new XYZ(p1.X, p1.Y, targetElevation.Value);
+                }
+
                 XYZ dir = Normalize2D(p1 - p0);
                 if (dir == null)
                     continue;
@@ -867,6 +2236,33 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return result;
+        }
+
+        private static bool WallBelongsToOrCrossesLevel(Wall wall, ElementId levelId, double? targetElevation)
+        {
+            if (wall == null || levelId == null || levelId == ElementId.InvalidElementId)
+                return false;
+
+            if (wall.LevelId == levelId)
+                return true;
+
+            if (!targetElevation.HasValue)
+                return false;
+
+            try
+            {
+                BoundingBoxXYZ bbox = wall.get_BoundingBox(null);
+                if (bbox == null)
+                    return false;
+
+                double tol = ConvertMmToInternal(100);
+                return bbox.Min.Z <= targetElevation.Value + tol &&
+                       bbox.Max.Z >= targetElevation.Value - tol;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static void ApplyWallPresetParameters(Wall wall, Level baseLevel, Level topLevel, double baseOffsetInternal, double unconnectedHeightInternal)
@@ -897,7 +2293,100 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages)
+        private static Line BuildShaftWallAxisFromInteriorFaceLine(Line faceLine, WallType wallType, XYZ apartmentInteriorPoint)
+        {
+            if (faceLine == null)
+                return null;
+
+            XYZ p0 = faceLine.GetEndPoint(0);
+            XYZ p1 = faceLine.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return faceLine;
+
+            double wallWidth = GetWallTypeWidthInternal(wallType);
+            if (wallWidth <= 1e-9)
+                return faceLine;
+
+            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+            XYZ mid = new XYZ(
+                0.5 * (p0.X + p1.X),
+                0.5 * (p0.Y + p1.Y),
+                0.5 * (p0.Z + p1.Z));
+
+            XYZ offsetDir = normal;
+            if (apartmentInteriorPoint != null)
+            {
+                XYZ toInterior = Normalize2D(apartmentInteriorPoint - mid);
+                if (toInterior != null && Dot2D(offsetDir, toInterior) > 0)
+                    offsetDir = new XYZ(-offsetDir.X, -offsetDir.Y, 0);
+            }
+
+            double halfWidth = wallWidth / 2.0;
+            XYZ offset = new XYZ(offsetDir.X * halfWidth, offsetDir.Y * halfWidth, 0);
+
+            return Line.CreateBound(
+                new XYZ(p0.X + offset.X, p0.Y + offset.Y, p0.Z),
+                new XYZ(p1.X + offset.X, p1.Y + offset.Y, p1.Z));
+        }
+
+        private static double GetWallTypeWidthInternal(WallType wallType)
+        {
+            if (wallType == null)
+                return 0;
+
+            try
+            {
+                if (wallType.Width > 0)
+                    return wallType.Width;
+            }
+            catch
+            {
+            }
+
+            int thicknessMm;
+            if (TryGetWallTypeThicknessMm(wallType, out thicknessMm) && thicknessMm > 0)
+                return ConvertMmToInternal(thicknessMm);
+
+            return 0;
+        }
+
+        private static List<ExistingWallLineInfo> BuildWallLineInfoFromWalls(IEnumerable<Wall> walls)
+        {
+            List<ExistingWallLineInfo> result = new List<ExistingWallLineInfo>();
+            if (walls == null)
+                return result;
+
+            foreach (Wall wall in walls)
+            {
+                if (wall == null || !wall.IsValidObject)
+                    continue;
+
+                Line line = GetWallAxisLine(wall);
+                if (line == null || line.Length < 1e-9)
+                    continue;
+
+                XYZ p0 = line.GetEndPoint(0);
+                XYZ p1 = line.GetEndPoint(1);
+                XYZ dir = Normalize2D(p1 - p0);
+                if (dir == null)
+                    continue;
+
+                result.Add(new ExistingWallLineInfo
+                {
+                    WallId = wall.Id,
+                    P0 = p0,
+                    P1 = p1,
+                    Dir = dir,
+                    Z = 0.5 * (p0.Z + p1.Z),
+                    ThicknessInternal = GetWallHalfWidth(wall) * 2.0
+                });
+            }
+
+            return result;
+        }
+
+        private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages, ApartmentProcessState state = null)
         {
             PreparedApartmentDoors result = new PreparedApartmentDoors();
             result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
@@ -922,33 +2411,70 @@ namespace KPLN_Tools.ExecutableCommand
                     continue;
                 }
 
-                string roomCategory = GetCommentsValue(doorFi);
+                string commentValue = GetCommentsValue(doorFi);
+                bool isEntranceDoor = IsEntranceDoorComment(commentValue);
+
+                string roomCategory = isEntranceDoor
+                    ? "Входная"
+                    : commentValue;
+
                 if (string.IsNullOrWhiteSpace(roomCategory))
                     roomCategory = "-";
 
-                string presetKey = ApartmentDoorRequirementOption.BuildKey(roomCategory, typeName, widthMm);
+                string presetKey = ApartmentDoorRequirementOption.BuildKey(roomCategory, typeName, widthMm, isEntranceDoor);
 
                 string selectedDoorTypeName = null;
                 if (preset != null && preset.DoorsByRoomCategory != null)
                     preset.DoorsByRoomCategory.TryGetValue(presetKey, out selectedDoorTypeName);
 
+                List<string> entranceDiagnostics = new List<string>();
+                if (isEntranceDoor)
+                {
+                    entranceDiagnostics.Add(
+                        "Входная 2D-дверь ID = " + GetElementIdValue(doorFi.Id) +
+                        ": тип 2D = '" + typeName +
+                        "', ширина = " + widthMm +
+                        " мм, ключ пресета = '" + presetKey +
+                        "', выбранный тип = '" + (string.IsNullOrWhiteSpace(selectedDoorTypeName) ? "<не выбран>" : selectedDoorTypeName) + "'.");
+                }
+
                 if (string.IsNullOrWhiteSpace(selectedDoorTypeName) ||
                     string.Equals(selectedDoorTypeName, "Не выбрано", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (debugMessages != null)
-                        debugMessages.Add("Для двери [" + roomCategory + "] (" + widthMm + ") не выбран тип двери проекта.");
+                    string message = "Для двери [" + roomCategory + "] (" + widthMm + ") не выбран тип двери проекта.";
+                    if (isEntranceDoor)
+                    {
+                        foreach (string diagnostic in entranceDiagnostics)
+                            AddApartmentDiagnostic(state, debugMessages, diagnostic);
+
+                        AddApartmentDiagnostic(state, debugMessages, message);
+                    }
+                    else if (debugMessages != null)
+                        debugMessages.Add(message);
+
                     continue;
                 }
 
-                FamilySymbol baseDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm);
+                FamilySymbol baseDoorSymbol = FindDoorSymbolByDisplayNameAndWidth(doc, selectedDoorTypeName, widthMm, isEntranceDoor);
                 if (baseDoorSymbol == null)
                 {
-                    if (debugMessages != null)
-                        debugMessages.Add("Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + widthMm + " мм.");
+                    string message = "Не найден тип двери проекта '" + selectedDoorTypeName + "' с шириной " + widthMm + " мм.";
+                    if (isEntranceDoor)
+                    {
+                        foreach (string diagnostic in entranceDiagnostics)
+                            AddApartmentDiagnostic(state, debugMessages, diagnostic);
+
+                        AddApartmentDiagnostic(state, debugMessages, message);
+                    }
+                    else if (debugMessages != null)
+                        debugMessages.Add(message);
+
                     continue;
                 }
 
-                FamilySymbol resolvedDoorSymbol = ResolveDoorSymbolForPlacement(doc, doorFi, baseDoorSymbol, debugMessages);
+                FamilySymbol resolvedDoorSymbol = isEntranceDoor
+                    ? baseDoorSymbol
+                    : ResolveDoorSymbolForPlacement(doc, doorFi, baseDoorSymbol, debugMessages);
                 if (resolvedDoorSymbol == null)
                 {
                     if (debugMessages != null)
@@ -967,16 +2493,29 @@ namespace KPLN_Tools.ExecutableCommand
                 }
 
                 XYZ insertPointInProject = doorTransform.Origin;
+                XYZ sourceHandDirection = GetFamilyInstanceHandDirection2D(doorFi, doorTransform);
+                XYZ sourceFacingDirection = GetFamilyInstanceFacingDirection2D(doorFi, doorTransform);
 
                 FamilyInstance matchedRoom = FindBestMatchingRoomForDoor(
                     apartmentFi,
-                    roomCategory,
+                    isEntranceDoor ? null : roomCategory,
                     insertPointInProject,
                     doc);
 
                 XYZ expectedRoomPoint = matchedRoom != null
                     ? GetRoomCenterPoint(matchedRoom)
-                    : null;
+                    : GetApartmentInteriorReferencePoint(apartmentFi, doc);
+
+                if (isEntranceDoor)
+                {
+                    entranceDiagnostics.Add(
+                        "Входная дверь подготовлена: 2D ID = " + GetElementIdValue(doorFi.Id) +
+                        ", итоговый тип = '" + BuildDoorTypeDisplayName(resolvedDoorSymbol) +
+                        "', точка = " + FormatPointMm(insertPointInProject) +
+                        ", внутренняя точка квартиры = " + FormatPointMm(expectedRoomPoint) +
+                        ", 2D hand = " + FormatVector2D(sourceHandDirection) +
+                        ", 2D facing = " + FormatVector2D(sourceFacingDirection) + ".");
+                }
 
                 result.Doors.Add(new PreparedDoorPlacement
                 {
@@ -988,11 +2527,115 @@ namespace KPLN_Tools.ExecutableCommand
                     DoorSymbol = resolvedDoorSymbol,
                     InsertPoint = insertPointInProject,
                     RelatedRoom2D = matchedRoom,
+                    InteriorReferencePoint = expectedRoomPoint,
+                    SourceHandDirection = sourceHandDirection,
+                    SourceFacingDirection = sourceFacingDirection,
+                    IsEntranceDoor = isEntranceDoor,
+                    Diagnostics = entranceDiagnostics,
                     RequiresOppositeDoorTypeAfterWallFlip = false
                 });
             }
 
             return result;
+        }
+
+        private PreparedApartmentWindows PrepareWindowsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset,
+            List<string> debugMessages, ApartmentProcessState state = null)
+        {
+            PreparedApartmentWindows result = new PreparedApartmentWindows();
+            result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
+
+            if (doc == null || apartmentFi == null)
+                return result;
+
+            List<FamilyWindowMarker> windowMarkers = CollectWindowMarkersFromApartmentInstance(doc, apartmentFi);
+            if (windowMarkers == null || windowMarkers.Count == 0)
+                return result;
+
+            string selectedWindowType = preset != null ? preset.WindowType : null;
+            if (string.IsNullOrWhiteSpace(selectedWindowType) ||
+                string.Equals(selectedWindowType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
+            {
+                AddApartmentDiagnostic(
+                    state,
+                    debugMessages,
+                    "Для окон квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не выбран тип окна.");
+                return result;
+            }
+
+            FamilySymbol windowSymbol = FindWindowSymbolByDisplayName(doc, selectedWindowType);
+            if (windowSymbol == null)
+            {
+                AddApartmentDiagnostic(
+                    state,
+                    debugMessages,
+                    "Для окон квартиры ID = " + GetElementIdValue(apartmentFi.Id) +
+                    " выбран тип '" + selectedWindowType + "', но такой тип не найден в проекте.");
+                return result;
+            }
+
+            double sillHeightInternal = ConvertMmToInternal(preset != null && preset.WindowSillHeight > 0 ? preset.WindowSillHeight : 900);
+
+            foreach (FamilyWindowMarker marker in windowMarkers)
+            {
+                if (marker == null || marker.LocalP0 == null || marker.LocalP1 == null)
+                    continue;
+
+                XYZ p0 = marker.LocalP0;
+                XYZ p1 = marker.LocalP1;
+
+                if (p0 == null || p1 == null || Distance2D(p0, p1) < ConvertMmToInternal(10))
+                    continue;
+
+                Line sourceLine = Line.CreateBound(p0, p1);
+                XYZ insertPoint = new XYZ(
+                    0.5 * (p0.X + p1.X),
+                    0.5 * (p0.Y + p1.Y),
+                    0.5 * (p0.Z + p1.Z));
+
+                result.Windows.Add(new PreparedWindowPlacement
+                {
+                    ApartmentId = apartmentFi.Id,
+                    WindowSymbol = windowSymbol,
+                    SourceLine = sourceLine,
+                    InsertPoint = insertPoint,
+                    ReferenceDirection = Normalize2D(p1 - p0),
+                    SillHeightInternal = sillHeightInternal,
+                    Diagnostics = new List<string>()
+                });
+            }
+
+            return result;
+        }
+
+        private static XYZ GetApartmentInteriorReferencePoint(FamilyInstance apartmentFi, Document doc)
+        {
+            List<FamilyInstance> rooms = FindRoomSubComponents(doc, apartmentFi);
+            if (rooms != null && rooms.Count > 0)
+            {
+                double x = 0;
+                double y = 0;
+                double z = 0;
+                int count = 0;
+
+                foreach (FamilyInstance roomFi in rooms)
+                {
+                    XYZ center = GetRoomCenterPoint(roomFi);
+                    if (center == null)
+                        continue;
+
+                    x += center.X;
+                    y += center.Y;
+                    z += center.Z;
+                    count++;
+                }
+
+                if (count > 0)
+                    return new XYZ(x / count, y / count, z / count);
+            }
+
+            Transform tr = apartmentFi != null ? apartmentFi.GetTransform() : null;
+            return tr != null ? tr.Origin : null;
         }
 
         private static DoorOpeningMarker GetDoorOpeningMarkerFromTypeName(string typeName)
@@ -2026,7 +3669,7 @@ namespace KPLN_Tools.ExecutableCommand
             return bestPoint;
         }
 
-        private static List<Line> RemoveSegmentsOverlappingExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls)
+        private static List<Line> RemoveSegmentsOverlappingExistingWalls(List<Line> newLines, List<ExistingWallLineInfo> existingWalls, double candidateThicknessInternal)
         {
             const double tol = 1e-6;
             List<Line> result = new List<Line>();
@@ -2036,7 +3679,7 @@ namespace KPLN_Tools.ExecutableCommand
                 if (newLine == null || newLine.Length <= tol)
                     continue;
 
-                List<Line> remaining = SubtractExistingWallsFromNewLine(newLine, existingWalls);
+                List<Line> remaining = SubtractExistingWallsFromNewLine(newLine, existingWalls, candidateThicknessInternal);
 
                 foreach (Line part in remaining)
                 {
@@ -2048,7 +3691,7 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        private static List<Line> SubtractExistingWallsFromNewLine(Line newLine, List<ExistingWallLineInfo> existingWalls)
+        private static List<Line> SubtractExistingWallsFromNewLine(Line newLine, List<ExistingWallLineInfo> existingWalls, double candidateThicknessInternal)
         {
             const double tol = 1e-6;
 
@@ -2088,7 +3731,16 @@ namespace KPLN_Tools.ExecutableCommand
                     continue;
 
                 double exOffset = Dot2D(ex.P0, normal);
-                if (Math.Abs(exOffset - newOffset) > tol)
+                double existingThicknessInternal = ex.ThicknessInternal > 0
+                    ? ex.ThicknessInternal
+                    : 0;
+
+                double candidateThickness = candidateThicknessInternal > 0
+                    ? candidateThicknessInternal
+                    : 0;
+
+                double halfSumThickness = (candidateThickness + existingThicknessInternal) / 2.0;
+                if (Math.Abs(exOffset - newOffset) > halfSumThickness + tol)
                     continue;
 
                 double exT0 = Dot2D(ex.P0, dir);
@@ -2359,6 +4011,9 @@ namespace KPLN_Tools.ExecutableCommand
 
         private static XYZ Normalize2D(XYZ v)
         {
+            if (v == null)
+                return null;
+
             double len = Math.Sqrt(v.X * v.X + v.Y * v.Y);
             if (len < 1e-12)
                 return null;
