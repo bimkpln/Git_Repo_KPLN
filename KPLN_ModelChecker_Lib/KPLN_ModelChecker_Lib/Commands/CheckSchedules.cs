@@ -136,7 +136,6 @@ namespace KPLN_ModelChecker_Lib.Commands
             string fileFullName = SQLiteDocService.GetFileFullName(doc);
             var dbDoc = SQLiteMainService.SQLiteDocServiceInst.GetDBDocuments_ByFileFullPath(fileFullName);
             bool isIOS = dbDoc != null && dbDoc.SubDepartmentId != 2 && dbDoc.SubDepartmentId != 3 && dbDoc.SubDepartmentId != 8;
-            isIOS = true;
 
             // Проход по всем спекам на листе
             foreach (var schinst in schInsts)
@@ -144,7 +143,6 @@ namespace KPLN_ModelChecker_Lib.Commands
                 Element elem = doc.GetElement(schinst.ScheduleId);
                 if (elem != null && elem is ViewSchedule vsch) 
                 {
-                    string schName = vsch.Name;
                     string schNameLowerCase = vsch.Name.ToLower();
                     ScheduleDefinition def = vsch.Definition;
                     int filterCount = def.GetFilterCount();
@@ -175,7 +173,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                         var schFilters = def.GetFilters();
                         for (int i = 0; i < schFilters.Count; i++)
                         {
-                            var schField = def.GetField(i);
+                            var schFilterId = schFilters[i].FieldId;
+                            var schField = def.GetField(schFilterId);
                             if (schField == null)
                                 continue;
 
