@@ -1,18 +1,11 @@
-﻿using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_DBWorker;
-using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
-using System.Data.SQLite;
-using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Interop;
-using System.Windows.Threading;
 
 namespace KPLN_Tools.ExecutableCommand
 {
@@ -617,22 +610,31 @@ namespace KPLN_Tools.ExecutableCommand
             if (apartments.Count == 0)
                 return new List<ApartmentDoorRequirementOption>();
 
-            HashSet<string> processedApartmentFamilies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
             foreach (FamilyInstance apartmentFi in apartments)
             {
-                if (apartmentFi == null || apartmentFi.Symbol == null || apartmentFi.Symbol.Family == null)
+                if (apartmentFi == null)
                     continue;
 
-                Family apartmentFamily = apartmentFi.Symbol.Family;
-                string apartmentFamilyKey = apartmentFamily.Name ?? "";
-                if (string.IsNullOrWhiteSpace(apartmentFamilyKey))
-                    apartmentFamilyKey = GetElementIdValue(apartmentFamily.Id).ToString();
+                List<FamilyInstance> doorInstances = FindDoorSubComponentsRecursive(doc, apartmentFi);
 
-                if (processedApartmentFamilies.Contains(apartmentFamilyKey))
+                foreach (FamilyInstance doorFi in doorInstances)
+                {
+                    if (doorFi == null)
+                        continue;
+
+                    string typeName = doorFi.Symbol != null ? doorFi.Symbol.Name ?? "" : "";
+                    string commentValue = GetCommentsValue(doorFi);
+                    bool isEntranceDoor = HasEntranceDoorComment(doorFi);
+
+                    int widthMm;
+                    if (!TryGetDoorWidthMmFrom2DMarker(doorFi, typeName, out widthMm) || widthMm <= 0)
+                        continue;
+
+                    AddDoorRequirement(result, typeName, commentValue, widthMm, isEntranceDoor);
+                }
+
+                if (apartmentFi.Symbol == null || apartmentFi.Symbol.Family == null)
                     continue;
-
-                processedApartmentFamilies.Add(apartmentFamilyKey);
 
                 List<FamilyRoomMarker> rooms = new List<FamilyRoomMarker>();
                 List<FamilyDoorMarker> doors = new List<FamilyDoorMarker>();
@@ -640,7 +642,7 @@ namespace KPLN_Tools.ExecutableCommand
 
                 CollectApartmentFamilyMarkersRecursive(
                     doc,
-                    apartmentFamily,
+                    apartmentFi.Symbol.Family,
                     Transform.Identity,
                     rooms,
                     doors,
@@ -649,27 +651,15 @@ namespace KPLN_Tools.ExecutableCommand
 
                 foreach (FamilyDoorMarker door in doors)
                 {
-                    bool isEntranceDoor = door.IsEntranceDoor || IsEntranceDoorComment(door.Comment);
+                    if (door == null)
+                        continue;
 
-                    string roomCategory = !string.IsNullOrWhiteSpace(door.RoomCategory)
-                        ? door.RoomCategory.Trim()
-                        : "-";
-
-                    if (isEntranceDoor)
-                        roomCategory = "Входная";
-
-                    string key = ApartmentDoorRequirementOption.BuildKey(roomCategory, door.DoorTypeName2D, door.DoorWidthMm, isEntranceDoor);
-
-                    if (!result.ContainsKey(key))
-                    {
-                        result.Add(key, new ApartmentDoorRequirementOption
-                        {
-                            RoomCategory = roomCategory,
-                            DoorTypeName2D = door.DoorTypeName2D,
-                            WidthMm = door.DoorWidthMm,
-                            IsEntranceDoor = isEntranceDoor
-                        });
-                    }
+                    AddDoorRequirement(
+                        result,
+                        door.DoorTypeName2D,
+                        door.Comment,
+                        door.DoorWidthMm,
+                        door.IsEntranceDoor);
                 }
             }
 
@@ -681,17 +671,41 @@ namespace KPLN_Tools.ExecutableCommand
                 .ToList();
         }
 
+        private static void AddDoorRequirement(Dictionary<string, ApartmentDoorRequirementOption> result, string typeName, string commentValue,
+            int widthMm, bool isEntranceDoor)
+        {
+            if (result == null || string.IsNullOrWhiteSpace(typeName) || widthMm <= 0)
+                return;
+
+            string roomCategory = isEntranceDoor
+                ? "Входная"
+                : (!string.IsNullOrWhiteSpace(commentValue) ? commentValue.Trim() : "-");
+
+            string key = ApartmentDoorRequirementOption.BuildKey(roomCategory, typeName, widthMm, isEntranceDoor);
+
+            if (result.ContainsKey(key))
+                return;
+
+            result.Add(key, new ApartmentDoorRequirementOption
+            {
+                RoomCategory = roomCategory,
+                DoorTypeName2D = typeName,
+                WidthMm = widthMm,
+                IsEntranceDoor = isEntranceDoor
+            });
+        }
+
         private static bool IsEntranceDoorComment(string comment)
         {
             if (string.IsNullOrWhiteSpace(comment))
                 return false;
 
             string normalized = comment
-                .Trim()
                 .Replace('ё', 'е')
-                .Replace('Ё', 'Е');
+                .Replace('Ё', 'Е')
+                .Trim();
 
-            return normalized.IndexOf("входн", StringComparison.OrdinalIgnoreCase) >= 0;
+            return string.Equals(normalized, "Входная", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsEntranceProjectDoorSymbol(FamilySymbol symbol)
@@ -718,8 +732,44 @@ namespace KPLN_Tools.ExecutableCommand
                 .Replace('Ё', 'Е')
                 .ToLowerInvariant();
 
-            return normalized.IndexOf("двер", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                   normalized.IndexOf("вход", StringComparison.OrdinalIgnoreCase) >= 0;
+            bool hasDoor =
+                normalized.IndexOf("двер", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                normalized.IndexOf("door", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            bool hasEntrance =
+                normalized.IndexOf("вход", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                normalized.IndexOf("entrance", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                normalized.IndexOf("entry", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            return hasDoor && hasEntrance;
+        }
+
+        private static bool Is2DDoorMarker(string familyName, string typeName, string categoryName, bool hasEntranceComment = false)
+        {
+            bool isGenericModel =
+                string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(categoryName, "Обобщённые модели", StringComparison.OrdinalIgnoreCase);
+
+            if (!isGenericModel)
+                return false;
+
+            return ContainsDoorMarkerText(familyName) ||
+                   ContainsDoorMarkerText(typeName) ||
+                   hasEntranceComment;
+        }
+
+        private static bool ContainsDoorMarkerText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string normalized = value
+                .Replace('ё', 'е')
+                .Replace('Ё', 'Е')
+                .Trim();
+
+            return normalized.IndexOf("двер", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   normalized.IndexOf("door", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static List<FamilyWindowMarker> CollectWindowMarkersFromApartmentFamily(Document ownerDoc, Family apartmentFamily)
@@ -1413,26 +1463,20 @@ namespace KPLN_Tools.ExecutableCommand
                         }
                     }
 
-                    bool isGenericModel =
-                        string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(categoryName, "Обобщённые модели", StringComparison.OrdinalIgnoreCase);
-
-                    bool isDoorFamily =
-                        string.Equals(familyName, "Дверь", StringComparison.OrdinalIgnoreCase);
-
-                    if (isGenericModel && isDoorFamily)
+                    if (Is2DDoorMarker(familyName, typeName, categoryName, HasEntranceDoorComment(fi)))
                     {
                         int widthMm;
-                        if (TryGetDoorWidthMmFrom2DTypeName(typeName, out widthMm) && widthMm > 0)
+                        if (TryGetDoorWidthMmFrom2DMarker(fi, typeName, out widthMm) && widthMm > 0)
                         {
                             string commentValue = GetCommentsValue(fi);
-                            bool isEntranceDoor = IsEntranceDoorComment(commentValue);
+                            bool isEntranceDoor = HasEntranceDoorComment(fi);
 
                             doors.Add(new FamilyDoorMarker
                             {
                                 DoorTypeName2D = typeName,
                                 DoorWidthMm = widthMm,
                                 LocalPoint = currentLocalTransform.Origin,
+                                LocalTransform = currentLocalTransform,
                                 Comment = commentValue,
                                 RoomCategory = isEntranceDoor
                                     ? "Входная"
@@ -1667,14 +1711,66 @@ namespace KPLN_Tools.ExecutableCommand
                 return widthMm > 0;
             }
 
-            string firstToken = normalized
-                .Split(new[] { ' ', 'x', 'X', 'х', 'Х', '-', '_', '/', '\\', '(', ')', '[', ']' }, StringSplitOptions.RemoveEmptyEntries)
+            List<int> numbers = Regex.Matches(normalized, @"\d+")
+                .Cast<Match>()
+                .Select(x =>
+                {
+                    int value;
+                    return int.TryParse(x.Value, out value) ? value : 0;
+                })
+                .Where(x => x > 0)
+                .ToList();
+
+            if (numbers.Count == 0)
+                return false;
+
+            if (numbers.Count == 1)
+            {
+                widthMm = numbers[0];
+                return widthMm > 0;
+            }
+
+            int preferredWidth = numbers
+                .Where(x => x >= 300 && x <= 2000)
+                .OrderBy(x => x)
                 .FirstOrDefault();
 
-            if (!string.IsNullOrWhiteSpace(firstToken) && int.TryParse(firstToken, out parsed))
+            widthMm = preferredWidth > 0
+                ? preferredWidth
+                : numbers[0];
+
+            return widthMm > 0;
+        }
+
+        private static bool TryGetDoorWidthMmFrom2DMarker(FamilyInstance doorFi, string typeName, out int widthMm)
+        {
+            int widthFromTypeName;
+            bool hasWidthFromTypeName = TryGetDoorWidthMmFrom2DTypeName(typeName, out widthFromTypeName) && widthFromTypeName > 0;
+            if (hasWidthFromTypeName && widthFromTypeName <= 2000)
             {
-                widthMm = parsed;
+                widthMm = widthFromTypeName;
+                return true;
+            }
+
+            widthMm = 0;
+
+            double widthInternal;
+            if (TryGetLengthParamFromElementOrType(
+                doorFi,
+                out widthInternal,
+                "Ширина",
+                "Width",
+                "КП_Ширина",
+                "ADSK_Размер_Ширина"))
+            {
+                widthMm = (int)Math.Round(ConvertInternalToMm(widthInternal));
                 return widthMm > 0;
+            }
+
+            if (hasWidthFromTypeName)
+            {
+                widthMm = widthFromTypeName;
+                return true;
             }
 
             return false;
@@ -2361,8 +2457,6 @@ namespace KPLN_Tools.ExecutableCommand
                             }
                         }
 
-
-
                         if (createdWallsForApartment.Count > 0)
                             state.HasCreatedWalls = true;
 
@@ -2439,11 +2533,6 @@ namespace KPLN_Tools.ExecutableCommand
 
                         doc.Regenerate();
 
-
-
-
-
-
                         PreparedApartmentRooms apartmentRooms = preparedRoomsByApartment
                             .FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId);
 
@@ -2485,9 +2574,15 @@ namespace KPLN_Tools.ExecutableCommand
             List<ApartmentExecutionReportItem> reportItems = BuildExecutionReportItems(doc, apartmentStates, deletedRoomMismatches);
 
             int processedApartmentsCount = apartmentStates.Count;
+            int foundEntranceDoorsCount = apartmentStates.Values
+                .Where(x => x != null)
+                .Sum(x => x.FoundEntranceDoorsCount);
+            int installedEntranceDoorsCount = apartmentStates.Values
+                .Where(x => x != null)
+                .Sum(x => x.InstalledEntranceDoorsCount);
 
             ShowExecutionReportWindow(uidoc, targetPlan.Name, processedApartmentsCount, apartmentInstances.Count, createdRoomsCount, totalRoomsPlanned,
-                installedDoorsCount, totalDoorsPlanned, installedWindowsCount, totalWindowsPlanned, reportItems);
+                installedDoorsCount, totalDoorsPlanned, foundEntranceDoorsCount, installedEntranceDoorsCount, installedWindowsCount, totalWindowsPlanned, reportItems);
         }
 
         private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages,
@@ -2557,12 +2652,9 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-
-
-
-
         private void ShowExecutionReportWindow(UIDocument uidoc, string planName, int processedApartments, int totalApartments, int createdRoomsCount,
-            int totalRoomsPlanned, int installedDoorsCount, int totalDoorsPlanned, int installedWindowsCount, int totalWindowsPlanned,
+            int totalRoomsPlanned, int installedDoorsCount, int totalDoorsPlanned, int foundEntranceDoorsCount, int installedEntranceDoorsCount,
+            int installedWindowsCount, int totalWindowsPlanned,
             List<ApartmentExecutionReportItem> reportItems)
         {
             if (_window == null || _window.Dispatcher == null)
@@ -2593,6 +2685,11 @@ namespace KPLN_Tools.ExecutableCommand
                 summaryItem.Lines.Add(new ApartmentExecutionReportLine
                 {
                     Text = "Создано дверей: " + installedDoorsCount + " из " + totalDoorsPlanned
+                });
+
+                summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                {
+                    Text = "Входных дверей: " + installedEntranceDoorsCount + " из " + foundEntranceDoorsCount
                 });
 
                 summaryItem.Lines.Add(new ApartmentExecutionReportLine

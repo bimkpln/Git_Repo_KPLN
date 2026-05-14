@@ -1,9 +1,5 @@
-﻿using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_DBWorker;
-using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
@@ -11,7 +7,6 @@ using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace KPLN_Tools.ExecutableCommand
@@ -117,6 +112,8 @@ namespace KPLN_Tools.ExecutableCommand
             public bool HasCreatedRooms { get; set; }
             public bool HasInstalledDoors { get; set; }
             public bool HasInstalledWindows { get; set; }
+            public int FoundEntranceDoorsCount { get; set; }
+            public int InstalledEntranceDoorsCount { get; set; }
             public int SkippedRoomsCount { get; set; }
             public int SkippedWallsCount { get; set; }
             public int SkippedDoorsCount { get; set; }
@@ -218,6 +215,7 @@ namespace KPLN_Tools.ExecutableCommand
             public string DoorTypeName2D { get; set; }
             public int DoorWidthMm { get; set; }
             public XYZ LocalPoint { get; set; }
+            public Transform LocalTransform { get; set; }
             public string RoomCategory { get; set; }
             public string Comment { get; set; }
             public bool IsEntranceDoor { get; set; }
@@ -410,7 +408,6 @@ namespace KPLN_Tools.ExecutableCommand
                 RestoreWindow();
             }
         }
-
         public void PreparePlaceApartment(int apartmentId)
         {
             _requestType = RequestType.PlaceApartment;
@@ -480,9 +477,6 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-
-
-
         private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
         {
             if (projectDoc == null)
@@ -530,10 +524,6 @@ namespace KPLN_Tools.ExecutableCommand
             _familyNameByPathCache[familyPath] = detectedName ?? "";
             return detectedName;
         }
-
-
-
-
 
         private static long GetElementIdValue(ElementId id)
         {
@@ -599,17 +589,14 @@ namespace KPLN_Tools.ExecutableCommand
             if (e == null)
                 return null;
 
-            Parameter p =
-                e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS) ??
-                e.LookupParameter("Комментарии") ??
-                e.LookupParameter("Комментарий");
+            List<string> instanceValues = GetCommentParameterValues(e, BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+            string entranceInstanceValue = instanceValues.FirstOrDefault(IsEntranceDoorComment);
+            if (!string.IsNullOrWhiteSpace(entranceInstanceValue))
+                return entranceInstanceValue.Trim();
 
-            if (p != null)
-            {
-                string value = p.AsString();
-                if (!string.IsNullOrWhiteSpace(value))
-                    return value.Trim();
-            }
+            string firstInstanceValue = instanceValues.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+            if (!string.IsNullOrWhiteSpace(firstInstanceValue))
+                return firstInstanceValue.Trim();
 
             Element typeElem = null;
             if (e.Document != null)
@@ -621,20 +608,95 @@ namespace KPLN_Tools.ExecutableCommand
 
             if (typeElem != null)
             {
-                p =
-                    typeElem.get_Parameter(BuiltInParameter.ALL_MODEL_TYPE_COMMENTS) ??
-                    typeElem.LookupParameter("Комментарии") ??
-                    typeElem.LookupParameter("Комментарий");
+                List<string> typeValues = GetCommentParameterValues(typeElem, BuiltInParameter.ALL_MODEL_TYPE_COMMENTS);
+                string entranceTypeValue = typeValues.FirstOrDefault(IsEntranceDoorComment);
+                if (!string.IsNullOrWhiteSpace(entranceTypeValue))
+                    return entranceTypeValue.Trim();
 
-                if (p != null)
-                {
-                    string value = p.AsString();
-                    if (!string.IsNullOrWhiteSpace(value))
-                        return value.Trim();
-                }
+                string firstTypeValue = typeValues.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+                if (!string.IsNullOrWhiteSpace(firstTypeValue))
+                    return firstTypeValue.Trim();
             }
 
             return null;
+        }
+
+        private static bool HasEntranceDoorComment(Element e)
+        {
+            if (e == null)
+                return false;
+
+            List<string> instanceValues = GetCommentParameterValues(e, BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+            return instanceValues.Any(IsEntranceDoorComment);
+        }
+
+        private static List<string> GetCommentParameterValues(Element e, BuiltInParameter builtInParameter)
+        {
+            List<string> values = new List<string>();
+            if (e == null)
+                return values;
+
+            AddParameterValue(values, e.get_Parameter(builtInParameter));
+            AddNamedParameterValues(values, e, "Комментарии");
+            AddNamedParameterValues(values, e, "Комментарий");
+            AddNamedParameterValues(values, e, "Comments");
+            AddNamedParameterValues(values, e, "Comment");
+
+            return values;
+        }
+
+        private static void AddNamedParameterValues(List<string> values, Element e, string parameterName)
+        {
+            if (values == null || e == null || string.IsNullOrWhiteSpace(parameterName))
+                return;
+
+            try
+            {
+                IList<Parameter> parameters = e.GetParameters(parameterName);
+                if (parameters != null)
+                {
+                    foreach (Parameter parameter in parameters)
+                        AddParameterValue(values, parameter);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                AddParameterValue(values, e.LookupParameter(parameterName));
+            }
+            catch
+            {
+            }
+        }
+
+        private static void AddParameterValue(List<string> values, Parameter parameter)
+        {
+            if (values == null || parameter == null)
+                return;
+
+            string value = null;
+
+            try
+            {
+                if (parameter.StorageType == StorageType.String)
+                    value = parameter.AsString();
+                else
+                    value = parameter.AsValueString();
+            }
+            catch
+            {
+                value = null;
+            }
+
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+
+            value = value.Trim();
+            if (!values.Contains(value))
+                values.Add(value);
         }
 
         private static List<FamilyInstance> GetPlacedApartmentInstancesInDocument(Document doc)
@@ -871,10 +933,6 @@ namespace KPLN_Tools.ExecutableCommand
             return placedCount > 0;
         }
 
-
-
-
-
         private static Family LoadOrFindFamily(Document doc, string familyPath)
         {
             if (doc == null)
@@ -946,9 +1004,6 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
-
-
-
         private static FamilySymbol GetFirstFamilySymbol(Document doc, Family family)
         {
             ISet<ElementId> symbolIds = family.GetFamilySymbolIds();
@@ -1007,27 +1062,6 @@ namespace KPLN_Tools.ExecutableCommand
                 return;
 
             p.Set(oldValue + " " + textToAppend);
-        }
-
-        private static void RemoveApartmentInstanceMarker(Element e)
-        {
-            if (e == null)
-                return;
-
-            Parameter p = e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
-            if (p == null || p.IsReadOnly)
-                return;
-
-            string oldValue = p.AsString();
-            if (string.IsNullOrWhiteSpace(oldValue) || !oldValue.Contains(ApartmentInstanceMarker))
-                return;
-
-            string newValue = oldValue.Replace(ApartmentInstanceMarker, " ");
-            while (newValue.Contains("  "))
-                newValue = newValue.Replace("  ", " ");
-
-            newValue = newValue.Trim();
-            p.Set(newValue);
         }
     }
 }
