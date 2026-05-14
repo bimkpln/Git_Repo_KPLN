@@ -169,6 +169,17 @@ namespace KPLN_ModelChecker_Lib.Commands
                     // Проверяю наличие нужных фильтров ИОС в спеке
                     if (isIOS)
                     {
+                        string paramName = "КП_И_Включение в спецификацию";
+                        string paramUserDescr = $"\"{paramName} -> Меньше или равно -> Да\"";
+
+                        // Флаг под проекты
+                        bool isSET = doc.Title.StartsWith("СЕТ_1");
+                        if (isSET)
+                        {
+                            paramName = "СМ_Смета";
+                            paramUserDescr = $"\"{paramName} -> не равно -> Нет\" ИЛИ \"{paramName} -> Меньше или равно -> Да\"";
+                        }
+
                         bool haveFilterWithIOSField = false;
                         var schFilters = def.GetFilters();
                         for (int i = 0; i < schFilters.Count; i++)
@@ -180,14 +191,20 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                             if (doc.GetElement(schField.ParameterId) is SharedParameterElement shParam)
                             {
+                                bool checkName = shParam.Name.Equals(paramName);
                                 
-                                haveFilterWithIOSField = shParam.Name.Equals("КП_И_Включение в спецификацию") 
-                                    && schFilters[i].FilterType == ScheduleFilterType.LessThanOrEqual
-                                    && schFilters[i].GetIntegerValue() == 1;
+                                bool checkGilterType = schFilters[i].FilterType == ScheduleFilterType.LessThanOrEqual;
+                                bool checkFilterValue = schFilters[i].GetIntegerValue() == 1;
+                                if (isSET && !checkGilterType && !checkFilterValue)
+                                {
+                                    checkGilterType = schFilters[i].FilterType == ScheduleFilterType.NotEqual;
+                                    checkFilterValue = schFilters[i].GetIntegerValue() == 0;
+                                }
+
+                                haveFilterWithIOSField = checkName && checkGilterType && checkFilterValue;
                                 
                                 break;
                             }
-
                         }
                         
                         if(!haveFilterWithIOSField 
@@ -200,9 +217,9 @@ namespace KPLN_ModelChecker_Lib.Commands
                             result.Add(new CheckerEntity(
                                 vsch,
                                 $"ИОС: Нет обязательного фильтра",
-                                $"В спецификации \"{vsch.Name}\" нет фильтра по параметру \"КП_И_Включение в спецификацию\", либо он добавлен с ошибкой в условиях",
+                                $"В спецификации \"{vsch.Name}\" нет фильтра по параметру \"{paramName}\", либо он добавлен с ошибкой в условиях",
                                 $"Данный параметр снимает технические элементы и обязателен для всех спецификаций по объёмам для ИОС. " +
-                                    $"Единственно правильный вариант, который ИСКЛЮЧАЕТ все технические элементы из спецификации это \"Меньше или равно -> Да\"")
+                                    $"Единственно правильный вариант, который ИСКЛЮЧАЕТ все технические элементы из спецификации это {paramUserDescr}")
                                 .Set_Status(ErrorStatus.Warning));
                         }
                     }
@@ -275,7 +292,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 new Element[] { schInsts[i], schInsts[j] },
                                 $"Склеивание на листе \"{vsh.Title}\"",
                                 $"Две разные спецификации размещены рядом - попытка \"склеивания\" данных",
-                                $"Склеивать разные спецификации не рекомендуется, т.к. может привести к разным настройкам фильтрации/сортирвки. " +
+                                $"Склеивать разные спецификации не рекомендуется, т.к. может привести к разным настройкам фильтрации/сортировки. " +
                                     $"Если это разные спецификации, которые визуально не являются продолжением одна другой - можно отправить в допуск.")
                                 .Set_Status(ErrorStatus.Warning));
                         else if (new Outline(a_LD, a_RU).Intersects(new Outline(b_LD, b_RU), 0))
