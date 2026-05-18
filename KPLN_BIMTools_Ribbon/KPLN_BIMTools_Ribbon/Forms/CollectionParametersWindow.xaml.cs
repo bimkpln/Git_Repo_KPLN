@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Tools.Common;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -166,10 +167,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void LoadProjectParametersUsage()
         {
-            List<ParameterUsageRow> parameterRows = GetBoundSharedProjectParameters();
-            Dictionary<int, ParameterUsageRow> rowsByParameterId = parameterRows
+            List<ParameterUsageRow> parameterRows = GetSharedProjectParameters();
+            Dictionary<long, ParameterUsageRow> rowsByParameterId = parameterRows
                 .Where(x => IsValidElementId(x.ParameterId))
-                .GroupBy(x => x.ParameterId.IntegerValue)
+                .GroupBy(x => IDHelper.ElIdValue(x.ParameterId))
                 .ToDictionary(x => x.Key, x => x.First());
 
             FillViewFiltersUsage(rowsByParameterId);
@@ -184,10 +185,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        private List<ParameterUsageRow> GetBoundSharedProjectParameters()
+        private List<ParameterUsageRow> GetSharedProjectParameters()
         {
-            List<ParameterUsageRow> result = new List<ParameterUsageRow>();
-            HashSet<string> usedGuids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, ParameterUsageRow> rowsByGuid =
+                new Dictionary<string, ParameterUsageRow>(StringComparer.OrdinalIgnoreCase);
 
             BindingMap bindingMap = _doc.ParameterBindings;
             DefinitionBindingMapIterator iterator = bindingMap.ForwardIterator();
@@ -213,26 +214,99 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     parameterId = GetSharedParameterElementId(guid, definition.Name);
                 }
 
-                string guidText = guid.ToString();
-                if (!usedGuids.Add(guidText))
+                ParameterUsageRow row = GetOrCreateProjectParameterRow(rowsByGuid, guid, parameterId, definition.Name);
+                UpdateRowParameterId(row, parameterId);
+                AddBindingCategoriesUsage(row, binding);
+            }
+
+            foreach (SharedParameterElement sharedParameter in GetSharedParameterElements())
+            {
+                if (sharedParameter == null || sharedParameter.GuidValue == Guid.Empty)
                 {
                     continue;
                 }
 
-                ParameterUsageRow row = new ParameterUsageRow
-                {
-                    ParameterIdText = GetElementIdText(parameterId),
-                    Name = definition.Name,
-                    Guid = guidText,
-                    ParameterGuid = guid,
-                    ParameterId = parameterId
-                };
-
-                AddBindingCategoriesUsage(row, binding);
-                result.Add(row);
+                GetOrCreateProjectParameterRow(
+                    rowsByGuid,
+                    sharedParameter.GuidValue,
+                    sharedParameter.Id,
+                    GetSharedParameterName(sharedParameter));
             }
 
-            return result;
+            return rowsByGuid.Values.ToList();
+        }
+
+        private ParameterUsageRow GetOrCreateProjectParameterRow(
+            Dictionary<string, ParameterUsageRow> rowsByGuid,
+            Guid guid,
+            ElementId parameterId,
+            string parameterName)
+        {
+            string guidText = guid.ToString();
+
+            ParameterUsageRow row;
+            if (rowsByGuid.TryGetValue(guidText, out row))
+            {
+                if (string.IsNullOrWhiteSpace(row.Name))
+                {
+                    row.Name = parameterName ?? string.Empty;
+                }
+
+                UpdateRowParameterId(row, parameterId);
+                return row;
+            }
+
+            row = new ParameterUsageRow
+            {
+                ParameterIdText = GetElementIdText(parameterId),
+                Name = parameterName ?? string.Empty,
+                Guid = guidText,
+                ParameterGuid = guid,
+                ParameterId = parameterId
+            };
+
+            rowsByGuid[guidText] = row;
+            return row;
+        }
+
+        private void UpdateRowParameterId(ParameterUsageRow row, ElementId parameterId)
+        {
+            if (row == null || !IsValidElementId(parameterId) || IsValidElementId(row.ParameterId))
+            {
+                return;
+            }
+
+            row.ParameterId = parameterId;
+            row.ParameterIdText = GetElementIdText(parameterId);
+        }
+
+        private IEnumerable<SharedParameterElement> GetSharedParameterElements()
+        {
+            return new FilteredElementCollector(_doc)
+                .OfClass(typeof(SharedParameterElement))
+                .Cast<SharedParameterElement>();
+        }
+
+        private string GetSharedParameterName(SharedParameterElement sharedParameter)
+        {
+            if (sharedParameter == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                Definition definition = sharedParameter.GetDefinition();
+                if (definition != null && !string.IsNullOrWhiteSpace(definition.Name))
+                {
+                    return definition.Name;
+                }
+            }
+            catch
+            {
+            }
+
+            return sharedParameter.Name ?? string.Empty;
         }
 
         private void AddBindingCategoriesUsage(ParameterUsageRow row, Binding binding)
@@ -256,16 +330,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private string GetCategoryReferenceText(Category category)
         {
-            return string.Format("{0} - {1}", category.Id.IntegerValue, category.Name);
+            return string.Format("{0} - {1}", IDHelper.ElIdValue(category.Id), category.Name);
         }
 
         private ElementId GetSharedParameterElementId(Guid guid, string parameterName)
         {
-            SharedParameterElement sharedParameter = new FilteredElementCollector(_doc)
-                .OfClass(typeof(SharedParameterElement))
-                .Cast<SharedParameterElement>()
+            SharedParameterElement sharedParameter = GetSharedParameterElements()
                 .FirstOrDefault(x => x.GuidValue == guid ||
-                                     (x.GetDefinition() != null && x.GetDefinition().Name == parameterName));
+                                     GetSharedParameterName(x) == parameterName);
 
             return sharedParameter != null ? sharedParameter.Id : ElementId.InvalidElementId;
         }
@@ -300,10 +372,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
             }
 
-            SharedParameterElement byName = new FilteredElementCollector(_doc)
-                .OfClass(typeof(SharedParameterElement))
-                .Cast<SharedParameterElement>()
-                .FirstOrDefault(x => x.GetDefinition() != null && x.GetDefinition().Name == definition.Name);
+            SharedParameterElement byName = GetSharedParameterElements()
+                .FirstOrDefault(x => GetSharedParameterName(x) == definition.Name);
 
             if (byName != null)
             {
@@ -322,15 +392,15 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 return string.Empty;
             }
 
-            return string.Format("{0} - {1}", element.Id.IntegerValue, element.Name);
+            return string.Format("{0} - {1}", IDHelper.ElIdValue(element.Id), element.Name);
         }
 
         private string GetElementIdText(ElementId elementId)
         {
-            return IsValidElementId(elementId) ? elementId.IntegerValue.ToString() : string.Empty;
+            return IsValidElementId(elementId) ? IDHelper.ElIdValue(elementId).ToString() : string.Empty;
         }
 
-        private void FillViewFiltersUsage(Dictionary<int, ParameterUsageRow> rowsByParameterId)
+        private void FillViewFiltersUsage(Dictionary<long, ParameterUsageRow> rowsByParameterId)
         {
             if (rowsByParameterId.Count == 0)
             {
@@ -343,8 +413,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             foreach (ParameterFilterElement filter in filters)
             {
-                HashSet<int> parameterIds = GetParameterIdsFromViewFilter(filter);
-                foreach (int parameterId in parameterIds)
+                HashSet<long> parameterIds = GetParameterIdsFromViewFilter(filter);
+                foreach (long parameterId in parameterIds)
                 {
                     ParameterUsageRow row;
                     if (rowsByParameterId.TryGetValue(parameterId, out row))
@@ -355,9 +425,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        private HashSet<int> GetParameterIdsFromViewFilter(ParameterFilterElement filter)
+        private HashSet<long> GetParameterIdsFromViewFilter(ParameterFilterElement filter)
         {
-            HashSet<int> result = new HashSet<int>();
+            HashSet<long> result = new HashSet<long>();
 
             AddRuleParameterIds(filter, result);
 
@@ -367,7 +437,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return result;
         }
 
-        private void AddElementFilterParameterIds(object elementFilter, HashSet<int> result)
+        private void AddElementFilterParameterIds(object elementFilter, HashSet<long> result)
         {
             if (elementFilter == null)
             {
@@ -383,7 +453,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             AddNestedElementFilters(filtersProperty, result);
         }
 
-        private void AddNestedElementFilters(object filtersObject, HashSet<int> result)
+        private void AddNestedElementFilters(object filtersObject, HashSet<long> result)
         {
             IEnumerable filters = filtersObject as IEnumerable;
             if (filters == null)
@@ -397,7 +467,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        private void AddRuleParameterIds(object source, HashSet<int> result)
+        private void AddRuleParameterIds(object source, HashSet<long> result)
         {
             object rulesObject = InvokeParameterlessMethod(source, "GetRules");
             IEnumerable rules = rulesObject as IEnumerable;
@@ -411,7 +481,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 ElementId parameterId = GetRuleParameterId(rule);
                 if (IsValidElementId(parameterId))
                 {
-                    result.Add(parameterId.IntegerValue);
+                    result.Add(IDHelper.ElIdValue(parameterId));
                 }
             }
         }
@@ -500,7 +570,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        private void FillScheduleFiltersUsage(Dictionary<int, ParameterUsageRow> rowsByParameterId)
+        private void FillScheduleFiltersUsage(Dictionary<long, ParameterUsageRow> rowsByParameterId)
         {
             if (rowsByParameterId.Count == 0)
             {
@@ -535,7 +605,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         }
 
                         ParameterUsageRow row;
-                        if (rowsByParameterId.TryGetValue(parameterId.IntegerValue, out row))
+                        if (rowsByParameterId.TryGetValue(IDHelper.ElIdValue(parameterId), out row))
                         {
                             row.ScheduleFiltersSet.Add(GetNamedElementReferenceText(schedule));
                         }
@@ -557,7 +627,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             List<FamilyParameter> sharedParameters = allParameters
                 .Where(x => x.IsShared)
-                .OrderBy(x => x.Definition.Name)
+                .OrderBy(x => GetFamilyParameterName(x))
                 .ToList();
 
             Dictionary<string, SortedSet<string>> formulasByGuid = GetFamilyFormulaUsage(allParameters, sharedParameters);
@@ -570,7 +640,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 ParameterUsageRow row = new ParameterUsageRow
                 {
                     ParameterIdText = GetElementIdText(parameter.Id),
-                    Name = parameter.Definition.Name,
+                    Name = GetFamilyParameterName(parameter),
                     Guid = guidText,
                     ParameterGuid = parameter.GUID,
                     ParameterId = parameter.Id,
@@ -590,24 +660,59 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             foreach (FamilyParameter sourceParameter in sharedParameters)
             {
-                string parameterName = sourceParameter.Definition.Name;
+                string parameterName = GetFamilyParameterName(sourceParameter);
                 string guidText = sourceParameter.GUID.ToString();
 
                 foreach (FamilyParameter formulaParameter in allParameters)
                 {
-                    if (formulaParameter == sourceParameter || string.IsNullOrWhiteSpace(formulaParameter.Formula))
+                    string formula = GetFamilyParameterFormula(formulaParameter);
+                    if (formulaParameter == sourceParameter || string.IsNullOrWhiteSpace(formula))
                     {
                         continue;
                     }
 
-                    if (FormulaContainsParameter(formulaParameter.Formula, parameterName))
+                    if (FormulaContainsParameter(formula, parameterName))
                     {
-                        result[guidText].Add(formulaParameter.Definition.Name);
+                        result[guidText].Add(GetFamilyParameterName(formulaParameter));
                     }
                 }
             }
 
             return result;
+        }
+
+        private string GetFamilyParameterName(FamilyParameter parameter)
+        {
+            if (parameter == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                return parameter.Definition != null ? parameter.Definition.Name : string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private string GetFamilyParameterFormula(FamilyParameter parameter)
+        {
+            if (parameter == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                return parameter.Formula ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private bool FormulaContainsParameter(string formula, string parameterName)
@@ -627,8 +732,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private Dictionary<string, SortedSet<string>> GetFamilyDimensionUsage(List<FamilyParameter> sharedParameters)
         {
             Dictionary<string, SortedSet<string>> result = CreateGuidStringDictionary(sharedParameters);
-            Dictionary<int, string> guidByParameterId = sharedParameters
-                .GroupBy(x => x.Id.IntegerValue)
+            Dictionary<long, string> guidByParameterId = sharedParameters
+                .Where(x => IsValidElementId(x.Id))
+                .GroupBy(x => IDHelper.ElIdValue(x.Id))
                 .ToDictionary(x => x.Key, x => x.First().GUID.ToString());
 
             List<Dimension> dimensions = new FilteredElementCollector(_doc)
@@ -636,7 +742,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 .Cast<Dimension>()
                 .ToList();
 
-            Dictionary<int, SortedSet<string>> viewNamesByDimensionId = GetDimensionViewNames(dimensions);
+            Dictionary<long, SortedSet<string>> viewNamesByDimensionId = GetDimensionViewNames(dimensions);
 
             foreach (Dimension dimension in dimensions)
             {
@@ -656,7 +762,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
 
                 string guidText;
-                if (!guidByParameterId.TryGetValue(label.Id.IntegerValue, out guidText))
+                if (!guidByParameterId.TryGetValue(IDHelper.ElIdValue(label.Id), out guidText))
                 {
                     continue;
                 }
@@ -667,10 +773,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return result;
         }
 
-        private Dictionary<int, SortedSet<string>> GetDimensionViewNames(List<Dimension> dimensions)
+        private Dictionary<long, SortedSet<string>> GetDimensionViewNames(List<Dimension> dimensions)
         {
-            Dictionary<int, SortedSet<string>> result = dimensions
-                .GroupBy(x => x.Id.IntegerValue)
+            Dictionary<long, SortedSet<string>> result = dimensions
+                .Where(x => IsValidElementId(x.Id))
+                .GroupBy(x => IDHelper.ElIdValue(x.Id))
                 .ToDictionary(
                     x => x.Key,
                     x => new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase));
@@ -678,9 +785,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
             foreach (Dimension dimension in dimensions)
             {
                 View ownerView = GetOwnerView(dimension);
-                if (ownerView != null)
+                SortedSet<string> viewNames;
+                if (ownerView != null && result.TryGetValue(IDHelper.ElIdValue(dimension.Id), out viewNames))
                 {
-                    result[dimension.Id.IntegerValue].Add(ownerView.Name);
+                    viewNames.Add(ownerView.Name);
                 }
             }
 
@@ -701,7 +809,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     foreach (Dimension dimension in viewDimensions)
                     {
                         SortedSet<string> viewNames;
-                        if (result.TryGetValue(dimension.Id.IntegerValue, out viewNames))
+                        if (result.TryGetValue(IDHelper.ElIdValue(dimension.Id), out viewNames))
                         {
                             viewNames.Add(view.Name);
                         }
@@ -716,18 +824,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return result;
         }
 
-        private string GetDimensionReferenceText(Dimension dimension, Dictionary<int, SortedSet<string>> viewNamesByDimensionId)
+        private string GetDimensionReferenceText(Dimension dimension, Dictionary<long, SortedSet<string>> viewNamesByDimensionId)
         {
             SortedSet<string> viewNames;
-            if (viewNamesByDimensionId.TryGetValue(dimension.Id.IntegerValue, out viewNames) && viewNames.Count > 0)
+            long dimensionId = IDHelper.ElIdValue(dimension.Id);
+            if (viewNamesByDimensionId.TryGetValue(dimensionId, out viewNames) && viewNames.Count > 0)
             {
                 return string.Format(
                     "{0} ({1})",
-                    dimension.Id.IntegerValue,
+                    dimensionId,
                     string.Join("; ", viewNames));
             }
 
-            return string.Format("{0} (вид не найден)", dimension.Id.IntegerValue);
+            return string.Format("{0} (вид не найден)", dimensionId);
         }
 
         private View GetOwnerView(Element element)
@@ -771,7 +880,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         {
             return elementId != null &&
                    elementId != ElementId.InvalidElementId &&
-                   elementId.IntegerValue > 0;
+                   IDHelper.ElIdValue(elementId) > 0;
         }
 
         private void ParametersGrid_PreviewKeyDown(object sender, KeyEventArgs e)
