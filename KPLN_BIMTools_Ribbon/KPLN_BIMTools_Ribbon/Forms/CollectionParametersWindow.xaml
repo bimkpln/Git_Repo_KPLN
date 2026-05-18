@@ -1,0 +1,140 @@
+﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.CollectionParametersWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding WindowTitle}"
+        Height="650"
+        Width="1180"
+        MinHeight="460"
+        MinWidth="900"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="SelectableCellTextBoxStyle" TargetType="TextBox">
+            <Setter Property="IsReadOnly" Value="True" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FF111111" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="AcceptsReturn" Value="True" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="MinHeight" Value="24" />
+        </Style>
+
+        <Style x:Key="NoBlueDataGridCellStyle" TargetType="{x:Type DataGridCell}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#FF111111" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#FFF3F3F3" />
+                    <Setter Property="BorderBrush" Value="#FF6A6A6A" />
+                    <Setter Property="Foreground" Value="#FF111111" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#FF333333" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <DataTemplate x:Key="ParameterIdCellTemplate">
+            <TextBox Text="{Binding ParameterIdText}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="NameCellTemplate">
+            <TextBox Text="{Binding Name}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="GuidCellTemplate">
+            <TextBox Text="{Binding Guid}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="FamiliesCellTemplate">
+            <TextBox Text="{Binding Families}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="ViewFiltersCellTemplate">
+            <TextBox Text="{Binding ViewFilters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="ScheduleFiltersCellTemplate">
+            <TextBox Text="{Binding ScheduleFilters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="FormulaParametersCellTemplate">
+            <TextBox Text="{Binding FormulaParameters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="DimensionsCellTemplate">
+            <TextBox Text="{Binding Dimensions}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel Margin="10">
+        <TextBlock DockPanel.Dock="Top"
+                       Text="{Binding Description}"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,8" />
+
+        <StatusBar DockPanel.Dock="Bottom" Margin="0,8,0,0">
+            <StatusBarItem>
+                <TextBlock Text="{Binding Status}" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <DataGrid x:Name="ParametersGrid"
+                  ItemsSource="{Binding Rows}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserReorderColumns="True"
+                  CanUserResizeColumns="True"
+                  EnableRowVirtualization="True"
+                  EnableColumnVirtualization="True"
+                  GridLinesVisibility="All"
+                  HeadersVisibility="Column"
+                  IsReadOnly="True"
+                  RowHeaderWidth="0"
+                  SelectionMode="Extended"
+                  SelectionUnit="Cell"
+                  ClipboardCopyMode="ExcludeHeader"
+                  CellStyle="{StaticResource NoBlueDataGridCellStyle}"
+                  PreviewKeyDown="ParametersGrid_PreviewKeyDown">
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="ID"
+                                        Width="100"
+                                        SortMemberPath="ParameterIdText"
+                                        CellTemplate="{StaticResource ParameterIdCellTemplate}" />
+                <DataGridTemplateColumn Header="Имя"
+                                        Width="220"
+                                        SortMemberPath="Name"
+                                        CellTemplate="{StaticResource NameCellTemplate}" />
+                <DataGridTemplateColumn Header="GUID"
+                                        Width="260"
+                                        SortMemberPath="Guid"
+                                        CellTemplate="{StaticResource GuidCellTemplate}" />
+                <DataGridTemplateColumn x:Name="FamiliesColumn"
+                                        Header="Элементы модели"
+                                        Width="320"
+                                        SortMemberPath="Families"
+                                        CellTemplate="{StaticResource FamiliesCellTemplate}" />
+                <DataGridTemplateColumn x:Name="ViewFiltersColumn"
+                                        Header="Фильтры видов"
+                                        Width="260"
+                                        SortMemberPath="ViewFilters"
+                                        CellTemplate="{StaticResource ViewFiltersCellTemplate}" />
+                <DataGridTemplateColumn x:Name="ScheduleFiltersColumn"
+                                        Header="Фильтры спецификаций"
+                                        Width="260"
+                                        SortMemberPath="ScheduleFilters"
+                                        CellTemplate="{StaticResource ScheduleFiltersCellTemplate}" />
+                <DataGridTemplateColumn x:Name="FormulaParametersColumn"
+                                        Header="Параметры с формулой"
+                                        Width="260"
+                                        SortMemberPath="FormulaParameters"
+                                        CellTemplate="{StaticResource FormulaParametersCellTemplate}" />
+                <DataGridTemplateColumn x:Name="DimensionsColumn"
+                                        Header="ID размера (имена видов)"
+                                        Width="280"
+                                        SortMemberPath="Dimensions"
+                                        CellTemplate="{StaticResource DimensionsCellTemplate}" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>
