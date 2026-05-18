@@ -85,7 +85,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             else
             {
                 WindowTitle = "KPLN. Параметры проекта";
-                Description = "Анализ общих параметров проекта: заполненные элементы модели, фильтры видов и фильтры спецификаций.";
+                Description = "Анализ общих параметров проекта: категории из привязок параметров, фильтры видов и фильтры спецификаций.";
 
                 FamiliesColumn.Visibility = System.Windows.Visibility.Visible;
                 ViewFiltersColumn.Visibility = System.Windows.Visibility.Visible;
@@ -172,7 +172,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 .GroupBy(x => x.ParameterId.IntegerValue)
                 .ToDictionary(x => x.Key, x => x.First());
 
-            FillProjectFamiliesUsage(parameterRows);
             FillViewFiltersUsage(rowsByParameterId);
             FillScheduleFiltersUsage(rowsByParameterId);
 
@@ -196,6 +195,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             while (iterator.MoveNext())
             {
                 Definition definition = iterator.Key;
+                Binding binding = iterator.Current as Binding;
                 if (definition == null)
                 {
                     continue;
@@ -219,17 +219,44 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     continue;
                 }
 
-                result.Add(new ParameterUsageRow
+                ParameterUsageRow row = new ParameterUsageRow
                 {
                     ParameterIdText = GetElementIdText(parameterId),
                     Name = definition.Name,
                     Guid = guidText,
                     ParameterGuid = guid,
                     ParameterId = parameterId
-                });
+                };
+
+                AddBindingCategoriesUsage(row, binding);
+                result.Add(row);
             }
 
             return result;
+        }
+
+        private void AddBindingCategoriesUsage(ParameterUsageRow row, Binding binding)
+        {
+            ElementBinding elementBinding = binding as ElementBinding;
+            if (elementBinding == null || elementBinding.Categories == null)
+            {
+                return;
+            }
+
+            foreach (Category category in elementBinding.Categories)
+            {
+                if (category == null)
+                {
+                    continue;
+                }
+
+                row.FamiliesSet.Add(GetCategoryReferenceText(category));
+            }
+        }
+
+        private string GetCategoryReferenceText(Category category)
+        {
+            return string.Format("{0} - {1}", category.Id.IntegerValue, category.Name);
         }
 
         private ElementId GetSharedParameterElementId(Guid guid, string parameterName)
@@ -286,153 +313,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             guid = Guid.Empty;
             return false;
-        }
-
-        private void FillProjectFamiliesUsage(List<ParameterUsageRow> parameterRows)
-        {
-            Dictionary<Guid, ParameterUsageRow> rowsByGuid = parameterRows
-                .GroupBy(x => x.ParameterGuid)
-                .ToDictionary(x => x.Key, x => x.First());
-
-            if (rowsByGuid.Count == 0)
-            {
-                return;
-            }
-
-            IEnumerable<Element> instanceElements = new FilteredElementCollector(_doc)
-                .WhereElementIsNotElementType()
-                .ToElements();
-
-            foreach (Element element in instanceElements)
-            {
-                if (!IsModelElement(element))
-                {
-                    continue;
-                }
-
-                AddElementSharedParametersUsage(element, rowsByGuid);
-            }
-
-            IEnumerable<Element> typeElements = new FilteredElementCollector(_doc)
-                .WhereElementIsElementType()
-                .ToElements();
-
-            foreach (Element elementType in typeElements)
-            {
-                if (!IsModelElement(elementType))
-                {
-                    continue;
-                }
-
-                AddElementSharedParametersUsage(elementType, rowsByGuid);
-            }
-        }
-
-        private void AddElementSharedParametersUsage(
-            Element element,
-            Dictionary<Guid, ParameterUsageRow> rowsByGuid)
-        {
-            string elementReference = GetElementReferenceText(element);
-            if (string.IsNullOrWhiteSpace(elementReference))
-            {
-                return;
-            }
-
-            foreach (Parameter parameter in element.Parameters)
-            {
-                if (parameter == null || !parameter.IsShared || !ParameterHasValue(parameter))
-                {
-                    continue;
-                }
-
-                ParameterUsageRow row;
-                if (rowsByGuid.TryGetValue(parameter.GUID, out row))
-                {
-                    row.FamiliesSet.Add(elementReference);
-                }
-            }
-        }
-
-        private bool IsModelElement(Element element)
-        {
-            if (element == null || element.Category == null)
-            {
-                return false;
-            }
-
-            return element.Category.CategoryType == CategoryType.Model;
-        }
-
-        private bool ParameterHasValue(Parameter parameter)
-        {
-            if (!parameter.HasValue)
-            {
-                return false;
-            }
-
-            if (parameter.StorageType == StorageType.String)
-            {
-                return !string.IsNullOrWhiteSpace(parameter.AsString());
-            }
-
-            if (parameter.StorageType == StorageType.ElementId)
-            {
-                return IsValidElementId(parameter.AsElementId());
-            }
-
-            return true;
-        }
-
-        private string GetElementFamilyName(Element element)
-        {
-            FamilyInstance familyInstance = element as FamilyInstance;
-            if (familyInstance != null && familyInstance.Symbol != null && familyInstance.Symbol.Family != null)
-            {
-                return familyInstance.Symbol.Family.Name;
-            }
-
-            FamilySymbol familySymbol = element as FamilySymbol;
-            if (familySymbol != null && !string.IsNullOrWhiteSpace(familySymbol.FamilyName))
-            {
-                return familySymbol.FamilyName;
-            }
-
-            ElementType elementType = element as ElementType;
-            if (elementType != null && !string.IsNullOrWhiteSpace(elementType.FamilyName))
-            {
-                return elementType.FamilyName;
-            }
-
-            ElementId typeId = element.GetTypeId();
-            if (IsValidElementId(typeId))
-            {
-                ElementType type = _doc.GetElement(typeId) as ElementType;
-                if (type != null && !string.IsNullOrWhiteSpace(type.FamilyName))
-                {
-                    return type.FamilyName;
-                }
-            }
-
-            return element.Category != null ? element.Category.Name : element.Name;
-        }
-
-        private string GetElementReferenceText(Element element)
-        {
-            if (element == null)
-            {
-                return string.Empty;
-            }
-
-            string familyName = GetElementFamilyName(element);
-            string elementName = element.Name;
-
-            if (!string.IsNullOrWhiteSpace(elementName) &&
-                !string.Equals(familyName, elementName, StringComparison.CurrentCultureIgnoreCase))
-            {
-                return string.Format("{0} - {1}: {2}", element.Id.IntegerValue, familyName, elementName);
-            }
-
-            return string.Format("{0} - {1}", element.Id.IntegerValue, familyName);
         }
 
         private string GetNamedElementReferenceText(Element element)

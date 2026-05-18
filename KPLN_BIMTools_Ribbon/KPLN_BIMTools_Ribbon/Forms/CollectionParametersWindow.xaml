@@ -110,7 +110,7 @@
                                         SortMemberPath="Guid"
                                         CellTemplate="{StaticResource GuidCellTemplate}" />
                 <DataGridTemplateColumn x:Name="FamiliesColumn"
-                                        Header="Элементы модели"
+                                        Header="Категории"
                                         Width="320"
                                         SortMemberPath="Families"
                                         CellTemplate="{StaticResource FamiliesCellTemplate}" />

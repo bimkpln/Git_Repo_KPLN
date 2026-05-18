@@ -17,7 +17,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 CollectionParametersWindow window = new CollectionParametersWindow(commandData);
                 WindowInteropHelper helper = new WindowInteropHelper(window);
                 helper.Owner = commandData.Application.MainWindowHandle;
-                window.ShowDialog();
+                window.Show();
 
                 return Result.Succeeded;
             }
