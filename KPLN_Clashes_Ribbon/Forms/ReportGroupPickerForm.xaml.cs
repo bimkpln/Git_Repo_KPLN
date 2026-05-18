@@ -59,7 +59,7 @@ namespace KPLN_Clashes_Ribbon.Forms
         }
 
 
-        /// Фильтр: скрыть текущую группу; поиск по имени группы (без регистра).
+        /// Фильтр: скрыть текущую группу; поиск по полному тексту кнопки (без регистра).
         private bool ButtonsFilter(object obj)
         {
             var vm = obj as ButtonVM;
@@ -71,8 +71,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             if (string.IsNullOrWhiteSpace(_search))
                 return true;
 
-            return vm.NameRaw != null &&
-                   vm.NameRaw.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0;
+            string searchableTitle = vm.Title ?? vm.NameRaw ?? string.Empty;
+
+            return searchableTitle.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
