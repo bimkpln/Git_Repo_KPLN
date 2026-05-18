@@ -148,6 +148,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="Common\IExecuteByUIApp.cs" />
     <Compile Include="Common\ExchangeService.cs" />
