@@ -63,14 +63,40 @@
         <DataTemplate x:Key="DimensionsCellTemplate">
             <TextBox Text="{Binding Dimensions}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
+        <DataTemplate x:Key="DeleteSelectionCellTemplate">
+            <CheckBox IsChecked="{Binding IsSelectedForDelete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center" />
+        </DataTemplate>
     </Window.Resources>
 
     <DockPanel Margin="10">
-        <TextBlock DockPanel.Dock="Top"
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
                        Text="{Binding Description}"
                        VerticalAlignment="Center"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,8" />
+                       TextWrapping="Wrap" />
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0">
+                <Button Content="Удалить отмеченные"
+                        MinWidth="130"
+                        Margin="0,0,8,0"
+                        Padding="10,4"
+                        Click="DeleteParameterButton_Click" Background="#FFF18A8A" />
+                <Button Content="Выгрузить в Excel"
+                        MinWidth="130"
+                        Padding="10,4"
+                        Click="ExportExcelButton_Click" />
+            </StackPanel>
+        </Grid>
 
         <StatusBar DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <StatusBarItem>
@@ -89,7 +115,7 @@
                   EnableColumnVirtualization="True"
                   GridLinesVisibility="All"
                   HeadersVisibility="Column"
-                  IsReadOnly="True"
+                  IsReadOnly="False"
                   RowHeaderWidth="0"
                   SelectionMode="Extended"
                   SelectionUnit="Cell"
@@ -97,6 +123,10 @@
                   CellStyle="{StaticResource NoBlueDataGridCellStyle}"
                   PreviewKeyDown="ParametersGrid_PreviewKeyDown">
             <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Удалить"
+                                        Width="70"
+                                        CanUserSort="False"
+                                        CellTemplate="{StaticResource DeleteSelectionCellTemplate}" />
                 <DataGridTemplateColumn Header="ID"
                                         Width="100"
                                         SortMemberPath="ParameterIdText"
