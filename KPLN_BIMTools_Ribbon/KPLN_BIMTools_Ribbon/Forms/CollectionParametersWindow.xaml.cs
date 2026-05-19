@@ -6,19 +6,26 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
+using System.IO;
+using System.IO.Packaging;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Win32;
 
 namespace KPLN_BIMTools_Ribbon.Forms
 {
     public partial class CollectionParametersWindow : Window, INotifyPropertyChanged
     {
         private readonly Document _doc;
+        private readonly DeleteParametersExternalEventHandler _deleteParametersHandler;
+        private readonly ExternalEvent _deleteParametersEvent;
 
         private string _windowTitle;
         private string _description;
@@ -61,6 +68,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
         public CollectionParametersWindow(ExternalCommandData commandData)
         {
             _doc = commandData.Application.ActiveUIDocument.Document;
+            _deleteParametersHandler = new DeleteParametersExternalEventHandler(this);
+            _deleteParametersEvent = ExternalEvent.Create(_deleteParametersHandler);
             Rows = new ObservableCollection<ParameterUsageRow>();
 
             InitializeComponent();
@@ -883,6 +892,449 @@ namespace KPLN_BIMTools_Ribbon.Forms
                    IDHelper.ElIdValue(elementId) > 0;
         }
 
+        private void DeleteParameterButton_Click(object sender, RoutedEventArgs e)
+        {
+            List<ParameterUsageRow> selectedRows = GetCheckedRows();
+            if (selectedRows.Count == 0)
+            {
+                MessageBox.Show(
+                    this,
+                    "Отметьте галками один или несколько параметров для удаления.",
+                    "Удаление параметров",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            MessageBoxResult confirmation = MessageBox.Show(
+                this,
+                selectedRows.Count == 1
+                    ? "Удалить отмеченный параметр?"
+                    : string.Format("Удалить отмеченные параметры: {0}?", selectedRows.Count),
+                "Удаление параметров",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            _deleteParametersHandler.SetRows(selectedRows);
+
+            try
+            {
+                _deleteParametersEvent.Raise();
+                Status = "Запрошено удаление параметров...";
+            }
+            catch (Exception ex)
+            {
+                Status = "Ошибка запуска удаления";
+                MessageBox.Show(this, ex.Message, "Удаление параметров", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void DeleteParametersInRevitContext(List<ParameterUsageRow> selectedRows)
+        {
+            int deletedCount = 0;
+            List<string> errors = new List<string>();
+
+            foreach (ParameterUsageRow row in selectedRows)
+            {
+                Transaction transaction = null;
+                try
+                {
+                    transaction = new Transaction(_doc, "Удаление общего параметра");
+                    transaction.Start();
+
+                    if (_doc.IsFamilyDocument)
+                    {
+                        DeleteFamilyParameter(row);
+                    }
+                    else
+                    {
+                        DeleteProjectParameter(row);
+                    }
+
+                    TransactionStatus status = transaction.Commit();
+                    if (status != TransactionStatus.Committed)
+                    {
+                        throw new InvalidOperationException(string.Format("Revit отменил транзакцию: {0}", status));
+                    }
+
+                    row.IsSelectedForDelete = false;
+                    deletedCount++;
+                }
+                catch (Exception ex)
+                {
+                    TryRollBackTransaction(transaction);
+                    errors.Add(string.Format("{0}: {1}", GetRowDisplayName(row), ex.Message));
+                }
+            }
+
+            LoadData();
+            Status = string.Format("Удалено параметров: {0}", deletedCount);
+
+            if (errors.Count > 0)
+            {
+                TaskDialog.Show("Удаление параметров", BuildErrorMessage(errors));
+            }
+        }
+
+        private void TryRollBackTransaction(Transaction transaction)
+        {
+            if (transaction == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (transaction.GetStatus() == TransactionStatus.Started)
+                {
+                    transaction.RollBack();
+                }
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Удаление параметров", ex.Message);
+            }
+        }
+
+        private void DeleteProjectParameter(ParameterUsageRow row)
+        {
+            if (row == null || !IsValidElementId(row.ParameterId))
+            {
+                throw new InvalidOperationException("не найден ElementId параметра");
+            }
+
+            _doc.Delete(row.ParameterId);
+        }
+
+        private void DeleteFamilyParameter(ParameterUsageRow row)
+        {
+            FamilyParameter parameter = GetFamilyParameterByGuid(row != null ? row.ParameterGuid : Guid.Empty);
+            if (parameter == null)
+            {
+                throw new InvalidOperationException("параметр не найден в семействе");
+            }
+
+            _doc.FamilyManager.RemoveParameter(parameter);
+        }
+
+        private FamilyParameter GetFamilyParameterByGuid(Guid guid)
+        {
+            if (guid == Guid.Empty || !_doc.IsFamilyDocument)
+            {
+                return null;
+            }
+
+            FamilyManager familyManager = _doc.FamilyManager;
+            foreach (FamilyParameter parameter in familyManager.Parameters.Cast<FamilyParameter>())
+            {
+                if (parameter.IsShared && parameter.GUID == guid)
+                {
+                    return parameter;
+                }
+            }
+
+            return null;
+        }
+
+        private List<ParameterUsageRow> GetCheckedRows()
+        {
+            return Rows
+                .Where(x => x.IsSelectedForDelete)
+                .OrderBy(x => Rows.IndexOf(x))
+                .ToList();
+        }
+
+        private class DeleteParametersExternalEventHandler : IExternalEventHandler
+        {
+            private readonly CollectionParametersWindow _window;
+            private List<ParameterUsageRow> _rows;
+
+            internal DeleteParametersExternalEventHandler(CollectionParametersWindow window)
+            {
+                _window = window;
+                _rows = new List<ParameterUsageRow>();
+            }
+
+            internal void SetRows(List<ParameterUsageRow> rows)
+            {
+                _rows = rows != null
+                    ? rows.ToList()
+                    : new List<ParameterUsageRow>();
+            }
+
+            public void Execute(UIApplication app)
+            {
+                List<ParameterUsageRow> rows = _rows.ToList();
+                _rows.Clear();
+
+                try
+                {
+                    _window.DeleteParametersInRevitContext(rows);
+                }
+                catch (Exception ex)
+                {
+                    _window.Status = "Ошибка удаления параметров";
+                    TaskDialog.Show("Удаление параметров", ex.Message);
+                }
+            }
+
+            public string GetName()
+            {
+                return "KPLN. Удаление общих параметров";
+            }
+        }
+
+        private string GetRowDisplayName(ParameterUsageRow row)
+        {
+            if (row == null)
+            {
+                return "Параметр";
+            }
+
+            if (!string.IsNullOrWhiteSpace(row.Name))
+            {
+                return row.Name;
+            }
+
+            return !string.IsNullOrWhiteSpace(row.Guid) ? row.Guid : "Параметр";
+        }
+
+        private string BuildErrorMessage(List<string> errors)
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("Часть параметров не удалось удалить:");
+
+            foreach (string error in errors)
+            {
+                builder.AppendLine(error);
+            }
+
+            return builder.ToString();
+        }
+
+        private void ExportExcelButton_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog dialog = new SaveFileDialog
+            {
+                AddExtension = true,
+                DefaultExt = ".xlsx",
+                FileName = GetDefaultReportFileName(),
+                Filter = "Книга Excel (*.xlsx)|*.xlsx",
+                OverwritePrompt = true,
+                Title = "Сохранить отчет"
+            };
+
+            bool? result = dialog.ShowDialog(this);
+            if (result != true)
+            {
+                return;
+            }
+
+            try
+            {
+                ExportRowsToExcel(dialog.FileName);
+                Status = string.Format("Отчет сохранен: {0}", dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                Status = "Ошибка выгрузки отчета";
+                TaskDialog.Show("Выгрузка в Excel", ex.Message);
+            }
+        }
+
+        private string GetDefaultReportFileName()
+        {
+            return string.Format(
+                "ОтчётПоОбщПар_{0}.xlsx",
+                DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
+        }
+
+        private void ExportRowsToExcel(string filePath)
+        {
+            List<ReportColumn> columns = GetReportColumns();
+            List<ParameterUsageRow> rows = Rows.ToList();
+
+            using (Package package = Package.Open(filePath, FileMode.Create))
+            {
+                Uri workbookUri = new Uri("/xl/workbook.xml", UriKind.Relative);
+                Uri worksheetUri = new Uri("/xl/worksheets/sheet1.xml", UriKind.Relative);
+
+                PackagePart workbookPart = package.CreatePart(
+                    workbookUri,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+                    CompressionOption.Maximum);
+
+                PackagePart worksheetPart = package.CreatePart(
+                    worksheetUri,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+                    CompressionOption.Maximum);
+
+                package.CreateRelationship(
+                    workbookUri,
+                    TargetMode.Internal,
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument");
+
+                workbookPart.CreateRelationship(
+                    new Uri("worksheets/sheet1.xml", UriKind.Relative),
+                    TargetMode.Internal,
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+                    "rId1");
+
+                WritePartText(workbookPart, BuildWorkbookXml());
+                WritePartText(worksheetPart, BuildWorksheetXml(columns, rows));
+            }
+        }
+
+        private List<ReportColumn> GetReportColumns()
+        {
+            List<ReportColumn> columns = new List<ReportColumn>
+            {
+                new ReportColumn("ID", "ParameterIdText", 14),
+                new ReportColumn("Имя", "Name", 34),
+                new ReportColumn("GUID", "Guid", 38)
+            };
+
+            if (_doc.IsFamilyDocument)
+            {
+                columns.Add(new ReportColumn("Параметры с формулой", "FormulaParameters", 34));
+                columns.Add(new ReportColumn("ID размера (имена видов)", "Dimensions", 38));
+            }
+            else
+            {
+                columns.Add(new ReportColumn("Категории", "Families", 42));
+                columns.Add(new ReportColumn("Фильтры видов", "ViewFilters", 34));
+                columns.Add(new ReportColumn("Фильтры спецификаций", "ScheduleFilters", 34));
+            }
+
+            return columns;
+        }
+
+        private string BuildWorkbookXml()
+        {
+            return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+                   "<workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" " +
+                   "xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+                   "<sheets><sheet name=\"Отчет\" sheetId=\"1\" r:id=\"rId1\"/></sheets>" +
+                   "</workbook>";
+        }
+
+        private string BuildWorksheetXml(List<ReportColumn> columns, List<ParameterUsageRow> rows)
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.Append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>");
+            builder.Append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">");
+            builder.Append("<sheetViews><sheetView workbookViewId=\"0\"/></sheetViews>");
+            builder.Append("<sheetFormatPr defaultRowHeight=\"15\"/>");
+            builder.Append("<cols>");
+
+            for (int i = 0; i < columns.Count; i++)
+            {
+                builder.AppendFormat(
+                    CultureInfo.InvariantCulture,
+                    "<col min=\"{0}\" max=\"{0}\" width=\"{1}\" customWidth=\"1\"/>",
+                    i + 1,
+                    columns[i].Width);
+            }
+
+            builder.Append("</cols>");
+            builder.Append("<sheetData>");
+            AppendExcelRow(builder, 1, columns.Select(x => x.Header).ToList());
+
+            int rowIndex = 2;
+            foreach (ParameterUsageRow row in rows)
+            {
+                List<string> values = columns
+                    .Select(x => GetColumnValue(row, x.SortMemberPath))
+                    .ToList();
+
+                AppendExcelRow(builder, rowIndex, values);
+                rowIndex++;
+            }
+
+            builder.Append("</sheetData>");
+            builder.Append("</worksheet>");
+
+            return builder.ToString();
+        }
+
+        private void AppendExcelRow(StringBuilder builder, int rowIndex, List<string> values)
+        {
+            builder.AppendFormat(CultureInfo.InvariantCulture, "<row r=\"{0}\">", rowIndex);
+
+            for (int i = 0; i < values.Count; i++)
+            {
+                AppendExcelCell(builder, rowIndex, i + 1, values[i]);
+            }
+
+            builder.Append("</row>");
+        }
+
+        private void AppendExcelCell(StringBuilder builder, int rowIndex, int columnIndex, string value)
+        {
+            builder.Append("<c r=\"");
+            builder.Append(GetExcelColumnName(columnIndex));
+            builder.Append(rowIndex.ToString(CultureInfo.InvariantCulture));
+            builder.Append("\" t=\"inlineStr\"><is><t xml:space=\"preserve\">");
+            builder.Append(SecurityElement.Escape(CleanXmlText(value)));
+            builder.Append("</t></is></c>");
+        }
+
+        private string GetExcelColumnName(int columnIndex)
+        {
+            StringBuilder builder = new StringBuilder();
+            while (columnIndex > 0)
+            {
+                int modulo = (columnIndex - 1) % 26;
+                builder.Insert(0, Convert.ToChar('A' + modulo));
+                columnIndex = (columnIndex - modulo) / 26;
+            }
+
+            return builder.ToString();
+        }
+
+        private string CleanXmlText(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            StringBuilder builder = new StringBuilder(value.Length);
+            foreach (char character in value)
+            {
+                if (IsValidXmlCharacter(character))
+                {
+                    builder.Append(character);
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private bool IsValidXmlCharacter(char character)
+        {
+            return character == 0x9 ||
+                   character == 0xA ||
+                   character == 0xD ||
+                   (character >= 0x20 && character <= 0xD7FF) ||
+                   (character >= 0xE000 && character <= 0xFFFD);
+        }
+
+        private void WritePartText(PackagePart part, string text)
+        {
+            using (Stream stream = part.GetStream(FileMode.Create, FileAccess.Write))
+            using (StreamWriter writer = new StreamWriter(stream, new UTF8Encoding(false)))
+            {
+                writer.Write(text);
+            }
+        }
+
         private void ParametersGrid_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.C || (Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
@@ -908,7 +1360,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private string BuildSelectedCellsClipboardText()
         {
             List<DataGridCellInfo> selectedCells = ParametersGrid.SelectedCells
-                .Where(x => x.Item as ParameterUsageRow != null && x.Column.Visibility == System.Windows.Visibility.Visible)
+                .Where(x => x.Item as ParameterUsageRow != null &&
+                            x.Column.Visibility == System.Windows.Visibility.Visible &&
+                            !string.IsNullOrWhiteSpace(x.Column.SortMemberPath))
                 .ToList();
 
             if (selectedCells.Count == 0)
@@ -917,7 +1371,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
 
             List<DataGridColumn> visibleColumns = ParametersGrid.Columns
-                .Where(x => x.Visibility == System.Windows.Visibility.Visible && selectedCells.Any(y => y.Column == x))
+                .Where(x => x.Visibility == System.Windows.Visibility.Visible &&
+                            !string.IsNullOrWhiteSpace(x.SortMemberPath) &&
+                            selectedCells.Any(y => y.Column == x))
                 .OrderBy(x => x.DisplayIndex)
                 .ToList();
 
@@ -1016,6 +1472,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             public string ScheduleFilters { get; set; }
             public string FormulaParameters { get; set; }
             public string Dimensions { get; set; }
+            public bool IsSelectedForDelete { get; set; }
 
             internal Guid ParameterGuid { get; set; }
             internal ElementId ParameterId { get; set; }
@@ -1034,6 +1491,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 ScheduleFilters = string.Empty;
                 FormulaParameters = string.Empty;
                 Dimensions = string.Empty;
+                IsSelectedForDelete = false;
 
                 ParameterGuid = System.Guid.Empty;
                 ParameterId = ElementId.InvalidElementId;
@@ -1041,6 +1499,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 FamiliesSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
                 ViewFiltersSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
                 ScheduleFiltersSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            }
+        }
+
+        private class ReportColumn
+        {
+            internal string Header { get; private set; }
+            internal string SortMemberPath { get; private set; }
+            internal double Width { get; private set; }
+
+            internal ReportColumn(string header, string sortMemberPath, double width)
+            {
+                Header = header;
+                SortMemberPath = sortMemberPath;
+                Width = width;
             }
         }
     }
