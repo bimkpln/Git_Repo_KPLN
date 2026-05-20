@@ -29,7 +29,7 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
 
             if (_selVElem == null)
             {
-                System.Windows.MessageBox.Show(
+                MessageBox.Show(
                     "В выобрке нет видов, которые могут быть перемещены",
                     "Ошибка",
                     MessageBoxButton.OK,
@@ -54,7 +54,7 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
 
 
             // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName("Положение вида", ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(ExcCmdListVPPositionStart.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             return Result.Succeeded;
         }
@@ -88,7 +88,7 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
                 // У легенд и спек - нет привязки к координатам модели
                 catch (Autodesk.Revit.Exceptions.InvalidOperationException)
                 {
-                    System.Windows.MessageBox.Show(
+                    MessageBox.Show(
                         "Свомещение внутренних начал применимо только для видов, у которых есть координаты (планы, разрезы, фасады, 3д-виды).\n " +
                             "Для текущего вида - смещение отменено",
                         "Ошибка",
