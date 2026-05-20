@@ -22,7 +22,7 @@ namespace KPLN_Tools.Forms
     {
         void RequestPlaceApartment(int apartmentId);
         void RequestConvertTo3D(ApartmentPresetData presetData);
-        void RequestOpenApartmentPresets(ApartmentPresetData presetData);
+        void RequestRefreshApartmentPresets(ApartmentPresetData presetData);
         void RequestUpdateApartmentMarks();
     }
 
@@ -51,6 +51,9 @@ namespace KPLN_Tools.Forms
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
 
+        public string WindowType { get; set; }
+        public int WindowSillHeight { get; set; }
+
         public string EntryDoor { get; set; }
         public string BathroomDoor { get; set; }
         public string RoomDoor { get; set; }
@@ -71,6 +74,8 @@ namespace KPLN_Tools.Forms
                 WallTypeByThickness = WallTypeByThickness != null
                     ? new Dictionary<int, string>(WallTypeByThickness)
                     : new Dictionary<int, string>(),
+                WindowType = WindowType,
+                WindowSillHeight = WindowSillHeight,
                 EntryDoor = EntryDoor,
                 BathroomDoor = BathroomDoor,
                 RoomDoor = RoomDoor,
@@ -86,6 +91,7 @@ namespace KPLN_Tools.Forms
     {
         public int _nDep;
         private readonly IApartmentManagerExternalController _externalController;
+        private readonly ApartmentManagerVm _vm;
         public int SelectedApartmentId { get; private set; }
         public ApartmentPresetData ApartmentPresetData { get; private set; }
         public bool ConvertTo3DRequested { get; private set; }
@@ -93,7 +99,8 @@ namespace KPLN_Tools.Forms
         public ApartmentManagerWindow(
             int nDep,
             IApartmentManagerExternalController externalController,
-            ApartmentPresetData presetData = null)
+            ApartmentPresetData presetData = null,
+            ApartmentPresetPanelContext presetContext = null)
         {
             InitializeComponent();
 
@@ -110,6 +117,8 @@ namespace KPLN_Tools.Forms
                     BaseOffset = 0,
                     WallHeight = 3000,
                     WallTypeByThickness = new Dictionary<int, string>(),
+                    WindowType = "Не выбрано",
+                    WindowSillHeight = 900,
                     EntryDoor = "Не выбрано",
                     BathroomDoor = "Не выбрано",
                     RoomDoor = "Не выбрано",
@@ -117,21 +126,35 @@ namespace KPLN_Tools.Forms
                     FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
                 };
 
-            ApartmentManagerVm vm = new ApartmentManagerVm(_nDep, ApartmentPresetData.FamilyPostProcessAction);
+            _vm = new ApartmentManagerVm(_nDep, ApartmentPresetData, presetContext);
 
-            vm.ItemPicked += Vm_ItemPicked;
-            vm.RequestClose += Vm_RequestClose;
-            vm.ApartmentPresetsRequested += Vm_ApartmentPresetsRequested;
-            vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
-            vm.FamilyPostProcessActionChanged += Vm_FamilyPostProcessActionChanged;
-            vm.ApartmentMarksUpdateRequested += Vm_ApartmentMarksUpdateRequested;
+            _vm.ItemPicked += Vm_ItemPicked;
+            _vm.RequestClose += Vm_RequestClose;
+            _vm.ApartmentPresetDataRefreshRequested += Vm_ApartmentPresetDataRefreshRequested;
+            _vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
+            _vm.FamilyPostProcessActionChanged += Vm_FamilyPostProcessActionChanged;
+            _vm.ApartmentMarksUpdateRequested += Vm_ApartmentMarksUpdateRequested;
+            _vm.ApartmentPresetDataChanged += Vm_ApartmentPresetDataChanged;
 
-            DataContext = vm;
+            Closing += ApartmentManagerWindow_Closing;
+
+            DataContext = _vm;
         }
 
         public void SetApartmentPresetData(ApartmentPresetData data)
         {
             ApartmentPresetData = data != null ? data.Clone() : null;
+            if (_vm != null)
+                _vm.SetApartmentPresetData(ApartmentPresetData);
+        }
+
+        public void SetApartmentPresetContext(ApartmentPresetPanelContext context, ApartmentPresetData currentData)
+        {
+            if (_vm == null)
+                return;
+
+            _vm.SetApartmentPresetContext(context, currentData);
+            SyncApartmentPresetDataFromVm();
         }
 
         private void Vm_ItemPicked(int id)
@@ -153,12 +176,14 @@ namespace KPLN_Tools.Forms
             ApartmentPresetData.FamilyPostProcessAction = action;
         }
 
-        private void Vm_ApartmentPresetsRequested()
+        private void Vm_ApartmentPresetDataRefreshRequested()
         {
             if (_externalController == null)
                 return;
 
-            _externalController.RequestOpenApartmentPresets(
+            SyncApartmentPresetDataFromVm();
+
+            _externalController.RequestRefreshApartmentPresets(
                 ApartmentPresetData != null
                     ? ApartmentPresetData.Clone()
                     : null);
@@ -170,6 +195,8 @@ namespace KPLN_Tools.Forms
 
             if (_externalController == null)
                 return;
+
+            SyncApartmentPresetDataFromVm();
 
             WindowState = WindowState.Minimized;
             _externalController.RequestConvertTo3D(
@@ -191,25 +218,67 @@ namespace KPLN_Tools.Forms
         {
             Close();
         }
+
+        private void Vm_ApartmentPresetDataChanged(ApartmentPresetData data)
+        {
+            ApartmentPresetData = data != null ? data.Clone() : null;
+        }
+
+        private void ApartmentManagerWindow_Closing(object sender, CancelEventArgs e)
+        {
+            SyncApartmentPresetDataFromVm();
+        }
+
+        public void MarkApartmentPresetDataStale()
+        {
+            if (_vm != null)
+                _vm.MarkApartmentPresetDataStale();
+        }
+
+        private void SyncApartmentPresetDataFromVm()
+        {
+            if (_vm == null)
+                return;
+
+            ApartmentPresetData = _vm.GetApartmentPresetData();
+        }
+
+        public ApartmentPresetPanelContext GetApartmentPresetContextSnapshot()
+        {
+            return _vm != null
+                ? _vm.GetApartmentPresetContextSnapshot()
+                : new ApartmentPresetPanelContext();
+        }
+
+        private void DigitsOnly_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+        {
+            e.Handled = e.Text.Any(x => !char.IsDigit(x));
+        }
+
+        private void DigitsOnly_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.DataObject.GetDataPresent(typeof(string)))
+            {
+                e.CancelCommand();
+                return;
+            }
+
+            string text = e.DataObject.GetData(typeof(string)) as string;
+            if (string.IsNullOrWhiteSpace(text) || text.Any(x => !char.IsDigit(x)))
+                e.CancelCommand();
+        }
     }
 
     internal class ApartmentManagerVm : INotifyPropertyChanged
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
-
-
-
-
-
         private const string RfaFolderPath = @"X:\BIM\3_Семейства\1_АР\000_Архитектурная концепция\000_Семейства квартир";
 
-
-
-
         public event Action<int> ItemPicked;
-        public event Action ApartmentPresetsRequested;
+        public event Action ApartmentPresetDataRefreshRequested;
         public event Action ConvertTo3DRequested;
         public event Action ApartmentMarksUpdateRequested;
+        public event Action<ApartmentPresetData> ApartmentPresetDataChanged;
         public event Action<ApartmentFamilyPostProcessAction> FamilyPostProcessActionChanged;
         public event Action RequestClose;
 
@@ -220,6 +289,8 @@ namespace KPLN_Tools.Forms
         public ObservableCollection<ApartmentTypeVm> ApartmentTypes { get; private set; }
 
         public ObservableCollection<ApartmentFamilyPostProcessActionOption> FamilyPostProcessActions { get; private set; }
+
+        public ApartmentPresetsVm PresetsVm { get; private set; }
 
         private ApartmentFamilyPostProcessActionOption _selectedFamilyPostProcessAction;
         public ApartmentFamilyPostProcessActionOption SelectedFamilyPostProcessAction
@@ -233,7 +304,12 @@ namespace KPLN_Tools.Forms
                     OnPropertyChanged();
 
                     if (_selectedFamilyPostProcessAction != null)
+                    {
+                        if (PresetsVm != null)
+                            PresetsVm.SetFamilyPostProcessAction(_selectedFamilyPostProcessAction.Value);
+
                         FamilyPostProcessActionChanged?.Invoke(_selectedFamilyPostProcessAction.Value);
+                    }
                 }
             }
         }
@@ -257,16 +333,21 @@ namespace KPLN_Tools.Forms
         public ICommand PickItemCommand { get; private set; }
         public ICommand UploadImageCommand { get; private set; }
         public ICommand OpenApartmentPresetsCommand { get; private set; }
+        public ICommand RefreshApartmentPresetsCommand { get; private set; }
         public ICommand ConvertTo3DCommand { get; private set; }
         public ICommand UpdateApartmentMarksCommand { get; private set; }
         public ICommand CloseCommand { get; private set; }
         public ICommand UpdateDbCommand { get; private set; }
 
-        public ApartmentManagerVm(int nDep, ApartmentFamilyPostProcessAction initialPostProcessAction)
+        public ApartmentManagerVm(int nDep, ApartmentPresetData initialPresetData, ApartmentPresetPanelContext initialPresetContext)
         {
             IsDep8 = (nDep == 8);
 
             ApartmentTypes = new ObservableCollection<ApartmentTypeVm>();
+            PresetsVm = new ApartmentPresetsVm(initialPresetData, initialPresetContext ?? new ApartmentPresetPanelContext());
+            PresetsVm.DataChanged += PresetsVm_DataChanged;
+            PresetsVm.StateChanged += PresetsVm_StateChanged;
+
             FamilyPostProcessActions = new ObservableCollection<ApartmentFamilyPostProcessActionOption>
             {
                 new ApartmentFamilyPostProcessActionOption
@@ -290,18 +371,69 @@ namespace KPLN_Tools.Forms
             CloseCommand = new RelayCommand(OnClose);
             UploadImageCommand = new RelayCommand<ApartmentItemVm>(OnUploadImage);
             OpenApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
-            ConvertTo3DCommand = new RelayCommand(OnConvertTo3D);
+            RefreshApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
+            ConvertTo3DCommand = new RelayCommand(OnConvertTo3D, CanConvertTo3D);
             UpdateApartmentMarksCommand = new RelayCommand(OnUpdateApartmentMarks);
             UpdateDbCommand = new RelayCommand<Window>(OnUpdateDb);
 
             SelectedFamilyPostProcessAction = FamilyPostProcessActions
-                .FirstOrDefault(x => x.Value == initialPostProcessAction)
+                .FirstOrDefault(x => initialPresetData != null && x.Value == initialPresetData.FamilyPostProcessAction)
                 ?? FamilyPostProcessActions.FirstOrDefault();
 
             LoadTypes();
         }
 
-        private void OnOpenApartmentPresets() { ApartmentPresetsRequested?.Invoke(); }
+        public ApartmentPresetData GetApartmentPresetData()
+        {
+            return PresetsVm != null ? PresetsVm.BuildData() : new ApartmentPresetData();
+        }
+
+        public ApartmentPresetPanelContext GetApartmentPresetContextSnapshot()
+        {
+            return PresetsVm != null
+                ? PresetsVm.GetContextSnapshot()
+                : new ApartmentPresetPanelContext();
+        }
+
+        public void SetApartmentPresetData(ApartmentPresetData data)
+        {
+            if (PresetsVm != null)
+                PresetsVm.ApplyContext(new ApartmentPresetPanelContext(), data);
+        }
+
+        public void SetApartmentPresetContext(ApartmentPresetPanelContext context, ApartmentPresetData currentData)
+        {
+            if (PresetsVm != null)
+                PresetsVm.ApplyContext(context, currentData);
+        }
+
+        public void MarkApartmentPresetDataStale()
+        {
+            if (PresetsVm != null)
+                PresetsVm.MarkDataStale();
+        }
+
+        private void OnOpenApartmentPresets()
+        {
+            ApartmentPresetDataRefreshRequested?.Invoke();
+        }
+
+        private bool CanConvertTo3D()
+        {
+            return PresetsVm != null && PresetsVm.CanConvertTo3D;
+        }
+
+        private void PresetsVm_DataChanged(ApartmentPresetData data)
+        {
+            ApartmentPresetDataChanged?.Invoke(data);
+        }
+
+        private void PresetsVm_StateChanged()
+        {
+            RelayCommand relay = ConvertTo3DCommand as RelayCommand;
+            if (relay != null)
+                relay.RaiseCanExecuteChanged();
+        }
 
         private void OnUpdateApartmentMarks()
         {
@@ -796,15 +928,17 @@ namespace KPLN_Tools.Forms
     internal class RelayCommand : ICommand
     {
         private readonly Action _execute;
+        private readonly Func<bool> _canExecute;
 
-        public RelayCommand(Action e)
+        public RelayCommand(Action e, Func<bool> canExecute = null)
         {
             _execute = e;
+            _canExecute = canExecute;
         }
 
         public bool CanExecute(object p)
         {
-            return true;
+            return _canExecute == null || _canExecute();
         }
 
         public void Execute(object p)
@@ -813,20 +947,35 @@ namespace KPLN_Tools.Forms
         }
 
         public event EventHandler CanExecuteChanged;
+
+        public void RaiseCanExecuteChanged()
+        {
+            EventHandler h = CanExecuteChanged;
+            if (h != null)
+                h(this, EventArgs.Empty);
+        }
     }
 
     internal class RelayCommand<T> : ICommand
     {
         private readonly Action<T> _execute;
+        private readonly Func<T, bool> _canExecute;
 
-        public RelayCommand(Action<T> e)
+        public RelayCommand(Action<T> e, Func<T, bool> canExecute = null)
         {
             _execute = e;
+            _canExecute = canExecute;
         }
 
         public bool CanExecute(object p)
         {
-            return true;
+            if (_canExecute == null)
+                return true;
+
+            if (p == null)
+                return false;
+
+            return _canExecute((T)p);
         }
 
         public void Execute(object p)
@@ -838,6 +987,13 @@ namespace KPLN_Tools.Forms
         }
 
         public event EventHandler CanExecuteChanged;
+
+        public void RaiseCanExecuteChanged()
+        {
+            EventHandler h = CanExecuteChanged;
+            if (h != null)
+                h(this, EventArgs.Empty);
+        }
     }
 
     public class NullToVisibilityConverter : IValueConverter
