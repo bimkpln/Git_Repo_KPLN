@@ -58,6 +58,7 @@ namespace KPLN_Tools.Forms
             System.Windows.Forms.FolderBrowserDialog browserDialog = new System.Windows.Forms.FolderBrowserDialog
             {
                 SelectedPath = RLinkManagerForm.InitialDirectoryForOpenFileDialog,
+                ShowNewFolderButton = false
             };
 
             if (browserDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)

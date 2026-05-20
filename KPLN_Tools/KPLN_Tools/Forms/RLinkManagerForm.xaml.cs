@@ -29,11 +29,19 @@ namespace KPLN_Tools.Forms
             Document doc = _uiapp.ActiveUIDocument.Document;
 
             ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
-            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-
-            DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
-            if (dBProject != null) InitialDirectoryForOpenFileDialog = dBProject.MainPath;
-            else InitialDirectoryForOpenFileDialog = Path.GetPathRoot(Environment.SystemDirectory);
+            
+            // Установка только при первом запуске.
+            // 95% что работаем в рамках одного проекта, обновлять каждый раз нет смысла, пусть юзер сам накликивает
+            if (string.IsNullOrEmpty(InitialDirectoryForOpenFileDialog))
+            {
+                string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
+                DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
+                
+                if (dBProject != null) 
+                    InitialDirectoryForOpenFileDialog = dBProject.MainPath;
+                else
+                    InitialDirectoryForOpenFileDialog = Path.GetPathRoot(Environment.SystemDirectory);
+            }
 
             InitializeComponent();
             DataContext = this;
@@ -117,7 +125,7 @@ namespace KPLN_Tools.Forms
                 InitialDirectory = InitialDirectoryForOpenFileDialog,
             };
 
-            if (openFileDialog.ShowDialog() == true)
+            if ((bool)openFileDialog.ShowDialog())
             {
                 InitialDirectoryForOpenFileDialog = openFileDialog.FileName;
                 foreach (string filePath in openFileDialog.FileNames)
@@ -127,9 +135,9 @@ namespace KPLN_Tools.Forms
 
                     SelectedConfig.AddNewItem(newEntity);
                 }
-            }
 
-            DataContext = this;
+                DataContext = this;
+            }
         }
 
         private void AddNewRevitServerLink_Click(object sender, RoutedEventArgs e)

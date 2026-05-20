@@ -82,18 +82,9 @@ namespace KPLN_Tools.ExternalCommands
                     foreach (string suff in suffFIData)
                     {
                         IEnumerable<FamilyInstance> prefAndSuffFI = prefFI.Where(fi => fi.get_Parameter(_sufParamGuid).AsString().Equals(suff));
-                        if (!prefAndSuffFI.Any())
-                        {
-                            MessageBox.Show(
-                                $"Отправь разработчику - не удалось объединить данные по приставке и по суффиксу",
-                                "Ошибка",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Asterisk);
-
-                            return Result.Cancelled;
-                        }
-
-                        ozkEntities.Add(new OZKDuctAccessoryEntity(fs, prefAndSuffFI, pref, suff));
+                        // При больше 1 варианта - нужно перебирать каждый, и вписывать только в найденные
+                        if (prefAndSuffFI.Any())
+                            ozkEntities.Add(new OZKDuctAccessoryEntity(fs, prefAndSuffFI, pref, suff));
                     }
                 }
             }
