@@ -173,6 +173,33 @@ namespace KPLN_BIMTools_Ribbon
                 "http://moodle/mod/book/view.php?id=502&chapterid=1329",
                 false
             );
+
+
+
+
+
+            AddPushButtonDataInPullDown(
+                "Сбор информации по общим параметрам",
+                "Сбор информации по общим параметрам",
+                "Плагин, который собирает информацию по общим параметрам проекта",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandCollectionParameters).FullName,
+                paramPullDown,
+                "сollectionParameters",
+                "http://moodle/",
+                false
+            );
+
+
+
+
+
+
             #endregion
 
             #region Менеджер работы с БД

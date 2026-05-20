@@ -35,7 +35,7 @@ namespace KPLN_ModelChecker_User.Common
                 Document doc = app.ActiveUIDocument.Document;
                 Dimension firstDim = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
-                    .Where(el => el.GetTypeId().IntegerValue == dimType.Id.IntegerValue)
+                    .Where(el => IDHelper.ElIdValue(el.GetTypeId()) == IDHelper.ElIdValue(dimType.Id))
                     .Cast<Dimension>()
                     .FirstOrDefault();
 

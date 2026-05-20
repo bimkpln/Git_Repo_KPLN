@@ -213,11 +213,13 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\TagsHelpers\AnnotationCollisionResolver.cs" />
     <Compile Include="Common\IDHelper.cs" />
     <Compile Include="ExecutableCommand\ApartmentExecutionReportActionController.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Presets.cs" />
+    <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
@@ -232,6 +234,7 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
       <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
