@@ -1,5 +1,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
@@ -131,7 +132,7 @@ namespace KPLN_Tools.ExecutableCommand
         {
             foreach (long idValue in _elementIds)
             {
-                ElementId id = CreateElementId(idValue);
+                ElementId id = IDHelper.CreateElementId(idValue);
                 Element element = doc.GetElement(id);
                 if (element == null)
                     continue;
@@ -147,7 +148,7 @@ namespace KPLN_Tools.ExecutableCommand
         private void ExecuteDeleteRemnants(Document doc)
         {
             List<ElementId> ids = _elementIds
-                .Select(CreateElementId)
+                .Select(IDHelper.CreateElementId)
                 .Where(x => x != null && x != ElementId.InvalidElementId && doc.GetElement(x) != null)
                 .ToList();
 
@@ -192,8 +193,8 @@ namespace KPLN_Tools.ExecutableCommand
                 return;
             }
 
-            FamilySymbol symbol = doc.GetElement(CreateElementId(_restoreInfo.SymbolId)) as FamilySymbol;
-            ViewPlan viewPlan = doc.GetElement(CreateElementId(_restoreInfo.ViewId)) as ViewPlan;
+            FamilySymbol symbol = doc.GetElement(IDHelper.CreateElementId(_restoreInfo.SymbolId)) as FamilySymbol;
+            ViewPlan viewPlan = doc.GetElement(IDHelper.CreateElementId(_restoreInfo.ViewId)) as ViewPlan;
 
             if (symbol == null || viewPlan == null)
             {
@@ -248,7 +249,7 @@ namespace KPLN_Tools.ExecutableCommand
                 case FamilyPlacementType.WorkPlaneBased:
                     Level level = null;
                     if (levelIdValue > 0)
-                        level = doc.GetElement(CreateElementId(levelIdValue)) as Level;
+                        level = doc.GetElement(IDHelper.CreateElementId(levelIdValue)) as Level;
 
                     if (level == null)
                         level = viewPlan.GenLevel;
@@ -286,13 +287,5 @@ namespace KPLN_Tools.ExecutableCommand
             p.Set(oldValue.TrimEnd() + " " + textToAppend);
         }
 
-        private static ElementId CreateElementId(long value)
-        {
-#if Revit2024 || Debug2024
-            return new ElementId(value);
-#else
-            return new ElementId((int)value);
-#endif
-        }
     }
 }

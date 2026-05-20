@@ -272,15 +272,7 @@ namespace KPLN_Tools.Forms
     internal class ApartmentManagerVm : INotifyPropertyChanged
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
-
-
-
-
-
         private const string RfaFolderPath = @"X:\BIM\3_Семейства\1_АР\000_Архитектурная концепция\000_Семейства квартир";
-
-
-
 
         public event Action<int> ItemPicked;
         public event Action ApartmentPresetDataRefreshRequested;

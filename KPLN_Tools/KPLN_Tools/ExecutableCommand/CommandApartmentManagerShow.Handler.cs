@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
@@ -525,42 +526,6 @@ namespace KPLN_Tools.ExecutableCommand
             return detectedName;
         }
 
-        private static long GetElementIdValue(ElementId id)
-        {
-#if Revit2024 || Debug2024
-            return id.Value;
-#else
-            return id.IntegerValue;
-#endif
-        }
-
-        private static double ConvertMmToInternal(int valueMm)
-        {
-#if Revit2024 || Revit2023 || Debug2024 || Debug2023
-            return UnitUtils.ConvertToInternalUnits(valueMm, UnitTypeId.Millimeters);
-#else
-            return UnitUtils.ConvertToInternalUnits(valueMm, DisplayUnitType.DUT_MILLIMETERS);
-#endif
-        }
-
-        private static double ConvertInternalToMm(double valueInternal)
-        {
-#if Revit2024 || Revit2023 || Debug2024 || Debug2023
-            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.Millimeters);
-#else
-            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_MILLIMETERS);
-#endif
-        }
-
-        private static double ConvertInternalAreaToSquareMeters(double valueInternal)
-        {
-#if Revit2024 || Revit2023 || Debug2024 || Debug2023
-            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.SquareMeters);
-#else
-            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_SQUARE_METERS);
-#endif
-        }
-
         private static double RoundTol(double value, double tol)
         {
             return Math.Round(value / tol) * tol;
@@ -741,21 +706,21 @@ namespace KPLN_Tools.ExecutableCommand
             if (p == null)
             {
                 if (errors != null)
-                    errors.Add("У квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не найден параметр '" + parameterName + "'.");
+                    errors.Add("У квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " не найден параметр '" + parameterName + "'.");
                 return false;
             }
 
             if (p.IsReadOnly)
             {
                 if (errors != null)
-                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " доступен только для чтения.");
+                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " доступен только для чтения.");
                 return false;
             }
 
             if (p.StorageType != StorageType.Double)
             {
                 if (errors != null)
-                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " имеет некорректный тип.");
+                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " имеет некорректный тип.");
                 return false;
             }
 
@@ -820,7 +785,7 @@ namespace KPLN_Tools.ExecutableCommand
                     catch (Exception ex)
                     {
                         skippedCount++;
-                        errors.Add("Ошибка у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + ": " + ex.Message);
+                        errors.Add("Ошибка у квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + ": " + ex.Message);
                     }
                 }
 

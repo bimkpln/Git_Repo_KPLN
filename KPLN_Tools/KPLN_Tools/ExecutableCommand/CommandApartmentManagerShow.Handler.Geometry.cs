@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
+using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
 using System.Collections.Generic;
@@ -69,7 +70,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось удалить 2D-квартиру ID = " + GetElementIdValue(apartmentId) + ": " + ex.Message);
+                    debugMessages.Add("Не удалось удалить 2D-квартиру ID = " + IDHelper.ElIdValue(apartmentId) + ": " + ex.Message);
 
                 return false;
             }
@@ -83,7 +84,7 @@ namespace KPLN_Tools.ExecutableCommand
             BuiltInCategory bic;
             try
             {
-                bic = (BuiltInCategory)category.Id.IntegerValue;
+                bic = (BuiltInCategory)IDHelper.ElIdInt(category.Id);
             }
             catch
             {
@@ -196,7 +197,7 @@ namespace KPLN_Tools.ExecutableCommand
                     if (symbol == null)
                     {
                         if (debugMessages != null)
-                            debugMessages.Add("У вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + " не найден тип.");
+                            debugMessages.Add("У вложенного элемента ID = " + IDHelper.ElIdValue(nestedFi.Id) + " не найден тип.");
                         continue;
                     }
 
@@ -210,7 +211,7 @@ namespace KPLN_Tools.ExecutableCommand
                     if (tr == null)
                     {
                         if (debugMessages != null)
-                            debugMessages.Add("У вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + " не найден Transform.");
+                            debugMessages.Add("У вложенного элемента ID = " + IDHelper.ElIdValue(nestedFi.Id) + " не найден Transform.");
                         continue;
                     }
 
@@ -222,7 +223,7 @@ namespace KPLN_Tools.ExecutableCommand
                     if (level == null)
                     {
                         if (debugMessages != null)
-                            debugMessages.Add("Не найден уровень для вложенного элемента ID = " + GetElementIdValue(nestedFi.Id));
+                            debugMessages.Add("Не найден уровень для вложенного элемента ID = " + IDHelper.ElIdValue(nestedFi.Id));
                         continue;
                     }
 
@@ -256,7 +257,7 @@ namespace KPLN_Tools.ExecutableCommand
                     if (created == null)
                     {
                         if (debugMessages != null)
-                            debugMessages.Add("Не удалось создать экземпляр для вложенного элемента ID = " + GetElementIdValue(nestedFi.Id));
+                            debugMessages.Add("Не удалось создать экземпляр для вложенного элемента ID = " + IDHelper.ElIdValue(nestedFi.Id));
                         continue;
                     }
 
@@ -275,7 +276,7 @@ namespace KPLN_Tools.ExecutableCommand
                 catch (Exception ex)
                 {
                     if (debugMessages != null)
-                        debugMessages.Add("Ошибка копирования вложенного элемента ID = " + GetElementIdValue(nestedFi.Id) + ": " + ex.Message);
+                        debugMessages.Add("Ошибка копирования вложенного элемента ID = " + IDHelper.ElIdValue(nestedFi.Id) + ": " + ex.Message);
                 }
             }
         }
@@ -306,7 +307,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (!CanFlipHand(target))
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Невозможно повторить flipHand у вложенного элемента ID = " + GetElementIdValue(source.Id) + ": созданный тип не поддерживает flipHand.");
+                    debugMessages.Add("Невозможно повторить flipHand у вложенного элемента ID = " + IDHelper.ElIdValue(source.Id) + ": созданный тип не поддерживает flipHand.");
                 return;
             }
 
@@ -317,7 +318,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось применить flipHand к вложенному элементу ID = " + GetElementIdValue(source.Id) + ": " + ex.Message);
+                    debugMessages.Add("Не удалось применить flipHand к вложенному элементу ID = " + IDHelper.ElIdValue(source.Id) + ": " + ex.Message);
             }
         }
 
@@ -338,7 +339,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (!CanFlipFacing(target))
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Невозможно повторить flipFacing у вложенного элемента ID = " + GetElementIdValue(source.Id) + ": созданный тип не поддерживает flipFacing.");
+                    debugMessages.Add("Невозможно повторить flipFacing у вложенного элемента ID = " + IDHelper.ElIdValue(source.Id) + ": созданный тип не поддерживает flipFacing.");
                 return;
             }
 
@@ -349,7 +350,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось применить flipFacing к вложенному элементу ID = " + GetElementIdValue(source.Id) + ": " + ex.Message);
+                    debugMessages.Add("Не удалось применить flipFacing к вложенному элементу ID = " + IDHelper.ElIdValue(source.Id) + ": " + ex.Message);
             }
         }
 
@@ -504,7 +505,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (doc == null || createdWallsForApartment == null || createdWallsForApartment.Count == 0)
                 return;
 
-            double tol = ConvertMmToInternal(10);
+            double tol = IDHelper.ConvertMmToInternal(10);
             List<Wall> validWalls = createdWallsForApartment
                 .Where(x => x != null && x.IsValidObject)
                 .ToList();
@@ -684,7 +685,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (doc == null || apartmentDoors == null || apartmentDoors.Doors == null || createdWallsForApartment == null)
                 return;
 
-            double maxDistanceToWallAxis = ConvertMmToInternal(500);
+            double maxDistanceToWallAxis = IDHelper.ConvertMmToInternal(500);
 
             foreach (PreparedDoorPlacement preparedDoor in apartmentDoors.Doors)
             {
@@ -760,7 +761,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return 0;
 
             int installedCount = 0;
-            double maxDistanceToWallAxis = ConvertMmToInternal(500);
+            double maxDistanceToWallAxis = IDHelper.ConvertMmToInternal(500);
 
             foreach (PreparedDoorPlacement preparedDoor in apartmentDoors.Doors)
             {
@@ -810,7 +811,7 @@ namespace KPLN_Tools.ExecutableCommand
                         debugMessages,
                         "Не найдена стена-хост для двери" +
                         " ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
-                        " квартиры ID = " + GetElementIdValue(preparedDoor.ApartmentId) + ". " +
+                        " квартиры ID = " + IDHelper.ElIdValue(preparedDoor.ApartmentId) + ". " +
                         BuildDoorHostSearchDiagnostic(doc, preparedDoor, existingWallsOnLevel, createdWallsForApartment, maxDistanceToWallAxis));
 
                     continue;
@@ -881,7 +882,7 @@ namespace KPLN_Tools.ExecutableCommand
                         state,
                         debugMessages,
                         "Ошибка вставки двери ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
-                        " в стену ID = " + GetElementIdValue(hostWall.Id) +
+                        " в стену ID = " + IDHelper.ElIdValue(hostWall.Id) +
                         ", тип '" + BuildDoorTypeDisplayName(symbolToPlace) + "': " + ex.Message);
                     continue;
                 }
@@ -901,7 +902,7 @@ namespace KPLN_Tools.ExecutableCommand
                         state,
                         debugMessages,
                         "Revit не создал дверь ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
-                        " в стене ID = " + GetElementIdValue(hostWall.Id) +
+                       " в стене ID = " + IDHelper.ElIdValue(hostWall.Id) +
                         ", тип '" + BuildDoorTypeDisplayName(symbolToPlace) + "'.");
                 }
             }
@@ -916,7 +917,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (doc == null || preparedDoor == null || preparedDoor.DoorSymbol == null || preparedDoor.InsertPoint == null || baseLevel == null)
                 return false;
 
-            double maxDistanceToWallAxis = ConvertMmToInternal(1000);
+            double maxDistanceToWallAxis = IDHelper.ConvertMmToInternal(1000);
 
             Wall hostWall;
             XYZ projectedPoint;
@@ -941,7 +942,7 @@ namespace KPLN_Tools.ExecutableCommand
                     state,
                     debugMessages,
                     "Не найдена стена-хост для входной двери ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
-                    " квартиры ID = " + GetElementIdValue(preparedDoor.ApartmentId) + ". " +
+                    " квартиры ID = " + IDHelper.ElIdValue(preparedDoor.ApartmentId) + ". " +
                     BuildDoorHostSearchDiagnostic(doc, preparedDoor, existingWallsOnLevel, createdWallsForApartment, maxDistanceToWallAxis));
 
                 return false;
@@ -971,7 +972,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return false;
             }
 
-            double referenceOffset = Math.Max(GetWallHalfWidth(hostWall) + ConvertMmToInternal(300), ConvertMmToInternal(500));
+            double referenceOffset = Math.Max(GetWallHalfWidth(hostWall) + IDHelper.ConvertMmToInternal(300), IDHelper.ConvertMmToInternal(500));
             preparedDoor.InteriorReferencePoint = projectedPoint + interiorDirection * referenceOffset;
             preparedDoor.RequiresOppositeDoorTypeAfterWallFlip = false;
             List<string> entranceDiagnostics = new List<string>();
@@ -1043,7 +1044,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             if (sourceEntranceDoorSymbol != null &&
                 entranceDoorSymbol != null &&
-                GetElementIdValue(sourceEntranceDoorSymbol.Id) != GetElementIdValue(entranceDoorSymbol.Id))
+                IDHelper.ElIdValue(sourceEntranceDoorSymbol.Id) != IDHelper.ElIdValue(entranceDoorSymbol.Id))
             {
                 AddApartmentDiagnostic(
                     null,
@@ -1062,7 +1063,7 @@ namespace KPLN_Tools.ExecutableCommand
                 entranceDiagnostics,
                 "Входная дверь ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
                 ": хост = " + (hostFromExistingWall ? "существующая стена" : "созданная стена") +
-                " ID = " + GetElementIdValue(hostWall.Id) +
+                " ID = " + IDHelper.ElIdValue(hostWall.Id) +
                 ", расстояние до оси = " + FormatLengthMm(distanceToWallAxis) +
                 ", точка вставки = " + FormatPointMm(projectedPoint) +
                 ", точка создания = " + FormatPointMm(entranceInsertionPoint) +
@@ -1124,7 +1125,7 @@ namespace KPLN_Tools.ExecutableCommand
                     state,
                     debugMessages,
                     "Ошибка вставки входной двери ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
-                    " в стену ID = " + GetElementIdValue(hostWall.Id) +
+                    " в стену ID = " + IDHelper.ElIdValue(hostWall.Id) +
                     ", тип '" + BuildDoorTypeDisplayName(entranceDoorSymbol) + "': " + ex.Message);
 
                 return false;
@@ -1139,7 +1140,7 @@ namespace KPLN_Tools.ExecutableCommand
                     state,
                     debugMessages,
                     "Входная дверь ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) + " не поставлена: не найден подходящий вариант с направлением наружу" +
-                    " в стене ID = " + GetElementIdValue(hostWall.Id) +
+                    " в стене ID = " + IDHelper.ElIdValue(hostWall.Id) +
                     ", тип '" + BuildDoorTypeDisplayName(entranceDoorSymbol) + "'.");
 
                 return false;
@@ -1184,7 +1185,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return 0;
 
             int installedCount = 0;
-            double maxDistanceToWallAxis = ConvertMmToInternal(2000);
+            double maxDistanceToWallAxis = IDHelper.ConvertMmToInternal(2000);
 
             foreach (PreparedWindowPlacement preparedWindow in apartmentWindows.Windows)
             {
@@ -1213,7 +1214,7 @@ namespace KPLN_Tools.ExecutableCommand
                         state,
                         debugMessages,
                         "Не найдена стена-хост для окна квартиры ID = " +
-                        GetElementIdValue(preparedWindow.ApartmentId) +
+                        IDHelper.ElIdValue(preparedWindow.ApartmentId) +
                         ". Точка = " + FormatPointMm(preparedWindow.InsertPoint) +
                         ", линия = " + FormatPointMm(preparedWindow.SourceLine != null ? preparedWindow.SourceLine.GetEndPoint(0) : null) +
                         " -> " + FormatPointMm(preparedWindow.SourceLine != null ? preparedWindow.SourceLine.GetEndPoint(1) : null) +
@@ -1238,7 +1239,7 @@ namespace KPLN_Tools.ExecutableCommand
                         state,
                         debugMessages,
                         "Не удалось активировать тип окна '" + BuildWindowTypeDisplayName(symbolToPlace) +
-                        "' для квартиры ID = " + GetElementIdValue(preparedWindow.ApartmentId) + ": " + ex.Message);
+                        "' для квартиры ID = " + IDHelper.ElIdValue(preparedWindow.ApartmentId) + ": " + ex.Message);
                     continue;
                 }
 
@@ -1260,8 +1261,8 @@ namespace KPLN_Tools.ExecutableCommand
                     AddApartmentDiagnostic(
                         state,
                         debugMessages,
-                        "Ошибка вставки окна квартиры ID = " + GetElementIdValue(preparedWindow.ApartmentId) +
-                        " в стену ID = " + GetElementIdValue(hostWall.Id) +
+                        "Ошибка вставки окна квартиры ID = " + IDHelper.ElIdValue(preparedWindow.ApartmentId) +
+                        " в стену ID = " + IDHelper.ElIdValue(hostWall.Id) +
                         ", тип '" + BuildWindowTypeDisplayName(symbolToPlace) + "': " + ex.Message);
                     continue;
                 }
@@ -1271,8 +1272,8 @@ namespace KPLN_Tools.ExecutableCommand
                     AddApartmentDiagnostic(
                         state,
                         debugMessages,
-                        "Revit не создал окно квартиры ID = " + GetElementIdValue(preparedWindow.ApartmentId) +
-                        " в стене ID = " + GetElementIdValue(hostWall.Id) +
+                        "Revit не создал окно квартиры ID = " + IDHelper.ElIdValue(preparedWindow.ApartmentId) +
+                        " в стене ID = " + IDHelper.ElIdValue(hostWall.Id) +
                         ", тип '" + BuildWindowTypeDisplayName(symbolToPlace) + "'.");
                     continue;
                 }
@@ -1282,7 +1283,7 @@ namespace KPLN_Tools.ExecutableCommand
                     AddApartmentDiagnostic(
                         state,
                         debugMessages,
-                        "Окно ID = " + GetElementIdValue(createdWindow.Id) +
+                        "Окно ID = " + IDHelper.ElIdValue(createdWindow.Id) +
                         " создано, но не удалось задать параметр 'Высота нижнего бруса'.");
                 }
 
@@ -1441,7 +1442,7 @@ namespace KPLN_Tools.ExecutableCommand
                     if (parallel < 0.80)
                         continue;
 
-                    parallelPenalty = (1.0 - parallel) * ConvertMmToInternal(500);
+                    parallelPenalty = (1.0 - parallel) * IDHelper.ConvertMmToInternal(500);
                 }
 
                 XYZ projectedPoint;
@@ -1544,7 +1545,7 @@ namespace KPLN_Tools.ExecutableCommand
             double wallHalfWidth = includeWallHalfWidth ? GetWallHalfWidth(nearestWall) : 0;
             double allowedDistance = maxDistanceToWallAxis + wallHalfWidth;
 
-            return "ID = " + GetElementIdValue(nearestWall.Id) +
+            return "ID = " + IDHelper.ElIdValue(nearestWall.Id) +
                    ", расстояние до оси = " + FormatLengthMm(nearestDistance) +
                    ", половина толщины = " + FormatLengthMm(wallHalfWidth) +
                    ", допуск = " + FormatLengthMm(allowedDistance) +
@@ -1557,14 +1558,14 @@ namespace KPLN_Tools.ExecutableCommand
                 return "<нет>";
 
             return "(" +
-                   Math.Round(ConvertInternalToMm(point.X)).ToString("0") + "; " +
-                   Math.Round(ConvertInternalToMm(point.Y)).ToString("0") + "; " +
-                   Math.Round(ConvertInternalToMm(point.Z)).ToString("0") + ") мм";
+                   Math.Round(IDHelper.ConvertInternalToMm(point.X)).ToString("0") + "; " +
+                   Math.Round(IDHelper.ConvertInternalToMm(point.Y)).ToString("0") + "; " +
+                   Math.Round(IDHelper.ConvertInternalToMm(point.Z)).ToString("0") + ") мм";
         }
 
         private static string FormatLengthMm(double valueInternal)
         {
-            return Math.Round(ConvertInternalToMm(valueInternal)).ToString("0") + " мм";
+            return Math.Round(IDHelper.ConvertInternalToMm(valueInternal)).ToString("0") + " мм";
         }
 
         private static string FormatDouble(double value)
@@ -1662,22 +1663,6 @@ namespace KPLN_Tools.ExecutableCommand
                 Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
         }
 
-        private static XYZ GetEntranceDoorReferenceDirection(Wall hostWall, PreparedDoorPlacement preparedDoor)
-        {
-            XYZ wallDir = GetWallAxisDirection2D(hostWall);
-            if (wallDir == null)
-                return null;
-
-            if (preparedDoor != null && preparedDoor.SourceHandDirection != null)
-            {
-                double along = Dot2D(preparedDoor.SourceHandDirection, wallDir);
-                if (Math.Abs(along) > 0.25)
-                    return along >= 0 ? wallDir : new XYZ(-wallDir.X, -wallDir.Y, 0);
-            }
-
-            return wallDir;
-        }
-
         private FamilySymbol ResolveEntranceDoorSymbolForExterior(Document doc, PreparedDoorPlacement preparedDoor, FamilySymbol baseSymbol,
             XYZ outwardDirection)
         {
@@ -1695,7 +1680,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return baseSymbol;
 
             FamilySymbol oppositeSymbol = GetOppositeDoorSymbol(doc, baseSymbol);
-            if (oppositeSymbol == null || GetElementIdValue(oppositeSymbol.Id) == GetElementIdValue(baseSymbol.Id))
+            if (oppositeSymbol == null || IDHelper.ElIdValue(oppositeSymbol.Id) == IDHelper.ElIdValue(baseSymbol.Id))
                 return baseSymbol;
 
             return oppositeSymbol;
@@ -1729,7 +1714,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return projectedPoint;
             }
 
-            double offset = halfWidth + ConvertMmToInternal(5);
+            double offset = halfWidth + IDHelper.ConvertMmToInternal(5);
             if (offset <= 1e-9)
                 return projectedPoint;
 
@@ -1749,7 +1734,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return Normalize2D(outwardDirection);
 
             XYZ oppositeNormal = new XYZ(-wallNormal.X, -wallNormal.Y, 0);
-            double sampleOffset = Math.Max(GetWallHalfWidth(hostWall) + ConvertMmToInternal(300), ConvertMmToInternal(500));
+            double sampleOffset = Math.Max(GetWallHalfWidth(hostWall) + IDHelper.ConvertMmToInternal(300), IDHelper.ConvertMmToInternal(500));
 
             bool normalInside = IsPointInsideApartment2DRooms(apartmentFi, doc, projectedPoint + wallNormal * sampleOffset);
             bool oppositeInside = IsPointInsideApartment2DRooms(apartmentFi, doc, projectedPoint + oppositeNormal * sampleOffset);
@@ -1999,9 +1984,9 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             double doorWidth = preparedDoor.DoorWidthMm > 0
-                ? ConvertMmToInternal(preparedDoor.DoorWidthMm)
-                : ConvertMmToInternal(900);
-            double hostWallLength = Math.Max(doorWidth + ConvertMmToInternal(150), ConvertMmToInternal(1050));
+                ? IDHelper.ConvertMmToInternal(preparedDoor.DoorWidthMm)
+                : IDHelper.ConvertMmToInternal(900);
+            double hostWallLength = Math.Max(doorWidth + IDHelper.ConvertMmToInternal(150), IDHelper.ConvertMmToInternal(1050));
             double openingWidth = hostWallLength;
 
             Line auxiliaryAxis = BuildEntranceAuxiliaryHostWallAxis(projectedPoint, existingHostWall, outwardDirection, hostWallLength);
@@ -2013,8 +1998,8 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             double wallHeight = GetWallHeightInternal(existingHostWall);
-            if (wallHeight <= ConvertMmToInternal(500))
-                wallHeight = ConvertMmToInternal(3000);
+            if (wallHeight <= IDHelper.ConvertMmToInternal(500))
+                wallHeight = IDHelper.ConvertMmToInternal(3000);
 
             Opening opening = null;
             Wall auxiliaryWall = null;
@@ -2218,11 +2203,11 @@ namespace KPLN_Tools.ExecutableCommand
                 return null;
 
             double doorHeight = GetDoorHeightInternal(preferredSymbol);
-            if (doorHeight <= ConvertMmToInternal(500))
-                doorHeight = ConvertMmToInternal(2200);
+            if (doorHeight <= IDHelper.ConvertMmToInternal(500))
+                doorHeight = IDHelper.ConvertMmToInternal(2200);
 
             double z0 = baseLevel.Elevation;
-            double z1 = z0 + doorHeight + ConvertMmToInternal(150);
+            double z1 = z0 + doorHeight + IDHelper.ConvertMmToInternal(150);
             XYZ half = wallDir * (openingWidth / 2.0);
 
             XYZ p0 = new XYZ(projectedPoint.X - half.X, projectedPoint.Y - half.Y, z0);
@@ -2290,8 +2275,8 @@ namespace KPLN_Tools.ExecutableCommand
             if (symbols == null || symbol == null)
                 return;
 
-            long id = GetElementIdValue(symbol.Id);
-            if (symbols.Any(x => x != null && GetElementIdValue(x.Id) == id))
+            long id = IDHelper.ElIdValue(symbol.Id);
+            if (symbols.Any(x => x != null && IDHelper.ElIdValue(x.Id) == id))
                 return;
 
             symbols.Add(symbol);
@@ -2388,7 +2373,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (diagnostics != null)
-                    diagnostics.Add("Не удалось удалить неподходящий вариант входной двери ID = " + GetElementIdValue(elementId) + ": " + ex.Message);
+                    diagnostics.Add("Не удалось удалить неподходящий вариант входной двери ID = " + IDHelper.ElIdValue(elementId) + ": " + ex.Message);
 
                 return false;
             }
@@ -2483,7 +2468,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (!CanFlipFacing(createdDoor))
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Входная дверь ID = " + GetElementIdValue(createdDoor.Id) + " не поддерживает flipFacing для разворота наружу.");
+                    debugMessages.Add("Входная дверь ID = " + IDHelper.ElIdValue(createdDoor.Id) + " не поддерживает flipFacing для разворота наружу.");
                 return;
             }
 
@@ -2496,7 +2481,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось развернуть входную дверь ID = " + GetElementIdValue(createdDoor.Id) + " наружу: " + ex.Message);
+                    debugMessages.Add("Не удалось развернуть входную дверь ID = " + IDHelper.ElIdValue(createdDoor.Id) + " наружу: " + ex.Message);
             }
         }
 
@@ -2616,7 +2601,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return 0;
 
             bestAlignment = Math.Max(0, Math.Min(1, bestAlignment));
-            return (1.0 - bestAlignment) * ConvertMmToInternal(300);
+            return (1.0 - bestAlignment) * IDHelper.ConvertMmToInternal(300);
         }
 
         private static bool TryResolveEntranceDoorExteriorSide(FamilyInstance apartmentFi, Document doc, Wall hostWall, XYZ projectedPoint,
@@ -2634,7 +2619,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return false;
 
             XYZ oppositeNormal = new XYZ(-wallNormal.X, -wallNormal.Y, 0);
-            double sampleOffset = Math.Max(GetWallHalfWidth(hostWall) + ConvertMmToInternal(300), ConvertMmToInternal(500));
+            double sampleOffset = Math.Max(GetWallHalfWidth(hostWall) + IDHelper.ConvertMmToInternal(300), IDHelper.ConvertMmToInternal(500));
 
             bool normalInside = IsPointInsideApartment2DRooms(apartmentFi, doc, projectedPoint + wallNormal * sampleOffset);
             bool oppositeInside = IsPointInsideApartment2DRooms(apartmentFi, doc, projectedPoint + oppositeNormal * sampleOffset);
@@ -2679,7 +2664,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (rooms == null || rooms.Count == 0)
                 return false;
 
-            double tolerance = ConvertMmToInternal(20);
+            double tolerance = IDHelper.ConvertMmToInternal(20);
             foreach (FamilyInstance roomFi in rooms)
             {
                 if (IsPointInsideRoomRectangle2D(roomFi, point, tolerance))
@@ -2788,7 +2773,7 @@ namespace KPLN_Tools.ExecutableCommand
                 if (info == null || info.WallId == null || info.WallId == ElementId.InvalidElementId)
                     continue;
 
-                long idValue = GetElementIdValue(info.WallId);
+                long idValue = IDHelper.ElIdValue(info.WallId);
                 if (usedIds.Contains(idValue))
                     continue;
 
@@ -3005,7 +2990,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось выполнить flipHand для входной двери ID = " + GetElementIdValue(createdDoor.Id) + ": " + ex.Message);
+                    debugMessages.Add("Не удалось выполнить flipHand для входной двери ID = " + IDHelper.ElIdValue(createdDoor.Id) + ": " + ex.Message);
 
                 return false;
             }
@@ -3030,7 +3015,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось выполнить flipFacing для входной двери ID = " + GetElementIdValue(createdDoor.Id) + ": " + ex.Message);
+                    debugMessages.Add("Не удалось выполнить flipFacing для входной двери ID = " + IDHelper.ElIdValue(createdDoor.Id) + ": " + ex.Message);
 
                 return false;
             }
@@ -3061,7 +3046,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (!CanFlipFacing(createdDoor))
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Входная дверь ID = " + GetElementIdValue(createdDoor.Id) + " не поддерживает flipFacing для разворота наружу.");
+                    debugMessages.Add("Входная дверь ID = " + IDHelper.ElIdValue(createdDoor.Id) + " не поддерживает flipFacing для разворота наружу.");
                 return;
             }
 
@@ -3072,7 +3057,7 @@ namespace KPLN_Tools.ExecutableCommand
             catch (Exception ex)
             {
                 if (debugMessages != null)
-                    debugMessages.Add("Не удалось развернуть входную дверь ID = " + GetElementIdValue(createdDoor.Id) + " наружу: " + ex.Message);
+                    debugMessages.Add("Не удалось развернуть входную дверь ID = " + IDHelper.ElIdValue(createdDoor.Id) + " наружу: " + ex.Message);
             }
         }
 
@@ -3408,7 +3393,7 @@ namespace KPLN_Tools.ExecutableCommand
                 if (bbox == null)
                     return false;
 
-                double tol = ConvertMmToInternal(100);
+                double tol = IDHelper.ConvertMmToInternal(100);
                 return bbox.Min.Z <= targetElevation.Value + tol &&
                        bbox.Max.Z >= targetElevation.Value - tol;
             }
@@ -3499,7 +3484,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             int thicknessMm;
             if (TryGetWallTypeThicknessMm(wallType, out thicknessMm) && thicknessMm > 0)
-                return ConvertMmToInternal(thicknessMm);
+                return IDHelper.ConvertMmToInternal(thicknessMm);
 
             return 0;
         }
@@ -3567,7 +3552,7 @@ namespace KPLN_Tools.ExecutableCommand
                     AddApartmentDiagnostic(
                         state,
                         debugMessages,
-                        "Не удалось определить ширину 2D-двери у экземпляра ID = " + GetElementIdValue(doorFi.Id));
+                        "Не удалось определить ширину 2D-двери у экземпляра ID = " + IDHelper.ElIdValue(doorFi.Id));
                     continue;
                 }
 
@@ -3575,7 +3560,7 @@ namespace KPLN_Tools.ExecutableCommand
                 if (doorTransform == null)
                 {
                     if (debugMessages != null)
-                        debugMessages.Add("Не удалось получить Transform для 2D-двери ID = " + GetElementIdValue(doorFi.Id));
+                        debugMessages.Add("Не удалось получить Transform для 2D-двери ID = " + IDHelper.ElIdValue(doorFi.Id));
                     continue;
                 }
 
@@ -3823,7 +3808,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (result == null || result.Doors == null || insertPoint == null)
                 return null;
 
-            double pointTolerance = ConvertMmToInternal(10);
+            double pointTolerance = IDHelper.ConvertMmToInternal(10);
 
             return result.Doors.FirstOrDefault(x =>
                 x != null &&
@@ -3837,7 +3822,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (id == null || id == ElementId.InvalidElementId)
                 return "<из семейства>";
 
-            return GetElementIdValue(id).ToString();
+            return IDHelper.ElIdValue(id).ToString();
         }
 
         private PreparedApartmentWindows PrepareWindowsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset,
@@ -3860,7 +3845,7 @@ namespace KPLN_Tools.ExecutableCommand
                 AddApartmentDiagnostic(
                     state,
                     debugMessages,
-                    "Для окон квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не выбран тип окна.");
+                    "Для окон квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " не выбран тип окна.");
                 return result;
             }
 
@@ -3870,12 +3855,12 @@ namespace KPLN_Tools.ExecutableCommand
                 AddApartmentDiagnostic(
                     state,
                     debugMessages,
-                    "Для окон квартиры ID = " + GetElementIdValue(apartmentFi.Id) +
+                    "Для окон квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) +
                     " выбран тип '" + selectedWindowType + "', но такой тип не найден в проекте.");
                 return result;
             }
 
-            double sillHeightInternal = ConvertMmToInternal(preset != null && preset.WindowSillHeight > 0 ? preset.WindowSillHeight : 900);
+            double sillHeightInternal = IDHelper.ConvertMmToInternal(preset != null && preset.WindowSillHeight > 0 ? preset.WindowSillHeight : 900);
 
             foreach (FamilyWindowMarker marker in windowMarkers)
             {
@@ -3885,7 +3870,7 @@ namespace KPLN_Tools.ExecutableCommand
                 XYZ p0 = marker.LocalP0;
                 XYZ p1 = marker.LocalP1;
 
-                if (p0 == null || p1 == null || Distance2D(p0, p1) < ConvertMmToInternal(10))
+                if (p0 == null || p1 == null || Distance2D(p0, p1) < IDHelper.ConvertMmToInternal(10))
                     continue;
 
                 Line sourceLine = Line.CreateBound(p0, p1);
@@ -4467,7 +4452,7 @@ namespace KPLN_Tools.ExecutableCommand
                     if (debugMessages != null)
                         debugMessages.Add(
                             "Ошибка подготовки помещения ID = " +
-                            GetElementIdValue(roomFi.Id) + ": " + ex.Message);
+                            IDHelper.ElIdValue(roomFi.Id) + ": " + ex.Message);
                 }
             }
 
@@ -4524,7 +4509,7 @@ namespace KPLN_Tools.ExecutableCommand
                     XYZ roomPoint = new XYZ(
                         preparedRoom.InsertPoint.X,
                         preparedRoom.InsertPoint.Y,
-                        roomLevel.Elevation + ConvertMmToInternal(100));
+                        roomLevel.Elevation + IDHelper.ConvertMmToInternal(100));
 
                     if (HasRoomAtPoint(doc, roomLevel, roomPoint))
                         continue;
@@ -4542,8 +4527,8 @@ namespace KPLN_Tools.ExecutableCommand
                     if (preparedRoom.ExpectedAreaInternal > 0)
                     {
                         double actualAreaInternal = createdRoom.Area;
-                        double expectedAreaSquareMeters = ConvertInternalAreaToSquareMeters(preparedRoom.ExpectedAreaInternal);
-                        double actualAreaSquareMeters = ConvertInternalAreaToSquareMeters(actualAreaInternal);
+                        double expectedAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(preparedRoom.ExpectedAreaInternal);
+                        double actualAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(actualAreaInternal);
 
                         if (Math.Abs(expectedAreaSquareMeters - actualAreaSquareMeters) > areaToleranceSquareMeters)
                         {
