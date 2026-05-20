@@ -150,16 +150,6 @@ namespace KPLN_ModelChecker_Lib.Commands
         {
             string[] splitValues = overrideValue.Split(_separArr, StringSplitOptions.None);
             
-            if (dim.Id.IntegerValue == 16180388)
-            {
-                var a = 1;
-            }
-
-            if (dim.Id.IntegerValue == 16180391)
-            {
-                var a = 1;
-            }
-
             // Анализирую диапозоны
             if (splitValues.Length > 1)
             {
