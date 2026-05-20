@@ -138,7 +138,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ExtensibleStorage">
@@ -146,19 +146,19 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\Debug\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -166,47 +166,47 @@
     <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
       <ItemGroup>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ConfigWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_ExtensibleStorage">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\$(RevitVer)\KPLN_Library_ExtensibleStorage.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\$(RevitVer)\KPLN_Library_ExtensibleStorage.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Forms">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_PluginActivityWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_PluginActivityWorker\bin\$(RevitVer)\KPLN_Library_PluginActivityWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_ModelChecker_Lib">
-          <HintPath>..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\$(RevitVer)\KPLN_ModelChecker_Lib.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -215,6 +215,10 @@
   <ItemGroup>
     <Compile Include="Common\TagsHelpers\AnnotationCollisionResolver.cs" />
     <Compile Include="Common\IDHelper.cs" />
+    <Compile Include="ExecutableCommand\ApartmentExecutionReportActionController.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Presets.cs" />
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
@@ -241,9 +245,7 @@
     <Compile Include="Forms\ApartmentManagerWindow.xaml.cs">
       <DependentUpon>ApartmentManagerWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ApartmentPresetsWindow.xaml.cs">
-      <DependentUpon>ApartmentPresetsWindow.xaml</DependentUpon>
-    </Compile>
+    <Compile Include="ExecutableCommand\ApartmentPresetsPanelVm.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -471,10 +473,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\ApartmentManagerWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\ApartmentPresetsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

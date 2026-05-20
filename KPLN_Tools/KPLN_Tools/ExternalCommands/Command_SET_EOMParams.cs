@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Tools.Common;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -241,7 +242,7 @@ namespace KPLN_Tools.ExternalCommands
             var qtyParam = GetParam(element, "ASML_Количество")
                 ?? throw new InvalidOperationException("Нет ASML_Количество");
 
-            int categoryId = element.Category.Id.IntegerValue;
+            int categoryId = IDHelper.ElIdInt(element.Category.Id);
 
             if (categoryId == (int)BuiltInCategory.OST_CableTray ||
                 categoryId == (int)BuiltInCategory.OST_DuctCurves)
@@ -350,7 +351,7 @@ namespace KPLN_Tools.ExternalCommands
         #region Вспомогательные методы
         private static ElementType GetElementType(Element element)
         {
-            int categoryId = element.Category.Id.IntegerValue;
+            int categoryId = IDHelper.ElIdInt(element.Category.Id);
 
             var typeElem = element.Document.GetElement(element.GetTypeId()) as Autodesk.Revit.DB.ElementType;
             string typeName = typeElem?.Name ?? "";
