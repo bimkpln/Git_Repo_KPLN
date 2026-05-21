@@ -16,7 +16,9 @@ namespace KPLN_CoordiantorAI.Forms
     {
         private readonly CoordinatorAiRepository _repository;
         private readonly IAiChatClient _aiClient;
+        private readonly Bitrix24Client _bitrix24Client;
         private readonly GigaChatSettings _gigaChatSettings;
+        private readonly Bitrix24Settings _bitrix24Settings;
         private readonly CurrentUserContext _userContext;
         private readonly ObservableCollection<ChatSession> _sessions;
         private ChatSession _session;
@@ -32,7 +34,9 @@ namespace KPLN_CoordiantorAI.Forms
 
             _repository = repository;
             _aiClient = aiClient;
+            _bitrix24Client = new Bitrix24Client();
             _gigaChatSettings = _repository.LoadGigaChatSettings();
+            _bitrix24Settings = _repository.LoadBitrix24Settings();
             _userContext = new CurrentUserContext
             {
                 UserName = userContext == null ? Environment.UserName : userContext.UserName,
@@ -224,6 +228,14 @@ namespace KPLN_CoordiantorAI.Forms
             ScrollMessagesToEnd();
             SaveSessionSafely();
 
+            if (IsCoordinatorCallRequest(messageText))
+            {
+                AddCoordinatorOfferMessage("Можно подключить координатора по вашему отделу.");
+                ScrollMessagesToEnd();
+                SaveSessionSafely();
+                return;
+            }
+
             SetWaitingState(true);
             try
             {
@@ -237,11 +249,7 @@ namespace KPLN_CoordiantorAI.Forms
             }
             catch (Exception ex)
             {
-                _session.Messages.Add(new ChatMessage
-                {
-                    Role = ChatMessageRole.Assistant,
-                    Text = "Ошибка получения ответа: " + ex.Message
-                });
+                AddCoordinatorOfferMessage("Ошибка получения ответа: " + ex.Message + "\r\nМожно подключить координатора по вашему отделу.");
             }
             finally
             {
@@ -258,7 +266,127 @@ namespace KPLN_CoordiantorAI.Forms
 
         private void OnDislikeClick(object sender, RoutedEventArgs e)
         {
-            SetReaction(_session.Reaction == ChatReaction.Dislike ? ChatReaction.None : ChatReaction.Dislike);
+            ChatReaction newReaction = _session.Reaction == ChatReaction.Dislike ? ChatReaction.None : ChatReaction.Dislike;
+            SetReaction(newReaction);
+
+            if (newReaction != ChatReaction.Dislike)
+                return;
+
+            AddCoordinatorOfferMessage("Можно подключить координатора по вашему отделу.");
+            RefreshMessagesList();
+            ScrollMessagesToEnd();
+            SaveSessionSafely();
+        }
+
+        private async void OnCoordinatorCallClick(object sender, RoutedEventArgs e)
+        {
+            Bitrix24CoordinatorContact coordinator = (sender as FrameworkElement)?.Tag as Bitrix24CoordinatorContact;
+            if (coordinator == null || _isWaitingForAnswer)
+                return;
+
+            MessageTextBox.IsEnabled = false;
+            SendButton.IsEnabled = false;
+            StatusTextBlock.Text = "Отправка сообщения координатору...";
+
+            try
+            {
+                IList<Bitrix24CoordinatorContact> targets = GetCoordinatorCallTargets(coordinator);
+                foreach (Bitrix24CoordinatorContact target in targets)
+                    await _bitrix24Client.SendCoordinatorCallAsync(_bitrix24Settings, target, _session, CancellationToken.None);
+
+                _session.Messages.Add(new ChatMessage
+                {
+                    Role = ChatMessageRole.Assistant,
+                    Text = targets.Count > 1
+                        ? "Сообщение отправлено всем ответственным координаторам отдела в Bitrix24."
+                        : string.Format("Сообщение координатору {0} отправлено в Bitrix24.", coordinator.UserName)
+                });
+            }
+            catch (Exception ex)
+            {
+                _session.Messages.Add(new ChatMessage
+                {
+                    Role = ChatMessageRole.Assistant,
+                    Text = "Не удалось вызвать координатора через Bitrix24: " + ex.Message
+                });
+            }
+            finally
+            {
+                MessageTextBox.IsEnabled = true;
+                SendButton.IsEnabled = true;
+                StatusTextBlock.Text = "Готово";
+                ScrollMessagesToEnd();
+                SaveSessionSafely();
+                MessageTextBox.Focus();
+            }
+        }
+
+        private IList<Bitrix24CoordinatorContact> GetCoordinatorCallTargets(Bitrix24CoordinatorContact selectedCoordinator)
+        {
+            List<Bitrix24CoordinatorContact> targets = new List<Bitrix24CoordinatorContact>();
+            if (selectedCoordinator == null)
+                return targets;
+
+            foreach (Bitrix24DepartmentCoordinator department in _bitrix24Settings.DepartmentCoordinators)
+            {
+                if (department == null || department.DepartmentId != selectedCoordinator.DepartmentId)
+                    continue;
+
+                if (department.NotifyAllCoordinators)
+                    targets.AddRange(department.GetConfiguredContacts());
+                else
+                    targets.Add(selectedCoordinator);
+
+                break;
+            }
+
+            if (targets.Count == 0)
+                targets.Add(selectedCoordinator);
+
+            return targets;
+        }
+
+        private void AddCoordinatorOfferMessage(string text)
+        {
+            ChatMessage offerMessage = new ChatMessage
+            {
+                Role = ChatMessageRole.Assistant,
+                Text = text
+            };
+
+            IList<Bitrix24CoordinatorContact> contacts = _bitrix24Settings.GetCoordinatorContacts(_session.SubDepartmentId);
+            foreach (Bitrix24CoordinatorContact contact in contacts)
+                offerMessage.CoordinatorOffers.Add(contact);
+
+            if (offerMessage.CoordinatorOffers.Count == 0)
+            {
+                offerMessage.Text += "\r\nОтветственный координатор для отдела " +
+                    SubDepartmentNameResolver.GetName(_session.SubDepartmentId) +
+                    " пока не настроен.";
+            }
+
+            _session.Messages.Add(offerMessage);
+            RefreshMessagesList();
+        }
+
+        private void RefreshMessagesList()
+        {
+            if (MessagesListBox != null)
+                MessagesListBox.Items.Refresh();
+        }
+
+        private static bool IsCoordinatorCallRequest(string messageText)
+        {
+            string text = (messageText ?? string.Empty).ToLowerInvariant();
+            if (text.IndexOf("координатор", StringComparison.Ordinal) < 0)
+                return false;
+
+            return text.IndexOf("выз", StringComparison.Ordinal) >= 0 ||
+                text.IndexOf("поз", StringComparison.Ordinal) >= 0 ||
+                text.IndexOf("зов", StringComparison.Ordinal) >= 0 ||
+                text.IndexOf("подключ", StringComparison.Ordinal) >= 0 ||
+                text.IndexOf("нужен", StringComparison.Ordinal) >= 0 ||
+                text.IndexOf("нужна", StringComparison.Ordinal) >= 0;
         }
 
         private void SetReaction(ChatReaction reaction)

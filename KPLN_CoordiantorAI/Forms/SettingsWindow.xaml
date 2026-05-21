@@ -42,6 +42,105 @@
             <Setter Property="BorderBrush" Value="#FF4B5568"/>
             <Setter Property="CaretBrush" Value="White"/>
         </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ToggleBorder"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="30"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Grid.Column="0"
+                                                                  Margin="10,0,4,0"
+                                                                  HorizontalAlignment="Left"
+                                                                  VerticalAlignment="Center"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  TextElement.Foreground="White"/>
+                                                <Path Grid.Column="1"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Fill="White"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="Background" Value="#FF333B49"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#FF2C6BED"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Background="#FF2A303B"
+                                        BorderBrush="#FF4B5568"
+                                        BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer CanContentScroll="True"
+                                                  MaxHeight="220">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#FF333B49"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#FF2C6BED"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style TargetType="Button">
             <Setter Property="MinHeight" Value="30"/>
             <Setter Property="Padding" Value="12,4"/>
@@ -50,6 +149,46 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#FF4B5568"/>
             <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#FF20242D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="RowBackground" Value="#FF262B35"/>
+            <Setter Property="AlternatingRowBackground" Value="#FF2A303B"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+        </Style>
+        <Style TargetType="Button" x:Key="CoordinatorRemoveButton">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Background" Value="#FFB04646"/>
+            <Setter Property="BorderBrush" Value="#FFB04646"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
@@ -191,6 +330,84 @@
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Bitrix24">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Bitrix24"/>
+                        <TextBlock Style="{StaticResource LabelText}" Text="Входящий webhook URL"/>
+                        <TextBox x:Name="BitrixWebhookUrlTextBox" Margin="0,0,0,14"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Что отправлять координатору"/>
+                        <ComboBox x:Name="BitrixMessageModeComboBox" Margin="0,0,0,14">
+                            <ComboBoxItem Content="Самое первое сообщение"/>
+                            <ComboBoxItem Content="Весь чат"/>
+                        </ComboBox>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Ответственные по отделам"/>
+                        <ItemsControl x:Name="BitrixDepartmentsItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#FF262B35"
+                                            BorderBrush="#FF343B49"
+                                            BorderThickness="1"
+                                            Padding="10"
+                                            Margin="0,0,0,10">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Foreground="White"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="14"
+                                                           Text="{Binding DepartmentName}"/>
+                                                <Button Grid.Column="1"
+                                                        Content="Добавить"
+                                                        Tag="{Binding}"
+                                                        Click="OnAddBitrixCoordinatorClick"/>
+                                            </Grid>
+
+                                            <CheckBox Content="Если выбран один координатор, отправлять сообщение всем ответственным отдела"
+                                                      IsChecked="{Binding NotifyAllCoordinators, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                            <ItemsControl ItemsSource="{Binding Coordinators}"
+                                                          Margin="0,10,0,0">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#FF2A303B"
+                                                                BorderBrush="#FF4B5568"
+                                                                BorderThickness="1"
+                                                                Padding="10,5"
+                                                                Margin="0,0,8,8">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Foreground="White"
+                                                                           VerticalAlignment="Center"
+                                                                           Text="{Binding ChipCaption}"/>
+                                                                <Button Style="{StaticResource CoordinatorRemoveButton}"
+                                                                        Content="×"
+                                                                        Tag="{Binding}"
+                                                                        Click="OnRemoveBitrixCoordinatorClick"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

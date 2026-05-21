@@ -111,6 +111,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\Bitrix24Client.cs" />
     <Compile Include="Common\CoordinatorAIDatabaseConfig.cs" />
     <Compile Include="Common\CoordinatorAIModels.cs" />
     <Compile Include="Common\CoordinatorAIRepository.cs" />
@@ -121,6 +122,9 @@
     <Compile Include="Common\SubDepartmentNameResolver.cs" />
     <Compile Include="ExternalCommands\SettingsAI.cs" />
     <Compile Include="ExternalCommands\StartAI.cs" />
+    <Compile Include="Forms\BitrixCoordinatorDialog.xaml.cs">
+      <DependentUpon>BitrixCoordinatorDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ChatWindow.xaml.cs">
       <DependentUpon>ChatWindow.xaml</DependentUpon>
     </Compile>
@@ -152,6 +156,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\BitrixCoordinatorDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\ChatWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

@@ -12,6 +12,7 @@ namespace KPLN_CoordiantorAI.Common
 
         private const string SettingsTableName = "Settings";
         private const string SessionsTableName = "QuestionSessions";
+        private const string BitrixCoordinatorsTableName = "Bitrix24DepartmentCoordinators";
 
         public string DatabaseFolder
         {
@@ -43,7 +44,9 @@ namespace KPLN_CoordiantorAI.Common
                 connection.Open();
                 ExecuteNonQuery(connection, null, GetCreateSettingsTableSql());
                 ExecuteNonQuery(connection, null, GetCreateSessionsTableSql());
+                ExecuteNonQuery(connection, null, GetCreateBitrixCoordinatorsTableSql());
                 EnsureSessionColumns(connection);
+                EnsureBitrixCoordinatorColumns(connection);
                 ExecuteNonQuery(connection, null, string.Format("PRAGMA user_version = {0};", SchemaVersion));
             }
         }
@@ -90,6 +93,68 @@ namespace KPLN_CoordiantorAI.Common
                     SetSetting(connection, transaction, "GigaChat.CertificatePath", settings.CertificatePath);
                     SetSetting(connection, transaction, "GigaChat.EmbeddingFilePaths", settings.EmbeddingFilePaths);
                     SetSetting(connection, transaction, "GigaChat.SystemPrompt", settings.SystemPrompt);
+                    transaction.Commit();
+                }
+            }
+        }
+
+        public Bitrix24Settings LoadBitrix24Settings()
+        {
+            Bitrix24Settings settings = CreateDefaultBitrix24Settings();
+            if (!DatabaseExists)
+                return settings;
+
+            EnsureDatabase();
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+                settings.WebhookUrl = GetSetting(connection, "Bitrix24.WebhookUrl", string.Empty);
+                settings.CoordinatorMessageMode = ParseBitrixMessageMode(GetSetting(connection, "Bitrix24.CoordinatorMessageMode", settings.CoordinatorMessageMode.ToString()));
+
+                Dictionary<int, Bitrix24DepartmentCoordinator> savedCoordinators = new Dictionary<int, Bitrix24DepartmentCoordinator>();
+                using (SQLiteCommand command = new SQLiteCommand(GetSelectBitrixCoordinatorsSql(), connection))
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Bitrix24DepartmentCoordinator coordinator = ReadBitrixCoordinator(reader);
+                        savedCoordinators[coordinator.DepartmentId] = coordinator;
+                    }
+                }
+
+                for (int i = 0; i < settings.DepartmentCoordinators.Count; i++)
+                {
+                    Bitrix24DepartmentCoordinator savedCoordinator;
+                    if (savedCoordinators.TryGetValue(settings.DepartmentCoordinators[i].DepartmentId, out savedCoordinator))
+                        settings.DepartmentCoordinators[i] = savedCoordinator;
+                }
+            }
+
+            return settings;
+        }
+
+        public void SaveBitrix24Settings(Bitrix24Settings settings)
+        {
+            if (settings == null)
+                throw new ArgumentNullException(nameof(settings));
+
+            EnsureDatabase();
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    SetSetting(connection, transaction, "Bitrix24.WebhookUrl", settings.WebhookUrl);
+                    SetSetting(connection, transaction, "Bitrix24.CoordinatorMessageMode", settings.CoordinatorMessageMode.ToString());
+
+                    foreach (Bitrix24DepartmentCoordinator coordinator in settings.DepartmentCoordinators)
+                    {
+                        if (coordinator == null)
+                            continue;
+
+                        SaveBitrixCoordinator(connection, transaction, coordinator);
+                    }
+
                     transaction.Commit();
                 }
             }
@@ -225,6 +290,78 @@ namespace KPLN_CoordiantorAI.Common
             }
         }
 
+        private static Bitrix24Settings CreateDefaultBitrix24Settings()
+        {
+            Bitrix24Settings settings = new Bitrix24Settings();
+            foreach (SubDepartmentInfo subDepartment in SubDepartmentNameResolver.GetKnownSubDepartments())
+            {
+                settings.DepartmentCoordinators.Add(new Bitrix24DepartmentCoordinator
+                {
+                    DepartmentId = subDepartment.Id,
+                    DepartmentName = subDepartment.Name
+                });
+            }
+
+            return settings;
+        }
+
+        private static void SaveBitrixCoordinator(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            Bitrix24DepartmentCoordinator coordinator)
+        {
+            IList<Bitrix24CoordinatorContact> contacts = coordinator.GetConfiguredContacts();
+            Bitrix24CoordinatorContact user1 = contacts.Count > 0 ? contacts[0] : null;
+            Bitrix24CoordinatorContact user2 = contacts.Count > 1 ? contacts[1] : null;
+            Bitrix24CoordinatorContact user3 = contacts.Count > 2 ? contacts[2] : null;
+
+            using (SQLiteCommand command = new SQLiteCommand(GetUpsertBitrixCoordinatorSql(), connection, transaction))
+            {
+                command.Parameters.AddWithValue("@DepartmentId", coordinator.DepartmentId);
+                command.Parameters.AddWithValue("@DepartmentName", coordinator.DepartmentName ?? SubDepartmentNameResolver.GetName(coordinator.DepartmentId));
+                command.Parameters.AddWithValue("@NotifyAllCoordinators", coordinator.NotifyAllCoordinators ? 1 : 0);
+                command.Parameters.AddWithValue("@User1Id", user1 == null ? string.Empty : user1.UserId);
+                command.Parameters.AddWithValue("@User1Name", user1 == null ? string.Empty : user1.UserName);
+                command.Parameters.AddWithValue("@User2Id", user2 == null ? string.Empty : user2.UserId);
+                command.Parameters.AddWithValue("@User2Name", user2 == null ? string.Empty : user2.UserName);
+                command.Parameters.AddWithValue("@User3Id", user3 == null ? string.Empty : user3.UserId);
+                command.Parameters.AddWithValue("@User3Name", user3 == null ? string.Empty : user3.UserName);
+                command.Parameters.AddWithValue("@UpdatedAt", ToDbDate(DateTime.Now));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static Bitrix24DepartmentCoordinator ReadBitrixCoordinator(SQLiteDataReader reader)
+        {
+            int departmentId = ReadInt(reader, "DepartmentId");
+            string departmentName = ReadString(reader, "DepartmentName");
+            Bitrix24DepartmentCoordinator coordinator = new Bitrix24DepartmentCoordinator
+            {
+                DepartmentId = departmentId,
+                DepartmentName = string.IsNullOrWhiteSpace(departmentName) ? SubDepartmentNameResolver.GetName(departmentId) : departmentName,
+                NotifyAllCoordinators = ReadInt(reader, "NotifyAllCoordinators") != 0
+            };
+
+            AddBitrixContact(coordinator, ReadString(reader, "User1Id"), ReadString(reader, "User1Name"));
+            AddBitrixContact(coordinator, ReadString(reader, "User2Id"), ReadString(reader, "User2Name"));
+            AddBitrixContact(coordinator, ReadString(reader, "User3Id"), ReadString(reader, "User3Name"));
+            return coordinator;
+        }
+
+        private static void AddBitrixContact(Bitrix24DepartmentCoordinator coordinator, string userId, string userName)
+        {
+            if (coordinator == null || string.IsNullOrWhiteSpace(userId))
+                return;
+
+            coordinator.Coordinators.Add(new Bitrix24CoordinatorContact
+            {
+                DepartmentId = coordinator.DepartmentId,
+                DepartmentName = coordinator.DepartmentName,
+                UserId = userId.Trim(),
+                UserName = string.IsNullOrWhiteSpace(userName) ? userId.Trim() : userName.Trim()
+            });
+        }
+
         private static ChatSession ReadChatSession(SQLiteDataReader reader)
         {
             DateTime dateTime = FromDbDate(ReadString(reader, "DateTime"));
@@ -265,6 +402,12 @@ namespace KPLN_CoordiantorAI.Common
         {
             ChatReaction reaction;
             return Enum.TryParse(value, true, out reaction) ? reaction : ChatReaction.None;
+        }
+
+        private static Bitrix24CoordinatorMessageMode ParseBitrixMessageMode(string value)
+        {
+            Bitrix24CoordinatorMessageMode mode;
+            return Enum.TryParse(value, true, out mode) ? mode : Bitrix24CoordinatorMessageMode.FullChat;
         }
 
         private static DateTime FromDbDate(string value)
@@ -311,6 +454,17 @@ namespace KPLN_CoordiantorAI.Common
             }
         }
 
+        private static void EnsureBitrixCoordinatorColumns(SQLiteConnection connection)
+        {
+            if (!TableHasColumn(connection, BitrixCoordinatorsTableName, "NotifyAllCoordinators"))
+            {
+                ExecuteNonQuery(
+                    connection,
+                    null,
+                    string.Format("ALTER TABLE {0} ADD COLUMN NotifyAllCoordinators INTEGER NOT NULL DEFAULT 0;", BitrixCoordinatorsTableName));
+            }
+        }
+
         private static bool TableHasColumn(SQLiteConnection connection, string tableName, string columnName)
         {
             using (SQLiteCommand command = new SQLiteCommand(string.Format("PRAGMA table_info({0});", tableName), connection))
@@ -351,6 +505,23 @@ namespace KPLN_CoordiantorAI.Common
                 SessionsTableName);
         }
 
+        private static string GetCreateBitrixCoordinatorsTableSql()
+        {
+            return string.Format(
+                "CREATE TABLE IF NOT EXISTS {0} (" +
+                "DepartmentId INTEGER NOT NULL PRIMARY KEY, " +
+                "DepartmentName TEXT NOT NULL, " +
+                "NotifyAllCoordinators INTEGER NOT NULL DEFAULT 0, " +
+                "User1Id TEXT, " +
+                "User1Name TEXT, " +
+                "User2Id TEXT, " +
+                "User2Name TEXT, " +
+                "User3Id TEXT, " +
+                "User3Name TEXT, " +
+                "UpdatedAt TEXT NOT NULL);",
+                BitrixCoordinatorsTableName);
+        }
+
         private static string GetUpsertSessionSql()
         {
             return string.Format(
@@ -368,6 +539,23 @@ namespace KPLN_CoordiantorAI.Common
                 "WHERE UserName=@UserName AND IsDeleted=0 " +
                 "ORDER BY DateTime DESC;",
                 SessionsTableName);
+        }
+
+        private static string GetUpsertBitrixCoordinatorSql()
+        {
+            return string.Format(
+                "INSERT OR REPLACE INTO {0} " +
+                "(DepartmentId, DepartmentName, NotifyAllCoordinators, User1Id, User1Name, User2Id, User2Name, User3Id, User3Name, UpdatedAt) " +
+                "VALUES (@DepartmentId, @DepartmentName, @NotifyAllCoordinators, @User1Id, @User1Name, @User2Id, @User2Name, @User3Id, @User3Name, @UpdatedAt);",
+                BitrixCoordinatorsTableName);
+        }
+
+        private static string GetSelectBitrixCoordinatorsSql()
+        {
+            return string.Format(
+                "SELECT DepartmentId, DepartmentName, NotifyAllCoordinators, User1Id, User1Name, User2Id, User2Name, User3Id, User3Name " +
+                "FROM {0} ORDER BY DepartmentId;",
+                BitrixCoordinatorsTableName);
         }
     }
 }

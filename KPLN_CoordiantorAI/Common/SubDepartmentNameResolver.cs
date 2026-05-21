@@ -2,6 +2,24 @@
 {
     public static class SubDepartmentNameResolver
     {
+        public static SubDepartmentInfo[] GetKnownSubDepartments()
+        {
+            return new[]
+            {
+                new SubDepartmentInfo { Id = 2, Name = "АР" },
+                new SubDepartmentInfo { Id = 3, Name = "КР" },
+                new SubDepartmentInfo { Id = 4, Name = "ОВиК" },
+                new SubDepartmentInfo { Id = 5, Name = "ВК" },
+                new SubDepartmentInfo { Id = 6, Name = "ЭОМ" },
+                new SubDepartmentInfo { Id = 7, Name = "СС" },
+                new SubDepartmentInfo { Id = 8, Name = "BIM" },
+                new SubDepartmentInfo { Id = 41, Name = "ИТП" },
+                new SubDepartmentInfo { Id = 51, Name = "ПТ" },
+                new SubDepartmentInfo { Id = 71, Name = "АВ" },
+                new SubDepartmentInfo { Id = 72, Name = "СПС" }
+            };
+        }
+
         public static string GetName(int subDepartmentId)
         {
             switch (subDepartmentId)

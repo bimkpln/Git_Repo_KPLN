@@ -19,12 +19,19 @@ namespace KPLN_CoordiantorAI.Common
         Like = 1
     }
 
+    public enum Bitrix24CoordinatorMessageMode
+    {
+        FirstQuestion = 0,
+        FullChat = 1
+    }
+
     public sealed class ChatMessage
     {
         public ChatMessage()
         {
             Id = Guid.NewGuid().ToString("N");
             CreatedAt = DateTime.Now;
+            CoordinatorOffers = new ObservableCollection<Bitrix24CoordinatorContact>();
         }
 
         public string Id { get; set; }
@@ -35,9 +42,16 @@ namespace KPLN_CoordiantorAI.Common
 
         public DateTime CreatedAt { get; set; }
 
+        public ObservableCollection<Bitrix24CoordinatorContact> CoordinatorOffers { get; private set; }
+
         public bool IsUserMessage
         {
             get { return Role == ChatMessageRole.User; }
+        }
+
+        public bool HasCoordinatorOffers
+        {
+            get { return CoordinatorOffers != null && CoordinatorOffers.Count > 0; }
         }
 
         public string RoleCaption
@@ -159,6 +173,92 @@ namespace KPLN_CoordiantorAI.Common
         public string EmbeddingFilePaths { get; set; }
 
         public string SystemPrompt { get; set; }
+    }
+
+    public sealed class SubDepartmentInfo
+    {
+        public int Id { get; set; }
+
+        public string Name { get; set; }
+    }
+
+    public sealed class Bitrix24Settings
+    {
+        public Bitrix24Settings()
+        {
+            CoordinatorMessageMode = Bitrix24CoordinatorMessageMode.FullChat;
+            DepartmentCoordinators = new ObservableCollection<Bitrix24DepartmentCoordinator>();
+        }
+
+        public string WebhookUrl { get; set; }
+
+        public Bitrix24CoordinatorMessageMode CoordinatorMessageMode { get; set; }
+
+        public ObservableCollection<Bitrix24DepartmentCoordinator> DepartmentCoordinators { get; private set; }
+
+        public IList<Bitrix24CoordinatorContact> GetCoordinatorContacts(int subDepartmentId)
+        {
+            List<Bitrix24CoordinatorContact> contacts = new List<Bitrix24CoordinatorContact>();
+            foreach (Bitrix24DepartmentCoordinator coordinator in DepartmentCoordinators)
+            {
+                if (coordinator == null || coordinator.DepartmentId != subDepartmentId)
+                    continue;
+
+                contacts.AddRange(coordinator.GetConfiguredContacts());
+                break;
+            }
+
+            return contacts;
+        }
+    }
+
+    public sealed class Bitrix24DepartmentCoordinator
+    {
+        public Bitrix24DepartmentCoordinator()
+        {
+            Coordinators = new ObservableCollection<Bitrix24CoordinatorContact>();
+        }
+
+        public int DepartmentId { get; set; }
+
+        public string DepartmentName { get; set; }
+
+        public bool NotifyAllCoordinators { get; set; }
+
+        public ObservableCollection<Bitrix24CoordinatorContact> Coordinators { get; private set; }
+
+        public IList<Bitrix24CoordinatorContact> GetConfiguredContacts()
+        {
+            List<Bitrix24CoordinatorContact> contacts = new List<Bitrix24CoordinatorContact>();
+            foreach (Bitrix24CoordinatorContact contact in Coordinators)
+            {
+                if (contact != null && !string.IsNullOrWhiteSpace(contact.UserId))
+                    contacts.Add(contact);
+            }
+
+            return contacts;
+        }
+    }
+
+    public sealed class Bitrix24CoordinatorContact
+    {
+        public int DepartmentId { get; set; }
+
+        public string DepartmentName { get; set; }
+
+        public string UserId { get; set; }
+
+        public string UserName { get; set; }
+
+        public string ButtonCaption
+        {
+            get { return string.Format("Вызвать координатора {0} ({1})", DepartmentName, UserName); }
+        }
+
+        public string ChipCaption
+        {
+            get { return string.Format("{0} ({1})", UserName, UserId); }
+        }
     }
 
     public static class ChatTranscriptFormatter

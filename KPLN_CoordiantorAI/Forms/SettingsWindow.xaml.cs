@@ -2,12 +2,14 @@
 using Microsoft.Win32;
 using System;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace KPLN_CoordiantorAI.Forms
 {
     public partial class SettingsWindow : Window
     {
         private readonly CoordinatorAiRepository _repository;
+        private Bitrix24Settings _bitrix24Settings;
 
         public SettingsWindow()
         {
@@ -20,6 +22,7 @@ namespace KPLN_CoordiantorAI.Forms
         {
             DbPathTextBox.Text = _repository.DatabaseFilePath;
             LoadGigaChatSettings();
+            LoadBitrix24Settings();
             UpdateDatabaseStatus();
         }
 
@@ -39,12 +42,39 @@ namespace KPLN_CoordiantorAI.Forms
             SystemPromptTextBox.Text = settings.SystemPrompt;
         }
 
+        private void LoadBitrix24Settings()
+        {
+            _bitrix24Settings = _repository.DatabaseExists
+                ? _repository.LoadBitrix24Settings()
+                : CreateDefaultBitrix24Settings();
+
+            BitrixWebhookUrlTextBox.Text = _bitrix24Settings.WebhookUrl;
+            BitrixMessageModeComboBox.SelectedIndex = _bitrix24Settings.CoordinatorMessageMode == Bitrix24CoordinatorMessageMode.FirstQuestion ? 0 : 1;
+            BitrixDepartmentsItemsControl.ItemsSource = _bitrix24Settings.DepartmentCoordinators;
+        }
+
+        private static Bitrix24Settings CreateDefaultBitrix24Settings()
+        {
+            Bitrix24Settings settings = new Bitrix24Settings();
+            foreach (SubDepartmentInfo subDepartment in SubDepartmentNameResolver.GetKnownSubDepartments())
+            {
+                settings.DepartmentCoordinators.Add(new Bitrix24DepartmentCoordinator
+                {
+                    DepartmentId = subDepartment.Id,
+                    DepartmentName = subDepartment.Name
+                });
+            }
+
+            return settings;
+        }
+
         private void OnCreateDatabaseClick(object sender, RoutedEventArgs e)
         {
             try
             {
                 _repository.EnsureDatabase();
                 LoadGigaChatSettings();
+                LoadBitrix24Settings();
                 UpdateDatabaseStatus();
                 MessageBox.Show(this, "БД создана или обновлена.", "Координатор ИИ", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -72,6 +102,15 @@ namespace KPLN_CoordiantorAI.Forms
                     EmbeddingFilePaths = EmbeddingFilesTextBox.Text,
                     SystemPrompt = SystemPromptTextBox.Text
                 });
+
+                if (_bitrix24Settings == null)
+                    _bitrix24Settings = CreateDefaultBitrix24Settings();
+
+                _bitrix24Settings.WebhookUrl = BitrixWebhookUrlTextBox.Text;
+                _bitrix24Settings.CoordinatorMessageMode = BitrixMessageModeComboBox.SelectedIndex == 0
+                    ? Bitrix24CoordinatorMessageMode.FirstQuestion
+                    : Bitrix24CoordinatorMessageMode.FullChat;
+                _repository.SaveBitrix24Settings(_bitrix24Settings);
 
                 UpdateDatabaseStatus();
                 MessageBox.Show(this, "Настройки сохранены.", "Координатор ИИ", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -140,6 +179,50 @@ namespace KPLN_CoordiantorAI.Forms
             catch (Exception ex)
             {
                 MessageBox.Show(this, ex.ToString(), "Ошибка удаления вопросов", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OnAddBitrixCoordinatorClick(object sender, RoutedEventArgs e)
+        {
+            Bitrix24DepartmentCoordinator department = (sender as FrameworkElement)?.Tag as Bitrix24DepartmentCoordinator;
+            if (department == null)
+                return;
+
+            if (department.Coordinators.Count >= 3)
+            {
+                MessageBox.Show(this, "Для отдела можно добавить не больше трех ответственных.", "Bitrix24", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            BitrixCoordinatorDialog dialog = new BitrixCoordinatorDialog
+            {
+                Owner = this
+            };
+
+            if (dialog.ShowDialog() != true)
+                return;
+
+            department.Coordinators.Add(new Bitrix24CoordinatorContact
+            {
+                DepartmentId = department.DepartmentId,
+                DepartmentName = department.DepartmentName,
+                UserId = dialog.UserId,
+                UserName = dialog.UserName
+            });
+        }
+
+        private void OnRemoveBitrixCoordinatorClick(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+
+            Bitrix24CoordinatorContact contact = (sender as FrameworkElement)?.Tag as Bitrix24CoordinatorContact;
+            if (contact == null || _bitrix24Settings == null)
+                return;
+
+            foreach (Bitrix24DepartmentCoordinator department in _bitrix24Settings.DepartmentCoordinators)
+            {
+                if (department.Coordinators.Remove(contact))
+                    return;
             }
         }
 
