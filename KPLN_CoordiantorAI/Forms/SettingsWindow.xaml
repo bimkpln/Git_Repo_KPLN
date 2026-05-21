@@ -1,0 +1,204 @@
+﻿<Window x:Class="KPLN_CoordiantorAI.Forms.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN: Настройка ИИ"
+        Height="650" Width="1000" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF20242D"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FF20242D"/>
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FF262B35"/>
+        <SolidColorBrush x:Key="ControlBackgroundBrush" Color="#FF2A303B"/>
+        <SolidColorBrush x:Key="ControlHoverBrush" Color="#FF333B49"/>
+        <SolidColorBrush x:Key="ControlSelectedBrush" Color="#FF2C6BED"/>
+        <SolidColorBrush x:Key="BorderBrushStable" Color="#FF343B49"/>
+        <SolidColorBrush x:Key="TextBrushStable" Color="#FFFFFFFF"/>
+
+        <Style TargetType="TextBlock" x:Key="LabelText">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="SectionHeader">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,5.5"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushStable}"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrushStable}"/>
+            <Setter Property="Background" Value="{StaticResource ControlBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushStable}"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrushStable}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ControlSelectedBrush}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource ControlSelectedBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrushStable}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0">
+            <TabItem Header="БД">
+                <StackPanel Margin="14">
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="База данных"/>
+                    <TextBlock Style="{StaticResource LabelText}" Text="Файл БД"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DbPathTextBox" Grid.Column="0" IsReadOnly="True"/>
+                        <Button Grid.Column="1" Content="Создать БД" Click="OnCreateDatabaseClick"/>
+                    </Grid>
+                    <TextBlock x:Name="DatabaseStatusTextBlock"
+                               Foreground="#FFB8C0CC"
+                               Margin="0,6,0,18"
+                               TextWrapping="Wrap"/>
+                    <Button Content="Удалить все вопросы пользователей"
+                            HorizontalAlignment="Left"
+                            Margin="0"
+                            Click="OnDeleteAllQuestionsClick" Background="#FF793627"/>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="GigaChat">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="GigaChat"/>
+                        <TextBlock Style="{StaticResource LabelText}" Text="Auth URL"/>
+                        <TextBox x:Name="AuthUrlTextBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="API URL"/>
+                        <TextBox x:Name="ApiUrlTextBox" Margin="0,0,0,10"/>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource LabelText}" Text="Client ID"/>
+                                <TextBox x:Name="ClientIdTextBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource LabelText}" Text="Client Secret"/>
+                                <PasswordBox x:Name="ClientSecretPasswordBox"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Scope"/>
+                        <TextBox x:Name="ScopeTextBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Сертификат"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="CertificatePathTextBox" Grid.Column="0"/>
+                            <Button Grid.Column="1" Content="Обзор" Click="OnBrowseCertificateClick"/>
+                        </Grid>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Файлы эмбеддингов"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="EmbeddingFilesTextBox"
+                                     Grid.Column="0"
+                                     MinHeight="62"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"/>
+                            <Button Grid.Column="1"
+                                    Content="Обзор"
+                                    VerticalAlignment="Top"
+                                    Click="OnBrowseEmbeddingFilesClick"/>
+                        </Grid>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Системный промт"/>
+                        <TextBox x:Name="SystemPromptTextBox"
+                                 MinHeight="150"
+                                 MaxHeight="230"
+                                 Margin="0,0,0,18"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="1" Margin="0,14,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Закрыть" Click="OnCloseClick"/>
+            <Button Content="Сохранить" Background="#FF2C6BED" BorderBrush="#FF2C6BED" Click="OnSaveClick"/>
+        </StackPanel>
+    </Grid>
+</Window>
