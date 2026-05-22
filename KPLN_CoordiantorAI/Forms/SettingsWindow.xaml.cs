@@ -1,8 +1,11 @@
 ﻿using KPLN_CoordiantorAI.Common;
 using Microsoft.Win32;
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using WinForms = System.Windows.Forms;
 
 namespace KPLN_CoordiantorAI.Forms
 {
@@ -38,7 +41,7 @@ namespace KPLN_CoordiantorAI.Forms
             ClientSecretPasswordBox.Password = settings.ClientSecret;
             ScopeTextBox.Text = settings.Scope;
             CertificatePathTextBox.Text = settings.CertificatePath;
-            EmbeddingFilesTextBox.Text = settings.EmbeddingFilePaths;
+            EmbeddingFolderPathTextBox.Text = settings.EmbeddingFolderPath;
             SystemPromptTextBox.Text = settings.SystemPrompt;
         }
 
@@ -99,7 +102,7 @@ namespace KPLN_CoordiantorAI.Forms
                     ClientSecret = ClientSecretPasswordBox.Password,
                     Scope = ScopeTextBox.Text,
                     CertificatePath = CertificatePathTextBox.Text,
-                    EmbeddingFilePaths = EmbeddingFilesTextBox.Text,
+                    EmbeddingFolderPath = EmbeddingFolderPathTextBox.Text,
                     SystemPrompt = SystemPromptTextBox.Text
                 });
 
@@ -139,18 +142,65 @@ namespace KPLN_CoordiantorAI.Forms
                 CertificatePathTextBox.Text = dialog.FileName;
         }
 
-        private void OnBrowseEmbeddingFilesClick(object sender, RoutedEventArgs e)
+        private void OnBrowseDatabaseFileClick(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog dialog = new OpenFileDialog
+            SaveFileDialog dialog = new SaveFileDialog
             {
-                Title = "Выберите файлы эмбеддингов",
-                CheckFileExists = true,
-                Multiselect = true,
-                Filter = "Файлы эмбеддингов (*.json;*.jsonl;*.txt;*.csv)|*.json;*.jsonl;*.txt;*.csv|Все файлы (*.*)|*.*"
+                Title = "Выберите файл БД",
+                AddExtension = true,
+                DefaultExt = ".db",
+                FileName = Path.GetFileName(_repository.DatabaseFilePath),
+                Filter = "База данных SQLite (*.db)|*.db|Все файлы (*.*)|*.*",
+                OverwritePrompt = false
             };
 
-            if (dialog.ShowDialog(this) == true)
-                EmbeddingFilesTextBox.Text = string.Join(Environment.NewLine, dialog.FileNames);
+            if (Directory.Exists(_repository.DatabaseFolder))
+                dialog.InitialDirectory = _repository.DatabaseFolder;
+
+            if (dialog.ShowDialog(this) != true)
+                return;
+
+            try
+            {
+                CoordinatorAiDatabaseConfig.SetDatabaseFilePath(dialog.FileName);
+                DbPathTextBox.Text = _repository.DatabaseFilePath;
+                UpdateDatabaseStatus();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.ToString(), "Ошибка выбора файла БД", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OnBrowseEmbeddingFolderClick(object sender, RoutedEventArgs e)
+        {
+            using (WinForms.FolderBrowserDialog dialog = new WinForms.FolderBrowserDialog())
+            {
+                dialog.Description = "Выберите папку с эмбеддингами";
+                dialog.ShowNewFolderButton = true;
+
+                string currentPath = (EmbeddingFolderPathTextBox.Text ?? string.Empty).Trim();
+                if (Directory.Exists(currentPath))
+                    dialog.SelectedPath = currentPath;
+
+                if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                    EmbeddingFolderPathTextBox.Text = dialog.SelectedPath;
+            }
+        }
+
+        private void OnOpenDatabaseFolderClick(object sender, RoutedEventArgs e)
+        {
+            OpenDirectory(_repository.DatabaseFolder);
+        }
+
+        private void OnOpenEmbeddingFolderClick(object sender, RoutedEventArgs e)
+        {
+            OpenDirectory(EmbeddingFolderPathTextBox.Text);
+        }
+
+        private void OnOpenCertificateFolderClick(object sender, RoutedEventArgs e)
+        {
+            OpenContainingDirectory(CertificatePathTextBox.Text);
         }
 
         private void OnDeleteAllQuestionsClick(object sender, RoutedEventArgs e)
@@ -253,6 +303,31 @@ namespace KPLN_CoordiantorAI.Forms
             DatabaseStatusTextBlock.Text = _repository.DatabaseExists
                 ? "БД найдена: " + _repository.DatabaseFilePath
                 : "БД не найдена: " + _repository.DatabaseFilePath;
+        }
+
+        private void OpenContainingDirectory(string filePath)
+        {
+            string directoryPath = Path.GetDirectoryName((filePath ?? string.Empty).Trim());
+            OpenDirectory(directoryPath);
+        }
+
+        private void OpenDirectory(string directoryPath)
+        {
+            string normalizedPath = (directoryPath ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedPath) || !Directory.Exists(normalizedPath))
+            {
+                MessageBox.Show(this, "Папка не найдена.", "Координатор ИИ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                Process.Start("explorer.exe", normalizedPath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.ToString(), "Ошибка открытия папки", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

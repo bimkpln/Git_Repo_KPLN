@@ -67,6 +67,16 @@
             <Setter Property="Background" Value="#FF1F7A55"/>
             <Setter Property="BorderBrush" Value="#FF36B37E"/>
         </Style>
+        <Style TargetType="Button" x:Key="CoordinatorHelpButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="#FF38404E"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
         <Style TargetType="Button" x:Key="ChatDeleteButtonStyle">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
@@ -202,10 +212,6 @@
                             MouseEnter="OnNewChatButtonMouseEnter"
                             MouseLeave="OnNewChatButtonMouseLeave"
                             Click="OnNewChatClick"/>
-                    <Button Style="{StaticResource ModelWorkButtonStyle}"
-                            Content="Работа с моделью"
-                            IsEnabled="False"
-                            Margin="0,8,0,0" Background="#FF98E2BB" Foreground="#FF000104"/>
                 </StackPanel>
 
                 <ListBox x:Name="SessionsListBox"
@@ -291,14 +297,30 @@
                                     <TextBlock Text="{Binding Text}"
                                                Foreground="White"
                                                FontSize="13"
-                                               TextWrapping="Wrap"/>
+                                               TextWrapping="Wrap"
+                                               Loaded="OnMessageHtmlTextBlockLoaded"
+                                               DataContextChanged="OnMessageHtmlTextBlockDataContextChanged"/>
                                     <TextBlock Text="{Binding CreatedAtCaption}"
                                                Foreground="#CCFFFFFF"
                                                FontSize="10"
                                                HorizontalAlignment="Right"
                                                Margin="0,4,0,0"/>
+                                    <Button Content="Не помогло. Написать координатору в Битрикс24"
+                                            Click="OnCoordinatorHelpClick">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource CoordinatorHelpButtonStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CanRequestCoordinatorHelp}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                     <ItemsControl ItemsSource="{Binding CoordinatorOffers}"
-                                                  Margin="0,4,0,0">
+                                                  Margin="0,4,0,0"
+                                                  FontSize="10.5">
                                         <ItemsControl.Style>
                                             <Style TargetType="ItemsControl">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
@@ -312,9 +334,16 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Button Style="{StaticResource CoordinatorCallButtonStyle}"
-                                                        Content="{Binding ButtonCaption}"
-                                                        Tag="{Binding}"
-                                                        Click="OnCoordinatorCallClick"/>
+                                                    Width="340"
+                                                    Tag="{Binding}"
+                                                    Click="OnCoordinatorCallClick">
+                                                    <Grid Width="316">
+                                                        <TextBlock Text="{Binding ButtonCaption}"
+                                                           TextAlignment="Left"
+                                                           TextWrapping="Wrap"
+                                                           HorizontalAlignment="Stretch"/>
+                                                    </Grid>
+                                                </Button>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

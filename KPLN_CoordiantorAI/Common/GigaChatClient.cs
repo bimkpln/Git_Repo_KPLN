@@ -18,6 +18,7 @@ namespace KPLN_CoordiantorAI.Common
     public sealed class GigaChatClient : IAiChatClient
     {
         private const string CertificateErrorMessage = "Сертификат GigaChat либо не найден, либо недействителен.";
+        private const string EmbeddingModel = "Embeddings";
 
         private string _accessToken;
         private DateTime _accessTokenExpiresAtUtc;
@@ -27,7 +28,8 @@ namespace KPLN_CoordiantorAI.Common
             ValidateSettings(settings);
 
             string token = await GetAccessTokenAsync(settings, cancellationToken).ConfigureAwait(false);
-            GigaChatCompletionResponse response = await GetCompletionAsync(messages, settings, token, cancellationToken).ConfigureAwait(false);
+            MoodleEmbeddingArticle article = await GetMoodleArticleAsync(messages, settings, token, cancellationToken).ConfigureAwait(false);
+            GigaChatCompletionResponse response = await GetCompletionAsync(messages, article, settings, token, cancellationToken).ConfigureAwait(false);
 
             if (response == null || response.Choices == null || response.Choices.Count == 0 || response.Choices[0].Message == null)
                 throw new InvalidOperationException("GigaChat вернул пустой ответ без choices[0].message.");
@@ -36,7 +38,7 @@ namespace KPLN_CoordiantorAI.Common
             if (string.IsNullOrWhiteSpace(content))
                 throw new InvalidOperationException("GigaChat вернул пустой текст ответа.");
 
-            return content.Trim();
+            return AppendSourceLink(content.Trim(), article);
         }
 
         private async Task<string> GetAccessTokenAsync(GigaChatSettings settings, CancellationToken cancellationToken)
@@ -83,6 +85,7 @@ namespace KPLN_CoordiantorAI.Common
 
         private async Task<GigaChatCompletionResponse> GetCompletionAsync(
             IEnumerable<ChatMessage> messages,
+            MoodleEmbeddingArticle article,
             GigaChatSettings settings,
             string token,
             CancellationToken cancellationToken)
@@ -93,7 +96,7 @@ namespace KPLN_CoordiantorAI.Common
                 request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + token);
                 request.Headers.TryAddWithoutValidation("Accept", "application/json");
                 request.Content = new StringContent(
-                    Serialize(BuildCompletionRequest(messages, settings)),
+                    Serialize(BuildCompletionRequest(messages, article, settings)),
                     Encoding.UTF8,
                     "application/json");
 
@@ -112,6 +115,70 @@ namespace KPLN_CoordiantorAI.Common
                     throw new InvalidOperationException(BuildHttpErrorMessage("получения ответа", response, responseBody));
 
                 return Deserialize<GigaChatCompletionResponse>(responseBody);
+            }
+        }
+
+        private async Task<MoodleEmbeddingArticle> GetMoodleArticleAsync(
+            IEnumerable<ChatMessage> messages,
+            GigaChatSettings settings,
+            string token,
+            CancellationToken cancellationToken)
+        {
+            MoodleEmbeddingIndex index = MoodleEmbeddingIndex.Load(settings.EmbeddingFolderPath);
+            string query = GetLastUserMessageText(messages);
+            if (index == null || string.IsNullOrWhiteSpace(query))
+                return null;
+
+            IList<double> queryVector = await GetEmbeddingAsync(query, settings, token, cancellationToken).ConfigureAwait(false);
+            return index.FindBest(queryVector);
+        }
+
+        private async Task<IList<double>> GetEmbeddingAsync(
+            string text,
+            GigaChatSettings settings,
+            string token,
+            CancellationToken cancellationToken)
+        {
+            using (HttpClient httpClient = CreateHttpClient(settings, TimeSpan.FromSeconds(120)))
+            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, GetEmbeddingsUrl(settings)))
+            {
+                request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + token);
+                request.Headers.TryAddWithoutValidation("Accept", "application/json");
+                request.Headers.TryAddWithoutValidation("RqUID", Guid.NewGuid().ToString());
+                request.Content = new StringContent(
+                    Serialize(new GigaChatEmbeddingRequest
+                    {
+                        Model = EmbeddingModel,
+                        Input = text
+                    }),
+                    Encoding.UTF8,
+                    "application/json");
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Не удалось выполнить запрос embedding GigaChat. " + BuildExceptionDetails(ex), ex);
+                }
+
+                string responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException(BuildHttpErrorMessage("получения embedding", response, responseBody));
+
+                GigaChatEmbeddingResponse embeddingResponse = Deserialize<GigaChatEmbeddingResponse>(responseBody);
+                if (embeddingResponse == null ||
+                    embeddingResponse.Data == null ||
+                    embeddingResponse.Data.Count == 0 ||
+                    embeddingResponse.Data[0].Embedding == null ||
+                    embeddingResponse.Data[0].Embedding.Count == 0)
+                {
+                    throw new InvalidOperationException("GigaChat вернул пустой embedding для вопроса.");
+                }
+
+                return embeddingResponse.Data[0].Embedding;
             }
         }
 
@@ -263,7 +330,19 @@ namespace KPLN_CoordiantorAI.Common
             return apiUrl + "/chat/completions";
         }
 
-        private static GigaChatCompletionRequest BuildCompletionRequest(IEnumerable<ChatMessage> messages, GigaChatSettings settings)
+        private static string GetEmbeddingsUrl(GigaChatSettings settings)
+        {
+            string apiUrl = settings.ApiUrl.Trim().TrimEnd('/');
+            if (apiUrl.EndsWith("/embeddings", StringComparison.OrdinalIgnoreCase))
+                return apiUrl;
+
+            return apiUrl + "/embeddings";
+        }
+
+        private static GigaChatCompletionRequest BuildCompletionRequest(
+            IEnumerable<ChatMessage> messages,
+            MoodleEmbeddingArticle article,
+            GigaChatSettings settings)
         {
             GigaChatCompletionRequest request = new GigaChatCompletionRequest
             {
@@ -271,12 +350,13 @@ namespace KPLN_CoordiantorAI.Common
                 Messages = new List<GigaChatMessage>()
             };
 
-            if (!string.IsNullOrWhiteSpace(settings.SystemPrompt))
+            string systemMessage = BuildSystemMessage(settings, article);
+            if (!string.IsNullOrWhiteSpace(systemMessage))
             {
                 request.Messages.Add(new GigaChatMessage
                 {
                     Role = "system",
-                    Content = settings.SystemPrompt
+                    Content = systemMessage
                 });
             }
 
@@ -293,6 +373,49 @@ namespace KPLN_CoordiantorAI.Common
             }
 
             return request;
+        }
+
+        private static string BuildSystemMessage(GigaChatSettings settings, MoodleEmbeddingArticle article)
+        {
+            StringBuilder builder = new StringBuilder();
+            if (settings != null && !string.IsNullOrWhiteSpace(settings.SystemPrompt))
+                builder.AppendLine(settings.SystemPrompt.Trim());
+
+            if (article != null && !string.IsNullOrWhiteSpace(article.Html))
+            {
+                if (builder.Length > 0)
+                    builder.AppendLine();
+
+                builder.AppendLine("Ниже передан HTML статьи Moodle, найденной по последнему вопросу пользователя.");
+                builder.AppendLine("Используй его как базовый контекст ответа. Если контекст не отвечает на вопрос, скажи об этом прямо.");
+                builder.AppendLine("Если в ответе нужны ссылки из статьи, сохраняй их HTML-тегами <a href=\"...\">...</a>.");
+                builder.AppendLine("Не используй Markdown-ссылки и не добавляй строку источника: приложение добавит ее само.");
+                builder.AppendLine();
+                builder.AppendLine("HTML статьи Moodle:");
+                builder.Append(article.Html.Trim());
+            }
+
+            return builder.ToString().Trim();
+        }
+
+        private static string GetLastUserMessageText(IEnumerable<ChatMessage> messages)
+        {
+            ChatMessage message = messages == null
+                ? null
+                : messages.LastOrDefault(m => m != null && m.Role == ChatMessageRole.User && !string.IsNullOrWhiteSpace(m.Text));
+
+            return message == null ? string.Empty : message.Text.Trim();
+        }
+
+        private static string AppendSourceLink(string answer, MoodleEmbeddingArticle article)
+        {
+            if (article == null || string.IsNullOrWhiteSpace(article.SourceUrl))
+                return answer;
+
+            return answer.TrimEnd() +
+                "\r\n\r\n<a href=\"" +
+                WebUtility.HtmlEncode(article.SourceUrl.Trim()) +
+                "\">Источник</a>";
         }
 
         private static DateTime GetTokenExpiresAtUtc(GigaChatTokenResponse tokenResponse)
@@ -425,6 +548,30 @@ namespace KPLN_CoordiantorAI.Common
         {
             [DataMember(Name = "choices")]
             public List<GigaChatChoice> Choices { get; set; }
+        }
+
+        [DataContract]
+        private sealed class GigaChatEmbeddingRequest
+        {
+            [DataMember(Name = "model")]
+            public string Model { get; set; }
+
+            [DataMember(Name = "input")]
+            public string Input { get; set; }
+        }
+
+        [DataContract]
+        private sealed class GigaChatEmbeddingResponse
+        {
+            [DataMember(Name = "data")]
+            public List<GigaChatEmbeddingData> Data { get; set; }
+        }
+
+        [DataContract]
+        private sealed class GigaChatEmbeddingData
+        {
+            [DataMember(Name = "embedding")]
+            public List<double> Embedding { get; set; }
         }
 
         [DataContract]

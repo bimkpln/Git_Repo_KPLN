@@ -67,7 +67,7 @@ namespace KPLN_CoordiantorAI.Common
                 settings.ClientSecret = GetSetting(connection, "GigaChat.ClientSecret", string.Empty);
                 settings.Scope = GetSetting(connection, "GigaChat.Scope", settings.Scope);
                 settings.CertificatePath = GetSetting(connection, "GigaChat.CertificatePath", string.Empty);
-                settings.EmbeddingFilePaths = GetSetting(connection, "GigaChat.EmbeddingFilePaths", string.Empty);
+                settings.EmbeddingFolderPath = GetEmbeddingFolderPath(connection);
                 settings.SystemPrompt = GetSetting(connection, "GigaChat.SystemPrompt", settings.SystemPrompt);
             }
 
@@ -91,7 +91,7 @@ namespace KPLN_CoordiantorAI.Common
                     SetSetting(connection, transaction, "GigaChat.ClientSecret", settings.ClientSecret);
                     SetSetting(connection, transaction, "GigaChat.Scope", settings.Scope);
                     SetSetting(connection, transaction, "GigaChat.CertificatePath", settings.CertificatePath);
-                    SetSetting(connection, transaction, "GigaChat.EmbeddingFilePaths", settings.EmbeddingFilePaths);
+                    SetSetting(connection, transaction, "GigaChat.EmbeddingFolderPath", settings.EmbeddingFolderPath);
                     SetSetting(connection, transaction, "GigaChat.SystemPrompt", settings.SystemPrompt);
                     transaction.Commit();
                 }
@@ -288,6 +288,38 @@ namespace KPLN_CoordiantorAI.Common
                 command.Parameters.AddWithValue("@UpdatedAt", ToDbDate(DateTime.Now));
                 command.ExecuteNonQuery();
             }
+        }
+
+        private static string GetEmbeddingFolderPath(SQLiteConnection connection)
+        {
+            string folderPath = GetSetting(connection, "GigaChat.EmbeddingFolderPath", string.Empty);
+            if (!string.IsNullOrWhiteSpace(folderPath))
+                return folderPath;
+
+            return GetLegacyEmbeddingFolderPath(GetSetting(connection, "GigaChat.EmbeddingFilePaths", string.Empty));
+        }
+
+        private static string GetLegacyEmbeddingFolderPath(string legacyFilePaths)
+        {
+            if (string.IsNullOrWhiteSpace(legacyFilePaths))
+                return string.Empty;
+
+            string[] filePaths = legacyFilePaths.Replace("\r\n", "\n").Split('\n');
+            foreach (string filePath in filePaths)
+            {
+                string normalizedPath = (filePath ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(normalizedPath))
+                    continue;
+
+                if (Directory.Exists(normalizedPath))
+                    return normalizedPath;
+
+                string folderPath = Path.GetDirectoryName(normalizedPath);
+                if (!string.IsNullOrWhiteSpace(folderPath))
+                    return folderPath;
+            }
+
+            return string.Empty;
         }
 
         private static Bitrix24Settings CreateDefaultBitrix24Settings()

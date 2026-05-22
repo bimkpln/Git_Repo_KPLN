@@ -150,27 +150,13 @@ namespace KPLN_CoordiantorAI.Common
                 if (message == null ||
                     message.Role != ChatMessageRole.User ||
                     string.IsNullOrWhiteSpace(message.Text) ||
-                    IsCoordinatorCallRequest(message.Text))
+                    CoordinatorEscalationIntent.IsCoordinatorOfferRequest(message.Text))
                     continue;
 
                 return message.Text.Trim();
             }
 
             return string.Empty;
-        }
-
-        private static bool IsCoordinatorCallRequest(string messageText)
-        {
-            string text = (messageText ?? string.Empty).ToLowerInvariant();
-            if (text.IndexOf("координатор", StringComparison.Ordinal) < 0)
-                return false;
-
-            return text.IndexOf("выз", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("поз", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("зов", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("подключ", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("нужен", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("нужна", StringComparison.Ordinal) >= 0;
         }
 
         private static async Task<string> BuildUserCaptionAsync(

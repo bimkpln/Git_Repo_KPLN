@@ -41,7 +41,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Style="{StaticResource LabelText}" Text="ID пользователя Bitrix24"/>
+        <TextBlock Grid.Row="0" Style="{StaticResource LabelText}" Text="ID пользователя Битрикс24"/>
         <TextBox x:Name="UserIdTextBox" Grid.Row="1" Margin="0,0,0,10"/>
 
         <StackPanel Grid.Row="2">

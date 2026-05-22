@@ -141,7 +141,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style TargetType="Button">
+        <Style TargetType="Button" x:Key="BaseButtonStyle">
             <Setter Property="MinHeight" Value="30"/>
             <Setter Property="Padding" Value="12,4"/>
             <Setter Property="Margin" Value="6,0,0,0"/>
@@ -149,6 +149,54 @@
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderBrush" Value="#FF4B5568"/>
             <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF718096"/>
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.94"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF7FA4FF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.82"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.48"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}"/>
+        <Style TargetType="Button" x:Key="SuccessButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#FF2A7D47"/>
+            <Setter Property="BorderBrush" Value="#FF2A7D47"/>
+        </Style>
+        <Style TargetType="Button" x:Key="DangerButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#FF793627"/>
+            <Setter Property="BorderBrush" Value="#FF793627"/>
+        </Style>
+        <Style TargetType="Button" x:Key="PathActionButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="MinWidth" Value="38"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
         </Style>
         <Style TargetType="DataGrid">
             <Setter Property="Background" Value="#FF20242D"/>
@@ -179,7 +227,7 @@
             <Setter Property="Foreground" Value="#FFD8DEE9"/>
             <Setter Property="Margin" Value="0,8,0,0"/>
         </Style>
-        <Style TargetType="Button" x:Key="CoordinatorRemoveButton">
+        <Style TargetType="Button" x:Key="CoordinatorRemoveButton" BasedOn="{StaticResource BaseButtonStyle}">
             <Setter Property="Width" Value="22"/>
             <Setter Property="Height" Value="22"/>
             <Setter Property="MinHeight" Value="22"/>
@@ -246,22 +294,48 @@
                 <StackPanel Margin="14">
                     <TextBlock Style="{StaticResource SectionHeader}" Text="База данных"/>
                     <TextBlock Style="{StaticResource LabelText}" Text="Файл БД"/>
-                    <Grid>
+                    <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <TextBox x:Name="DbPathTextBox" Grid.Column="0" IsReadOnly="True"/>
-                        <Button Grid.Column="1" Content="Создать БД" Click="OnCreateDatabaseClick"/>
+                        <Button Grid.Column="1" Content="Обзор" Click="OnBrowseDatabaseFileClick"/>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource PathActionButton}"
+                                Content="📂"
+                                ToolTip="Открыть папку БД"
+                                Click="OnOpenDatabaseFolderClick"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource LabelText}" Text="Папка с эмбеддингами"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="EmbeddingFolderPathTextBox" Grid.Column="0"/>
+                        <Button Grid.Column="1" Content="Обзор" Click="OnBrowseEmbeddingFolderClick"/>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource PathActionButton}"
+                                Content="📂"
+                                ToolTip="Открыть папку с эмбеддингами"
+                                Click="OnOpenEmbeddingFolderClick"/>
                     </Grid>
                     <TextBlock x:Name="DatabaseStatusTextBlock"
                                Foreground="#FFB8C0CC"
                                Margin="0,6,0,18"
                                TextWrapping="Wrap"/>
-                    <Button Content="Удалить все вопросы пользователей"
-                            HorizontalAlignment="Left"
-                            Margin="0"
-                            Click="OnDeleteAllQuestionsClick" Background="#FF793627"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Content="Создать БД"
+                                Style="{StaticResource SuccessButton}"
+                                Margin="0"
+                                Click="OnCreateDatabaseClick"/>
+                        <Button Content="Удалить все вопросы пользователей"
+                                Style="{StaticResource DangerButton}"
+                                Click="OnDeleteAllQuestionsClick"/>
+                    </StackPanel>
                 </StackPanel>
             </TabItem>
 
@@ -299,27 +373,15 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox x:Name="CertificatePathTextBox" Grid.Column="0"/>
                             <Button Grid.Column="1" Content="Обзор" Click="OnBrowseCertificateClick"/>
-                        </Grid>
-
-                        <TextBlock Style="{StaticResource LabelText}" Text="Файлы эмбеддингов"/>
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox x:Name="EmbeddingFilesTextBox"
-                                     Grid.Column="0"
-                                     MinHeight="62"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"
-                                     VerticalScrollBarVisibility="Auto"/>
-                            <Button Grid.Column="1"
-                                    Content="Обзор"
-                                    VerticalAlignment="Top"
-                                    Click="OnBrowseEmbeddingFilesClick"/>
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource PathActionButton}"
+                                    Content="📂"
+                                    ToolTip="Открыть папку сертификата"
+                                    Click="OnOpenCertificateFolderClick"/>
                         </Grid>
 
                         <TextBlock Style="{StaticResource LabelText}" Text="Системный промт"/>
@@ -334,11 +396,11 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Bitrix24">
+            <TabItem Header="Битрикс24">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                     <StackPanel Margin="14">
-                        <TextBlock Style="{StaticResource SectionHeader}" Text="Bitrix24"/>
-                        <TextBlock Style="{StaticResource LabelText}" Text="Входящий webhook URL"/>
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Битрикс24"/>
+                        <TextBlock Style="{StaticResource LabelText}" Text="Входящий Webhook URL"/>
                         <TextBox x:Name="BitrixWebhookUrlTextBox" Margin="0,0,0,14"/>
 
                         <TextBlock Style="{StaticResource LabelText}" Text="Что отправлять координатору"/>
@@ -373,7 +435,7 @@
                                                         Click="OnAddBitrixCoordinatorClick"/>
                                             </Grid>
 
-                                            <CheckBox Content="Если выбран один координатор, отправлять сообщение всем ответственным отдела"
+                                            <CheckBox Content="Принудительно отправлять всем координаторам по разделу"
                                                       IsChecked="{Binding NotifyAllCoordinators, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
                                             <ItemsControl ItemsSource="{Binding Coordinators}"

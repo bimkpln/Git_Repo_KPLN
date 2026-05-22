@@ -3,17 +3,31 @@ using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Navigation;
 
 namespace KPLN_CoordiantorAI.Forms
 {
     public partial class ChatWindow : Window
     {
+        private static readonly Regex HtmlAnchorRegex = new Regex(
+            "<a\\b[^>]*\\bhref\\s*=\\s*([\"'])(?<href>.*?)\\1[^>]*>(?<text>.*?)</a>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex HtmlBreakRegex = new Regex(
+            "<\\s*br\\s*/?\\s*>|<\\s*/\\s*p\\s*>|<\\s*/\\s*div\\s*>|<\\s*/\\s*li\\s*>",
+            RegexOptions.IgnoreCase);
+        private static readonly Regex HtmlTagRegex = new Regex("<[^>]+>", RegexOptions.Singleline);
+
         private readonly CoordinatorAiRepository _repository;
         private readonly IAiChatClient _aiClient;
         private readonly Bitrix24Client _bitrix24Client;
@@ -228,11 +242,9 @@ namespace KPLN_CoordiantorAI.Forms
             ScrollMessagesToEnd();
             SaveSessionSafely();
 
-            if (IsCoordinatorCallRequest(messageText))
+            if (CoordinatorEscalationIntent.IsCoordinatorOfferRequest(messageText))
             {
-                AddCoordinatorOfferMessage("Можно подключить координатора по вашему отделу.");
-                ScrollMessagesToEnd();
-                SaveSessionSafely();
+                OfferCoordinatorHelp();
                 return;
             }
 
@@ -244,7 +256,8 @@ namespace KPLN_CoordiantorAI.Forms
                 _session.Messages.Add(new ChatMessage
                 {
                     Role = ChatMessageRole.Assistant,
-                    Text = answer
+                    Text = answer,
+                    CanRequestCoordinatorHelp = true
                 });
             }
             catch (Exception ex)
@@ -272,10 +285,15 @@ namespace KPLN_CoordiantorAI.Forms
             if (newReaction != ChatReaction.Dislike)
                 return;
 
-            AddCoordinatorOfferMessage("Можно подключить координатора по вашему отделу.");
-            RefreshMessagesList();
-            ScrollMessagesToEnd();
-            SaveSessionSafely();
+            OfferCoordinatorHelp();
+        }
+
+        private void OnCoordinatorHelpClick(object sender, RoutedEventArgs e)
+        {
+            if (_isWaitingForAnswer)
+                return;
+
+            OfferCoordinatorHelp();
         }
 
         private async void OnCoordinatorCallClick(object sender, RoutedEventArgs e)
@@ -375,18 +393,95 @@ namespace KPLN_CoordiantorAI.Forms
                 MessagesListBox.Items.Refresh();
         }
 
-        private static bool IsCoordinatorCallRequest(string messageText)
+        private void OnMessageHtmlTextBlockLoaded(object sender, RoutedEventArgs e)
         {
-            string text = (messageText ?? string.Empty).ToLowerInvariant();
-            if (text.IndexOf("координатор", StringComparison.Ordinal) < 0)
-                return false;
+            RenderMessageHtml(sender as TextBlock, (sender as TextBlock)?.DataContext as ChatMessage);
+        }
 
-            return text.IndexOf("выз", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("поз", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("зов", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("подключ", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("нужен", StringComparison.Ordinal) >= 0 ||
-                text.IndexOf("нужна", StringComparison.Ordinal) >= 0;
+        private void OnMessageHtmlTextBlockDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            RenderMessageHtml(sender as TextBlock, e.NewValue as ChatMessage);
+        }
+
+        private void RenderMessageHtml(TextBlock textBlock, ChatMessage message)
+        {
+            if (textBlock == null || message == null)
+                return;
+
+            string html = message.Text ?? string.Empty;
+            textBlock.Inlines.Clear();
+
+            int textIndex = 0;
+            foreach (Match match in HtmlAnchorRegex.Matches(html))
+            {
+                AddMessageText(textBlock, html.Substring(textIndex, match.Index - textIndex));
+                AddMessageLink(textBlock, match.Groups["href"].Value, match.Groups["text"].Value);
+                textIndex = match.Index + match.Length;
+            }
+
+            AddMessageText(textBlock, html.Substring(textIndex));
+        }
+
+        private void AddMessageLink(TextBlock textBlock, string href, string linkHtml)
+        {
+            string linkText = GetMessageDisplayText(linkHtml);
+            string decodedHref = WebUtility.HtmlDecode(href ?? string.Empty).Trim();
+            Uri uri;
+            if (!Uri.TryCreate(decodedHref, UriKind.Absolute, out uri) ||
+                (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+                 !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                AddMessageText(textBlock, string.IsNullOrWhiteSpace(linkText) ? decodedHref : linkText);
+                return;
+            }
+
+            Hyperlink hyperlink = new Hyperlink(new Run(string.IsNullOrWhiteSpace(linkText) ? uri.AbsoluteUri : linkText))
+            {
+                NavigateUri = uri,
+                Foreground = Brushes.LightSkyBlue
+            };
+            hyperlink.RequestNavigate += OnMessageHyperlinkRequestNavigate;
+            textBlock.Inlines.Add(hyperlink);
+        }
+
+        private static void AddMessageText(TextBlock textBlock, string html)
+        {
+            string text = GetMessageDisplayText(html);
+            if (!string.IsNullOrEmpty(text))
+                textBlock.Inlines.Add(new Run(text));
+        }
+
+        private static string GetMessageDisplayText(string html)
+        {
+            string text = HtmlBreakRegex.Replace(html ?? string.Empty, "\r\n");
+            text = HtmlTagRegex.Replace(text, string.Empty);
+            return WebUtility.HtmlDecode(text);
+        }
+
+        private void OnMessageHyperlinkRequestNavigate(object sender, RequestNavigateEventArgs e)
+        {
+            if (e == null || e.Uri == null)
+                return;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri)
+                {
+                    UseShellExecute = true
+                });
+                e.Handled = true;
+            }
+            catch (Exception ex)
+            {
+                StatusTextBlock.Text = "Не удалось открыть ссылку: " + ex.Message;
+            }
+        }
+
+        private void OfferCoordinatorHelp()
+        {
+            AddCoordinatorOfferMessage("Можно подключить координатора по вашему отделу.");
+            ScrollMessagesToEnd();
+            SaveSessionSafely();
         }
 
         private void SetReaction(ChatReaction reaction)

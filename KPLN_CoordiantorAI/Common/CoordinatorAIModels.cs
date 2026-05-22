@@ -54,6 +54,8 @@ namespace KPLN_CoordiantorAI.Common
             get { return CoordinatorOffers != null && CoordinatorOffers.Count > 0; }
         }
 
+        public bool CanRequestCoordinatorHelp { get; set; }
+
         public string RoleCaption
         {
             get { return IsUserMessage ? "Пользователь" : "ИИ"; }
@@ -170,7 +172,7 @@ namespace KPLN_CoordiantorAI.Common
 
         public string CertificatePath { get; set; }
 
-        public string EmbeddingFilePaths { get; set; }
+        public string EmbeddingFolderPath { get; set; }
 
         public string SystemPrompt { get; set; }
     }
@@ -252,12 +254,99 @@ namespace KPLN_CoordiantorAI.Common
 
         public string ButtonCaption
         {
-            get { return string.Format("Вызвать координатора {0} ({1})", DepartmentName, UserName); }
+            get { return string.Format("Написать в Битрикс24 координатору {0} ({1})", DepartmentName, UserName); }
         }
 
         public string ChipCaption
         {
             get { return string.Format("{0} ({1})", UserName, UserId); }
+        }
+    }
+
+    public static class CoordinatorEscalationIntent
+    {
+        private static readonly string[] CoordinatorCallMarkers =
+        {
+            "выз",
+            "поз",
+            "зов",
+            "подключ",
+            "нужен",
+            "нужна"
+        };
+
+        private static readonly string[] AnswerFeedbackMarkers =
+        {
+            "ответ невер",
+            "ответ не вер",
+            "неверный ответ",
+            "не верный ответ",
+            "ответ неправиль",
+            "ответ не правиль",
+            "неправильный ответ",
+            "не правильный ответ",
+            "ответ не помог",
+            "ответ не тот",
+            "не тот ответ",
+            "ошибка в ответе",
+            "ошибочный ответ",
+            "это неверно",
+            "это не верно",
+            "это неправильно",
+            "это не правильно",
+            "это не так"
+        };
+
+        private static readonly string[] ShortAnswerFeedbackMarkers =
+        {
+            "неверно",
+            "не верно",
+            "неправильно",
+            "не правильно",
+            "не помог",
+            "не помогло"
+        };
+
+        public static bool IsCoordinatorOfferRequest(string messageText)
+        {
+            return IsCoordinatorCallRequest(messageText) || IsUnhelpfulAnswerFeedback(messageText);
+        }
+
+        public static bool IsCoordinatorCallRequest(string messageText)
+        {
+            string text = Normalize(messageText);
+            if (text.IndexOf("координатор", StringComparison.Ordinal) < 0)
+                return false;
+
+            return ContainsAny(text, CoordinatorCallMarkers);
+        }
+
+        private static bool IsUnhelpfulAnswerFeedback(string messageText)
+        {
+            string text = Normalize(messageText);
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            if (ContainsAny(text, AnswerFeedbackMarkers))
+                return true;
+
+            return text.Length <= 80 && ContainsAny(text, ShortAnswerFeedbackMarkers);
+        }
+
+        private static string Normalize(string value)
+        {
+            return (value ?? string.Empty).Trim().ToLowerInvariant().Replace('ё', 'е');
+        }
+
+        private static bool ContainsAny(string text, IEnumerable<string> markers)
+        {
+            foreach (string marker in markers)
+            {
+                if (text.IndexOf(marker, StringComparison.Ordinal) >= 0)
+                    return true;
+            }
+
+            return false;
         }
     }
 
