@@ -205,7 +205,7 @@
                     <Button Style="{StaticResource ModelWorkButtonStyle}"
                             Content="Работа с моделью"
                             IsEnabled="False"
-                            Margin="0,8,0,0"/>
+                            Margin="0,8,0,0" Background="#FF98E2BB" Foreground="#FF000104"/>
                 </StackPanel>
 
                 <ListBox x:Name="SessionsListBox"
