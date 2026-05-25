@@ -6,6 +6,7 @@
         Width="1180"
         MinHeight="460"
         MinWidth="900"
+        PreviewKeyUp="CollectionParametersWindow_PreviewKeyUp"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <Style x:Key="SelectableCellTextBoxStyle" TargetType="TextBox">
@@ -19,6 +20,16 @@
             <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
             <Setter Property="Padding" Value="4,2" />
             <Setter Property="MinHeight" Value="24" />
+        </Style>
+
+        <Style x:Key="NameCellTextBoxStyle"
+               TargetType="TextBox"
+               BasedOn="{StaticResource SelectableCellTextBoxStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsProjectParameter}" Value="False">
+                    <Setter Property="Foreground" Value="#FF005BBB" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="NoBlueDataGridCellStyle" TargetType="{x:Type DataGridCell}">
@@ -39,11 +50,20 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="DeleteSelectionDataGridCellStyle"
+               TargetType="{x:Type DataGridCell}"
+               BasedOn="{StaticResource NoBlueDataGridCellStyle}">
+            <EventSetter Event="PreviewMouseLeftButtonDown"
+                         Handler="DeleteSelectionCell_PreviewMouseLeftButtonDown" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+
         <DataTemplate x:Key="ParameterIdCellTemplate">
             <TextBox Text="{Binding ParameterIdText}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="NameCellTemplate">
-            <TextBox Text="{Binding Name}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding Name}" Style="{StaticResource NameCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="GuidCellTemplate">
             <TextBox Text="{Binding Guid}" Style="{StaticResource SelectableCellTextBoxStyle}" />
@@ -53,6 +73,9 @@
         </DataTemplate>
         <DataTemplate x:Key="ViewFiltersCellTemplate">
             <TextBox Text="{Binding ViewFilters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+        </DataTemplate>
+        <DataTemplate x:Key="SchedulesCellTemplate">
+            <TextBox Text="{Binding Schedules}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="ScheduleFiltersCellTemplate">
             <TextBox Text="{Binding ScheduleFilters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
@@ -64,9 +87,13 @@
             <TextBox Text="{Binding Dimensions}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="DeleteSelectionCellTemplate">
-            <CheckBox IsChecked="{Binding IsSelectedForDelete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                      HorizontalAlignment="Center"
-                      VerticalAlignment="Center" />
+            <Border Background="Transparent">
+                <CheckBox IsChecked="{Binding IsSelectedForDelete, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Focusable="False"
+                          IsHitTestVisible="False" />
+            </Border>
         </DataTemplate>
     </Window.Resources>
 
@@ -126,6 +153,7 @@
                 <DataGridTemplateColumn Header="Удалить"
                                         Width="70"
                                         CanUserSort="False"
+                                        CellStyle="{StaticResource DeleteSelectionDataGridCellStyle}"
                                         CellTemplate="{StaticResource DeleteSelectionCellTemplate}" />
                 <DataGridTemplateColumn Header="ID"
                                         Width="100"
@@ -149,6 +177,11 @@
                                         Width="260"
                                         SortMemberPath="ViewFilters"
                                         CellTemplate="{StaticResource ViewFiltersCellTemplate}" />
+                <DataGridTemplateColumn x:Name="SchedulesColumn"
+                                        Header="Содержится в спецификации"
+                                        Width="260"
+                                        SortMemberPath="Schedules"
+                                        CellTemplate="{StaticResource SchedulesCellTemplate}" />
                 <DataGridTemplateColumn x:Name="ScheduleFiltersColumn"
                                         Header="Фильтры спецификаций"
                                         Width="260"
