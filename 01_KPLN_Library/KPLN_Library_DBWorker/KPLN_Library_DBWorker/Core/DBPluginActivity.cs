@@ -1,4 +1,5 @@
 ﻿using KPLN_Library_DBWorker.Core.Abstractions;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -27,8 +28,15 @@ namespace KPLN_Library_DBWorker.Core
         /// <summary>
         /// Ссылка на отдел
         /// </summary>
+        [Obsolete("25.05.26 - удалить через пару месяцев. Используем UserId вместо этого, чтобы не дублировать инфу в БД. Сразу заменить не вариант - сломает таблицу")]
         [ForeignKey(nameof(DBSubDepartment))]
         public int SubDepartmentId { get; set; }
+
+        /// <summary>
+        /// Ссылка на пользователя
+        /// </summary>
+        [ForeignKey(nameof(DBUser))]
+        public int UserId { get; set; }
 
         /// <summary>
         /// Колчиество запусков
