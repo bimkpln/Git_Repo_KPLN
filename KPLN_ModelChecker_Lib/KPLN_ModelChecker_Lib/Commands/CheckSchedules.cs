@@ -191,8 +191,11 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                             if (doc.GetElement(schField.ParameterId) is SharedParameterElement shParam)
                             {
+                                // Проверка имени. Если не совпадает, то и условия/тип данных не нужно проверять
                                 bool checkName = shParam.Name.Equals(paramName);
-                                
+                                if (!checkName)
+                                    continue;
+
                                 bool checkGilterType = schFilters[i].FilterType == ScheduleFilterType.LessThanOrEqual;
                                 bool checkFilterValue = schFilters[i].GetIntegerValue() == 1;
                                 if (isSET && !checkGilterType && !checkFilterValue)

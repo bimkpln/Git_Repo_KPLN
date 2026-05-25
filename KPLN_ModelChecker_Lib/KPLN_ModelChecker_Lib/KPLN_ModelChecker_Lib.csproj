@@ -305,6 +305,10 @@
     <Compile Include="Commands\CheckMainLines.cs" />
     <Compile Include="Commands\CheckWorksets.cs" />
     <Compile Include="Common\ExtensibleStorageEntity.cs" />
+    <Compile Include="ExecutableCommand\WSDeleter.cs" />
+    <Compile Include="Forms\WorksetsForm.xaml.cs">
+      <DependentUpon>WorksetsForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\CheckMEPHeight_ARDataForm.xaml.cs">
       <DependentUpon>CheckMEPHeight_ARDataForm.xaml</DependentUpon>
     </Compile>
@@ -320,9 +324,14 @@
     <Compile Include="WorksetUtil\Common\SelectedParameter.cs" />
     <Compile Include="WorksetUtil\Common\WorksetByCurrentParameter.cs" />
     <Compile Include="WorksetUtil\Common\WorksetDTO.cs" />
-    <Compile Include="WorksetUtil\WorksetSetService.cs" />
+    <Compile Include="WorksetUtil\Util.cs" />
+    <Compile Include="WorksetUtil\WorksetCreator.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="Forms\WorksetsForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\CheckMEPHeight_ARDataForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -331,8 +340,6 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="ExecutableCommand\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
