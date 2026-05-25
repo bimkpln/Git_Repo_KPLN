@@ -224,7 +224,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             // Создание отдельного РН, если нужно.
             if (instForWS.Count() > 0)
-                WorksetSetService.ExecuteFromService(
+                WorksetCreator.ExecuteFromService(
                     doc,
                     instForWS,
                     Array.Empty<DirectShape>(),
