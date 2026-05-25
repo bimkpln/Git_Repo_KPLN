@@ -1,8 +1,10 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
+using KPLN_ModelChecker_Debugger.ExternalCommands;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -10,7 +12,8 @@ namespace KPLN_ModelChecker_Debugger
 {
     public class Module : IExternalModule
     {
-        private readonly string _AssemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
         public Result Close()
         {
@@ -27,15 +30,14 @@ namespace KPLN_ModelChecker_Debugger
             PulldownButtonData pullDownData = new PulldownButtonData("Исправить", "Исправить")
             {
                 ToolTip = "Набор плагинов, для исправления выявленных ошибок в модели",
-                Image = PngImageSource("KPLN_ModelChecker_Debugger.Imagens.mainLarge.png"),
-                LargeImage = PngImageSource("KPLN_ModelChecker_Debugger.Imagens.mainLarge.png"),
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "main", 32),
             };
             PulldownButton pullDown = currentPanel.AddItem(pullDownData) as PulldownButton;
 
-            //Добавляю pinner в выпадающий список pullDown
+
             AddPushButtonDataInPullDown(
-                "Прикрепить",
-                "Прикрепить элементы модели",
+                Pinner.PluginName,
+                Pinner.PluginName,
                 "Прикрепляет (pin) следующие элементы: связи, оси, уровни, базовую точку проекта",
                 string.Format(
                     "Прикрпление необходимо для избежания случайного перемещения объектов, что может привести к проектным ошибкам.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
@@ -43,33 +45,52 @@ namespace KPLN_ModelChecker_Debugger
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Pinner).FullName,
+                typeof(Pinner).FullName,
                 pullDown,
-                "KPLN_ModelChecker_Debugger.Imagens.pinnerLarge.png",
+                "pinner",
                 "http://moodle/mod/page/view.php?id=189"
             );
 
-            //Добавляю worksetter в выпадающий список pullDown
+
             AddPushButtonDataInPullDown(
-                "Рабочие наборы",
-                "Рабочие наборы",
-                "Распределяет элементы по рабочим наборам",
+                WorksetCreate.PluginName,
+                WorksetCreate.PluginName,
+                "Создаёт и распределяет элементы по рабочим наборам",
                 string.Format(
                     "Возможности:\nСоздание рабочих наборов и распределение элементов по ним по настроенным правилам. Примеры файлов в папке с программой.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.Worksetter).FullName,
+                typeof(WorksetCreate).FullName,
                 pullDown,
-                "KPLN_ModelChecker_Debugger.Imagens.worksetLarge.png",
+                "worksetCreate",
                 "http://moodle/mod/book/view.php?id=502&chapterid=668"
             );
 
-            //Добавляю LevelAndGridsParamCopier в выпадающий список pullDown
+            // ВОЗМОЖНО УДАЛЕНИЕ РН ТОЛЬКО НАЧИНАЯ С РЕВИТ2023, до этого - нет API
+#if !Debug2020 && !Revit2020
             AddPushButtonDataInPullDown(
-                "BIM: Анализ разб.файла",
-                "BIM: Анализ разб.файла",
+                WorksetDelete.PluginName,
+                WorksetDelete.PluginName,
+                "Удаляет рабочие наборы",
+                string.Format(
+                    "Возможности:\nУдаление рабочих наборов.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(WorksetDelete).FullName,
+                pullDown,
+                "worksetDelete",
+                "http://moodle/"
+            );
+#endif
+
+
+            AddPushButtonDataInPullDown(
+                PatitionFileSetter.PluginName,
+                PatitionFileSetter.PluginName,
                 "Проверка корректности относительно уровней (по оси Z) и привязка отдельных блоков к уровням проекта (по отметкам)",
                 string.Format(
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
@@ -77,9 +98,9 @@ namespace KPLN_ModelChecker_Debugger
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.PatitionFileSetter).FullName,
+                typeof(PatitionFileSetter).FullName,
                 pullDown,
-                "KPLN_ModelChecker_Debugger.Imagens.setPatitionalFile.png",
+                "setPatitionalFile",
                 "http://moodle/"
             );
 
@@ -99,26 +120,18 @@ namespace KPLN_ModelChecker_Debugger
         /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
         private void AddPushButtonDataInPullDown(string name, string text, string shortDescription, string longDescription, string className, PulldownButton pullDownButton, string imageName, string contextualHelp)
         {
-            PushButtonData data = new PushButtonData(name, text, _AssemblyPath, className);
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
             PushButton button = pullDownButton.AddPushButton(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            button.Image = PngImageSource(imageName);
-            button.LargeImage = PngImageSource(imageName);
-        }
+            button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
 
-        /// <summary>
-        /// Метод для добавления иконки для кнопки
-        /// </summary>
-        /// <param name="embeddedPathname">Имя иконки с раширением</param>
-        private ImageSource PngImageSource(string embeddedPathname)
-        {
-            Stream st = this.GetType().Assembly.GetManifestResourceStream(embeddedPathname);
-            var decoder = new PngBitmapDecoder(st, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.Default);
-
-            return decoder.Frames[0];
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
     }
 }

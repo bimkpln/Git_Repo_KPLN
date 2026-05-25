@@ -14,6 +14,8 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal sealed class PatitionFileSetter : IExternalCommand
     {
+        internal const string PluginName = "BIM: Анализ разб.файла";
+        
         private static readonly BuiltInCategory _boxBIC = BuiltInCategory.OST_Mass;
 
         private static readonly string _fopPath = @"X:\BIM\4_ФОП\02_Для плагинов\КП_Плагины_Общий.txt";

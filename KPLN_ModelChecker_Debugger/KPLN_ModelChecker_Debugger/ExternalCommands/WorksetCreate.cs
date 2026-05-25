@@ -10,8 +10,10 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Worksetter : IExternalCommand
+    public class WorksetCreate : IExternalCommand
     {
+        internal const string PluginName = "Рабочие наборы - управлять";
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             //Получение объектов приложения и документа
@@ -37,7 +39,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
                     .OfClass(typeof(ImportInstance))
                     .Cast<ImportInstance>();
 
-                if (WorksetSetService.ExecuteFromService(doc, rvtLinks, dirShapes, pcInstances, importInstances))
+                if (WorksetCreator.ExecuteFromService(doc, rvtLinks, dirShapes, pcInstances, importInstances))
                     return Result.Succeeded;
                 else
                     return Result.Cancelled;
