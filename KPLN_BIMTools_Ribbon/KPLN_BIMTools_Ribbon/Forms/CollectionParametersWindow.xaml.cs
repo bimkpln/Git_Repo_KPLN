@@ -30,6 +30,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private string _windowTitle;
         private string _description;
         private string _status;
+        private ParameterUsageRow _deleteSelectionAnchorRow;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -88,6 +89,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 FamiliesColumn.Visibility = System.Windows.Visibility.Collapsed;
                 ViewFiltersColumn.Visibility = System.Windows.Visibility.Collapsed;
+                SchedulesColumn.Visibility = System.Windows.Visibility.Collapsed;
                 ScheduleFiltersColumn.Visibility = System.Windows.Visibility.Collapsed;
                 FormulaParametersColumn.Visibility = System.Windows.Visibility.Visible;
                 DimensionsColumn.Visibility = System.Windows.Visibility.Visible;
@@ -99,6 +101,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
                 FamiliesColumn.Visibility = System.Windows.Visibility.Visible;
                 ViewFiltersColumn.Visibility = System.Windows.Visibility.Visible;
+                SchedulesColumn.Visibility = System.Windows.Visibility.Visible;
                 ScheduleFiltersColumn.Visibility = System.Windows.Visibility.Visible;
                 FormulaParametersColumn.Visibility = System.Windows.Visibility.Collapsed;
                 DimensionsColumn.Visibility = System.Windows.Visibility.Collapsed;
@@ -137,6 +140,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 FamiliesColumn.Visibility = System.Windows.Visibility.Collapsed;
                 ViewFiltersColumn.Visibility = System.Windows.Visibility.Collapsed;
+                SchedulesColumn.Visibility = System.Windows.Visibility.Collapsed;
                 ScheduleFiltersColumn.Visibility = System.Windows.Visibility.Collapsed;
                 FormulaParametersColumn.Visibility = HasColumnData("FormulaParameters")
                     ? System.Windows.Visibility.Visible
@@ -151,6 +155,9 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
                 ViewFiltersColumn.Visibility = HasColumnData("ViewFilters")
+                    ? System.Windows.Visibility.Visible
+                    : System.Windows.Visibility.Collapsed;
+                SchedulesColumn.Visibility = HasColumnData("Schedules")
                     ? System.Windows.Visibility.Visible
                     : System.Windows.Visibility.Collapsed;
                 ScheduleFiltersColumn.Visibility = HasColumnData("ScheduleFilters")
@@ -183,12 +190,14 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 .ToDictionary(x => x.Key, x => x.First());
 
             FillViewFiltersUsage(rowsByParameterId);
+            FillScheduleFieldsUsage(rowsByParameterId);
             FillScheduleFiltersUsage(rowsByParameterId);
 
             foreach (ParameterUsageRow row in parameterRows.OrderBy(x => x.Name))
             {
                 row.Families = JoinLines(row.FamiliesSet);
                 row.ViewFilters = JoinLines(row.ViewFiltersSet);
+                row.Schedules = JoinLines(row.SchedulesSet);
                 row.ScheduleFilters = JoinLines(row.ScheduleFiltersSet);
                 Rows.Add(row);
             }
@@ -224,6 +233,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
 
                 ParameterUsageRow row = GetOrCreateProjectParameterRow(rowsByGuid, guid, parameterId, definition.Name);
+                row.IsProjectParameter = true;
                 UpdateRowParameterId(row, parameterId);
                 AddBindingCategoriesUsage(row, binding);
             }
@@ -556,6 +566,32 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        private object InvokeMethod(object source, string methodName, params object[] args)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            MethodInfo[] methods = source.GetType()
+                .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                .Where(x => x.Name == methodName && x.GetParameters().Length == args.Length)
+                .ToArray();
+
+            foreach (MethodInfo method in methods)
+            {
+                try
+                {
+                    return method.Invoke(source, args);
+                }
+                catch
+                {
+                }
+            }
+
+            return null;
+        }
+
         private object GetPropertyValue(object source, string propertyName)
         {
             if (source == null)
@@ -627,6 +663,88 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
+        private void FillScheduleFieldsUsage(Dictionary<long, ParameterUsageRow> rowsByParameterId)
+        {
+            if (rowsByParameterId.Count == 0)
+            {
+                return;
+            }
+
+            IEnumerable<ViewSchedule> schedules = new FilteredElementCollector(_doc)
+                .OfClass(typeof(ViewSchedule))
+                .Cast<ViewSchedule>();
+
+            foreach (ViewSchedule schedule in schedules)
+            {
+                if (schedule.IsTemplate)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    HashSet<long> parameterIds = GetScheduleFieldParameterIds(schedule.Definition);
+                    foreach (long parameterId in parameterIds)
+                    {
+                        ParameterUsageRow row;
+                        if (rowsByParameterId.TryGetValue(parameterId, out row))
+                        {
+                            row.SchedulesSet.Add(GetNamedElementReferenceText(schedule));
+                        }
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+        }
+
+        private HashSet<long> GetScheduleFieldParameterIds(ScheduleDefinition definition)
+        {
+            HashSet<long> result = new HashSet<long>();
+            if (definition == null)
+            {
+                return result;
+            }
+
+            IEnumerable fieldOrder = InvokeParameterlessMethod(definition, "GetFieldOrder") as IEnumerable;
+            if (fieldOrder != null)
+            {
+                foreach (object fieldId in fieldOrder)
+                {
+                    AddScheduleFieldParameterId(definition, fieldId, result);
+                }
+
+                return result;
+            }
+
+            object fieldCountObject = InvokeParameterlessMethod(definition, "GetFieldCount");
+            if (!(fieldCountObject is int))
+            {
+                return result;
+            }
+
+            int fieldCount = (int)fieldCountObject;
+            for (int i = 0; i < fieldCount; i++)
+            {
+                object fieldId = InvokeMethod(definition, "GetFieldId", i);
+                AddScheduleFieldParameterId(definition, fieldId ?? (object)i, result);
+            }
+
+            return result;
+        }
+
+        private void AddScheduleFieldParameterId(ScheduleDefinition definition, object fieldKey, HashSet<long> result)
+        {
+            object field = InvokeMethod(definition, "GetField", fieldKey);
+            ElementId parameterId = GetPropertyValue(field, "ParameterId") as ElementId;
+            if (IsValidElementId(parameterId))
+            {
+                result.Add(IDHelper.ElIdValue(parameterId));
+            }
+        }
+
         private void LoadFamilyParametersUsage()
         {
             FamilyManager familyManager = _doc.FamilyManager;
@@ -651,6 +769,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     ParameterIdText = GetElementIdText(parameter.Id),
                     Name = GetFamilyParameterName(parameter),
                     Guid = guidText,
+                    IsProjectParameter = true,
                     ParameterGuid = parameter.GUID,
                     ParameterId = parameter.Id,
                     FormulaParameters = JoinLines(GetSetValue(formulasByGuid, guidText)),
@@ -1050,6 +1169,117 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 .ToList();
         }
 
+        private void DeleteSelectionCell_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            FrameworkElement element = sender as FrameworkElement;
+            ParameterUsageRow clickedRow = element != null
+                ? element.DataContext as ParameterUsageRow
+                : null;
+
+            if (clickedRow == null)
+            {
+                return;
+            }
+
+            e.Handled = true;
+
+            bool isShiftPressed = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
+            bool isSelected = !clickedRow.IsSelectedForDelete;
+            if (!isShiftPressed)
+            {
+                ParametersGrid.SelectedCells.Clear();
+                clickedRow.IsSelectedForDelete = isSelected;
+                _deleteSelectionAnchorRow = clickedRow;
+                return;
+            }
+
+            List<ParameterUsageRow> rowsToUpdate = GetDeleteSelectionRows(clickedRow, isShiftPressed);
+
+            foreach (ParameterUsageRow row in rowsToUpdate)
+            {
+                row.IsSelectedForDelete = isSelected;
+            }
+
+            if (_deleteSelectionAnchorRow == null)
+            {
+                _deleteSelectionAnchorRow = clickedRow;
+            }
+        }
+
+        private void CollectionParametersWindow_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            {
+                _deleteSelectionAnchorRow = null;
+            }
+        }
+
+        private List<ParameterUsageRow> GetDeleteSelectionRows(ParameterUsageRow clickedRow, bool isShiftPressed)
+        {
+            if (!isShiftPressed)
+            {
+                return new List<ParameterUsageRow> { clickedRow };
+            }
+
+            List<ParameterUsageRow> selectedRows = GetSelectedParameterRowsInVisualOrder();
+            if (selectedRows.Count > 1 && selectedRows.Contains(clickedRow))
+            {
+                return selectedRows;
+            }
+
+            if (_deleteSelectionAnchorRow != null)
+            {
+                return GetVisualRowsBetween(_deleteSelectionAnchorRow, clickedRow);
+            }
+
+            return new List<ParameterUsageRow> { clickedRow };
+        }
+
+        private List<ParameterUsageRow> GetSelectedParameterRowsInVisualOrder()
+        {
+            HashSet<ParameterUsageRow> selectedRows = new HashSet<ParameterUsageRow>(
+                ParametersGrid.SelectedCells
+                    .Select(x => x.Item)
+                    .OfType<ParameterUsageRow>());
+
+            if (selectedRows.Count == 0)
+            {
+                return new List<ParameterUsageRow>();
+            }
+
+            return ParametersGrid.Items
+                .Cast<object>()
+                .OfType<ParameterUsageRow>()
+                .Where(x => selectedRows.Contains(x))
+                .ToList();
+        }
+
+        private List<ParameterUsageRow> GetVisualRowsBetween(ParameterUsageRow fromRow, ParameterUsageRow toRow)
+        {
+            List<ParameterUsageRow> visibleRows = ParametersGrid.Items
+                .Cast<object>()
+                .OfType<ParameterUsageRow>()
+                .ToList();
+
+            int fromIndex = visibleRows.IndexOf(fromRow);
+            int toIndex = visibleRows.IndexOf(toRow);
+            if (fromIndex < 0 || toIndex < 0)
+            {
+                return new List<ParameterUsageRow> { toRow };
+            }
+
+            int startIndex = Math.Min(fromIndex, toIndex);
+            int endIndex = Math.Max(fromIndex, toIndex);
+            List<ParameterUsageRow> rows = new List<ParameterUsageRow>();
+
+            for (int i = startIndex; i <= endIndex; i++)
+            {
+                rows.Add(visibleRows[i]);
+            }
+
+            return rows;
+        }
+
         private class DeleteParametersExternalEventHandler : IExternalEventHandler
         {
             private readonly CollectionParametersWindow _window;
@@ -1209,6 +1439,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 columns.Add(new ReportColumn("Категории", "Families", 42));
                 columns.Add(new ReportColumn("Фильтры видов", "ViewFilters", 34));
+                columns.Add(new ReportColumn("Содержится в спецификации", "Schedules", 34));
                 columns.Add(new ReportColumn("Фильтры спецификаций", "ScheduleFilters", 34));
             }
 
@@ -1425,6 +1656,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 return row.ViewFilters;
             }
 
+            if (sortMemberPath == "Schedules")
+            {
+                return row.Schedules;
+            }
+
             if (sortMemberPath == "ScheduleFilters")
             {
                 return row.ScheduleFilters;
@@ -1462,23 +1698,43 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
         }
 
-        public class ParameterUsageRow
+        public class ParameterUsageRow : INotifyPropertyChanged
         {
+            private bool _isSelectedForDelete;
+
+            public event PropertyChangedEventHandler PropertyChanged;
+
             public string ParameterIdText { get; set; }
             public string Name { get; set; }
             public string Guid { get; set; }
             public string Families { get; set; }
             public string ViewFilters { get; set; }
+            public string Schedules { get; set; }
             public string ScheduleFilters { get; set; }
             public string FormulaParameters { get; set; }
             public string Dimensions { get; set; }
-            public bool IsSelectedForDelete { get; set; }
+            public bool IsProjectParameter { get; set; }
+            public bool IsSelectedForDelete
+            {
+                get { return _isSelectedForDelete; }
+                set
+                {
+                    if (_isSelectedForDelete == value)
+                    {
+                        return;
+                    }
+
+                    _isSelectedForDelete = value;
+                    OnPropertyChanged("IsSelectedForDelete");
+                }
+            }
 
             internal Guid ParameterGuid { get; set; }
             internal ElementId ParameterId { get; set; }
 
             internal SortedSet<string> FamiliesSet { get; private set; }
             internal SortedSet<string> ViewFiltersSet { get; private set; }
+            internal SortedSet<string> SchedulesSet { get; private set; }
             internal SortedSet<string> ScheduleFiltersSet { get; private set; }
 
             public ParameterUsageRow()
@@ -1488,17 +1744,29 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Guid = string.Empty;
                 Families = string.Empty;
                 ViewFilters = string.Empty;
+                Schedules = string.Empty;
                 ScheduleFilters = string.Empty;
                 FormulaParameters = string.Empty;
                 Dimensions = string.Empty;
-                IsSelectedForDelete = false;
+                IsProjectParameter = false;
+                _isSelectedForDelete = false;
 
                 ParameterGuid = System.Guid.Empty;
                 ParameterId = ElementId.InvalidElementId;
 
                 FamiliesSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
                 ViewFiltersSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+                SchedulesSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
                 ScheduleFiltersSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            }
+
+            private void OnPropertyChanged(string propertyName)
+            {
+                PropertyChangedEventHandler handler = PropertyChanged;
+                if (handler != null)
+                {
+                    handler(this, new PropertyChangedEventArgs(propertyName));
+                }
             }
         }
 
