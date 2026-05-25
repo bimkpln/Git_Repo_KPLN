@@ -69,6 +69,10 @@ namespace KPLN_CoordiantorAI.Common
                 settings.CertificatePath = GetSetting(connection, "GigaChat.CertificatePath", string.Empty);
                 settings.EmbeddingFolderPath = GetEmbeddingFolderPath(connection);
                 settings.SystemPrompt = GetSetting(connection, "GigaChat.SystemPrompt", settings.SystemPrompt);
+                settings.ResponseContextPrompt = GetSetting(connection, "GigaChat.ResponseContextPrompt", settings.ResponseContextPrompt);
+                settings.ArticleHintPrompt = GetSetting(connection, "GigaChat.ArticleHintPrompt", settings.ArticleHintPrompt);
+                settings.AiSearchSettingsJson = GetSetting(connection, "GigaChat.AiSearchSettingsJson", settings.AiSearchSettingsJson);
+                settings.ArticleAliasesJson = GetSetting(connection, "GigaChat.ArticleAliasesJson", settings.ArticleAliasesJson);
             }
 
             return settings;
@@ -93,6 +97,10 @@ namespace KPLN_CoordiantorAI.Common
                     SetSetting(connection, transaction, "GigaChat.CertificatePath", settings.CertificatePath);
                     SetSetting(connection, transaction, "GigaChat.EmbeddingFolderPath", settings.EmbeddingFolderPath);
                     SetSetting(connection, transaction, "GigaChat.SystemPrompt", settings.SystemPrompt);
+                    SetSetting(connection, transaction, "GigaChat.ResponseContextPrompt", settings.ResponseContextPrompt);
+                    SetSetting(connection, transaction, "GigaChat.ArticleHintPrompt", settings.ArticleHintPrompt);
+                    SetSetting(connection, transaction, "GigaChat.AiSearchSettingsJson", settings.AiSearchSettingsJson);
+                    SetSetting(connection, transaction, "GigaChat.ArticleAliasesJson", settings.ArticleAliasesJson);
                     transaction.Commit();
                 }
             }

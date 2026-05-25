@@ -151,13 +151,11 @@ namespace KPLN_CoordiantorAI.Common
             AuthUrl = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
             ApiUrl = "https://gigachat.devices.sberbank.ru/api/v1";
             Scope = "GIGACHAT_API_PERS";
-            SystemPrompt =
-                "Ты ИИ-помощник KPLN CoordinatorAI. Отвечай на русском языке.\r\n" +
-                "Стиль общения: сдержанный, спокойный и профессиональный. Пиши по делу, без лишней воды.\r\n" +
-                "Иногда можно использовать легкий уместный юмор, но без фамильярности и без шуток в серьезных ситуациях.\r\n" +
-                "Если точного ответа нет или данных недостаточно, прямо скажи об этом. Не выдумывай факты, ссылки, нормы, версии программ и чужие решения.\r\n" +
-                "Если вопрос неоднозначный, задай короткий уточняющий вопрос или явно перечисли допущения.\r\n" +
-                "Когда даешь инструкцию, делай ее пошаговой и проверяемой.";
+            SystemPrompt = PromptDefaults.LoadSystemPrompt();
+            ResponseContextPrompt = PromptDefaults.LoadResponseContextPrompt();
+            ArticleHintPrompt = PromptDefaults.LoadArticleHintPrompt();
+            AiSearchSettingsJson = AiSearchOptions.DefaultJson;
+            ArticleAliasesJson = ArticleAliasSettings.EmptyJson;
         }
 
         public string AuthUrl { get; set; }
@@ -175,6 +173,14 @@ namespace KPLN_CoordiantorAI.Common
         public string EmbeddingFolderPath { get; set; }
 
         public string SystemPrompt { get; set; }
+
+        public string ResponseContextPrompt { get; set; }
+
+        public string ArticleHintPrompt { get; set; }
+
+        public string AiSearchSettingsJson { get; set; }
+
+        public string ArticleAliasesJson { get; set; }
     }
 
     public sealed class SubDepartmentInfo

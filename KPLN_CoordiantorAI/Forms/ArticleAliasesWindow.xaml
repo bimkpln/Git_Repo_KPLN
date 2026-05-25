@@ -1,0 +1,144 @@
+﻿<Window x:Class="KPLN_CoordiantorAI.Forms.ArticleAliasesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Алиасы статей"
+        Height="620"
+        Width="900"
+        ResizeMode="CanResize"
+        MinHeight="420"
+        MinWidth="720"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF20242D"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="TextBlock" x:Key="LabelText">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FF333B49"/>
+                    <Setter Property="BorderBrush" Value="#FF718096"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.82"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#FF20242D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="RowBackground" Value="#FF262B35"/>
+            <Setter Property="AlternatingRowBackground" Value="#FF2A303B"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   Foreground="#FFD8DEE9"
+                   FontSize="12"
+                   LineHeight="18"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,10"
+                   Text="Алиасы - это ручные слова и фразы, которые помогают привязать вопрос к конкретной статье. Заполняйте через - ``;`` 
+             Если вопрос содержит алиас, статья добавляется в кандидаты перед обычным Embedding-поиском."/>
+
+        <TextBlock x:Name="StatusTextBlock"
+                   Grid.Row="1"
+                   Foreground="#FFB8C0CC"
+                   FontSize="12"
+                   Margin="0,0,0,10"
+                   TextWrapping="Wrap"/>
+
+        <DataGrid x:Name="ArticlesDataGrid"
+                  Grid.Row="2"
+                  Margin="0,0,0,14"
+                  CanUserSortColumns="True"
+                  SelectionUnit="FullRow">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Название статьи"
+                                    Binding="{Binding Title}"
+                                    IsReadOnly="True"
+                                    Width="2*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Padding" Value="8,5"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Алиасы через ;"
+                                    Binding="{Binding Aliases, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    Width="3*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Padding" Value="8,5"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                    <DataGridTextColumn.EditingElementStyle>
+                        <Style TargetType="TextBox">
+                            <Setter Property="Background" Value="#FF2A303B"/>
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+                            <Setter Property="CaretBrush" Value="White"/>
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Padding" Value="8,5"/>
+                        </Style>
+                    </DataGridTextColumn.EditingElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Отмена" Click="OnCancelClick"/>
+            <Button Content="Сохранить" Background="#FF2C6BED" BorderBrush="#FF2C6BED" Click="OnSaveClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

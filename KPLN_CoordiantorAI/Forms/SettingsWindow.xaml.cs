@@ -13,6 +13,7 @@ namespace KPLN_CoordiantorAI.Forms
     {
         private readonly CoordinatorAiRepository _repository;
         private Bitrix24Settings _bitrix24Settings;
+        private string _articleAliasesJson;
 
         public SettingsWindow()
         {
@@ -43,6 +44,12 @@ namespace KPLN_CoordiantorAI.Forms
             CertificatePathTextBox.Text = settings.CertificatePath;
             EmbeddingFolderPathTextBox.Text = settings.EmbeddingFolderPath;
             SystemPromptTextBox.Text = settings.SystemPrompt;
+            ResponseContextPromptTextBox.Text = settings.ResponseContextPrompt;
+            ArticleHintPromptTextBox.Text = settings.ArticleHintPrompt;
+            AiSearchSettingsJsonTextBox.Text = settings.AiSearchSettingsJson;
+            _articleAliasesJson = string.IsNullOrWhiteSpace(settings.ArticleAliasesJson)
+                ? ArticleAliasSettings.EmptyJson
+                : settings.ArticleAliasesJson;
         }
 
         private void LoadBitrix24Settings()
@@ -94,6 +101,9 @@ namespace KPLN_CoordiantorAI.Forms
                 if (!EnsureDatabaseAvailable())
                     return;
 
+                AiSearchOptions.FromJson(AiSearchSettingsJsonTextBox.Text);
+                ArticleAliasSettings.FromJson(_articleAliasesJson);
+
                 _repository.SaveGigaChatSettings(new GigaChatSettings
                 {
                     AuthUrl = AuthUrlTextBox.Text,
@@ -103,7 +113,11 @@ namespace KPLN_CoordiantorAI.Forms
                     Scope = ScopeTextBox.Text,
                     CertificatePath = CertificatePathTextBox.Text,
                     EmbeddingFolderPath = EmbeddingFolderPathTextBox.Text,
-                    SystemPrompt = SystemPromptTextBox.Text
+                    SystemPrompt = SystemPromptTextBox.Text,
+                    ResponseContextPrompt = ResponseContextPromptTextBox.Text,
+                    ArticleHintPrompt = ArticleHintPromptTextBox.Text,
+                    AiSearchSettingsJson = AiSearchSettingsJsonTextBox.Text,
+                    ArticleAliasesJson = _articleAliasesJson
                 });
 
                 if (_bitrix24Settings == null)
@@ -201,6 +215,28 @@ namespace KPLN_CoordiantorAI.Forms
         private void OnOpenCertificateFolderClick(object sender, RoutedEventArgs e)
         {
             OpenContainingDirectory(CertificatePathTextBox.Text);
+        }
+
+        private void OnConfigureArticleAliasesClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AiSearchOptions aiSearchOptions = AiSearchOptions.FromJson(AiSearchSettingsJsonTextBox.Text);
+                ArticleAliasesWindow dialog = new ArticleAliasesWindow(
+                    EmbeddingFolderPathTextBox.Text,
+                    aiSearchOptions.MoodleUrlTemplate,
+                    _articleAliasesJson)
+                {
+                    Owner = this
+                };
+
+                if (dialog.ShowDialog() == true)
+                    _articleAliasesJson = dialog.AliasesJson;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.ToString(), "Ошибка настройки алиасов", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void OnDeleteAllQuestionsClick(object sender, RoutedEventArgs e)

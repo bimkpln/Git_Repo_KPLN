@@ -383,15 +383,84 @@
                                     ToolTip="Открыть папку сертификата"
                                     Click="OnOpenCertificateFolderClick"/>
                         </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Поиск">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="AI поиск"/>
 
                         <TextBlock Style="{StaticResource LabelText}" Text="Системный промт"/>
                         <TextBox x:Name="SystemPromptTextBox"
+                                 MinHeight="130"
+                                 MaxHeight="210"
+                                 Margin="0,0,0,10"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Промт формата ответа и контекста"/>
+                        <TextBox x:Name="ResponseContextPromptTextBox"
                                  MinHeight="150"
                                  MaxHeight="230"
                                  Margin="0,0,0,18"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Промт наводок, если статья не найдена"/>
+                        <TextBox x:Name="ArticleHintPromptTextBox"
+                                 MinHeight="110"
+                                 MaxHeight="190"
+                                 Margin="0,0,0,18"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                            <Button Content="Настроить алиасы статей"
+                                    Margin="0"
+                                    Background="#FF2C6BED"
+                                    BorderBrush="#FF2C6BED"
+                                    Click="OnConfigureArticleAliasesClick"/>
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Расширенные настройки AI поиска JSON"/>
+                        <TextBox x:Name="AiSearchSettingsJsonTextBox"
+                                 MinHeight="160"
+                                 MaxHeight="250"
+                                 Margin="0,0,0,18"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 FontFamily="Consolas"
+                                 VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Margin="0,-8,0,18"
+                                   Foreground="#FFB8C0CC"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   LineHeight="17">
+                            <Run FontWeight="SemiBold" Text="enableEmbeddingSearch"/><Run Text=" - true/false, включает поиск по Moodle-эмбеддингам. Если false, AI отвечает без контекста Moodle."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="topK"/><Run Text=" - число от 1 до 10, сколько похожих статей передавать AI. Обычно 1-3; больше - шире контекст, но выше риск лишнего шума."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="minSimilarity"/><Run Text=" - порог похожести от -1.0 до 1.0. 0.0 почти ничего не отсекает; 0.45-0.65 строже фильтрует слабые совпадения."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="maxContextChars"/><Run Text=" - лимит символов HTML-контекста, который уйдет в AI. Практичный диапазон 8000-30000."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="allowAnswerWithoutContext"/><Run Text=" - true/false. Если false и статья не найдена по порогу, AI не будет фантазировать без источника; при заполненном промте наводок будет использоваться он."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="chatModel"/><Run Text=" - строка с названием модели для /chat/completions, например GigaChat."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="embeddingModel"/><Run Text=" - строка с названием модели для /embeddings, например Embeddings."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="sourceButtonText"/><Run Text=" - текст кнопки источника в ответе. Если источников несколько, добавится номер: Источник 1, Источник 2."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="moodleUrlTemplate"/><Run Text=" - шаблон ссылки Moodle. Обязательные плейсхолдеры: {book_id} и {chapter_id}."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="debugRetrieval"/><Run Text=" - true/false, добавляет score похожести к источникам и в контекст для диагностики поиска."/>
+                        </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

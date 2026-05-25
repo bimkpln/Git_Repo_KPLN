@@ -20,13 +20,28 @@ namespace KPLN_CoordiantorAI.Forms
 {
     public partial class ChatWindow : Window
     {
-        private static readonly Regex HtmlAnchorRegex = new Regex(
-            "<a\\b[^>]*\\bhref\\s*=\\s*([\"'])(?<href>.*?)\\1[^>]*>(?<text>.*?)</a>",
+        private static readonly Regex SupportedHtmlTagRegex = new Regex(
+            "<\\s*(?<closing>/)?\\s*(?<tag>a|b|strong|i|em|p|div|br|ul|ol|li)\\b(?<attrs>[^>]*)>",
             RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        private static readonly Regex HtmlBreakRegex = new Regex(
-            "<\\s*br\\s*/?\\s*>|<\\s*/\\s*p\\s*>|<\\s*/\\s*div\\s*>|<\\s*/\\s*li\\s*>",
-            RegexOptions.IgnoreCase);
-        private static readonly Regex HtmlTagRegex = new Regex("<[^>]+>", RegexOptions.Singleline);
+        private static readonly Regex HtmlHrefRegex = new Regex(
+            "\\bhref\\s*=\\s*([\"'])(?<href>.*?)\\1",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex SourceLinkAttributeRegex = new Regex(
+            "\\bdata-source\\s*=\\s*([\"'])(true|1)\\1",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex SourceLinkLabelRegex = new Regex(
+            "\\bdata-source-label\\s*=\\s*([\"'])(?<label>.*?)\\1",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex MarkdownBoldRegex = new Regex(
+            "\\*\\*(?<text>.+?)\\*\\*",
+            RegexOptions.Singleline);
+        private static readonly Regex AnyHtmlTagRegex = new Regex("<[^>]+>", RegexOptions.Singleline);
+        private static readonly Regex BrokenHtmlTailRegex = new Regex(
+            "<\\s*/?\\s*(a|b|strong|i|em|p|div|br|ul|ol|li)?\\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex MissingSentenceSpaceRegex = new Regex(
+            "(?<=[.!?:;])(?=[A-ZА-ЯЁ])",
+            RegexOptions.CultureInvariant);
 
         private readonly CoordinatorAiRepository _repository;
         private readonly IAiChatClient _aiClient;
@@ -411,51 +426,352 @@ namespace KPLN_CoordiantorAI.Forms
             string html = message.Text ?? string.Empty;
             textBlock.Inlines.Clear();
 
+            Stack<MessageInlineFrame> frames = new Stack<MessageInlineFrame>();
+            Stack<MessageListFrame> lists = new Stack<MessageListFrame>();
             int textIndex = 0;
-            foreach (Match match in HtmlAnchorRegex.Matches(html))
+            foreach (Match match in SupportedHtmlTagRegex.Matches(html))
             {
-                AddMessageText(textBlock, html.Substring(textIndex, match.Index - textIndex));
-                AddMessageLink(textBlock, match.Groups["href"].Value, match.Groups["text"].Value);
+                AddFormattedMessageText(GetMessageInlines(textBlock, frames), html.Substring(textIndex, match.Index - textIndex));
+                RenderMessageTag(
+                    textBlock,
+                    frames,
+                    lists,
+                    match.Groups["tag"].Value.ToLowerInvariant(),
+                    match.Groups["attrs"].Value,
+                    match.Groups["closing"].Success);
                 textIndex = match.Index + match.Length;
             }
 
-            AddMessageText(textBlock, html.Substring(textIndex));
+            AddFormattedMessageText(GetMessageInlines(textBlock, frames), html.Substring(textIndex));
         }
 
-        private void AddMessageLink(TextBlock textBlock, string href, string linkHtml)
+        private void RenderMessageTag(
+            TextBlock textBlock,
+            Stack<MessageInlineFrame> frames,
+            Stack<MessageListFrame> lists,
+            string tag,
+            string attributes,
+            bool isClosing)
         {
-            string linkText = GetMessageDisplayText(linkHtml);
-            string decodedHref = WebUtility.HtmlDecode(href ?? string.Empty).Trim();
+            if (isClosing)
+            {
+                CloseMessageTag(textBlock, frames, lists, tag);
+                return;
+            }
+
+            InlineCollection inlines = GetMessageInlines(textBlock, frames);
+            if (tag == "br")
+            {
+                AddMessageBreak(inlines);
+                return;
+            }
+
+            if (tag == "p" || tag == "div")
+            {
+                AddMessageBlockBreak(inlines);
+                return;
+            }
+
+            if (tag == "ul" || tag == "ol")
+            {
+                AddMessageBlockBreak(inlines);
+                lists.Push(new MessageListFrame(tag == "ol"));
+                return;
+            }
+
+            if (tag == "li")
+            {
+                AddMessageBlockBreak(inlines);
+                AddPlainMessageText(inlines, lists.Count > 0 ? lists.Peek().GetNextPrefix() : "- ");
+                return;
+            }
+
+            if (tag == "b" || tag == "strong")
+            {
+                Bold bold = new Bold();
+                inlines.Add(bold);
+                frames.Push(new MessageInlineFrame(tag, bold.Inlines));
+                return;
+            }
+
+            if (tag == "i" || tag == "em")
+            {
+                Italic italic = new Italic();
+                inlines.Add(italic);
+                frames.Push(new MessageInlineFrame(tag, italic.Inlines));
+                return;
+            }
+
+            if (tag == "a")
+                AddMessageLink(textBlock, frames, attributes);
+        }
+
+        private void CloseMessageTag(
+            TextBlock textBlock,
+            Stack<MessageInlineFrame> frames,
+            Stack<MessageListFrame> lists,
+            string tag)
+        {
+            InlineCollection inlines = GetMessageInlines(textBlock, frames);
+            if (tag == "p" || tag == "div" || tag == "li")
+            {
+                AddMessageBlockBreak(inlines);
+                return;
+            }
+
+            if (tag == "ul" || tag == "ol")
+            {
+                if (lists.Count > 0)
+                    lists.Pop();
+
+                AddMessageBlockBreak(inlines);
+                return;
+            }
+
+            CloseMessageInlineFrame(frames, tag);
+        }
+
+        private void AddMessageLink(TextBlock textBlock, Stack<MessageInlineFrame> frames, string attributes)
+        {
+            Match hrefMatch = HtmlHrefRegex.Match(attributes ?? string.Empty);
+            string decodedHref = hrefMatch.Success
+                ? WebUtility.HtmlDecode(hrefMatch.Groups["href"].Value).Trim()
+                : string.Empty;
             Uri uri;
             if (!Uri.TryCreate(decodedHref, UriKind.Absolute, out uri) ||
                 (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
                  !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
             {
-                AddMessageText(textBlock, string.IsNullOrWhiteSpace(linkText) ? decodedHref : linkText);
                 return;
             }
 
-            Hyperlink hyperlink = new Hyperlink(new Run(string.IsNullOrWhiteSpace(linkText) ? uri.AbsoluteUri : linkText))
+            if (SourceLinkAttributeRegex.IsMatch(attributes ?? string.Empty))
+            {
+                AddSourceLinkButton(textBlock, frames, uri, GetSourceLinkLabel(attributes));
+                return;
+            }
+
+            Hyperlink hyperlink = new Hyperlink
             {
                 NavigateUri = uri,
                 Foreground = Brushes.LightSkyBlue
             };
             hyperlink.RequestNavigate += OnMessageHyperlinkRequestNavigate;
-            textBlock.Inlines.Add(hyperlink);
+            GetMessageInlines(textBlock, frames).Add(hyperlink);
+            frames.Push(new MessageInlineFrame("a", hyperlink.Inlines));
         }
 
-        private static void AddMessageText(TextBlock textBlock, string html)
+        private static string GetSourceLinkLabel(string attributes)
+        {
+            Match labelMatch = SourceLinkLabelRegex.Match(attributes ?? string.Empty);
+            string label = labelMatch.Success
+                ? WebUtility.HtmlDecode(labelMatch.Groups["label"].Value).Trim()
+                : string.Empty;
+
+            return string.IsNullOrWhiteSpace(label) ? "Источник" : label;
+        }
+
+        private void AddSourceLinkButton(TextBlock textBlock, Stack<MessageInlineFrame> frames, Uri uri, string label)
+        {
+            Button button = new Button
+            {
+                Content = label,
+                Tag = uri,
+                ToolTip = "Открыть источник"
+            };
+
+            Style style = TryFindResource("SourceLinkButtonStyle") as Style;
+            if (style != null)
+                button.Style = style;
+
+            button.Click += OnSourceLinkButtonClick;
+            Border sourceButtonHost = new Border
+            {
+                Padding = new Thickness(0, 6, 6, 0),
+                Child = button
+            };
+            GetMessageInlines(textBlock, frames).Add(new InlineUIContainer(sourceButtonHost)
+            {
+                BaselineAlignment = BaselineAlignment.Center
+            });
+        }
+
+        private static InlineCollection GetMessageInlines(TextBlock textBlock, Stack<MessageInlineFrame> frames)
+        {
+            return frames.Count == 0 ? textBlock.Inlines : frames.Peek().Inlines;
+        }
+
+        private static void CloseMessageInlineFrame(Stack<MessageInlineFrame> frames, string tag)
+        {
+            if (!frames.Any(frame => MessageTagsMatch(frame.Tag, tag)))
+                return;
+
+            while (frames.Count > 0)
+            {
+                MessageInlineFrame frame = frames.Pop();
+                if (MessageTagsMatch(frame.Tag, tag))
+                    return;
+            }
+        }
+
+        private static bool MessageTagsMatch(string openTag, string closeTag)
+        {
+            if (string.Equals(openTag, closeTag, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return (IsBoldTag(openTag) && IsBoldTag(closeTag)) ||
+                (IsItalicTag(openTag) && IsItalicTag(closeTag));
+        }
+
+        private static bool IsBoldTag(string tag)
+        {
+            return tag == "b" || tag == "strong";
+        }
+
+        private static bool IsItalicTag(string tag)
+        {
+            return tag == "i" || tag == "em";
+        }
+
+        private static void AddFormattedMessageText(InlineCollection inlines, string html)
         {
             string text = GetMessageDisplayText(html);
-            if (!string.IsNullOrEmpty(text))
-                textBlock.Inlines.Add(new Run(text));
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            int textIndex = 0;
+            foreach (Match match in MarkdownBoldRegex.Matches(text))
+            {
+                AddPlainMessageText(inlines, text.Substring(textIndex, match.Index - textIndex));
+
+                Bold bold = new Bold();
+                AddPlainMessageText(bold.Inlines, match.Groups["text"].Value);
+                inlines.Add(bold);
+                textIndex = match.Index + match.Length;
+            }
+
+            AddPlainMessageText(inlines, text.Substring(textIndex));
+        }
+
+        private static void AddPlainMessageText(InlineCollection inlines, string text)
+        {
+            string normalized = (text ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n");
+            string[] lines = normalized.Split('\n');
+            bool hasRenderedLine = false;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                if (hasRenderedLine)
+                {
+                    AddMessageBreak(inlines);
+                }
+                else if (ShouldInsertSpaceBeforeText(inlines, line))
+                {
+                    inlines.Add(new Run(" "));
+                }
+
+                inlines.Add(new Run(line));
+                hasRenderedLine = true;
+            }
+        }
+
+        private static bool ShouldInsertSpaceBeforeText(InlineCollection inlines, string text)
+        {
+            char firstChar;
+            char lastChar;
+            return TryGetFirstNonWhiteSpaceChar(text, out firstChar) &&
+                char.IsLetterOrDigit(firstChar) &&
+                TryGetLastTextChar(inlines, out lastChar) &&
+                IsSentenceJoinPunctuation(lastChar);
+        }
+
+        private static bool TryGetFirstNonWhiteSpaceChar(string text, out char value)
+        {
+            value = '\0';
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            foreach (char currentChar in text)
+            {
+                if (char.IsWhiteSpace(currentChar))
+                    continue;
+
+                value = currentChar;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetLastTextChar(InlineCollection inlines, out char value)
+        {
+            value = '\0';
+            if (inlines == null || inlines.Count == 0)
+                return false;
+
+            foreach (Inline inline in inlines.Cast<Inline>().Reverse())
+            {
+                if (TryGetLastTextChar(inline, out value))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TryGetLastTextChar(Inline inline, out char value)
+        {
+            value = '\0';
+            Run run = inline as Run;
+            if (run != null && !string.IsNullOrEmpty(run.Text))
+            {
+                for (int i = run.Text.Length - 1; i >= 0; i--)
+                {
+                    if (char.IsWhiteSpace(run.Text[i]))
+                        continue;
+
+                    value = run.Text[i];
+                    return true;
+                }
+            }
+
+            Span span = inline as Span;
+            return span != null && TryGetLastTextChar(span.Inlines, out value);
+        }
+
+        private static bool IsSentenceJoinPunctuation(char value)
+        {
+            return value == '.' ||
+                value == '!' ||
+                value == '?' ||
+                value == ':' ||
+                value == ';';
+        }
+
+        private static void AddMessageBlockBreak(InlineCollection inlines)
+        {
+            if (inlines.Count > 0)
+                AddMessageBreak(inlines);
+        }
+
+        private static void AddMessageBreak(InlineCollection inlines)
+        {
+            if (inlines.LastInline is LineBreak)
+                return;
+
+            inlines.Add(new LineBreak());
         }
 
         private static string GetMessageDisplayText(string html)
         {
-            string text = HtmlBreakRegex.Replace(html ?? string.Empty, "\r\n");
-            text = HtmlTagRegex.Replace(text, string.Empty);
-            return WebUtility.HtmlDecode(text);
+            string text = AnyHtmlTagRegex.Replace(html ?? string.Empty, string.Empty);
+            text = WebUtility.HtmlDecode(text);
+            text = AnyHtmlTagRegex.Replace(text, string.Empty);
+            text = BrokenHtmlTailRegex.Replace(text, string.Empty);
+            text = text.Replace('\u2013', '-').Replace('\u2014', '-');
+            return MissingSentenceSpaceRegex.Replace(text, " ");
         }
 
         private void OnMessageHyperlinkRequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -463,17 +779,66 @@ namespace KPLN_CoordiantorAI.Forms
             if (e == null || e.Uri == null)
                 return;
 
+            OpenMessageUri(e.Uri);
+            e.Handled = true;
+        }
+
+        private void OnSourceLinkButtonClick(object sender, RoutedEventArgs e)
+        {
+            Uri uri = (sender as FrameworkElement)?.Tag as Uri;
+            if (uri == null)
+                return;
+
+            OpenMessageUri(uri);
+            e.Handled = true;
+        }
+
+        private void OpenMessageUri(Uri uri)
+        {
             try
             {
-                Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri)
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri)
                 {
                     UseShellExecute = true
                 });
-                e.Handled = true;
             }
             catch (Exception ex)
             {
                 StatusTextBlock.Text = "Не удалось открыть ссылку: " + ex.Message;
+            }
+        }
+
+        private sealed class MessageInlineFrame
+        {
+            public MessageInlineFrame(string tag, InlineCollection inlines)
+            {
+                Tag = tag;
+                Inlines = inlines;
+            }
+
+            public string Tag { get; private set; }
+
+            public InlineCollection Inlines { get; private set; }
+        }
+
+        private sealed class MessageListFrame
+        {
+            private int _itemNumber;
+
+            public MessageListFrame(bool isOrdered)
+            {
+                IsOrdered = isOrdered;
+            }
+
+            public bool IsOrdered { get; private set; }
+
+            public string GetNextPrefix()
+            {
+                if (!IsOrdered)
+                    return "- ";
+
+                _itemNumber++;
+                return _itemNumber + ". ";
             }
         }
 
