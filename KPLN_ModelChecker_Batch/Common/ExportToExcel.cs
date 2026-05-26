@@ -212,13 +212,12 @@ namespace KPLN_ModelChecker_Batch.Common
             }
 
             // Сохранить файл
-            string currentPath = $"{path}\\Отчет по ошибкам_{ReplaceSpecialCharacters(DateTime.Now.ToString("t"))}.xlsx";
+            string currentPath = $"{path}\\Отчет по ошибкам_{ReplaceSpecialCharacters(DateTime.Now.ToString("T"))}.xlsx";
 
             CustomMessageBox msgToUser = null;
             try
             {
                 workbook.SaveAs(currentPath);
-
             }
             catch (System.Runtime.InteropServices.COMException ex)
             {
