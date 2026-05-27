@@ -17,6 +17,7 @@ using KPLN_Publication.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -285,8 +286,14 @@ namespace KPLN_Publication
 
         private void buttonPDFBrowse_Click(object sender, EventArgs e)
         {
+            // Предустановка пути
+            string presetPath = Path.GetPathRoot(Environment.SystemDirectory);
+            if (new DirectoryInfo(this.textBox_PDFPath.Text).Exists)
+                presetPath = this.textBox_PDFPath.Text;
+
             FolderBrowserDialog fbDialog = new FolderBrowserDialog
             {
+                SelectedPath = presetPath,                
                 ShowNewFolderButton = true
             };
             if (fbDialog.ShowDialog() == DialogResult.OK)

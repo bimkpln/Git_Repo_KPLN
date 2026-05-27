@@ -9,7 +9,7 @@
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
         WindowStyle="ToolWindow">
     <StackPanel Margin="16">
-        <TextBlock Text="Поиск по имени группы:"
+        <TextBlock Text="Поиск по имени проверки и ID:"
                    Foreground="White" FontWeight="Bold" Margin="0,0,0,8"/>
 
         <DockPanel Margin="0,0,0,8">
@@ -17,7 +17,7 @@
                      MinWidth="260"
                      Padding="8,4"
                      TextChanged="OnSearchTextChanged"
-                     ToolTip="Поиск по имени группы"/>
+                     ToolTip="Поиск по полному тексту кнопки"/>
             <Button Content="✖"
                     Margin="8,0,0,0"
                     Padding="8,4"

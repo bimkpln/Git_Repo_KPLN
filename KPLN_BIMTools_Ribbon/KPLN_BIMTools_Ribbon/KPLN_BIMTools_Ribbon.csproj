@@ -148,12 +148,14 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="Common\IExecuteByUIApp.cs" />
     <Compile Include="Common\ExchangeService.cs" />
     <Compile Include="Core\SQLite\DBEnvironment.cs" />
     <Compile Include="Core\SQLite\SQLiteService.cs" />
     <Compile Include="ExternalCommands\batchAddingParameters.cs" />
+    <Compile Include="ExternalCommands\CommandCollectionParameters.cs" />
     <Compile Include="ExternalCommands\CommandDBManager.cs" />
     <Compile Include="ExternalCommands\CommandLTablesExport.cs" />
     <Compile Include="ExternalCommands\CommandAutoExchangeConfig.cs" />
@@ -176,6 +178,9 @@
     </Compile>
     <Compile Include="Forms\batchAddingParametersWindowСhoice.xaml.cs">
       <DependentUpon>batchAddingParametersWindowСhoice.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\CollectionParametersWindow.xaml.cs">
+      <DependentUpon>CollectionParametersWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Commands\RelayCommand.cs" />
     <Compile Include="Forms\DBManager.xaml.cs">
@@ -254,6 +259,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\CollectionParametersWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\DBManager.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -318,6 +327,12 @@
     <Resource Include="Imagens\mainLoad16_dark.png" />
     <Resource Include="Imagens\mainParam16.png" />
     <Resource Include="Imagens\mainParam16_dark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\сollectionParameters16.png" />
+    <Resource Include="Imagens\сollectionParameters16_dark.png" />
+    <Resource Include="Imagens\сollectionParameters32.png" />
+    <Resource Include="Imagens\сollectionParameters32_dark.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

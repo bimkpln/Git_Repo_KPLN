@@ -39,7 +39,7 @@ namespace KPLN_Library_PluginActivityWorker
             string currentDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             DBPluginActivity currentPluginActivity = SQLiteMainService
                 .SQLitePluginActivityServiceInst
-                .GetDBPluginActivity_ByModuleNameAndSubDep(clearPluginName, SQLiteMainService.CurrentDBUser.SubDepartmentId);
+                .GetDBPluginActivity_ByModuleNameAndSubDep(clearPluginName, SQLiteMainService.CurrentDBUser.Id);
             if (currentPluginActivity == null)
             {
                 DBModule currentModule = SQLiteMainService.SQLiteModuleServiceInst.GetDBModule_ByFiDirName(moduleName)
@@ -49,7 +49,7 @@ namespace KPLN_Library_PluginActivityWorker
                 {
                     ModuleId = currentModule.Id,
                     PluginName = clearPluginName,
-                    SubDepartmentId = SQLiteMainService.CurrentDBUser.SubDepartmentId,
+                    UserId = SQLiteMainService.CurrentDBUser.Id,
                     UsageCount = 1,
                     LastActivityDate = currentDate,
                 };
@@ -61,7 +61,7 @@ namespace KPLN_Library_PluginActivityWorker
             currentPluginActivity.UsageCount++;
             currentPluginActivity.LastActivityDate = currentDate;
 
-            SQLiteMainService.SQLitePluginActivityServiceInst.UpdatePluginActivity_ByPluginActivityAndSubDep(currentPluginActivity, SQLiteMainService.CurrentDBUser.SubDepartmentId);
+            SQLiteMainService.SQLitePluginActivityServiceInst.UpdatePluginActivity_ByPluginActivityAndSubDep(currentPluginActivity, SQLiteMainService.CurrentDBUser.Id);
         }
     }
 }

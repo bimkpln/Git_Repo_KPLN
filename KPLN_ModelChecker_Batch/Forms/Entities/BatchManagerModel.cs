@@ -2,6 +2,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
@@ -12,11 +13,11 @@ using KPLN_ModelChecker_Batch.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Core;
 using Microsoft.Win32;
-using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -67,6 +68,18 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             CurrentLogger = currentLogger;
 
             СheckEntities = CollectionViewSource.GetDefaultView(_checkEntitiesList);
+
+
+            // Добавление в список открытого документа
+            Document actDoc = _uiapp.ActiveUIDocument?.Document;
+            if (actDoc != null)
+            {
+                var fEnt = CreateFEnt(SQLiteDocService.GetFileFullName(actDoc));
+                fEnt.IsActiveDoc = true;
+
+                FileEntitiesList.Add(fEnt);
+            }
+
 
             // Устанавливаю команды
             InfoCommand = new RelayCommand(Info);
@@ -140,6 +153,24 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
         }
 
         internal static NLog.Logger CurrentLogger { get; set; }
+
+        private static FileEntity CreateFEnt(string mPath)
+        {
+            string fileName = mPath.Split('\\').LastOrDefault();
+
+            string fileSize;
+            if (mPath.IndexOf("rsn", StringComparison.CurrentCultureIgnoreCase) >= 0)
+            {
+                string rsHost = SelectFilesFromRevitServer.CurrentRevitServer.Host;
+                // mPath = "RSN:\\host\Folder\Sub\Model.rvt"  ->  нужно "Folder\Sub\Model.rvt"
+                string rsRelativePath = mPath.Substring($"RSN:\\\\{rsHost}".Length).TrimStart('\\');
+                fileSize = (SelectFilesFromRevitServer.CurrentRevitServer.GetModelInfo(rsRelativePath).ModelSize / 1024 / 1024).ToString();
+            }
+            else
+                fileSize = (new FileInfo(mPath).Length / 1024 / 1024).ToString();
+
+            return new FileEntity(fileName, mPath, fileSize);
+        }
 
         /// <summary>
         /// Обновить список выбранных проверок согласно быстрому выбору
@@ -249,10 +280,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 _initialDirectoryForOpenFileDialog = openFileDialog.FileName;
                 foreach (string filePath in openFileDialog.FileNames)
                 {
-                    string fileName = Path.GetFileName(filePath);
-                    string fileSize = (new FileInfo(filePath).Length / 1024 / 1024).ToString();
-
-                    AddToFileEntitiesWithCheck(new FileEntity(fileName, filePath, fileSize));
+                    AddToFileEntitiesWithCheck(CreateFEnt(filePath));
                 }
             }
         }
@@ -267,13 +295,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             {
                 foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
                 {
-                    RevitServer revitServer = SelectFilesFromRevitServer.CurrentRevitServer;
-
-                    string fileName = formEntity.Name.Split('\\').LastOrDefault();
-                    string filePath = $"RSN:\\\\{revitServer.Host}{formEntity.Name}";
-                    string fileSize = (revitServer.GetModelInfo(formEntity.Name).ModelSize / 1024 / 1024).ToString();
-
-                    AddToFileEntitiesWithCheck(new FileEntity(fileName, filePath, fileSize));
+                    string filePath = $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}";
+                    AddToFileEntitiesWithCheck(CreateFEnt(filePath));
                 }
             }
         }
@@ -320,49 +343,56 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                     #region Открытие документа
                     ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);
 
-                    Document doc = null;
                     // Открываем документ по указанному пути
+                    Document doc = null;
                     try
                     {
-                        #region Подготовка OpenOptions
-                        IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
-                        IList<WorksetId> worksetIds = new List<WorksetId>();
-
-                        string[] wsExceptions = WorksetToCloseNamesStartWith.Split('~');
-                        int openWS = 0;
-                        int allWS = 0;
-                        foreach (WorksetPreview worksetPrev in worksets)
+                        // Открываю документ, если нужно
+                        if (!file.IsActiveDoc)
                         {
-                            allWS++;
-                            if (WorksetToCloseNamesStartWith.Count() == 0)
+                            #region Подготовка OpenOptions
+                            IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
+                            IList<WorksetId> worksetIds = new List<WorksetId>();
+
+                            int openWS = 0;
+                            int allWS = 0;
+                            foreach (WorksetPreview worksetPrev in worksets)
                             {
-                                openWS++;
-                                worksetIds.Add(worksetPrev.Id);
+                                allWS++;
+                                if (WorksetToCloseNamesStartWith.Count() == 0)
+                                {
+                                    openWS++;
+                                    worksetIds.Add(worksetPrev.Id);
+                                }
+                                else if (!WSName_IsMatchByRules(worksetPrev.Name, WorksetToCloseNamesStartWith))
+                                {
+                                    openWS++;
+                                    worksetIds.Add(worksetPrev.Id);
+                                }
                             }
-                            else if (!wsExceptions.Any(name => worksetPrev.Name.StartsWith(name)))
+                            excelEnt.CountedWorksets = allWS;
+                            excelEnt.OpenedWorksets = openWS;
+
+                            OpenOptions openOptions = new OpenOptions()
                             {
-                                openWS++;
-                                worksetIds.Add(worksetPrev.Id);
-                            }
+                                DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
+                            };
+
+                            WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
+                            openConfig.Open(worksetIds);
+                            openOptions.SetOpenWorksetsConfiguration(openConfig);
+                            #endregion
+
+                            // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
+                            Thread.Sleep(2000);
+
+                            doc = _uiapp.Application.OpenDocumentFile(docModelPath, openOptions);
                         }
-                        excelEnt.CountedWorksets = allWS;
-                        excelEnt.OpenedWorksets = openWS;
+                        else
+                            doc = _uiapp.ActiveUIDocument.Document;
 
-                        OpenOptions openOptions = new OpenOptions()
-                        {
-                            DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
-                        };
 
-                        WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
-                        openConfig.Open(worksetIds);
-                        openOptions.SetOpenWorksetsConfiguration(openConfig);
-                        #endregion
-
-                        // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
-                        Thread.Sleep(2000);
-
-                        doc = _uiapp.Application.OpenDocumentFile(docModelPath, openOptions);
-
+                        // Обрабатываю документ
                         var linkTypes = new FilteredElementCollector(doc)
                             .OfClass(typeof(RevitLinkType))
                             .Cast<RevitLinkType>()
@@ -380,7 +410,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
                         CurrentLogger.Error(msg);
 
-                        doc?.Close(false);
+                        if (!file.IsActiveDoc)
+                            doc?.Close(false);
 
                         continue;
                     }
@@ -390,7 +421,8 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                             $"ошибка при открытии: \"{ex.Message}\"");
                         isFileError = true;
 
-                        doc?.Close(false);
+                        if (!file.IsActiveDoc)
+                            doc?.Close(false);
 
                         continue;
                     }
@@ -434,7 +466,23 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
                     excelDataEntities.Add(excelEnt);
 
-                    doc.Close(false);
+                    if (!file.IsActiveDoc)
+                    {
+                        try
+                        {
+                            doc.Close(false);
+                        }
+                        // Ошибка возникает, когда файл был связью подгружен в открытй документ. Просто игнор
+                        catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                        {
+                        }
+                        // Если другой тип - свечу наверх
+                        catch (Exception ex)
+                        {
+                            isCheckError = true;
+                            CurrentLogger.Info($"Не удалось закрыть файл: \"{file.Name}\". Ошибка: \"{ex.Message}\"\n");
+                        }
+                    }
                     #endregion
 
                     CurrentLogger.Info($"Завершена проверка файла: \"{file.Name}\"");
@@ -452,6 +500,63 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 SendResultMsg(fileNames, checkNames, excelFilePath);
 
             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Поиск части имени в РН. РФ файл - ВСЕГДА ОТКРЫВАЕМ
+        /// </summary>
+        /// <returns></returns>
+        private static bool WSName_IsMatchByRules(string rnName, string ruleString)
+        {
+            // Нет исключений. Анализ прекращён
+            if (string.IsNullOrWhiteSpace(rnName) || string.IsNullOrWhiteSpace(ruleString))
+                return false;
+
+            // РН с РФ всегда должен открыться
+            if (rnName.IndexOf("рф", StringComparison.OrdinalIgnoreCase) >= 0
+                || rnName.IndexOf("разб", StringComparison.OrdinalIgnoreCase) >= 0)
+                return false;
+
+
+            string[] rules = ruleString.Split(new[] { '~' }, StringSplitOptions.RemoveEmptyEntries);
+
+            bool includeMatch = false;
+
+            foreach (string raw in rules)
+            {
+                string rule = raw.Trim();
+                if (string.IsNullOrWhiteSpace(rule))
+                    continue;
+
+                // !abc! -> НЕ змяшчае
+                if (rule.Length >= 2 && rule.StartsWith("!") && rule.EndsWith("!"))
+                {
+                    string value = rule.Substring(1, rule.Length - 2).Trim();
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    if (rnName.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return false;
+                }
+                // *abc* -> змяшчае
+                else if (rule.Length >= 2 && rule.StartsWith("*") && rule.EndsWith("*"))
+                {
+                    string value = rule.Substring(1, rule.Length - 2).Trim();
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    if (rnName.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0)
+                        includeMatch = true;
+                }
+                // abc -> пачынаецца з
+                else
+                {
+                    if (rnName.StartsWith(rule, StringComparison.OrdinalIgnoreCase))
+                        includeMatch = true;
+                }
+            }
+
+            return includeMatch;
         }
 
         /// <summary>

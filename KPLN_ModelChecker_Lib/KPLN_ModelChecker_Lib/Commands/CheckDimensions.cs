@@ -3,7 +3,9 @@ using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace KPLN_ModelChecker_Lib.Commands
 {
@@ -17,17 +19,35 @@ namespace KPLN_ModelChecker_Lib.Commands
     public sealed class CheckDimensions : AbstrCheck
     {
         /// <summary>
+        /// Список сепараторов, для поиска диапозона у размеров ПО МАКСИМУМУ
+        /// </summary>
+        private static readonly string[] _separArr_MAX = new string[]
+        {
+            "max",
+            "макс",
+        };
+
+        /// <summary>
+        /// Список сепараторов, для поиска диапозона у размеров ПО МИНИМУМУ
+        /// </summary>
+        private static readonly string[] _separArr_MIN = new string[]
+        {
+            "min",
+            "мин",
+        };
+
+        /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров
         /// </summary>
-        private readonly string[] _separArr = new string[]
+        private static readonly string[] _separArr = new string[]
         {
             "...",
             "до",
             "-",
-            "max",
-            "макс",
-            "min",
-            "мин"
+            _separArr_MAX[0],
+            _separArr_MAX[1],
+            _separArr_MIN[0],
+            _separArr_MIN[1],
         };
 
         public CheckDimensions() : base()
@@ -128,57 +148,75 @@ namespace KPLN_ModelChecker_Lib.Commands
         /// </summary>
         private CheckerEntity CheckDimValues(Dimension dim, double value, string overrideValue)
         {
-            string dimName = dim.Name;
-
-            string ovverrideMinValue = String.Empty;
-            double overrideMinDouble = 0.0;
-            string ovverrideMaxValue = String.Empty;
-            double overrideMaxDouble = 0.0;
-
             string[] splitValues = overrideValue.Split(_separArr, StringSplitOptions.None);
-
+            
             // Анализирую диапозоны
             if (splitValues.Length > 1)
             {
-                ovverrideMinValue = splitValues[0];
-                if (ovverrideMinValue.Length == 0)
-                    ovverrideMinValue = overrideValue;
-                else
-                    ovverrideMaxValue = splitValues[1];
-
-                string onlyNumbMin = new string(ovverrideMinValue.Where(x => Char.IsDigit(x)).ToArray());
-                Double.TryParse(onlyNumbMin, out overrideMinDouble);
-                if (!ovverrideMaxValue.Equals(String.Empty))
+                double overrideMinDouble = 0.0;
+                for (int i = 0; i < splitValues.Length; i++)
                 {
-                    string onlyNumbMax = new string(ovverrideMaxValue.Where(x => Char.IsDigit(x)).ToArray());
-                    Double.TryParse(onlyNumbMax, out overrideMaxDouble);
-                    // Нахожу значения вне диапозоне
-                    if (value >= overrideMaxDouble | value < overrideMinDouble)
+                    if (TryExtractNumber(splitValues[i], out overrideMinDouble)) 
+                        break;
+                }
+
+                double overrideMaxDouble = 0.0;
+                for (int j = splitValues.Length - 1; j >= 0; j--)
+                {
+                    if (TryExtractNumber(splitValues[j], out overrideMaxDouble))
+                        break;
+                }
+
+
+                // Диапазон ОТ ... ДО
+                if (overrideMinDouble != overrideMaxDouble)
+                {
+                    if (value > overrideMaxDouble || value < overrideMinDouble)
+                        return new CheckerEntity(
+                            dim,
+                            "Нарушение диапозона (от ... до)",
+                            "Размер вне диапозона",
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
+                }
+                // Одно значение с приставкой
+                else
+                {
+                    string[] splitValues_MIN = overrideValue.Split(_separArr_MIN, StringSplitOptions.None);
+                    string[] splitValues_MAX = overrideValue.Split(_separArr_MAX, StringSplitOptions.None);
+                    if (splitValues_MIN.Length > 1 
+                        && TryExtractNumber(splitValues_MIN[1], out overrideMinDouble)
+                        && value < overrideMinDouble)
                     {
                         return new CheckerEntity(
                             dim,
-                            "Нарушение диапозона",
+                            "Нарушение диапозона (минимум)",
                             "Размер вне диапозона",
                             $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
                     }
-                }
-                else
-                {
-                    return new CheckerEntity(
-                        dim,
-                        "Нарушение диапозона",
-                        "Не удалось определить данные. Нужен ручной анализ",
-                        $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"")
-                        .Set_Status(ErrorStatus.Warning);
+                    else if (splitValues_MAX.Length > 1
+                        && TryExtractNumber(splitValues_MAX[1], out overrideMaxDouble)
+                        && value > overrideMaxDouble)
+                    {
+                        return new CheckerEntity(
+                            dim,
+                            "Нарушение диапозона (максимум)",
+                            "Размер вне диапозона",
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"");
+                    }
+                    else if (splitValues_MIN.Length < 2 && splitValues_MAX.Length < 2)
+                        return new CheckerEntity(
+                            dim,
+                            "Нарушение диапозона",
+                            "Не удалось определить данные. Нужен ручной анализ",
+                            $"Значение реального размера \"{Math.Round(value, 2)}\" мм, а диапозон указан \"{overrideValue}\"")
+                            .Set_Status(ErrorStatus.Warning);
                 }
             }
 
             // Нахожу значения без диапозона и игнорирую небольшие округления - больше 10 мм, при условии, что это не составляет 5% от размера
             else
             {
-                string onlyNumbMin = new string(overrideValue.Where(x => Char.IsDigit(x)).ToArray());
-                Double.TryParse(onlyNumbMin, out double overrideDouble);
-                if (overrideDouble == 0.0)
+                if (!TryExtractNumber(overrideValue, out double overrideDouble))
                 {
                     return new CheckerEntity(
                         dim,
@@ -217,7 +255,7 @@ namespace KPLN_ModelChecker_Lib.Commands
             List<CheckerEntity> result = new List<CheckerEntity>();
 
             HashSet<DimensionType> elemCollDimTypes = new HashSet<DimensionType>(
-                elemColl.Select(elem => CheckDocument.GetElement(elem.GetTypeId())).Cast<DimensionType>(),
+                elemColl.Select(elem => CheckDocument.GetElement(elem.GetTypeId())).OfType<DimensionType>(),
                 new DimTypeCompare());
 
             foreach (DimensionType dimType in elemCollDimTypes)
@@ -253,6 +291,34 @@ namespace KPLN_ModelChecker_Lib.Commands
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Извлекает первое число из строки. Поддерживает точку и запятую как 
+        /// десятичный разделитель, неразрывные пробелы как разделители тысяч.
+        /// </summary>
+        private static bool TryExtractNumber(string input, out double result)
+        {
+            result = 0.0;
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            // Убираем разделители тысяч (обычные и неразрывные пробелы)
+            string cleaned = input.Replace("\u00A0", "").Replace(" ", "");
+
+            // Ищем первое число: опциональный знак + цифры + опциональная дробная часть
+            Match m = Regex.Match(cleaned, @"[-+]?\d+(?:[.,]\d+)?");
+            if (!m.Success)
+                return false;
+
+            // Нормализуем десятичный разделитель к точке
+            string normalized = m.Value.Replace(',', '.');
+
+            return double.TryParse(
+                normalized,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out result);
         }
     }
 }

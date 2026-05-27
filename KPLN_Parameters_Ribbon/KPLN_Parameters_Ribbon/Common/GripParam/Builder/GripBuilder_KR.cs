@@ -108,6 +108,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Cast<Floor>()
                 .Select(e => new InstanceGeomData(e)));
 
+            // Семейства "Перекрытия" над уровнем
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_Floors)
+                .Cast<FamilyInstance>()
+                .Where(x =>
+                    ElemsUnderLevel.Any(ent => !ent.IEDElem.Id.Equals(x.Id)))
+                .Select(e => new InstanceGeomData(e)));
+
             // Семейства "Обобщенные модели" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
                 .OfClass(typeof(FamilyInstance))

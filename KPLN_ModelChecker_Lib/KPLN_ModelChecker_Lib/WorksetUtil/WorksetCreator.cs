@@ -1,15 +1,18 @@
 ﻿using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Electrical;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Forms;
+using KPLN_ModelChecker_Lib.Forms.Entities;
 using KPLN_ModelChecker_Lib.WorksetUtil.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Windows;
+using System.Windows.Interop;
 
 namespace KPLN_ModelChecker_Lib.WorksetUtil
 {
-    public class WorksetSetService
+    public class WorksetCreator
     {
         /// <summary>
         /// Глобальный путь к папке с конфигами
@@ -76,8 +79,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     string abrDepartment = "аббрРазд";
                     string gridsLevelsWS = "аббрРазд_Оси и уровни";
                     WorksetByCurrentParameter currentGridsLevelsWS = dto.WorksetByCurrentParameterList
-                        .Where(p => p.WorksetName.Contains("Оси и уровни"))
-                        .FirstOrDefault();
+                        .FirstOrDefault(p => p.WorksetName.Contains("Оси и уровни"));
                     if (currentGridsLevelsWS != null)
                     {
                         gridsLevelsWS = currentGridsLevelsWS.WorksetName;
@@ -87,8 +89,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                     // Попытка поиска дефолтного РН для раздела
                     string defaultWS;
                     WorksetByCurrentParameter currentDefaultWS = dto.WorksetByCurrentParameterList
-                        .Where(p => !p.WorksetName.Contains("Оси и уровни") && p.WorksetName.Contains(abrDepartment))
-                        .FirstOrDefault();
+                        .FirstOrDefault(p => !p.WorksetName.Contains("Оси и уровни") && p.WorksetName.Contains(abrDepartment));
                     if (currentDefaultWS != null)
                         defaultWS = currentDefaultWS.WorksetName;
                     else
@@ -255,7 +256,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
                                     {
                                         data = elem.LookupParameter(p.ParameterName).AsValueString();
                                     }
-                                    
+
                                     if (data.Equals(p.ParameterValue))
                                         WorksetByCurrentParameter.SetWorkset(elem, workset);
                                 }
@@ -270,50 +271,37 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
             }
             #endregion
 
-            // ВОЗМОЖНО УДАЛЕНИЕ РН ТОЛЬКО НАЧИНАЯ С РЕВИТ2024, до этого - нет API
-            //EmptyWorksetsForm emptyWorksetsForm = new EmptyWorksetsForm(doc);
-            //if (emptyWorksetsForm.EmptyWorksets.Any())
-            //    emptyWorksetsForm.Show();
+            Workset[] emptyWorksets = Util.GetEmptyWorksets(doc);
 
-            List<string> emptyWorksetsNames = GetEmptyWorksets(doc);
-            if (emptyWorksetsNames.Count > 0)
+            if (emptyWorksets.Length > 0)
             {
+#if Debug2020 || Revit2020
                 string msg = "Обнаружены пустые рабочие наборы! Их следует удалить вручную:\n";
-                foreach (string s in emptyWorksetsNames)
+                foreach (string s in emptyWorksets.Select(ws => ws.Name))
                 {
                     msg += s + "\n";
                 }
                 TaskDialog.Show("Отчёт", msg);
+#else
+                // ВОЗМОЖНО УДАЛЕНИЕ РН ТОЛЬКО НАЧИНАЯ С РЕВИТ2023, до этого - нет API
+                var msgRes = MessageBox.Show(
+                    "В модели есть ПУСТЫЕ рабочие наборы. Будем удалять?",
+                    "Внимание",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Warning);
+
+                if(msgRes == MessageBoxResult.OK)
+                {
+                    WorksetsForm emptyWorksetsForm = new WorksetsForm(doc, emptyWorksets);
+                    emptyWorksetsForm.ShowDialog();
+                }
+#endif
             }
+
 
             return true;
         }
-
-        /// <summary>
-        /// Метод для поиска и вывода пользователю пустых рабочих наборов
-        /// </summary>
-        private static List<string> GetEmptyWorksets(Document doc)
-        {
-            List<string> emptyWorksetsNames = new List<string>();
-            if (!doc.IsWorkshared) 
-                return null;
-
-            List<Workset> wids = new FilteredWorksetCollector(doc)
-                .OfKind(WorksetKind.UserWorkset)
-                .ToWorksets()
-                .ToList();
-
-            foreach (Workset w in wids)
-            {
-                ElementWorksetFilter wfilter = new ElementWorksetFilter(w.Id);
-                FilteredElementCollector col = new FilteredElementCollector(doc).WherePasses(wfilter);
-                if (col.GetElementCount() == 0)
-                    emptyWorksetsNames.Add(w.Name);
-            }
-
-            return emptyWorksetsNames;
-        }
-
+        
         /// <summary>
         /// Метод для создания рабочего набора
         /// </summary>
@@ -326,8 +314,7 @@ namespace KPLN_ModelChecker_Lib.WorksetUtil
             Workset createdWS = new FilteredWorksetCollector(doc)
                 .OfKind(WorksetKind.UserWorkset)
                 .ToWorksets()
-                .Where(w => w.Name == name)
-                .First();
+                .FirstOrDefault(w => w.Name == name);
 
             // Настройка глобальной видимости
             if (isUnique && doc != null && createdWS != null && doc.IsWorkshared)

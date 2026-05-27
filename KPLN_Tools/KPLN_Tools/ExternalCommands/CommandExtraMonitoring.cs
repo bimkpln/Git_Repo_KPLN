@@ -320,7 +320,7 @@ namespace KPLN_Tools.ExternalCommands
                 if (!_monitorEntitiesDict.ContainsKey(_currentLink.Id))
                     _monitorEntitiesDict[_currentLink.Id] = new List<MonitorEntity>();
 
-                if (kvp.Key.IntegerValue == _currentLink.Id.IntegerValue)
+                if (IDHelper.ElIdValue(kvp.Key) == IDHelper.ElIdValue(_currentLink.Id))
                 {
                     RevitLinkInstance linkInstance = doc.GetElement(kvp.Key) as RevitLinkInstance;
                     Document linkDoc = linkInstance.GetLinkDocument();

@@ -19,6 +19,7 @@
     <Window.Resources>
 
         <local:TextToBooleanConverter x:Key="TextToBooleanConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
 
         <Style 
             x:Key="UserActionBtns"
@@ -39,6 +40,15 @@
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Margin" Value="5"/>
             <Setter Property="FontSize" Value="14"/>
+        </Style>
+        
+        <Style 
+            x:Key="TBlockTooltip"
+            TargetType="TextBlock">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
         </Style>
 
         <Style 
@@ -229,14 +239,32 @@
                         Style="{StaticResource Brdr}">
                         <StackPanel>
                             <DockPanel>
-                                <TextBlock 
-                                    Text="Имя рабочих наборов, которые нужно закрыть (указывать через '~')"
+                                <TextBlock
+                                    Text="Имя рабочих наборов, которые нужно закрыть (правила описаны в подсказке)"
                                     MaxWidth="320"/>
-                                <TextBox 
+                                <TextBox
+                                    Grid.Column="1"
                                     Style="{StaticResource TBox}"
                                     Width="140" 
                                     Text="{Binding WorksetToCloseNamesStartWith, 
-                                        UpdateSourceTrigger=PropertyChanged}"/>
+                                        UpdateSourceTrigger=PropertyChanged}">
+                                    <TextBox.ToolTip>
+                                        <StackPanel MaxWidth="900">
+                                            <TextBlock Style="{StaticResource TBlockTooltip}"><Bold>ОСНОВНЫЕ ПРАВИЛА: </Bold></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">0. РН для разбивочного файла (РФ) - <Italic>ВСЕГДА открывается</Italic></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">1. Разделитель между разными РН - <Italic>тильда "~"</Italic></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">2. Правила поиска РН по умолчанию <Italic>"Начинается с"</Italic></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">3. Для замены правила на <Italic>"Содержит" - нужно обернуть часть имени с обеих сторон "*"</Italic></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">4. Для замены правила на <Italic>"НЕ содержит" - нужно обернуть часть имени с обеих сторон "!"</Italic></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}"><Bold>ПРИМЕРЫ: </Bold></TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">1. 00_" закроет все РН, имя которых НАЧИНАЮТСЯ С "00_". РН с РФ - откроется откроется в любом случае</TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">2. 00_АР~00_КР" закроет все РН, имя которых НАЧИНАЮТСЯ С "00_АР", плюс все РН, которые НАЧИНАЮТСЯ С "00_КР". РН с РФ - откроется в любом случае</TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">3. *АР*~00_КР" закроет все РН, имя которых СОДЕРЖАТ"АР", плюс все РН, которые НАЧИНАЮТСЯ С "00_КР". РН с РФ - откроется откроется в любом случае</TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">4. *АР*~00_КР~!00_КР_К1!" закроет все РН, имя которых СОДЕРАЖТ"АР", плюс все РН, которые НАЧИНАЮТСЯ С "00_КР",</TextBlock>
+                                            <TextBlock Style="{StaticResource TBlockTooltip}">плюс ПРОИГНОРИРУЕТ закрытие для всех РН которые СОДЕРЖАТ "00_КР_К1". РН с РФ - откроется откроется в любом случае</TextBlock>
+                                        </StackPanel>
+                                    </TextBox.ToolTip>
+                                </TextBox>
                             </DockPanel>
                         </StackPanel>
                     </Border>
@@ -301,12 +329,18 @@
                                         Padding="5" 
                                         Background="Transparent" 
                                         BorderBrush="Transparent">
-                                        <TextBlock 
-                                            Text="{Binding Name}"
-                                            TextWrapping="Wrap"
-                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо/редактировать файл или удалить файл/группу файлов (удалять можно несколько)"
-                                            HorizontalAlignment="Stretch"
-                                            Foreground="White"/>
+                                        <StackPanel 
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            ToolTip="Нажми ПКМ, чтобы посмотреть инфо/редактировать файл или удалить файл/группу файлов (удалять можно несколько)">
+                                            <TextBlock
+                                                Text="● Активный "
+                                                Visibility="{Binding IsActiveDoc, Converter={StaticResource BoolToVisibility}}"
+                                                Foreground="Green"/>
+                                            <TextBlock
+                                                Text="{Binding Name}"
+                                                Foreground="White"/>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

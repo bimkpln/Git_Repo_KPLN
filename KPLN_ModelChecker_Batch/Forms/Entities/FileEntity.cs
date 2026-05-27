@@ -23,5 +23,10 @@
         /// Размер файла
         /// </summary>
         public string FileSize { get; set; }
+
+        /// <summary>
+        /// Метка открытого документа
+        /// </summary>
+        public bool IsActiveDoc { get; set; } = false;
     }
 }
