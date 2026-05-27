@@ -507,6 +507,9 @@ namespace KPLN_FamilyManager.Forms
         private const string ITEM_ERROR = "ОШИБКА";
         private const string DB_PATH = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_FamilyManager.db";
         private const string RFA_ROOT = @"X:\BIM\3_Семейства";
+        private const int FILTER_NOT_SELECTED = 0;
+        private const int FILTER_ALL_STAGES = -1;
+        private const int FILTER_UNIVERSAL = -2;
         private const int PROJECT_UNIVERSAL_ID = 1;
         private List<FamilyManagerRecord> _records;
 
@@ -545,8 +548,15 @@ namespace KPLN_FamilyManager.Forms
         private Dictionary<int, string> _stagesById = new Dictionary<int, string>();
         private Dictionary<string, int> _stageIdByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
+        private sealed class ProjectPriorityRule
+        {
+            public int ProjectId { get; set; }
+            public List<string> Tokens { get; set; }
+        }
+
         private Dictionary<int, string> _projectsById = new Dictionary<int, string>();
         private Dictionary<string, int> _projectIdByName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<ProjectPriorityRule> _showPriorProjectRules = new List<ProjectPriorityRule>();
 
         private readonly Dictionary<string, HashSet<int>> _selectedByDept = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
         private string GetDeptKey() => DepForDb(_universalDepartment ?? GetCurrentDepartment()) ?? "";
@@ -568,6 +578,7 @@ namespace KPLN_FamilyManager.Forms
 
         private bool _uiAppEventsSubscribed = false;
         private string _lastProjectKey = "";
+        private bool? _lastProjectRequiresSelection = null;
         private bool _isResettingFilters = false;
 
         public void SetUIApplication(UIApplication uiapp)
@@ -575,6 +586,7 @@ namespace KPLN_FamilyManager.Forms
             if (_uiapp != null && _uiAppEventsSubscribed)
             {
                 try { _uiapp.Idling -= Uiapp_Idling; } catch { }
+                try { _uiapp.ViewActivated -= Uiapp_ViewActivated; } catch { }
                 _uiAppEventsSubscribed = false;
             }
 
@@ -583,6 +595,7 @@ namespace KPLN_FamilyManager.Forms
             if (_uiapp != null && !_uiAppEventsSubscribed)
             {
                 _uiapp.Idling += Uiapp_Idling;
+                _uiapp.ViewActivated += Uiapp_ViewActivated;
                 _uiAppEventsSubscribed = true;
             }
 
@@ -594,27 +607,7 @@ namespace KPLN_FamilyManager.Forms
         {
             try
             {
-                var doc = _uiapp?.ActiveUIDocument?.Document;
-                if (doc == null)
-                    return;
-
-                // Если открыт .rfa — фильтры не трогаем
-                if (doc.IsFamilyDocument)
-                    return;
-
-                string currentKey = GetProjectKey(doc);
-                if (string.IsNullOrWhiteSpace(currentKey))
-                    return;
-
-                if (string.Equals(_lastProjectKey, currentKey, StringComparison.OrdinalIgnoreCase))
-                    return;
-
-                _lastProjectKey = currentKey;
-
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    ResetFiltersForNewProject();
-                }));
+                ApplyProjectDocumentFilterMode(_uiapp?.ActiveUIDocument?.Document, forceReset: false);
             }
             catch
             {
@@ -633,31 +626,50 @@ namespace KPLN_FamilyManager.Forms
             return CmbDepartment?.SelectedItem?.ToString()?.Trim();
         }
 
+        public void HandleRevitProjectDocumentChanged(Document doc)
+        {
+            ApplyProjectDocumentFilterMode(doc, forceReset: true);
+        }
+
         private void Uiapp_ViewActivated(object sender, ViewActivatedEventArgs e)
         {
             try
             {
-                var doc = e?.CurrentActiveView?.Document;
-                if (doc == null)
-                    return;
+                ApplyProjectDocumentFilterMode(e?.CurrentActiveView?.Document, forceReset: false);
+            }
+            catch
+            {
+            }
+        }
 
-                // Если открыт .rfa — фильтры не сбрасываем
-                if (doc.IsFamilyDocument)
+        private void ApplyProjectDocumentFilterMode(Document doc, bool forceReset)
+        {
+            try
+            {
+                if (doc == null || doc.IsFamilyDocument)
                     return;
 
                 string currentKey = GetProjectKey(doc);
                 if (string.IsNullOrWhiteSpace(currentKey))
                     return;
 
-                if (!string.Equals(_lastProjectKey, currentKey, StringComparison.OrdinalIgnoreCase))
+                bool requestProject = ShouldRequestProjectForDocument(doc);
+
+                if (!forceReset &&
+                    string.Equals(_lastProjectKey, currentKey, StringComparison.OrdinalIgnoreCase) &&
+                    _lastProjectRequiresSelection.HasValue &&
+                    _lastProjectRequiresSelection.Value == requestProject)
+                    return;
+
+                _lastProjectKey = currentKey;
+                _lastProjectRequiresSelection = requestProject;
+
+                Dispatcher.BeginInvoke(new Action(() =>
                 {
                     _lastProjectKey = currentKey;
-
-                    Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        ResetFiltersForNewProject();
-                    }));
-                }
+                    _lastProjectRequiresSelection = requestProject;
+                    ResetFiltersForNewProject(requestProject);
+                }));
             }
             catch
             {
@@ -669,10 +681,12 @@ namespace KPLN_FamilyManager.Forms
             if (doc == null)
                 return "";
 
+            string path = "";
+            string title = "";
+
             try
             {
-                if (!string.IsNullOrWhiteSpace(doc.PathName))
-                    return doc.PathName.Trim();
+                path = doc.PathName?.Trim() ?? "";
             }
             catch
             {
@@ -680,14 +694,13 @@ namespace KPLN_FamilyManager.Forms
 
             try
             {
-                if (!string.IsNullOrWhiteSpace(doc.Title))
-                    return doc.Title.Trim();
+                title = doc.Title?.Trim() ?? "";
             }
             catch
             {
             }
 
-            return "";
+            return (path + "|" + title).Trim('|');
         }
 
         private void RememberCurrentProjectKey()
@@ -698,18 +711,91 @@ namespace KPLN_FamilyManager.Forms
                 if (doc == null || doc.IsFamilyDocument)
                 {
                     _lastProjectKey = "";
+                    _lastProjectRequiresSelection = null;
                     return;
                 }
 
                 _lastProjectKey = GetProjectKey(doc);
+                _lastProjectRequiresSelection = ShouldRequestProjectForDocument(doc);
             }
             catch
             {
                 _lastProjectKey = "";
+                _lastProjectRequiresSelection = null;
             }
         }
 
+        private bool ShouldRequestProjectForActiveDocument()
+        {
+            return ShouldRequestProjectForDocument(_uiapp?.ActiveUIDocument?.Document);
+        }
+
+        private bool GetCurrentProjectRequiresSelection()
+        {
+            return _lastProjectRequiresSelection ?? ShouldRequestProjectForActiveDocument();
+        }
+
+        private bool ShouldRequestProjectForDocument(Document doc)
+        {
+            try
+            {
+                if (_projectsById.Count == 0)
+                    LoadProjects(DB_PATH);
+
+                if (_showPriorProjectRules.Count == 0)
+                    return false;
+
+                if (doc == null || doc.IsFamilyDocument)
+                    return false;
+
+                string path = "";
+                string title = "";
+
+                try { path = doc.PathName ?? ""; } catch { }
+                try { title = doc.Title ?? ""; } catch { }
+
+                return MatchesShowPriorProject(path, title);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool MatchesShowPriorProject(string path, string title)
+        {
+            if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(title))
+                return false;
+
+            foreach (var rule in _showPriorProjectRules)
+            {
+                if (rule?.Tokens == null)
+                    continue;
+
+                foreach (var token in rule.Tokens)
+                {
+                    if (ContainsProjectToken(path, token) || ContainsProjectToken(title, token))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool ContainsProjectToken(string value, string token)
+        {
+            if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(token))
+                return false;
+
+            return value.IndexOf(token.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private void ResetFiltersForNewProject()
+        {
+            ResetFiltersForNewProject(ShouldRequestProjectForActiveDocument());
+        }
+
+        private void ResetFiltersForNewProject(bool requestProject)
         {
             if (_isResettingFilters)
                 return;
@@ -721,10 +807,10 @@ namespace KPLN_FamilyManager.Forms
                 ClearCurrentDeptSelection();
 
                 if (_cbStage != null && _cbStage.Items.Count > 0)
-                    _cbStage.SelectedValue = 0;
+                    _cbStage.SelectedValue = requestProject ? FILTER_NOT_SELECTED : FILTER_ALL_STAGES;
 
                 if (_cbProject != null && _cbProject.Items.Count > 0)
-                    _cbProject.SelectedValue = 0;
+                    _cbProject.SelectedValue = requestProject ? FILTER_NOT_SELECTED : FILTER_UNIVERSAL;
 
                 UpdateSelectionButtonsState();
                 RefreshScenario();
@@ -1036,32 +1122,92 @@ namespace KPLN_FamilyManager.Forms
         {
             _projectsById.Clear();
             _projectIdByName.Clear();
+            _showPriorProjectRules.Clear();
 
             if (!File.Exists(dbPath)) return;
 
             using (var conn = new SQLiteConnection($"Data Source={dbPath};Version=3;"))
             {
                 conn.Open();
-                using (var cmd = new SQLiteCommand("SELECT ID, NAME FROM Project ORDER BY NAME;", conn))
+                using (var cmd = new SQLiteCommand("SELECT ID, NAME, ABR, SHOWPRIOR FROM Project ORDER BY NAME;", conn))
                 using (var rd = cmd.ExecuteReader())
                 {
                     while (rd.Read())
                     {
                         int id = Convert.ToInt32(rd["ID"]);
                         string name = (rd["NAME"] as string)?.Trim();
+                        string abr = rd["ABR"] == DBNull.Value ? null : Convert.ToString(rd["ABR"]);
                         if (string.IsNullOrWhiteSpace(name)) continue;
 
                         _projectsById[id] = name;
                         if (!_projectIdByName.ContainsKey(name)) _projectIdByName[name] = id;
+
+                        if (IsShowPriorEnabled(rd["SHOWPRIOR"]))
+                        {
+                            var tokens = new List<string>();
+                            AddProjectPriorityToken(tokens, name);
+
+                            foreach (var token in SplitProjectTokens(abr))
+                                AddProjectPriorityToken(tokens, token);
+
+                            if (tokens.Count > 0)
+                            {
+                                _showPriorProjectRules.Add(new ProjectPriorityRule
+                                {
+                                    ProjectId = id,
+                                    Tokens = tokens
+                                });
+                            }
+                        }
                     }
                 }
             }
+        }
+
+        private static bool IsShowPriorEnabled(object value)
+        {
+            if (value == null || value == DBNull.Value)
+                return false;
+
+            try
+            {
+                return Convert.ToInt32(value) == 1;
+            }
+            catch
+            {
+                var s = Convert.ToString(value)?.Trim();
+                return string.Equals(s, "1", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        private static IEnumerable<string> SplitProjectTokens(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return Enumerable.Empty<string>();
+
+            return value
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => (x ?? "").Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x));
+        }
+
+        private static void AddProjectPriorityToken(List<string> tokens, string token)
+        {
+            token = (token ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(token))
+                return;
+
+            if (!tokens.Any(x => string.Equals(x, token, StringComparison.OrdinalIgnoreCase)))
+                tokens.Add(token);
         }
 
         // XAML. Док панель. Загрузка формы
         // Стартовый список отделов из конструктора (без БД)
         private void UserControl_Loaded(object sender, System.Windows.RoutedEventArgs e)
         {
+            _suppressAutoReload = true;
+
             var items = new List<string>();
             if (!string.IsNullOrWhiteSpace(_currentSubDep))
             {
@@ -1132,7 +1278,12 @@ namespace KPLN_FamilyManager.Forms
             LoadFavoritesFromFile();
 
             if (!_depsLoaded || (CmbDepartment?.Items?.Count ?? 0) <= 2)
+            {
                 EnsureDepartmentsLoadedIntoComboPreservingSelection();
+
+                depUi = GetCurrentDepartment();
+                depDb = DepForDb(depUi);
+            }
 
             if (DepartmentExistsInDb(DB_PATH, depDb))
             {
@@ -3331,9 +3482,6 @@ namespace KPLN_FamilyManager.Forms
         // Интерфейс универсального отдела
         private IEnumerable<FamilyManagerRecord> GetUniversalFiltered(string depUi)
         {
-            const int FILTER_NOT_SELECTED = 0; // Ничего не выбрано
-            const int FILTER_UNIVERSAL = -2;   // Только универсальные
-
             var depDb = DepForDb(depUi);
             IEnumerable<FamilyManagerRecord> all = _records ?? Enumerable.Empty<FamilyManagerRecord>();
 
@@ -3617,8 +3765,8 @@ namespace KPLN_FamilyManager.Forms
         {
             var items = new List<KeyValuePair<int, string>>
     {
-        new KeyValuePair<int, string>(0, "Выберите стадию"),
-        new KeyValuePair<int, string>(-1, "Для всех стадий (без фильтра)")
+        new KeyValuePair<int, string>(FILTER_NOT_SELECTED, "Выберите стадию"),
+        new KeyValuePair<int, string>(FILTER_ALL_STAGES, "Для всех стадий (без фильтра)")
     };
 
             items.AddRange(
@@ -3631,15 +3779,12 @@ namespace KPLN_FamilyManager.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = 0;
+            cb.SelectedValue = GetCurrentProjectRequiresSelection() ? FILTER_NOT_SELECTED : FILTER_ALL_STAGES;
         }
 
         // Интерфейс универсального отдела. Биндер для ComboBox - Проект
         private void BindProjectCombo_DefaultId1(ComboBox cb)
         {
-            const int FILTER_NOT_SELECTED = 0;
-            const int FILTER_UNIVERSAL = -2;
-
             var items = new List<KeyValuePair<int, string>>
     {
         new KeyValuePair<int, string>(FILTER_NOT_SELECTED, "Выберите проект"),
@@ -3655,7 +3800,7 @@ namespace KPLN_FamilyManager.Forms
             cb.ItemsSource = items;
             cb.DisplayMemberPath = "Value";
             cb.SelectedValuePath = "Key";
-            cb.SelectedValue = FILTER_NOT_SELECTED;
+            cb.SelectedValue = GetCurrentProjectRequiresSelection() ? FILTER_NOT_SELECTED : FILTER_UNIVERSAL;
         }
 
         // Интерфейс универсального отдела. Строковое представление

@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_FamilyManager.Forms;
+using Autodesk.Revit.DB.Events;
 using KPLN_Library_DBWorker;
 using System;
 
@@ -46,7 +47,14 @@ namespace KPLN_FamilyManager.Docking
             var provider = new FamilyManagerPaneProvider(_paneInstance);
             app.RegisterDockablePane(PaneId, "KPLN. Менеджер семейств", provider);
 
+            app.ControlledApplication.DocumentOpened += ControlledApplication_DocumentOpened;
+
             ExternalEventsHost.EnsureCreated();
+        }
+
+        private static void ControlledApplication_DocumentOpened(object sender, DocumentOpenedEventArgs e)
+        {
+            _paneInstance?.HandleRevitProjectDocumentChanged(e.Document);
         }
 
         public static void Toggle(UIApplication uiapp)
