@@ -18,6 +18,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
+using TextBox = System.Windows.Controls.TextBox;
 
 namespace KPLN_BIMTools_Ribbon.Forms
 {
@@ -30,6 +31,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private string _windowTitle;
         private string _description;
         private string _status;
+        private bool _isCompactMode;
         private ParameterUsageRow _deleteSelectionAnchorRow;
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -63,6 +65,22 @@ namespace KPLN_BIMTools_Ribbon.Forms
             {
                 _status = value;
                 OnPropertyChanged("Status");
+            }
+        }
+
+        public bool IsCompactMode
+        {
+            get { return _isCompactMode; }
+            set
+            {
+                if (_isCompactMode == value)
+                {
+                    return;
+                }
+
+                _isCompactMode = value;
+                OnPropertyChanged("IsCompactMode");
+                UpdateCompactModeDisplay();
             }
         }
 
@@ -125,6 +143,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 }
 
                 UpdateUsageColumnsVisibility();
+                UpdateCompactModeDisplay();
                 Status = string.Format("Найдено параметров: {0}", Rows.Count);
             }
             catch (Exception ex)
@@ -179,6 +198,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
 
             return false;
+        }
+
+        private void UpdateCompactModeDisplay()
+        {
+            if (Rows == null)
+            {
+                return;
+            }
+
+            foreach (ParameterUsageRow row in Rows)
+            {
+                if (IsCompactMode)
+                {
+                    row.CollapseCompactCells();
+                }
+
+                row.UpdateCompactDisplay(IsCompactMode);
+            }
         }
 
         private void LoadProjectParametersUsage()
@@ -1169,6 +1206,67 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 .ToList();
         }
 
+        private void CompactCellTextBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!IsCompactMode)
+            {
+                return;
+            }
+
+            FrameworkElement element = sender as FrameworkElement;
+            ParameterUsageRow row = element != null
+                ? element.DataContext as ParameterUsageRow
+                : null;
+            string cellKey = element != null
+                ? element.Tag as string
+                : null;
+
+            if (row == null || string.IsNullOrWhiteSpace(cellKey) || row.GetCompactItemCount(cellKey) <= 1)
+            {
+                return;
+            }
+
+            row.ToggleCompactCell(cellKey, IsCompactMode);
+            e.Handled = true;
+        }
+
+        private void CompactCellTextBox_MouseEnter(object sender, MouseEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            if (textBox != null && IsCompactTextBoxCollapsed(textBox))
+            {
+                textBox.Cursor = Cursors.Hand;
+            }
+        }
+
+        private void CompactCellTextBox_MouseLeave(object sender, MouseEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            if (textBox != null)
+            {
+                textBox.ClearValue(CursorProperty);
+            }
+        }
+
+        private bool IsCompactTextBoxCollapsed(FrameworkElement element)
+        {
+            if (!IsCompactMode)
+            {
+                return false;
+            }
+
+            ParameterUsageRow row = element != null
+                ? element.DataContext as ParameterUsageRow
+                : null;
+            string cellKey = element != null
+                ? element.Tag as string
+                : null;
+
+            return row != null &&
+                   !string.IsNullOrWhiteSpace(cellKey) &&
+                   row.IsCompactCellCollapsed(cellKey);
+        }
+
         private void DeleteSelectionCell_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             FrameworkElement element = sender as FrameworkElement;
@@ -1701,6 +1799,18 @@ namespace KPLN_BIMTools_Ribbon.Forms
         public class ParameterUsageRow : INotifyPropertyChanged
         {
             private bool _isSelectedForDelete;
+            private bool _familiesExpanded;
+            private bool _viewFiltersExpanded;
+            private bool _schedulesExpanded;
+            private bool _scheduleFiltersExpanded;
+            private bool _formulaParametersExpanded;
+            private bool _dimensionsExpanded;
+            private string _displayFamilies;
+            private string _displayViewFilters;
+            private string _displaySchedules;
+            private string _displayScheduleFilters;
+            private string _displayFormulaParameters;
+            private string _displayDimensions;
 
             public event PropertyChangedEventHandler PropertyChanged;
 
@@ -1713,6 +1823,36 @@ namespace KPLN_BIMTools_Ribbon.Forms
             public string ScheduleFilters { get; set; }
             public string FormulaParameters { get; set; }
             public string Dimensions { get; set; }
+            public string DisplayFamilies
+            {
+                get { return _displayFamilies; }
+                private set { SetDisplayValue(ref _displayFamilies, value, "DisplayFamilies"); }
+            }
+            public string DisplayViewFilters
+            {
+                get { return _displayViewFilters; }
+                private set { SetDisplayValue(ref _displayViewFilters, value, "DisplayViewFilters"); }
+            }
+            public string DisplaySchedules
+            {
+                get { return _displaySchedules; }
+                private set { SetDisplayValue(ref _displaySchedules, value, "DisplaySchedules"); }
+            }
+            public string DisplayScheduleFilters
+            {
+                get { return _displayScheduleFilters; }
+                private set { SetDisplayValue(ref _displayScheduleFilters, value, "DisplayScheduleFilters"); }
+            }
+            public string DisplayFormulaParameters
+            {
+                get { return _displayFormulaParameters; }
+                private set { SetDisplayValue(ref _displayFormulaParameters, value, "DisplayFormulaParameters"); }
+            }
+            public string DisplayDimensions
+            {
+                get { return _displayDimensions; }
+                private set { SetDisplayValue(ref _displayDimensions, value, "DisplayDimensions"); }
+            }
             public bool IsProjectParameter { get; set; }
             public bool IsSelectedForDelete
             {
@@ -1748,6 +1888,12 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 ScheduleFilters = string.Empty;
                 FormulaParameters = string.Empty;
                 Dimensions = string.Empty;
+                _displayFamilies = string.Empty;
+                _displayViewFilters = string.Empty;
+                _displaySchedules = string.Empty;
+                _displayScheduleFilters = string.Empty;
+                _displayFormulaParameters = string.Empty;
+                _displayDimensions = string.Empty;
                 IsProjectParameter = false;
                 _isSelectedForDelete = false;
 
@@ -1758,6 +1904,230 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 ViewFiltersSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
                 SchedulesSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
                 ScheduleFiltersSet = new SortedSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            }
+
+            internal void CollapseCompactCells()
+            {
+                _familiesExpanded = false;
+                _viewFiltersExpanded = false;
+                _schedulesExpanded = false;
+                _scheduleFiltersExpanded = false;
+                _formulaParametersExpanded = false;
+                _dimensionsExpanded = false;
+            }
+
+            internal void UpdateCompactDisplay(bool isCompactMode)
+            {
+                DisplayFamilies = GetCompactDisplayValue(Families, isCompactMode, _familiesExpanded);
+                DisplayViewFilters = GetCompactDisplayValue(ViewFilters, isCompactMode, _viewFiltersExpanded);
+                DisplaySchedules = GetCompactDisplayValue(Schedules, isCompactMode, _schedulesExpanded);
+                DisplayScheduleFilters = GetCompactDisplayValue(ScheduleFilters, isCompactMode, _scheduleFiltersExpanded);
+                DisplayFormulaParameters = GetCompactDisplayValue(FormulaParameters, isCompactMode, _formulaParametersExpanded);
+                DisplayDimensions = GetCompactDisplayValue(Dimensions, isCompactMode, _dimensionsExpanded);
+            }
+
+            internal int GetCompactItemCount(string cellKey)
+            {
+                return CountCompactItems(GetCompactCellValue(cellKey));
+            }
+
+            internal bool IsCompactCellCollapsed(string cellKey)
+            {
+                return GetCompactItemCount(cellKey) > 1 && !IsCompactCellExpanded(cellKey);
+            }
+
+            internal void ToggleCompactCell(string cellKey, bool isCompactMode)
+            {
+                if (!ToggleCompactCellExpanded(cellKey))
+                {
+                    return;
+                }
+
+                UpdateCompactCellDisplay(cellKey, isCompactMode);
+            }
+
+            private void UpdateCompactCellDisplay(string cellKey, bool isCompactMode)
+            {
+                if (cellKey == "Families")
+                {
+                    DisplayFamilies = GetCompactDisplayValue(Families, isCompactMode, _familiesExpanded);
+                    return;
+                }
+
+                if (cellKey == "ViewFilters")
+                {
+                    DisplayViewFilters = GetCompactDisplayValue(ViewFilters, isCompactMode, _viewFiltersExpanded);
+                    return;
+                }
+
+                if (cellKey == "Schedules")
+                {
+                    DisplaySchedules = GetCompactDisplayValue(Schedules, isCompactMode, _schedulesExpanded);
+                    return;
+                }
+
+                if (cellKey == "ScheduleFilters")
+                {
+                    DisplayScheduleFilters = GetCompactDisplayValue(ScheduleFilters, isCompactMode, _scheduleFiltersExpanded);
+                    return;
+                }
+
+                if (cellKey == "FormulaParameters")
+                {
+                    DisplayFormulaParameters = GetCompactDisplayValue(FormulaParameters, isCompactMode, _formulaParametersExpanded);
+                    return;
+                }
+
+                if (cellKey == "Dimensions")
+                {
+                    DisplayDimensions = GetCompactDisplayValue(Dimensions, isCompactMode, _dimensionsExpanded);
+                }
+            }
+
+            private string GetCompactCellValue(string cellKey)
+            {
+                if (cellKey == "Families")
+                {
+                    return Families;
+                }
+
+                if (cellKey == "ViewFilters")
+                {
+                    return ViewFilters;
+                }
+
+                if (cellKey == "Schedules")
+                {
+                    return Schedules;
+                }
+
+                if (cellKey == "ScheduleFilters")
+                {
+                    return ScheduleFilters;
+                }
+
+                if (cellKey == "FormulaParameters")
+                {
+                    return FormulaParameters;
+                }
+
+                if (cellKey == "Dimensions")
+                {
+                    return Dimensions;
+                }
+
+                return string.Empty;
+            }
+
+            private bool IsCompactCellExpanded(string cellKey)
+            {
+                if (cellKey == "Families")
+                {
+                    return _familiesExpanded;
+                }
+
+                if (cellKey == "ViewFilters")
+                {
+                    return _viewFiltersExpanded;
+                }
+
+                if (cellKey == "Schedules")
+                {
+                    return _schedulesExpanded;
+                }
+
+                if (cellKey == "ScheduleFilters")
+                {
+                    return _scheduleFiltersExpanded;
+                }
+
+                if (cellKey == "FormulaParameters")
+                {
+                    return _formulaParametersExpanded;
+                }
+
+                if (cellKey == "Dimensions")
+                {
+                    return _dimensionsExpanded;
+                }
+
+                return false;
+            }
+
+            private bool ToggleCompactCellExpanded(string cellKey)
+            {
+                if (cellKey == "Families")
+                {
+                    _familiesExpanded = !_familiesExpanded;
+                    return true;
+                }
+
+                if (cellKey == "ViewFilters")
+                {
+                    _viewFiltersExpanded = !_viewFiltersExpanded;
+                    return true;
+                }
+
+                if (cellKey == "Schedules")
+                {
+                    _schedulesExpanded = !_schedulesExpanded;
+                    return true;
+                }
+
+                if (cellKey == "ScheduleFilters")
+                {
+                    _scheduleFiltersExpanded = !_scheduleFiltersExpanded;
+                    return true;
+                }
+
+                if (cellKey == "FormulaParameters")
+                {
+                    _formulaParametersExpanded = !_formulaParametersExpanded;
+                    return true;
+                }
+
+                if (cellKey == "Dimensions")
+                {
+                    _dimensionsExpanded = !_dimensionsExpanded;
+                    return true;
+                }
+
+                return false;
+            }
+
+            private static string GetCompactDisplayValue(string value, bool isCompactMode, bool isExpanded)
+            {
+                int itemCount = CountCompactItems(value);
+                if (!isCompactMode || isExpanded || itemCount <= 1)
+                {
+                    return value ?? string.Empty;
+                }
+
+                return string.Format("▶ Кол-во элементов ({0})", itemCount);
+            }
+
+            private static int CountCompactItems(string value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return 0;
+                }
+
+                return value
+                    .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Count(x => !string.IsNullOrWhiteSpace(x));
+            }
+
+            private void SetDisplayValue(ref string field, string value, string propertyName)
+            {
+                value = value ?? string.Empty;
+                if (field == value)
+                {
+                    return;
+                }
+
+                field = value;
+                OnPropertyChanged(propertyName);
             }
 
             private void OnPropertyChanged(string propertyName)

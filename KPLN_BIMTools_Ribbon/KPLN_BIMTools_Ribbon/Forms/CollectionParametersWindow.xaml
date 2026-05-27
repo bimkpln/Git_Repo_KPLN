@@ -20,11 +20,6 @@
             <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
             <Setter Property="Padding" Value="4,2" />
             <Setter Property="MinHeight" Value="24" />
-        </Style>
-
-        <Style x:Key="NameCellTextBoxStyle"
-               TargetType="TextBox"
-               BasedOn="{StaticResource SelectableCellTextBoxStyle}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsProjectParameter}" Value="False">
                     <Setter Property="Foreground" Value="#FF005BBB" />
@@ -63,28 +58,58 @@
             <TextBox Text="{Binding ParameterIdText}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="NameCellTemplate">
-            <TextBox Text="{Binding Name}" Style="{StaticResource NameCellTextBoxStyle}" />
+            <TextBox Text="{Binding Name}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="GuidCellTemplate">
             <TextBox Text="{Binding Guid}" Style="{StaticResource SelectableCellTextBoxStyle}" />
         </DataTemplate>
         <DataTemplate x:Key="FamiliesCellTemplate">
-            <TextBox Text="{Binding Families}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding DisplayFamilies}"
+                     Style="{StaticResource SelectableCellTextBoxStyle}"
+                     Tag="Families"
+                     MouseEnter="CompactCellTextBox_MouseEnter"
+                     MouseLeave="CompactCellTextBox_MouseLeave"
+                     PreviewMouseLeftButtonDown="CompactCellTextBox_PreviewMouseLeftButtonDown" />
         </DataTemplate>
         <DataTemplate x:Key="ViewFiltersCellTemplate">
-            <TextBox Text="{Binding ViewFilters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding DisplayViewFilters}"
+                     Style="{StaticResource SelectableCellTextBoxStyle}"
+                     Tag="ViewFilters"
+                     MouseEnter="CompactCellTextBox_MouseEnter"
+                     MouseLeave="CompactCellTextBox_MouseLeave"
+                     PreviewMouseLeftButtonDown="CompactCellTextBox_PreviewMouseLeftButtonDown" />
         </DataTemplate>
         <DataTemplate x:Key="SchedulesCellTemplate">
-            <TextBox Text="{Binding Schedules}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding DisplaySchedules}"
+                     Style="{StaticResource SelectableCellTextBoxStyle}"
+                     Tag="Schedules"
+                     MouseEnter="CompactCellTextBox_MouseEnter"
+                     MouseLeave="CompactCellTextBox_MouseLeave"
+                     PreviewMouseLeftButtonDown="CompactCellTextBox_PreviewMouseLeftButtonDown" />
         </DataTemplate>
         <DataTemplate x:Key="ScheduleFiltersCellTemplate">
-            <TextBox Text="{Binding ScheduleFilters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding DisplayScheduleFilters}"
+                     Style="{StaticResource SelectableCellTextBoxStyle}"
+                     Tag="ScheduleFilters"
+                     MouseEnter="CompactCellTextBox_MouseEnter"
+                     MouseLeave="CompactCellTextBox_MouseLeave"
+                     PreviewMouseLeftButtonDown="CompactCellTextBox_PreviewMouseLeftButtonDown" />
         </DataTemplate>
         <DataTemplate x:Key="FormulaParametersCellTemplate">
-            <TextBox Text="{Binding FormulaParameters}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding DisplayFormulaParameters}"
+                     Style="{StaticResource SelectableCellTextBoxStyle}"
+                     Tag="FormulaParameters"
+                     MouseEnter="CompactCellTextBox_MouseEnter"
+                     MouseLeave="CompactCellTextBox_MouseLeave"
+                     PreviewMouseLeftButtonDown="CompactCellTextBox_PreviewMouseLeftButtonDown" />
         </DataTemplate>
         <DataTemplate x:Key="DimensionsCellTemplate">
-            <TextBox Text="{Binding Dimensions}" Style="{StaticResource SelectableCellTextBoxStyle}" />
+            <TextBox Text="{Binding DisplayDimensions}"
+                     Style="{StaticResource SelectableCellTextBoxStyle}"
+                     Tag="Dimensions"
+                     MouseEnter="CompactCellTextBox_MouseEnter"
+                     MouseLeave="CompactCellTextBox_MouseLeave"
+                     PreviewMouseLeftButtonDown="CompactCellTextBox_PreviewMouseLeftButtonDown" />
         </DataTemplate>
         <DataTemplate x:Key="DeleteSelectionCellTemplate">
             <Border Background="Transparent">
@@ -128,6 +153,11 @@
         <StatusBar DockPanel.Dock="Bottom" Margin="0,8,0,0">
             <StatusBarItem>
                 <TextBlock Text="{Binding Status}" />
+            </StatusBarItem>
+            <Separator />
+            <StatusBarItem>
+                <CheckBox Content="Компактный режим"
+                          IsChecked="{Binding IsCompactMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </StatusBarItem>
         </StatusBar>
 
