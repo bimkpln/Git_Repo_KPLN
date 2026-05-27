@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{C94F9AFD-312A-4A3B-8ADB-A5441B3C68D9}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>KPLN_UserDataAgent</RootNamespace>
+    <AssemblyName>KPLN_UserDataAgent</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <!-- Resolve Revit version from Configuration -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020'">
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Revit2023'">
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024'">
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <!-- DEBUG CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Debug$(RevitVer)|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\$(RevitVer)\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug$(RevitVer)</DefineConstants>
+    <ErrorReport>none</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <!-- RELEASE CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)|x64' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\$(RevitVer)\</OutputPath>
+    <DefineConstants>TRACE;Revit$(RevitVer)</DefineConstants>
+    <ErrorReport>none</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <!-- DEBUG OUTPUTS -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_UserDataAgent\2020\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_UserDataAgent\2023\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_UserDataAgent\2024\</OutputPath>
+  </PropertyGroup>
+  <!-- RELEASE OUTPUTS -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\UserDataAgent\2020\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\UserDataAgent\2023\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\UserDataAgent\2024\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="KPLN_Loader">
+      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.SQLite, Version=2.0.3.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>packages\System.Data.SQLite.2.0.3\lib\net471\System.Data.SQLite.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <!-- CONFIG REFERENCES -->
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="Module.cs" />
+    <Compile Include="ModuleData.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\CentralSyncService.cs" />
+    <Compile Include="Services\DocumentSnapshot.cs" />
+    <Compile Include="Services\ErrorGuard.cs" />
+    <Compile Include="Services\UserContextSnapshot.cs" />
+    <Compile Include="Services\UserDataRepository.cs" />
+    <Compile Include="Services\UserEventRecord.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
