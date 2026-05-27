@@ -82,8 +82,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <HintPath>packages\NLog.5.2.3\lib\net46\NLog.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>..\..\KPLN_BIMTools_Ribbon\packages\NLog.5.2.3\lib\net46\NLog.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -113,7 +112,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -129,7 +128,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -145,7 +144,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -161,7 +160,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -177,7 +176,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -193,7 +192,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_DBWorker">
-          <HintPath>..\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>

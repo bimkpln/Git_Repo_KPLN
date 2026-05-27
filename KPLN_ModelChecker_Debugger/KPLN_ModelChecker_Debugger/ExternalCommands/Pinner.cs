@@ -10,6 +10,7 @@ namespace KPLN_ModelChecker_Debugger.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     internal sealed class Pinner : IExternalCommand
     {
+        internal const string PluginName = "Прикрепить элементы модели";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

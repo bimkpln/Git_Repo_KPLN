@@ -289,10 +289,9 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     }
                 }
                 LevelAndSectionSolid downLevelAndGridSolid = SectDataSolids
-                    .Where(s =>
+                    .FirstOrDefault(s =>
                         s.LSSectionData.Equals(maxIntersectInstance.LSSectionData)
-                        && s.LSLevelData.Equals(maxIntersectInstance.LSLevelData))
-                    .FirstOrDefault();
+                        && s.LSLevelData.Equals(maxIntersectInstance.LSLevelData));
 
                 instElemDataLvlParam.Set(maxIntersectInstance.LSLevelData);
                 instElemDataSectParam.Set(maxIntersectInstance.LSSectionData);

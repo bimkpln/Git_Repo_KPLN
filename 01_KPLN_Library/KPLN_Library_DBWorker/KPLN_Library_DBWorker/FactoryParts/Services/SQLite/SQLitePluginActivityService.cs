@@ -1,5 +1,6 @@
 ﻿using KPLN_Library_DBWorker.Core;
 using KPLN_Library_DBWorker.FactoryParts.Common;
+using KPLN_Loader.Core.Entities;
 using System.Linq;
 
 namespace KPLN_Library_DBWorker.FactoryParts.SQLite
@@ -23,13 +24,13 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
                 $"INSERT INTO {_dbTableName} " +
                     $"({nameof(DBPluginActivity.ModuleId)}, " +
                     $"{nameof(DBPluginActivity.PluginName)}, " +
-                    $"{nameof(DBPluginActivity.SubDepartmentId)}, " +
+                    $"{nameof(DBPluginActivity.UserId)}, " +
                     $"{nameof(DBPluginActivity.UsageCount)}, " +
                     $"{nameof(DBPluginActivity.LastActivityDate)}) " +
                 $"VALUES (" +
                     $"@{nameof(DBPluginActivity.ModuleId)}, " +
                     $"@{nameof(DBPluginActivity.PluginName)}, " +
-                    $"@{nameof(DBPluginActivity.SubDepartmentId)}, " +
+                    $"@{nameof(DBPluginActivity.UserId)}, " +
                     $"@{nameof(DBPluginActivity.UsageCount)}, " +
                     $"@{nameof(DBPluginActivity.LastActivityDate)});",
             dBPluginActivity);
@@ -38,25 +39,25 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
 
         #region Read
         /// <summary>
-        /// Получить PluginActivity по имени и отделу
+        /// Получить PluginActivity по имени плагина и id пользователя
         /// </summary>
-        public DBPluginActivity GetDBPluginActivity_ByModuleNameAndSubDep(string pluginName, int subDepId) =>
+        public DBPluginActivity GetDBPluginActivity_ByModuleNameAndSubDep(string pluginName, int userId) =>
             ExecuteQuery<DBPluginActivity>(
                 $"SELECT * FROM {_dbTableName} " +
-                $"WHERE {nameof(DBPluginActivity.PluginName)}='{pluginName}' AND {nameof(DBPluginActivity.SubDepartmentId)}='{subDepId}';")
+                $"WHERE {nameof(DBPluginActivity.PluginName)}='{pluginName}' AND {nameof(DBPluginActivity.UserId)}='{userId}';")
             .FirstOrDefault();
         #endregion
 
         #region Update
         /// <summary>
-        /// Обновить значение PluginActivity для модуля по DBPluginActivity и отделу
+        /// Обновить значение PluginActivity для модуля по DBPluginActivity и id пользователя
         /// </summary>
-        public void UpdatePluginActivity_ByPluginActivityAndSubDep(DBPluginActivity dBPluginActivity, int subDepId)
+        public void UpdatePluginActivity_ByPluginActivityAndSubDep(DBPluginActivity dBPluginActivity, int userId)
         {
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                     $"SET {nameof(DBPluginActivity.UsageCount)}='{dBPluginActivity.UsageCount}', " +
                     $"{nameof(DBPluginActivity.LastActivityDate)}='{dBPluginActivity.LastActivityDate}' " +
-                    $"WHERE {nameof(DBPluginActivity.Id)}='{dBPluginActivity.Id}' AND {nameof(DBPluginActivity.SubDepartmentId)}='{subDepId}';");
+                    $"WHERE {nameof(DBPluginActivity.Id)}='{dBPluginActivity.Id}' AND {nameof(DBPluginActivity.UserId)}='{userId}';");
             #endregion
         }
     }

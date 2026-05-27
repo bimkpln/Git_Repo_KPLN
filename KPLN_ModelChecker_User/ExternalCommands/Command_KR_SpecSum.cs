@@ -37,6 +37,21 @@ namespace KPLN_ModelChecker_User
             "общие данные"
         };
 
+        private const string ExcludedDesignationParamName = "О_Обозначение";
+
+        private static readonly string[] ExcludedDesignationParts =
+        {
+            "8509",
+            "35087",
+            "30245",
+            "10704",
+            "8510",
+            "8278",
+            "8645",
+            "8240",
+            "57837"
+        };
+
         private static readonly string[] SteelScheduleNameParts =
         {
             "врс",
@@ -112,6 +127,7 @@ namespace KPLN_ModelChecker_User
 
             double grandTotalSum = 0.0;
             int grandTotalFoundValues = 0;
+            int grandTotalFilteredRows = 0;
 
             if (filterResult.UsedFallback)
             {
@@ -159,6 +175,7 @@ namespace KPLN_ModelChecker_User
                 {
                     ViewSchedule schedule = matchedSchedules[scheduleId];
                     ScheduleCalculationResult calculation = CalculateScheduleSum(schedule);
+                    grandTotalFilteredRows += calculation.FilteredOutRows;
 
                     if (calculation.FoundValues > 0)
                     {
@@ -167,33 +184,42 @@ namespace KPLN_ModelChecker_User
                         PrintScheduleBlock(
                             reportItems,
                             report,
+                            SpecSumReportSection.Main,
                             sheet.SheetNumber,
                             sheet.Name,
                             schedule.Name,
                             FormatNumber(calculation.TotalSum),
-                            false);
+                            false,
+                            calculation.TotalSum,
+                            calculation.FilteredOutRows,
+                            calculation.FilteredOutSum);
                     }
                     else
                     {
                         PrintScheduleBlock(
                             reportItems,
                             report,
+                            SpecSumReportSection.Main,
                             sheet.SheetNumber,
                             sheet.Name,
                             schedule.Name,
                             "нет данных",
-                            true);
+                            true,
+                            0.0,
+                            calculation.FilteredOutRows,
+                            calculation.FilteredOutSum);
                     }
                 }
             }
 
-            if (grandTotalFoundValues > 0)
+            if (grandTotalFoundValues > 0 || grandTotalFilteredRows > 0)
             {
-                PrintTotalLine(reportItems, report, "Итоговая сумма:", FormatNumber(grandTotalSum), true);
+                PrintTotalLine(reportItems, report, "Итоговая сумма:", FormatNumber(grandTotalSum), true, SpecSumTotalRole.MainTotal);
             }
 
             List<ViewSchedule> generalDataSchedules = new List<ViewSchedule>();
             double generalDataTotalSum = 0.0;
+            int generalDataFilteredRows = 0;
 
             if (generalDataSheet != null)
             {
@@ -236,6 +262,7 @@ namespace KPLN_ModelChecker_User
                 foreach (ViewSchedule generalDataSchedule in generalDataSchedules)
                 {
                     ScheduleCalculationResult calculation = AnalyzeGeneralDataSchedule(generalDataSchedule);
+                    generalDataFilteredRows += calculation.FilteredOutRows;
 
                     if (calculation.FoundValues > 0)
                     {
@@ -243,41 +270,53 @@ namespace KPLN_ModelChecker_User
                         PrintScheduleBlock(
                             reportItems,
                             report,
+                            SpecSumReportSection.GeneralData,
                             generalDataSheet.SheetNumber,
                             generalDataSheet.Name,
                             generalDataSchedule.Name,
                             FormatNumber(calculation.TotalSum),
-                            false);
+                            false,
+                            calculation.TotalSum,
+                            calculation.FilteredOutRows,
+                            calculation.FilteredOutSum);
                     }
                     else
                     {
                         PrintScheduleBlock(
                             reportItems,
                             report,
+                            SpecSumReportSection.GeneralData,
                             generalDataSheet.SheetNumber,
                             generalDataSheet.Name,
                             generalDataSchedule.Name,
                             "нет данных",
-                            true);
+                            true,
+                            0.0,
+                            calculation.FilteredOutRows,
+                            calculation.FilteredOutSum);
                     }
                 }
 
-                PrintTotalLine(reportItems, report, "Итог по общим данным:", FormatNumber(generalDataTotalSum), true);
+                PrintTotalLine(reportItems, report, "Итог по общим данным:", FormatNumber(generalDataTotalSum), true, SpecSumTotalRole.GeneralDataTotal);
             }
 
-            if (grandTotalFoundValues > 0 && generalDataTotalSum > 0)
+            if ((grandTotalFoundValues > 0 || grandTotalFilteredRows > 0)
+                && (generalDataTotalSum > 0 || generalDataFilteredRows > 0))
             {
                 double differenceValue = Math.Abs(grandTotalSum - generalDataTotalSum);
-                double differencePercent = differenceValue / generalDataTotalSum * 100.0;
+                string differencePercentText = generalDataTotalSum > 0
+                    ? FormatPercent(differenceValue / generalDataTotalSum * 100.0)
+                    : "нет данных";
 
                 PrintReportTitle(reportItems, report, "Сравнение итогов");
-                PrintTotalLine(reportItems, report, "Разница:", FormatNumber(differenceValue), false);
+                PrintTotalLine(reportItems, report, "Разница:", FormatNumber(differenceValue), false, SpecSumTotalRole.DifferenceValue);
                 PrintTotalLine(
                     reportItems,
                     report,
                     "Отклонение от итога по общим данным:",
-                    FormatPercent(differencePercent),
-                    false);
+                    differencePercentText,
+                    false,
+                    SpecSumTotalRole.DifferencePercent);
             }
 
             SpecSumReportWindow reportWindow = new SpecSumReportWindow(PluginName, reportItems, report.ToString());
@@ -397,7 +436,11 @@ namespace KPLN_ModelChecker_User
 
             double totalSum = 0.0;
             int foundValues = 0;
+            double filteredOutSum = 0.0;
+            int filteredOutRows = 0;
             int lastRowNumber = bodyData.LastRowNumber;
+            int? targetColumn = GetFirstVisibleFieldColumn(schedule, bodyData, TargetFieldNames);
+            int? designationColumn = GetVisibleFieldColumn(schedule, bodyData, ExcludedDesignationParamName);
 
             try
             {
@@ -412,34 +455,33 @@ namespace KPLN_ModelChecker_User
 
             for (int row = bodyData.FirstRowNumber; row <= lastRowNumber; row++)
             {
-                double? lastNumericValue = null;
+                double? rowValue = targetColumn.HasValue
+                    ? ParseNumber(GetCellTextSafe(schedule, row, targetColumn.Value))
+                    : GetLastNumericValue(schedule, bodyData, row, designationColumn);
 
-                for (int col = bodyData.FirstColumnNumber; col <= bodyData.LastColumnNumber; col++)
+                string designation = designationColumn.HasValue
+                    ? GetCellTextSafe(schedule, row, designationColumn.Value)
+                    : string.Empty;
+
+                if (IsExcludedDesignation(designation))
                 {
-                    string cellText = string.Empty;
-                    try
+                    if (rowValue.HasValue)
                     {
-                        cellText = schedule.GetCellText(SectionType.Body, row, col);
-                    }
-                    catch
-                    {
+                        filteredOutSum += rowValue.Value;
+                        filteredOutRows++;
                     }
 
-                    double? number = ParseNumber(cellText);
-                    if (number.HasValue)
-                    {
-                        lastNumericValue = number.Value;
-                    }
+                    continue;
                 }
 
-                if (lastNumericValue.HasValue)
+                if (rowValue.HasValue)
                 {
-                    totalSum += lastNumericValue.Value;
+                    totalSum += rowValue.Value;
                     foundValues++;
                 }
             }
 
-            return new ScheduleCalculationResult(totalSum, foundValues);
+            return new ScheduleCalculationResult(totalSum, foundValues, filteredOutSum, filteredOutRows);
         }
 
         private static ScheduleCalculationResult AnalyzeGeneralDataSchedule(ViewSchedule schedule)
@@ -479,7 +521,13 @@ namespace KPLN_ModelChecker_User
 
             if (targetColumns.Count == 0)
             {
-                return new ScheduleCalculationResult(0.0, 0);
+                return new ScheduleCalculationResult(0.0, 0, 0.0, 0);
+            }
+
+            int? designationColumn = GetVisibleFieldColumn(schedule, bodyData, ExcludedDesignationParamName);
+            if (designationColumn.HasValue)
+            {
+                return AnalyzeGeneralDataScheduleRows(schedule, bodyData, targetColumns, designationColumn.Value);
             }
 
             bool useGrandTotalRow = false;
@@ -518,7 +566,7 @@ namespace KPLN_ModelChecker_User
 
                 if (foundInTotal)
                 {
-                    return new ScheduleCalculationResult(grandTotalSum, 1);
+                    return new ScheduleCalculationResult(grandTotalSum, 1, 0.0, 0);
                 }
             }
 
@@ -556,12 +604,150 @@ namespace KPLN_ModelChecker_User
                 }
             }
 
-            return new ScheduleCalculationResult(totalSum, foundValues);
+            return new ScheduleCalculationResult(totalSum, foundValues, 0.0, 0);
+        }
+
+        private static ScheduleCalculationResult AnalyzeGeneralDataScheduleRows(
+            ViewSchedule schedule,
+            TableSectionData bodyData,
+            List<int> targetColumns,
+            int designationColumn)
+        {
+            double totalSum = 0.0;
+            int foundValues = 0;
+            double filteredOutSum = 0.0;
+            int filteredOutRows = 0;
+            int lastRowNumber = bodyData.LastRowNumber;
+
+            try
+            {
+                if (schedule.Definition.ShowGrandTotal)
+                {
+                    lastRowNumber--;
+                }
+            }
+            catch
+            {
+            }
+
+            for (int row = bodyData.FirstRowNumber; row <= lastRowNumber; row++)
+            {
+                double rowSum = 0.0;
+                bool rowHasValue = false;
+
+                foreach (int col in targetColumns)
+                {
+                    double? number = ParseNumber(GetCellTextSafe(schedule, row, col));
+                    if (number.HasValue)
+                    {
+                        rowSum += number.Value;
+                        rowHasValue = true;
+                    }
+                }
+
+                if (!rowHasValue)
+                {
+                    continue;
+                }
+
+                string designation = GetCellTextSafe(schedule, row, designationColumn);
+                if (IsExcludedDesignation(designation))
+                {
+                    filteredOutSum += rowSum;
+                    filteredOutRows++;
+                    continue;
+                }
+
+                totalSum += rowSum;
+                foundValues++;
+            }
+
+            return new ScheduleCalculationResult(totalSum, foundValues, filteredOutSum, filteredOutRows);
+        }
+
+        private static int? GetFirstVisibleFieldColumn(
+            ViewSchedule schedule,
+            TableSectionData bodyData,
+            IEnumerable<string> fieldNames)
+        {
+            foreach (string fieldName in fieldNames)
+            {
+                int? column = GetVisibleFieldColumn(schedule, bodyData, fieldName);
+                if (column.HasValue)
+                {
+                    return column.Value;
+                }
+            }
+
+            return null;
+        }
+
+        private static int? GetVisibleFieldColumn(
+            ViewSchedule schedule,
+            TableSectionData bodyData,
+            string fieldName)
+        {
+            Dictionary<string, int> visibleFieldColumns = GetScheduleVisibleFieldColumns(schedule);
+            int visibleIndex;
+            if (!visibleFieldColumns.TryGetValue(fieldName, out visibleIndex))
+            {
+                return null;
+            }
+
+            int column = bodyData.FirstColumnNumber + visibleIndex;
+            if (column > bodyData.LastColumnNumber)
+            {
+                return null;
+            }
+
+            return column;
+        }
+
+        private static double? GetLastNumericValue(
+            ViewSchedule schedule,
+            TableSectionData bodyData,
+            int row,
+            int? ignoredColumn)
+        {
+            double? lastNumericValue = null;
+
+            for (int col = bodyData.FirstColumnNumber; col <= bodyData.LastColumnNumber; col++)
+            {
+                if (ignoredColumn.HasValue && col == ignoredColumn.Value)
+                {
+                    continue;
+                }
+
+                double? number = ParseNumber(GetCellTextSafe(schedule, row, col));
+                if (number.HasValue)
+                {
+                    lastNumericValue = number.Value;
+                }
+            }
+
+            return lastNumericValue;
+        }
+
+        private static string GetCellTextSafe(ViewSchedule schedule, int row, int col)
+        {
+            try
+            {
+                return schedule.GetCellText(SectionType.Body, row, col) ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static bool IsExcludedDesignation(string designation)
+        {
+            return ContainsAnyPart(designation, ExcludedDesignationParts);
         }
 
         private static Dictionary<string, int> GetScheduleVisibleFieldColumns(ViewSchedule schedule)
         {
-            Dictionary<string, int> visibleColumns = new Dictionary<string, int>(StringComparer.Ordinal);
+            Dictionary<string, int> visibleColumns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
             ScheduleDefinition definition;
             int fieldCount;
@@ -798,25 +984,44 @@ namespace KPLN_ModelChecker_User
         private static void PrintScheduleBlock(
             List<SpecSumReportItem> items,
             StringBuilder output,
+            SpecSumReportSection section,
             string sheetNumber,
             string sheetName,
             string scheduleName,
             string valueText,
-            bool muted)
+            bool muted,
+            double baseValue,
+            int filteredOutRows,
+            double filteredOutValue)
         {
             items.Add(new SpecSumReportItem
             {
                 Kind = SpecSumReportItemKind.ScheduleBlock,
+                Section = section,
                 SheetNumber = sheetNumber,
                 SheetName = sheetName,
                 ScheduleName = scheduleName,
                 ValueText = valueText,
-                Muted = muted
+                Muted = muted,
+                BaseValue = baseValue,
+                HasNumericValue = !muted,
+                Multiplier = 1,
+                FilteredOutRows = filteredOutRows,
+                FilteredOutValue = filteredOutValue
             });
 
             output.AppendLine(PrintSheetTitle(sheetNumber, sheetName));
             output.AppendLine("  " + scheduleName);
             output.AppendLine(valueText);
+            if (filteredOutRows > 0)
+            {
+                output.AppendLine(string.Format(
+                    CultureInfo.InvariantCulture,
+                    "  Исключено по '{0}': {1} строк, {2}.",
+                    ExcludedDesignationParamName,
+                    filteredOutRows,
+                    FormatNumber(filteredOutValue)));
+            }
             output.AppendLine();
         }
 
@@ -825,11 +1030,13 @@ namespace KPLN_ModelChecker_User
             StringBuilder output,
             string label,
             string valueText,
-            bool accent)
+            bool accent,
+            SpecSumTotalRole totalRole)
         {
             items.Add(new SpecSumReportItem
             {
                 Kind = SpecSumReportItemKind.TotalLine,
+                TotalRole = totalRole,
                 Label = label,
                 ValueText = valueText,
                 Accent = accent
@@ -853,14 +1060,22 @@ namespace KPLN_ModelChecker_User
 
         private sealed class ScheduleCalculationResult
         {
-            internal ScheduleCalculationResult(double totalSum, int foundValues)
+            internal ScheduleCalculationResult(
+                double totalSum,
+                int foundValues,
+                double filteredOutSum,
+                int filteredOutRows)
             {
                 TotalSum = totalSum;
                 FoundValues = foundValues;
+                FilteredOutSum = filteredOutSum;
+                FilteredOutRows = filteredOutRows;
             }
 
             internal double TotalSum { get; private set; }
             internal int FoundValues { get; private set; }
+            internal double FilteredOutSum { get; private set; }
+            internal int FilteredOutRows { get; private set; }
         }
 
         private sealed class NaturalStringComparer : IComparer<string>

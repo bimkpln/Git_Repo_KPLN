@@ -397,3 +397,6 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio
+# Свои настройки для игнорирования JSON конфигураций
+KPLN_ExtraNet_Loader_Config.json
+KPLN_Loader_Config.json

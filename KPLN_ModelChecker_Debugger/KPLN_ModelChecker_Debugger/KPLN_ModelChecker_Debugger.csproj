@@ -46,6 +46,7 @@
   <!-- STATIC REFERENCES -->
   <ItemGroup>
     <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -92,7 +93,8 @@
   <ItemGroup>
     <Compile Include="ExternalCommands\PatitionFileSetter.cs" />
     <Compile Include="ExternalCommands\Pinner.cs" />
-    <Compile Include="ExternalCommands\Worksetter.cs" />
+    <Compile Include="ExternalCommands\WorksetDelete.cs" />
+    <Compile Include="ExternalCommands\WorksetCreate.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -107,21 +109,44 @@
     <Folder Include="Workset_Patterns\ГЛУ33\" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\setPatitionalFile.png" />
-    <EmbeddedResource Include="Imagens\mainLarge.png" />
-    <EmbeddedResource Include="Imagens\pinnerLarge.png" />
-    <EmbeddedResource Include="Imagens\worksetLarge.png" />
-    <Content Include="Workset_Patterns\Workset_SS.xml" />
-    <Content Include="Workset_Patterns\Workset_EOM.xml" />
-    <Content Include="Workset_Patterns\Workset_VK.xml" />
-    <Content Include="Workset_Patterns\Workset_Template.xml" />
-    <Content Include="Workset_Patterns\Workset_OV.xml" />
-    <Content Include="Workset_Patterns\Workset_AR.xml" />
-    <Content Include="Workset_Patterns\Workset_KR.xml" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\main32.png" />
+    <Resource Include="Imagens\pinner32.png" />
+    <Resource Include="Imagens\setPatitionalFile32.png" />
+    <Resource Include="Imagens\worksetCreate32.png" />
+    <Resource Include="Imagens\worksetDelete32.png" />
+    <Resource Include="Imagens\main32_dark.png" />
+    <Resource Include="Imagens\pinner32_dark.png" />
+    <Resource Include="Imagens\setPatitionalFile32_dark.png" />
+    <Resource Include="Imagens\worksetCreate32_dark.png" />
+    <Resource Include="Imagens\worksetDelete32_dark.png" />
+    <Content Include="Workset_Patterns\МТРС_АВА-Проект\Workset_KR_Связи.xml" />
+    <Content Include="Workset_Patterns\МТРС_АВА-Проект\МТРС_Workset_KR.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_АР.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_АУПТ.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_ВК.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_ИК.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_КР.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_КФ.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_ОВ.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_СПС.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_СС.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_СС_АВ.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_СС_СПЗ.xml" />
+    <Content Include="Workset_Patterns\Рабочие наборы_ЭОМ.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_AR.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_EOM.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_KR.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_OV.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_SS.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_VK.xml" />
+    <Content Include="Workset_Patterns\СЕТ\СЕТ_Workset_КФ.xml" />
+    <Content Include="Workset_Patterns\ШАБЛОН_Рабочие наборы.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

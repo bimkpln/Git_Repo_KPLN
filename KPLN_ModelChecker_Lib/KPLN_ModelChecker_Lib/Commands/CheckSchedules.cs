@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
 using System;
@@ -98,8 +100,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                     .ToArray();
 
 
-                #region Проверка кол-ва фильтров в спеке
-                List<CheckerEntity> schTooManyFilters = SchedulesTooManyFilters(CheckDocument, schInsts);
+                #region Проверка кол-ва и качества фильтров в спеке
+                List<CheckerEntity> schTooManyFilters = SchedulesCheckFilters(CheckDocument, schInsts);
                 if (schTooManyFilters != null && schTooManyFilters.Any())
                     _checkerEntitiesCollHeap.AddRange(schTooManyFilters);
                 #endregion
@@ -126,18 +128,26 @@ namespace KPLN_ModelChecker_Lib.Commands
             return CheckResultStatus.Succeeded;
         }
 
-        private List<CheckerEntity> SchedulesTooManyFilters(Document doc, ScheduleSheetInstance[] schInsts)
+        private List<CheckerEntity> SchedulesCheckFilters(Document doc, ScheduleSheetInstance[] schInsts)
         {
             List<CheckerEntity> result = new List<CheckerEntity>();
 
+            // Метка проверки спек ИОС
+            string fileFullName = SQLiteDocService.GetFileFullName(doc);
+            var dbDoc = SQLiteMainService.SQLiteDocServiceInst.GetDBDocuments_ByFileFullPath(fileFullName);
+            bool isIOS = dbDoc != null && dbDoc.SubDepartmentId != 2 && dbDoc.SubDepartmentId != 3 && dbDoc.SubDepartmentId != 8;
+
+            // Проход по всем спекам на листе
             foreach (var schinst in schInsts)
             {
                 Element elem = doc.GetElement(schinst.ScheduleId);
                 if (elem != null && elem is ViewSchedule vsch) 
                 {
+                    string schNameLowerCase = vsch.Name.ToLower();
                     ScheduleDefinition def = vsch.Definition;
                     int filterCount = def.GetFilterCount();
 
+                    // Проверяю кол-во фильтров в спеке
                     if (filterCount >= _filterErrorCount)
                     {
                         result.Add(new CheckerEntity(
@@ -154,6 +164,67 @@ namespace KPLN_ModelChecker_Lib.Commands
                             $"В спецификации \"{vsch.Name}\" задано {filterCount} фильтров (порог предупреждения: {_filterWarnCount})",
                             $"Стоит проверить, нельзя ли упростить логику фильтрации.")
                             .Set_Status(ErrorStatus.Warning));
+                    }
+
+                    // Проверяю наличие нужных фильтров ИОС в спеке
+                    if (isIOS)
+                    {
+                        string paramName = "КП_И_Включение в спецификацию";
+                        string paramUserDescr = $"\"{paramName} -> Меньше или равно -> Да\"";
+
+                        // Флаг под проекты
+                        bool isSET = doc.Title.StartsWith("СЕТ_1");
+                        if (isSET)
+                        {
+                            paramName = "СМ_Смета";
+                            paramUserDescr = $"\"{paramName} -> не равно -> Нет\" ИЛИ \"{paramName} -> Меньше или равно -> Да\"";
+                        }
+
+                        bool haveFilterWithIOSField = false;
+                        var schFilters = def.GetFilters();
+                        for (int i = 0; i < schFilters.Count; i++)
+                        {
+                            var schFilterId = schFilters[i].FieldId;
+                            var schField = def.GetField(schFilterId);
+                            if (schField == null)
+                                continue;
+
+                            if (doc.GetElement(schField.ParameterId) is SharedParameterElement shParam)
+                            {
+                                // Проверка имени. Если не совпадает, то и условия/тип данных не нужно проверять
+                                bool checkName = shParam.Name.Equals(paramName);
+                                if (!checkName)
+                                    continue;
+
+                                bool checkGilterType = schFilters[i].FilterType == ScheduleFilterType.LessThanOrEqual;
+                                bool checkFilterValue = schFilters[i].GetIntegerValue() == 1;
+                                if (isSET && !checkGilterType && !checkFilterValue)
+                                {
+                                    checkGilterType = schFilters[i].FilterType == ScheduleFilterType.NotEqual;
+                                    checkFilterValue = schFilters[i].GetIntegerValue() == 0;
+                                }
+
+                                haveFilterWithIOSField = checkName && checkGilterType && checkFilterValue;
+                                
+                                break;
+                            }
+                        }
+                        
+                        if(!haveFilterWithIOSField 
+                            && !schNameLowerCase.Contains("эксплик")
+                            && !schNameLowerCase.Contains("шапка спец")
+                            && !schNameLowerCase.Contains("показатели систем")
+                            && !schNameLowerCase.Contains("количество листов")
+                            && !schNameLowerCase.Contains("документ"))
+                        {
+                            result.Add(new CheckerEntity(
+                                vsch,
+                                $"ИОС: Нет обязательного фильтра",
+                                $"В спецификации \"{vsch.Name}\" нет фильтра по параметру \"{paramName}\", либо он добавлен с ошибкой в условиях",
+                                $"Данный параметр снимает технические элементы и обязателен для всех спецификаций по объёмам для ИОС. " +
+                                    $"Единственно правильный вариант, который ИСКЛЮЧАЕТ все технические элементы из спецификации это {paramUserDescr}")
+                                .Set_Status(ErrorStatus.Warning));
+                        }
                     }
                 }
             }
@@ -224,7 +295,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                                 new Element[] { schInsts[i], schInsts[j] },
                                 $"Склеивание на листе \"{vsh.Title}\"",
                                 $"Две разные спецификации размещены рядом - попытка \"склеивания\" данных",
-                                $"Склеивать разные спецификации не рекомендуется, т.к. может привести к разным настройкам фильтрации/сортирвки. " +
+                                $"Склеивать разные спецификации не рекомендуется, т.к. может привести к разным настройкам фильтрации/сортировки. " +
                                     $"Если это разные спецификации, которые визуально не являются продолжением одна другой - можно отправить в допуск.")
                                 .Set_Status(ErrorStatus.Warning));
                         else if (new Outline(a_LD, a_RU).Intersects(new Outline(b_LD, b_RU), 0))
