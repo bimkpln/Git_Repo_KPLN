@@ -37,6 +37,9 @@ namespace KPLN_FamilyManager.Forms
     // ExternalEventsHost
     internal static class ExternalEventsHost
     {
+        public static ExternalEvent OpenFamilyEvent;
+        public static OpenFamilyHandler OpenFamilyHandler;
+
         public static ExternalEvent LoadFamilyEvent;
         public static LoadFamilyHandler LoadFamilyHandler;
 
@@ -45,6 +48,12 @@ namespace KPLN_FamilyManager.Forms
 
         public static void EnsureCreated()
         {
+            if (OpenFamilyEvent == null)
+            {
+                OpenFamilyHandler = new OpenFamilyHandler();
+                OpenFamilyEvent = ExternalEvent.Create(OpenFamilyHandler);
+            }
+
             if (LoadFamilyEvent == null)
             {
                 LoadFamilyHandler = new LoadFamilyHandler();
@@ -56,6 +65,70 @@ namespace KPLN_FamilyManager.Forms
                 BulkPagedUpdateHandler = new BulkPagedUpdateHandler();
                 BulkPagedUpdateEvent = ExternalEvent.Create(BulkPagedUpdateHandler);
             }
+        }
+    }
+
+    internal class OpenFamilyHandler : IExternalEventHandler
+    {
+        public string FilePath;
+        public List<string> BatchPaths;
+
+        public void Execute(UIApplication app)
+        {
+            var paths = (BatchPaths != null && BatchPaths.Count > 0)
+                ? BatchPaths
+                : (string.IsNullOrWhiteSpace(FilePath) ? new List<string>() : new List<string> { FilePath });
+
+            paths = paths
+                .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (paths.Count == 0)
+            {
+                TaskDialog.Show("Открытие семейств", "Нет валидных путей для открытия.");
+                BatchPaths = null; FilePath = null;
+                return;
+            }
+
+            int opened = 0;
+            var failed = new List<string>();
+
+            foreach (var path in paths)
+            {
+                try
+                {
+                    app.OpenAndActivateDocument(path);
+                    opened++;
+                }
+                catch (Exception ex)
+                {
+                    failed.Add($"{Path.GetFileName(path)}: {ex.Message}");
+                }
+            }
+
+            if (failed.Count > 0)
+            {
+                var sb = new StringBuilder();
+                sb.AppendLine($"Открыто: {opened} из {paths.Count}");
+                sb.AppendLine("Ошибки:");
+                foreach (var item in failed)
+                    sb.AppendLine(EllipsisEnd(item, 90));
+
+                TaskDialog.Show("Открытие семейств", sb.ToString());
+            }
+
+            BatchPaths = null;
+            FilePath = null;
+        }
+
+        public string GetName() => "KPLN.OpenFamilyHandler";
+
+        private static string EllipsisEnd(string s, int max = 90)
+        {
+            if (string.IsNullOrEmpty(s) || max <= 0) return "";
+            if (s.Length <= max) return s;
+            return s.Substring(0, Math.Max(1, max - 1)) + "…";
         }
     }
 
@@ -106,16 +179,12 @@ namespace KPLN_FamilyManager.Forms
             bool single = paths.Count == 1;
 
             int loaded = 0;
-            var failedNames = new List<string>();
-            var opts = new ReloadFamilyLoadOptions();
+            var failedItems = new List<string>();
 
             using (var t = new Transaction(targetDoc, "KPLN. Загрузить семейства"))
             {
                 t.Start();
 
-                var fho = t.GetFailureHandlingOptions();
-                fho.SetFailuresPreprocessor(new SilentFailuresPreprocessor());
-                t.SetFailureHandlingOptions(fho);
                 foreach (var p in paths)
                 {
                     string nameForReport = System.IO.Path.GetFileNameWithoutExtension(p);
@@ -139,13 +208,13 @@ namespace KPLN_FamilyManager.Forms
 
                         if (existing == null)
                         {
-                            failedNames.Add(nameForReport);
+                            failedItems.Add($"{nameForReport}: Revit не загрузил семейство, существующее семейство в проекте не найдено.");
                             continue;
                         }
 
                         if (FamilyHasInstances(targetDoc, existing))
                         {
-                            failedNames.Add(nameForReport);
+                            failedItems.Add($"{nameForReport}: семейство уже есть в проекте и имеет размещённые экземпляры.");
                             continue;
                         }
 
@@ -157,16 +226,16 @@ namespace KPLN_FamilyManager.Forms
                             if (targetDoc.LoadFamily(p, optsAfterDelete, out Family famAfter))
                                 loaded++;
                             else
-                                failedNames.Add(nameForReport);
+                                failedItems.Add($"{nameForReport}: Revit не загрузил семейство после удаления существующего.");
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            failedNames.Add(nameForReport);
+                            failedItems.Add($"{nameForReport}: {ex.Message}");
                         }
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        failedNames.Add(nameForReport);
+                        failedItems.Add($"{nameForReport}: {ex.Message}");
                     }
                 }
 
@@ -175,7 +244,18 @@ namespace KPLN_FamilyManager.Forms
 
             if (single)
             {
-                TaskDialog.Show("Загрузка семейства", loaded == 1 ? "Семейство добавлено/обновлено в проекте." : "ОШИБКА. Данное семейство не было добавлено или обновлено в проекте.");
+                if (loaded == 1)
+                {
+                    TaskDialog.Show("Загрузка семейства", "Семейство добавлено/обновлено в проекте.");
+                }
+                else
+                {
+                    var message = failedItems.Count > 0
+                        ? string.Join("\n", failedItems.Select(x => EllipsisEnd(x, 120)))
+                        : "Данное семейство не было добавлено или обновлено в проекте.";
+
+                    TaskDialog.Show("Загрузка семейства", message);
+                }
             }
             else
             {
@@ -187,11 +267,11 @@ namespace KPLN_FamilyManager.Forms
                 {
                     var sb = new StringBuilder();
                     sb.AppendLine($"Загружено/Обновлено: {loaded} из {paths.Count}");
-                    if (failedNames.Count > 0)
+                    if (failedItems.Count > 0)
                     {
                         sb.AppendLine("Не добавлены:");
-                        foreach (var n in failedNames)
-                            sb.AppendLine(EllipsisEnd(n, 37));
+                        foreach (var n in failedItems)
+                            sb.AppendLine(EllipsisEnd(n, 90));
                     }
                     TaskDialog.Show("Загрузка семейств", sb.ToString());
                 }
@@ -238,19 +318,6 @@ namespace KPLN_FamilyManager.Forms
             if (string.IsNullOrEmpty(s) || max <= 0) return "";
             if (s.Length <= max) return s;
             return s.Substring(0, Math.Max(1, max - 1)) + "…";
-        }
-    }
-
-    internal class SilentFailuresPreprocessor : IFailuresPreprocessor
-    {
-        public FailureProcessingResult PreprocessFailures(FailuresAccessor a)
-        {
-            var msgs = a.GetFailureMessages();
-            if (msgs != null)
-                foreach (var m in msgs)
-                    if (m.GetSeverity() == FailureSeverity.Warning)
-                        a.DeleteWarning(m);
-            return FailureProcessingResult.Continue;
         }
     }
 
@@ -1965,12 +2032,6 @@ namespace KPLN_FamilyManager.Forms
 
                 if (openFormat == "OpenFamily" || openFormat == "OpenFamilyInProject")
                 {
-                    if (_uiapp == null)
-                    {
-                        TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
-                        break;
-                    }
-
                     string path = filePathFI;
                     if (!System.IO.File.Exists(path))
                     {
@@ -1982,10 +2043,15 @@ namespace KPLN_FamilyManager.Forms
                     {
                         if (openFormat == "OpenFamily")
                         {
-                            _uiapp.OpenAndActivateDocument(path);
+                            ExternalEventsHost.EnsureCreated();
+                            ExternalEventsHost.OpenFamilyHandler.BatchPaths = null;
+                            ExternalEventsHost.OpenFamilyHandler.FilePath = path;
+                            ExternalEventsHost.OpenFamilyEvent.Raise();
                         }
                         else
                         {
+                            ExternalEventsHost.EnsureCreated();
+                            ExternalEventsHost.LoadFamilyHandler.BatchPaths = null;
                             ExternalEventsHost.LoadFamilyHandler.FilePath = path;
                             ExternalEventsHost.LoadFamilyEvent.Raise();
                             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandFamilyManager.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
@@ -2110,12 +2176,6 @@ namespace KPLN_FamilyManager.Forms
 
                 if (openFormat == "OpenFamily" || openFormat == "OpenFamilyInProject")
                 {
-                    if (_uiapp == null)
-                    {
-                        TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
-                        break;
-                    }
-
                     string path = filePathFI;
                     if (!System.IO.File.Exists(path))
                     {
@@ -2127,10 +2187,15 @@ namespace KPLN_FamilyManager.Forms
                     {
                         if (openFormat == "OpenFamily")
                         {
-                            _uiapp.OpenAndActivateDocument(path);
+                            ExternalEventsHost.EnsureCreated();
+                            ExternalEventsHost.OpenFamilyHandler.BatchPaths = null;
+                            ExternalEventsHost.OpenFamilyHandler.FilePath = path;
+                            ExternalEventsHost.OpenFamilyEvent.Raise();
                         }
                         else
                         {
+                            ExternalEventsHost.EnsureCreated();
+                            ExternalEventsHost.LoadFamilyHandler.BatchPaths = null;
                             ExternalEventsHost.LoadFamilyHandler.FilePath = path;
                             ExternalEventsHost.LoadFamilyEvent.Raise();
                             DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandFamilyManager.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
@@ -4181,25 +4246,15 @@ namespace KPLN_FamilyManager.Forms
 
             if (result != MessageBoxResult.OK) return;
 
-            if (_uiapp == null)
-            {
-                TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
-                return;
-            }
+            ExternalEventsHost.EnsureCreated();
+            ExternalEventsHost.OpenFamilyHandler.FilePath = null;
+            ExternalEventsHost.OpenFamilyHandler.BatchPaths = list
+                .Select(r => r.FullPath)
+                .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
-
-
-            int ok = 0, err = 0;
-            foreach (var r in list)
-            {
-                try
-                {
-                    if (!System.IO.File.Exists(r.FullPath)) { err++; continue; }
-                    _uiapp.OpenAndActivateDocument(r.FullPath);
-                    ok++;
-                }
-                catch { err++; }
-            }
+            ExternalEventsHost.OpenFamilyEvent.Raise();
         }
 
         // Интерфейс универсального отдела. Открыть в Revit (загрузить в проект)
@@ -4219,16 +4274,11 @@ namespace KPLN_FamilyManager.Forms
 
             if (result != MessageBoxResult.OK) return;
 
-            if (_uiapp == null)
-            {
-                TaskDialog.Show("Ошибка", "Не удалось установить UIApplication.");
-                return;
-            }
-
             ExternalEventsHost.EnsureCreated();
             var handler = ExternalEventsHost.LoadFamilyHandler;
             var evnt = ExternalEventsHost.LoadFamilyEvent;
 
+            handler.FilePath = null;
             handler.BatchPaths = list
                 .Select(r => r.FullPath)
                 .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
