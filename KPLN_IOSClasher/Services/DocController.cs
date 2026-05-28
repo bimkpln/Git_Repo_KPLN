@@ -21,7 +21,7 @@ namespace KPLN_IOSClasher.Services
         /// <summary>
         /// Метка необходимости анализа проекта на коллизии
         /// </summary>
-        public static bool IsDocumentAnalyzing { get; private set; }
+        public static bool IsDocumentAnalyzing { get; private set; } = false;
 
         /// <summary>
         /// IntersectCheckEntity для элементов внутри модели ИОС, которые обрабатываются

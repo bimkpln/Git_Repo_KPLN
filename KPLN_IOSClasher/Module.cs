@@ -88,14 +88,7 @@ namespace KPLN_IOSClasher
             View activeView = args.CurrentActiveView;
 
             #region Обновление кэша по сервисам
-            ViewType actViewType = activeView.ViewType;
-            // Если вид НЕ модельный - игнор
-            if (actViewType == ViewType.FloorPlan
-                || actViewType == ViewType.ThreeD
-                || actViewType == ViewType.CeilingPlan
-                || actViewType == ViewType.Section
-                || actViewType == ViewType.EngineeringPlan
-                || actViewType == ViewType.Elevation)
+            if (IsViewAnalysed(activeView))
             {
                 DocController.CurrentDocumentUpdateData(doc);
                 // Если не анализируется, то и линки не трогаю
@@ -130,6 +123,9 @@ namespace KPLN_IOSClasher
 
             UIDocument uidoc = new UIDocument(doc);
             View activeView = uidoc.ActiveView ?? throw new Exception("Отправь разработчику - не удалось определить класс View");
+
+            if (!IsViewAnalysed(activeView))
+                return;
 
             // Обновляю по линкам, если были транзакции
             if (// Рунчая загрузка связи
@@ -190,14 +186,14 @@ namespace KPLN_IOSClasher
             // (далее - может вписывать в ExtStorage кэш по эл-там, и его читать, но тут нужен тест по скорости работы). 
             else if (modifyedLinearElems.Count() > 100)
             {
-                TaskDialog td = new TaskDialog("ВНИМАНИЕ: Коллизии")
-                {
-                    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
-                    MainInstruction = "Было отредактировано большое количество элементов. Это усложняет анализ на коллизии, поэтому анализ - ОТМЕНЕН.",
-                    CommonButtons = TaskDialogCommonButtons.Ok,
-                };
+                //TaskDialog td = new TaskDialog("ВНИМАНИЕ: Коллизии")
+                //{
+                //    MainIcon = TaskDialogIcon.TaskDialogIconInformation,
+                //    MainInstruction = "Было отредактировано большое количество элементов. Это усложняет анализ на коллизии, поэтому анализ - ОТМЕНЕН.",
+                //    CommonButtons = TaskDialogCommonButtons.Ok,
+                //};
 
-                td?.Show();
+                //td?.Show();
 
                 return;
             }
@@ -250,6 +246,21 @@ namespace KPLN_IOSClasher
 
             if (allChangedElems.Any())
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new IntersectPointDocWorker(intersectedPointEntities, allChangedElems));
+        }
+
+        /// <summary>
+        /// Определяю, запускается ли анализ
+        /// ИНФО: Если вид НЕ модельный - игнор.
+        /// Дополнительно: 3Д-вид редко используется для моделирования, но может положить комп. Игнор, даже с учётом того, что могут моделить
+        private static bool IsViewAnalysed(View activeView)
+        {
+            ViewType actViewType = activeView.ViewType;
+
+            return actViewType == ViewType.FloorPlan
+                || actViewType == ViewType.CeilingPlan
+                || actViewType == ViewType.Section
+                || actViewType == ViewType.EngineeringPlan
+                || actViewType == ViewType.Elevation;
         }
     }
 }
