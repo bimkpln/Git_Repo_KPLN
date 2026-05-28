@@ -4569,6 +4569,7 @@ namespace KPLN_Tools.ExecutableCommand
                     result.Rooms.Add(new PreparedRoomPlacement
                     {
                         ApartmentId = apartmentFi.Id,
+                        SourceRoomId = roomFi.Id,
                         RoomName = roomName.Trim(),
                         InsertPoint = insertPointInProject,
                         ExpectedAreaInternal = expectedAreaInternal
@@ -4584,6 +4585,227 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return result;
+        }
+
+        private void ApplyLoggiaRoomsToPreparedRooms(Document doc, FamilyInstance apartmentFi, PreparedApartmentRooms preparedRooms,
+            List<Line> loggiaAxisLines, List<string> debugMessages)
+        {
+            if (doc == null || apartmentFi == null || preparedRooms == null || preparedRooms.Rooms == null ||
+                loggiaAxisLines == null || loggiaAxisLines.Count == 0)
+            {
+                return;
+            }
+
+            List<FamilyInstance> roomInstances = FindRoomSubComponents(doc, apartmentFi);
+            if (roomInstances == null || roomInstances.Count == 0)
+                return;
+
+            HashSet<long> processedSourceRooms = new HashSet<long>();
+
+            foreach (Line loggiaAxis in loggiaAxisLines)
+            {
+                if (loggiaAxis == null || loggiaAxis.Length < ConvertMmToInternal(10))
+                    continue;
+
+                LoggiaRoomSplitResult split = FindBestLoggiaRoomSplit(roomInstances, loggiaAxis);
+                if (split == null || split.SourceRoom == null || split.LargerRoomPoint == null || split.LoggiaRoomPoint == null)
+                {
+                    if (debugMessages != null)
+                    {
+                        debugMessages.Add(
+                            "Лоджия квартиры ID = " + GetElementIdValue(apartmentFi.Id) +
+                            ": не удалось определить меньшее помещение для линии " +
+                            FormatPointMm(loggiaAxis.GetEndPoint(0)) + " -> " +
+                            FormatPointMm(loggiaAxis.GetEndPoint(1)) + ".");
+                    }
+
+                    continue;
+                }
+
+                long sourceRoomId = GetElementIdValue(split.SourceRoom.Id);
+                if (processedSourceRooms.Contains(sourceRoomId))
+                    continue;
+
+                PreparedRoomPlacement sourcePlacement = preparedRooms.Rooms
+                    .FirstOrDefault(x => x != null &&
+                                         x.SourceRoomId != null &&
+                                         x.SourceRoomId != ElementId.InvalidElementId &&
+                                         GetElementIdValue(x.SourceRoomId) == sourceRoomId);
+
+                if (sourcePlacement != null)
+                {
+                    sourcePlacement.InsertPoint = split.LargerRoomPoint;
+                    sourcePlacement.ExpectedAreaInternal = 0;
+                }
+
+                preparedRooms.Rooms.Add(new PreparedRoomPlacement
+                {
+                    ApartmentId = apartmentFi.Id,
+                    SourceRoomId = split.SourceRoom.Id,
+                    RoomName = "Лоджия",
+                    InsertPoint = split.LoggiaRoomPoint,
+                    ExpectedAreaInternal = 0
+                });
+
+                processedSourceRooms.Add(sourceRoomId);
+            }
+        }
+
+        private static LoggiaRoomSplitResult FindBestLoggiaRoomSplit(List<FamilyInstance> roomInstances, Line loggiaAxis)
+        {
+            if (roomInstances == null || roomInstances.Count == 0 || loggiaAxis == null)
+                return null;
+
+            XYZ axisP0 = loggiaAxis.GetEndPoint(0);
+            XYZ axisP1 = loggiaAxis.GetEndPoint(1);
+            XYZ mid = new XYZ(
+                0.5 * (axisP0.X + axisP1.X),
+                0.5 * (axisP0.Y + axisP1.Y),
+                0.5 * (axisP0.Z + axisP1.Z));
+            double tolerance = ConvertMmToInternal(100);
+
+            List<FamilyInstance> candidateRooms = roomInstances
+                .Where(x => x != null && IsPointInsideRoomRectangle2D(x, mid, tolerance))
+                .ToList();
+
+            if (candidateRooms.Count == 0)
+            {
+                candidateRooms = roomInstances
+                    .Where(x => x != null &&
+                                (IsPointInsideRoomRectangle2D(x, loggiaAxis.GetEndPoint(0), tolerance) ||
+                                 IsPointInsideRoomRectangle2D(x, loggiaAxis.GetEndPoint(1), tolerance)))
+                    .ToList();
+            }
+
+            if (candidateRooms.Count == 0)
+                candidateRooms = roomInstances.Where(x => x != null).ToList();
+
+            LoggiaRoomSplitResult best = null;
+            double bestDistance = double.MaxValue;
+
+            foreach (FamilyInstance roomFi in candidateRooms)
+            {
+                LoggiaRoomSplitResult current = TryBuildLoggiaRoomSplit(roomFi, loggiaAxis);
+                if (current == null)
+                    continue;
+
+                XYZ center = GetRoomCenterPoint(roomFi);
+                double distance = center != null ? Distance2D(center, mid) : 0;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = current;
+                }
+            }
+
+            return best;
+        }
+
+        private static LoggiaRoomSplitResult TryBuildLoggiaRoomSplit(FamilyInstance roomFi, Line loggiaAxis)
+        {
+            if (roomFi == null || loggiaAxis == null)
+                return null;
+
+            Transform tr = roomFi.GetTransform();
+            if (tr == null)
+                return null;
+
+            Transform inverse;
+            try
+            {
+                inverse = tr.Inverse;
+            }
+            catch
+            {
+                return null;
+            }
+
+            double width;
+            double depth;
+
+            try
+            {
+                width = GetRequiredLengthParam(roomFi, "Ширина", "Width");
+                depth = GetRequiredLengthParam(roomFi, "Глубина", "Depth");
+            }
+            catch
+            {
+                return null;
+            }
+
+            if (width <= 0 || depth <= 0)
+                return null;
+
+            XYZ p0 = inverse.OfPoint(loggiaAxis.GetEndPoint(0));
+            XYZ p1 = inverse.OfPoint(loggiaAxis.GetEndPoint(1));
+            double halfW = width / 2.0;
+            double halfD = depth / 2.0;
+            double minSplitOffset = ConvertMmToInternal(50);
+
+            bool verticalSplit = Math.Abs(p1.Y - p0.Y) >= Math.Abs(p1.X - p0.X);
+            XYZ largerLocal;
+            XYZ loggiaLocal;
+
+            if (verticalSplit)
+            {
+                double splitX = 0.5 * (p0.X + p1.X);
+                if (splitX <= -halfW + minSplitOffset || splitX >= halfW - minSplitOffset)
+                    return null;
+
+                double minY = Math.Min(p0.Y, p1.Y);
+                double maxY = Math.Max(p0.Y, p1.Y);
+                if (GetIntervalOverlap(minY, maxY, -halfD, halfD) < minSplitOffset)
+                    return null;
+
+                double leftWidth = splitX + halfW;
+                double rightWidth = halfW - splitX;
+                if (leftWidth <= minSplitOffset || rightWidth <= minSplitOffset)
+                    return null;
+
+                bool leftIsLoggia = leftWidth <= rightWidth;
+                double leftCenterX = 0.5 * (-halfW + splitX);
+                double rightCenterX = 0.5 * (splitX + halfW);
+
+                loggiaLocal = new XYZ(leftIsLoggia ? leftCenterX : rightCenterX, 0, 0);
+                largerLocal = new XYZ(leftIsLoggia ? rightCenterX : leftCenterX, 0, 0);
+            }
+            else
+            {
+                double splitY = 0.5 * (p0.Y + p1.Y);
+                if (splitY <= -halfD + minSplitOffset || splitY >= halfD - minSplitOffset)
+                    return null;
+
+                double minX = Math.Min(p0.X, p1.X);
+                double maxX = Math.Max(p0.X, p1.X);
+                if (GetIntervalOverlap(minX, maxX, -halfW, halfW) < minSplitOffset)
+                    return null;
+
+                double bottomDepth = splitY + halfD;
+                double topDepth = halfD - splitY;
+                if (bottomDepth <= minSplitOffset || topDepth <= minSplitOffset)
+                    return null;
+
+                bool bottomIsLoggia = bottomDepth <= topDepth;
+                double bottomCenterY = 0.5 * (-halfD + splitY);
+                double topCenterY = 0.5 * (splitY + halfD);
+
+                loggiaLocal = new XYZ(0, bottomIsLoggia ? bottomCenterY : topCenterY, 0);
+                largerLocal = new XYZ(0, bottomIsLoggia ? topCenterY : bottomCenterY, 0);
+            }
+
+            return new LoggiaRoomSplitResult
+            {
+                SourceRoom = roomFi,
+                LargerRoomPoint = tr.OfPoint(largerLocal),
+                LoggiaRoomPoint = tr.OfPoint(loggiaLocal)
+            };
+        }
+
+        private static double GetIntervalOverlap(double a0, double a1, double b0, double b1)
+        {
+            double from = Math.Max(Math.Min(a0, a1), Math.Min(b0, b1));
+            double to = Math.Min(Math.Max(a0, a1), Math.Max(b0, b1));
+            return Math.Max(0, to - from);
         }
 
         private static bool HasRoomAtPoint(Document doc, Level level, XYZ point)

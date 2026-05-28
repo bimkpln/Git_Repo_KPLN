@@ -103,6 +103,8 @@ namespace KPLN_Tools.ExecutableCommand
             public List<Line> AxisLines { get; set; }
             public WallType ShaftWallType { get; set; }
             public List<Line> ShaftAxisLines { get; set; }
+            public WallType LoggiaWallType { get; set; }
+            public List<Line> LoggiaAxisLines { get; set; }
         }
 
         private class ApartmentProcessState
@@ -315,6 +317,7 @@ namespace KPLN_Tools.ExecutableCommand
         private class PreparedRoomPlacement
         {
             public ElementId ApartmentId { get; set; }
+            public ElementId SourceRoomId { get; set; }
             public string RoomName { get; set; }
             public XYZ InsertPoint { get; set; }
             public double ExpectedAreaInternal { get; set; }
@@ -329,6 +332,13 @@ namespace KPLN_Tools.ExecutableCommand
             {
                 Rooms = new List<PreparedRoomPlacement>();
             }
+        }
+
+        private class LoggiaRoomSplitResult
+        {
+            public FamilyInstance SourceRoom { get; set; }
+            public XYZ LargerRoomPoint { get; set; }
+            public XYZ LoggiaRoomPoint { get; set; }
         }
 
         private class RoomAreaMismatchInfo
@@ -1084,27 +1094,6 @@ namespace KPLN_Tools.ExecutableCommand
                 return;
 
             p.Set(oldValue + " " + textToAppend);
-        }
-
-        private static void RemoveApartmentInstanceMarker(Element e)
-        {
-            if (e == null)
-                return;
-
-            Parameter p = e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
-            if (p == null || p.IsReadOnly)
-                return;
-
-            string oldValue = p.AsString();
-            if (string.IsNullOrWhiteSpace(oldValue) || !oldValue.Contains(ApartmentInstanceMarker))
-                return;
-
-            string newValue = oldValue.Replace(ApartmentInstanceMarker, " ");
-            while (newValue.Contains("  "))
-                newValue = newValue.Replace("  ", " ");
-
-            newValue = newValue.Trim();
-            p.Set(newValue);
         }
     }
 }

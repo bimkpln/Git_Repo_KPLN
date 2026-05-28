@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
 
 namespace KPLN_Tools.Forms
 {
@@ -53,6 +54,8 @@ namespace KPLN_Tools.Forms
 
         public List<string> ShaftWallTypeOptions { get; set; }
         public bool HasShaftWallMarkers { get; set; }
+        public List<string> LoggiaWallTypeOptions { get; set; }
+        public bool HasLoggiaWallMarkers { get; set; }
 
         public List<string> RoomCategories { get; set; }
 
@@ -67,6 +70,7 @@ namespace KPLN_Tools.Forms
             WallTypeOptionsByThickness = new Dictionary<int, List<string>>();
             WindowTypeOptions = new List<string>();
             ShaftWallTypeOptions = new List<string>();
+            LoggiaWallTypeOptions = new List<string>();
 
             RoomCategories = new List<string>();
 
@@ -89,6 +93,8 @@ namespace KPLN_Tools.Forms
             result.HasWindowMarkers = HasWindowMarkers;
             result.ShaftWallTypeOptions = ShaftWallTypeOptions != null ? new List<string>(ShaftWallTypeOptions) : new List<string>();
             result.HasShaftWallMarkers = HasShaftWallMarkers;
+            result.LoggiaWallTypeOptions = LoggiaWallTypeOptions != null ? new List<string>(LoggiaWallTypeOptions) : new List<string>();
+            result.HasLoggiaWallMarkers = HasLoggiaWallMarkers;
             result.RoomCategories = RoomCategories != null ? new List<string>(RoomCategories) : new List<string>();
             result.DoorRequirements = DoorRequirements != null
                 ? DoorRequirements.Select(x => x != null ? x.Clone() : null).ToList()
@@ -227,6 +233,7 @@ namespace KPLN_Tools.Forms
     internal class ApartmentPresetsVm : INotifyPropertyChanged
     {
         private const int ShaftWallTypeStorageKey = int.MinValue;
+        private const int LoggiaWallTypeStorageKey = int.MinValue + 1;
 
         public event Action<ApartmentPresetData> DataChanged;
         public event Action StateChanged;
@@ -362,6 +369,7 @@ namespace KPLN_Tools.Forms
         }
 
         public ObservableCollection<string> ShaftWallTypeOptions { get; private set; }
+        public ObservableCollection<string> LoggiaWallTypeOptions { get; private set; }
 
         private string _selectedShaftWallType;
 
@@ -382,6 +390,27 @@ namespace KPLN_Tools.Forms
         public bool HasShaftWallMarkers
         {
             get { return SelectedPlan != null && SelectedPlan.HasShaftWallMarkers; }
+        }
+
+        private string _selectedLoggiaWallType;
+
+        public string SelectedLoggiaWallType
+        {
+            get { return _selectedLoggiaWallType; }
+            set
+            {
+                if (_selectedLoggiaWallType != value)
+                {
+                    _selectedLoggiaWallType = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        public bool HasLoggiaWallMarkers
+        {
+            get { return SelectedPlan != null && SelectedPlan.HasLoggiaWallMarkers; }
         }
 
         private string _statusText;
@@ -429,6 +458,13 @@ namespace KPLN_Tools.Forms
                         return false;
                 }
 
+                if (HasLoggiaWallMarkers)
+                {
+                    if (string.IsNullOrWhiteSpace(SelectedLoggiaWallType) ||
+                        string.Equals(SelectedLoggiaWallType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
+                        return false;
+                }
+
                 if (Assignments == null || Assignments.Count == 0)
                     return false;
 
@@ -447,6 +483,7 @@ namespace KPLN_Tools.Forms
             DoorAssignments = new ObservableCollection<PresetSelectionVm>();
             WindowTypeOptions = new ObservableCollection<string>();
             ShaftWallTypeOptions = new ObservableCollection<string>();
+            LoggiaWallTypeOptions = new ObservableCollection<string>();
 
             _currentData = NormalizePresetData(currentData);
             ApplyContext(context, _currentData);
@@ -534,6 +571,7 @@ namespace KPLN_Tools.Forms
                 preserved.WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : preserved.WindowType;
                 preserved.WindowSillHeight = ParseInt(WindowSillHeightText, 900);
                 SetPresetShaftWallType(preserved, !string.IsNullOrWhiteSpace(SelectedShaftWallType) ? SelectedShaftWallType : GetPresetShaftWallType(preserved));
+                SetPresetLoggiaWallType(preserved, !string.IsNullOrWhiteSpace(SelectedLoggiaWallType) ? SelectedLoggiaWallType : GetPresetLoggiaWallType(preserved));
                 return preserved;
             }
 
@@ -579,6 +617,7 @@ namespace KPLN_Tools.Forms
             };
 
             SetPresetShaftWallType(result, !string.IsNullOrWhiteSpace(SelectedShaftWallType) ? SelectedShaftWallType : "Не выбрано");
+            SetPresetLoggiaWallType(result, !string.IsNullOrWhiteSpace(SelectedLoggiaWallType) ? SelectedLoggiaWallType : "Не выбрано");
 
             return result;
         }
@@ -641,6 +680,8 @@ namespace KPLN_Tools.Forms
             _selectedPlan.HasWindowMarkers = resolved.HasWindowMarkers;
             _selectedPlan.ShaftWallTypeOptions = resolved.ShaftWallTypeOptions ?? new List<string>();
             _selectedPlan.HasShaftWallMarkers = resolved.HasShaftWallMarkers;
+            _selectedPlan.LoggiaWallTypeOptions = resolved.LoggiaWallTypeOptions ?? new List<string>();
+            _selectedPlan.HasLoggiaWallMarkers = resolved.HasLoggiaWallMarkers;
             _selectedPlan.RoomCategories = resolved.RoomCategories ?? new List<string>();
             _selectedPlan.DoorRequirements = resolved.DoorRequirements ?? new List<ApartmentDoorRequirementOption>();
             _selectedPlan.DoorTypeOptionsByRequirementKey = resolved.DoorTypeOptionsByRequirementKey ?? new Dictionary<string, List<string>>();
@@ -663,6 +704,7 @@ namespace KPLN_Tools.Forms
             AddWallTypeAssignments();
             RefreshWindowFields();
             RefreshShaftWallFields();
+            RefreshLoggiaWallFields();
             AddDoorAssignments();
 
             OnPropertyChanged(nameof(Assignments));
@@ -670,6 +712,7 @@ namespace KPLN_Tools.Forms
             OnPropertyChanged(nameof(DoorAssignments));
             OnPropertyChanged(nameof(HasWindowMarkers));
             OnPropertyChanged(nameof(HasShaftWallMarkers));
+            OnPropertyChanged(nameof(HasLoggiaWallMarkers));
             UpdateStateText();
         }
 
@@ -728,6 +771,45 @@ namespace KPLN_Tools.Forms
             OnPropertyChanged(nameof(SelectedShaftWallType));
             OnPropertyChanged(nameof(ShaftWallTypeOptions));
         }
+
+        private void RefreshLoggiaWallFields()
+        {
+            LoggiaWallTypeOptions.Clear();
+            LoggiaWallTypeOptions.Add("Не выбрано");
+
+            List<string> options = SelectedPlan != null && SelectedPlan.LoggiaWallTypeOptions != null
+                ? SelectedPlan.LoggiaWallTypeOptions
+                : new List<string>();
+
+            foreach (string option in options
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct()
+                .OrderBy(x => x))
+            {
+                if (!LoggiaWallTypeOptions.Contains(option))
+                    LoggiaWallTypeOptions.Add(option);
+            }
+
+            string savedLoggiaWallType = GetPresetLoggiaWallType(_currentData);
+            string defaultLoggiaWallType = LoggiaWallTypeOptions
+                .FirstOrDefault(x => string.Equals(x, "Стена лоджии", StringComparison.OrdinalIgnoreCase));
+
+            if (string.IsNullOrWhiteSpace(defaultLoggiaWallType))
+            {
+                defaultLoggiaWallType = LoggiaWallTypeOptions
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) &&
+                                         x.IndexOf("Стена лоджии", StringComparison.OrdinalIgnoreCase) >= 0);
+            }
+
+            _selectedLoggiaWallType = !string.IsNullOrWhiteSpace(savedLoggiaWallType) &&
+                                      LoggiaWallTypeOptions.Contains(savedLoggiaWallType)
+                ? savedLoggiaWallType
+                : (!string.IsNullOrWhiteSpace(defaultLoggiaWallType) ? defaultLoggiaWallType : "Не выбрано");
+
+            OnPropertyChanged(nameof(SelectedLoggiaWallType));
+            OnPropertyChanged(nameof(LoggiaWallTypeOptions));
+        }
+
 
         private void AddWallTypeAssignments()
         {
@@ -907,7 +989,7 @@ namespace KPLN_Tools.Forms
 
             if (!CanConvertTo3D)
             {
-                StatusText = "Заполните все найденные стены, шахты, двери и окна.";
+                StatusText = "Заполните все найденные стены, шахты, лоджии, двери и окна.";
                 return;
             }
 
@@ -940,6 +1022,9 @@ namespace KPLN_Tools.Forms
 
             if (string.IsNullOrWhiteSpace(GetPresetShaftWallType(result)))
                 SetPresetShaftWallType(result, "Не выбрано");
+
+            if (string.IsNullOrWhiteSpace(GetPresetLoggiaWallType(result)))
+                SetPresetLoggiaWallType(result, "Не выбрано");
 
             if (string.IsNullOrWhiteSpace(result.EntryDoor))
                 result.EntryDoor = "Не выбрано";
@@ -999,6 +1084,60 @@ namespace KPLN_Tools.Forms
             try
             {
                 var prop = data.GetType().GetProperty("ShaftWallType");
+                if (prop != null && prop.PropertyType == typeof(string) && prop.CanWrite)
+                    prop.SetValue(data, value, null);
+            }
+            catch
+            {
+            }
+        }
+
+        private static string GetPresetLoggiaWallType(ApartmentPresetData data)
+        {
+            if (data == null)
+                return "Не выбрано";
+
+            string value;
+            if (data.WallTypeByThickness != null &&
+                data.WallTypeByThickness.TryGetValue(LoggiaWallTypeStorageKey, out value) &&
+                !string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+
+            try
+            {
+                var prop = data.GetType().GetProperty("LoggiaWallType");
+                if (prop != null && prop.PropertyType == typeof(string))
+                {
+                    value = prop.GetValue(data, null) as string;
+                    if (!string.IsNullOrWhiteSpace(value))
+                        return value;
+                }
+            }
+            catch
+            {
+            }
+
+            return "Не выбрано";
+        }
+
+        private static void SetPresetLoggiaWallType(ApartmentPresetData data, string value)
+        {
+            if (data == null)
+                return;
+
+            if (string.IsNullOrWhiteSpace(value))
+                value = "Не выбрано";
+
+            if (data.WallTypeByThickness == null)
+                data.WallTypeByThickness = new Dictionary<int, string>();
+
+            data.WallTypeByThickness[LoggiaWallTypeStorageKey] = value;
+
+            try
+            {
+                var prop = data.GetType().GetProperty("LoggiaWallType");
                 if (prop != null && prop.PropertyType == typeof(string) && prop.CanWrite)
                     prop.SetValue(data, value, null);
             }

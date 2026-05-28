@@ -338,6 +338,7 @@
                                     <RowDefinition Height="10"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0">
@@ -435,7 +436,27 @@
                                               SelectedItem="{Binding PresetsVm.SelectedShaftWallType}"/>
                                 </Grid>
 
-                                <ItemsControl Grid.Row="9"
+                                <Grid Grid.Row="9"
+                                      Margin="0,0,0,10"
+                                      Visibility="{Binding PresetsVm.HasLoggiaWallMarkers, Converter={StaticResource BoolToVis}}">
+
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="4"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0"
+                                               Text="Стена лоджии (при наличии):"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Row="2"
+                                              ItemsSource="{Binding PresetsVm.LoggiaWallTypeOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedLoggiaWallType}"/>
+                                </Grid>
+
+                                <ItemsControl Grid.Row="10"
                                               ItemsSource="{Binding PresetsVm.WallAssignments}">
 
                                     <ItemsControl.ItemTemplate>
