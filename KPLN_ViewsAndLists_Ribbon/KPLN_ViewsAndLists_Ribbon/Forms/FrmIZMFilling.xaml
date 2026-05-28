@@ -245,11 +245,11 @@
 
                                                                 <StackPanel Visibility="{Binding IsMultiStampCustom, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                                                        <CheckBox Content="КолУчЛист_Вручную_Вкл"
+                                                                        <CheckBox Content="КолУчЛист__Вручную__Вкл"
                                                                                   IsChecked="{Binding ManualEditEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                                   Margin="0,0,16,0"/>
 
-                                                                        <CheckBox Content="ИзмДокДата_Вкл_Вручную"
+                                                                        <CheckBox Content="ИзмДокДата__Вручную__Вкл"
                                                                                   IsChecked="{Binding ManualDocDataEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                                                     </StackPanel>
 
