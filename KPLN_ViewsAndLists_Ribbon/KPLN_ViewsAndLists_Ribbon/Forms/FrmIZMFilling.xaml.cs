@@ -177,7 +177,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             ManualStatusItems.Add(new SheetStatusItem(1, "-"));
             ManualStatusItems.Add(new SheetStatusItem(2, "Зам."));
             ManualStatusItems.Add(new SheetStatusItem(3, "Нов."));
-            ManualStatusItems.Add(new SheetStatusItem(-1, "Ошибка"));
+            ManualStatusItems.Add(new SheetStatusItem(-1, "Выбрать"));
         }
 
         private void BuildTree()
@@ -1213,7 +1213,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private void LoadMultiStampCustom()
         {
             ManualEditEnabled = GetBoolFromTitleBlock(_titleBlock, "Изм_Вручную_Вкл");
-            ManualDocDataEnabled = GetBoolFromTitleBlock(_titleBlock, "ИзмДокДата_Вкл_Вручную");
+            ManualDocDataEnabled = GetBoolFromTitleBlock(_titleBlock, "ИзмДокДата_Вручную_Вкл");
 
             foreach (SheetRevisionLine line in Lines)
             {
@@ -1266,7 +1266,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         private void ApplyMultiStampCustom()
         {
             SetBoolToTitleBlock(_titleBlock, "КолУчЛист_Вручную_Вкл", ManualEditEnabled);
-            SetBoolToTitleBlock(_titleBlock, "ИзмДокДата_Вкл_Вручную", ManualDocDataEnabled);
+            SetBoolToTitleBlock(_titleBlock, "ИзмДокДата_Вручную_Вкл", ManualDocDataEnabled);
 
             foreach (SheetRevisionLine line in Lines)
             {
