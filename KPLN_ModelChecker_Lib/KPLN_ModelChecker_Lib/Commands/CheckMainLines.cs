@@ -162,7 +162,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             return gridEntities
                 .Where(ge => ge.IsDistanceError)
-                .Select(ge => new CheckerEntity(ge.CurrentGrid,
+                .Select(ge => new CheckerEntity(new Element[] { ge.CurrentGrid, ge.NearestGrid },
                     "Нарушена точность построения",
                     $"Ось «{ge.CurrentGrid.Name}» расположена на расстоянии {ge.Distance} от оси «{ge.NearestGrid.Name}»",
                     $"Точность построения осей - 5,00001. ПРЕДВАРИТЕЛЬНО - согласуй внесение изменений со своим BIM-координатором"));
@@ -213,7 +213,6 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                 double minBetweenDist = Math.Min(distBetweenIntResPnts1, distBetweenIntResPnts3);
 
-                // Проверяю угол между линией пересечений и проверяемой осью (если он не 0/90/180 - значит оси со смещением)
                 // Очень мелкие линии в ревит не построить. Просто игнор
                 if (minBetweenDist > 0.1)
                 {
@@ -224,13 +223,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                         lineBetween = Line.CreateBound(intRes3.XYZPoint, intRes4.XYZPoint);
 
                     double angle = lineBetween.Direction.AngleTo(checkGridDirection);
-#if Debug2020 || Revit2020
-                    double angleDegrees = UnitUtils.ConvertFromInternalUnits(angle, DisplayUnitType.DUT_DECIMAL_DEGREES);
-#else
-                    double angleDegrees = UnitUtils.ConvertFromInternalUnits(angle, UnitTypeId.Degrees);
-#endif
-                    if (angleDegrees % 90 > 0.1)
-                        minBetweenDist = minBetweenDist * Math.Sin(angle);
+                    
+                    minBetweenDist = minBetweenDist * Math.Sin(angle);
                 }
 
 #if Debug2020 || Revit2020
