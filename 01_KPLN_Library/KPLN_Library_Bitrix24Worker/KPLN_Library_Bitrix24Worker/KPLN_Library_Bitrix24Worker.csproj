@@ -13,7 +13,7 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
-<!-- Анализ Configuration для получения версии-->
+  <!-- Анализ Configuration для получения версии-->
   <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020'">
     <RevitVer>2020</RevitVer>
   </PropertyGroup>
@@ -44,7 +44,7 @@
   </PropertyGroup>
   <!-- STATIC REFERENCES -->
   <ItemGroup>
-  <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
@@ -83,10 +83,6 @@
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
       <ItemGroup>
-        <Reference Include="KPLN_Library_SQLiteWorker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_SQLiteWorker\KPLN_Library_SQLiteWorker\bin\Debug\$(RevitVer)\KPLN_Library_SQLiteWorker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
         <Reference Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>

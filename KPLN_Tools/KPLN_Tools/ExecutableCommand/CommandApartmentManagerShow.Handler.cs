@@ -1,5 +1,8 @@
-﻿using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
@@ -8,6 +11,7 @@ using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace KPLN_Tools.ExecutableCommand
@@ -115,6 +119,8 @@ namespace KPLN_Tools.ExecutableCommand
             public bool HasInstalledWindows { get; set; }
             public int FoundEntranceDoorsCount { get; set; }
             public int InstalledEntranceDoorsCount { get; set; }
+            public int FoundFurnitureCount { get; set; }
+            public int InstalledFurnitureCount { get; set; }
             public int SkippedRoomsCount { get; set; }
             public int SkippedWallsCount { get; set; }
             public int SkippedDoorsCount { get; set; }
@@ -409,6 +415,7 @@ namespace KPLN_Tools.ExecutableCommand
                 RestoreWindow();
             }
         }
+
         public void PreparePlaceApartment(int apartmentId)
         {
             _requestType = RequestType.PlaceApartment;
@@ -478,6 +485,9 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+
+
+
         private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
         {
             if (projectDoc == null)
@@ -524,6 +534,46 @@ namespace KPLN_Tools.ExecutableCommand
 
             _familyNameByPathCache[familyPath] = detectedName ?? "";
             return detectedName;
+        }
+
+
+
+
+
+        private static long GetElementIdValue(ElementId id)
+        {
+#if Revit2024 || Debug2024
+            return id.Value;
+#else
+            return id.IntegerValue;
+#endif
+        }
+
+        private static double ConvertMmToInternal(int valueMm)
+        {
+#if Revit2024 || Revit2023 || Debug2024 || Debug2023
+            return UnitUtils.ConvertToInternalUnits(valueMm, UnitTypeId.Millimeters);
+#else
+            return UnitUtils.ConvertToInternalUnits(valueMm, DisplayUnitType.DUT_MILLIMETERS);
+#endif
+        }
+
+        private static double ConvertInternalToMm(double valueInternal)
+        {
+#if Revit2024 || Revit2023 || Debug2024 || Debug2023
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.Millimeters);
+#else
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_MILLIMETERS);
+#endif
+        }
+
+        private static double ConvertInternalAreaToSquareMeters(double valueInternal)
+        {
+#if Revit2024 || Revit2023 || Debug2024 || Debug2023
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.SquareMeters);
+#else
+            return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_SQUARE_METERS);
+#endif
         }
 
         private static double RoundTol(double value, double tol)
@@ -706,21 +756,21 @@ namespace KPLN_Tools.ExecutableCommand
             if (p == null)
             {
                 if (errors != null)
-                    errors.Add("У квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " не найден параметр '" + parameterName + "'.");
+                    errors.Add("У квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " не найден параметр '" + parameterName + "'.");
                 return false;
             }
 
             if (p.IsReadOnly)
             {
                 if (errors != null)
-                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " доступен только для чтения.");
+                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " доступен только для чтения.");
                 return false;
             }
 
             if (p.StorageType != StorageType.Double)
             {
                 if (errors != null)
-                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + " имеет некорректный тип.");
+                    errors.Add("Параметр '" + parameterName + "' у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + " имеет некорректный тип.");
                 return false;
             }
 
@@ -785,7 +835,7 @@ namespace KPLN_Tools.ExecutableCommand
                     catch (Exception ex)
                     {
                         skippedCount++;
-                        errors.Add("Ошибка у квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) + ": " + ex.Message);
+                        errors.Add("Ошибка у квартиры ID = " + GetElementIdValue(apartmentFi.Id) + ": " + ex.Message);
                     }
                 }
 
@@ -898,6 +948,10 @@ namespace KPLN_Tools.ExecutableCommand
             return placedCount > 0;
         }
 
+
+
+
+
         private static Family LoadOrFindFamily(Document doc, string familyPath)
         {
             if (doc == null)
@@ -969,6 +1023,9 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
+
+
+
         private static FamilySymbol GetFirstFamilySymbol(Document doc, Family family)
         {
             ISet<ElementId> symbolIds = family.GetFamilySymbolIds();
@@ -1027,6 +1084,27 @@ namespace KPLN_Tools.ExecutableCommand
                 return;
 
             p.Set(oldValue + " " + textToAppend);
+        }
+
+        private static void RemoveApartmentInstanceMarker(Element e)
+        {
+            if (e == null)
+                return;
+
+            Parameter p = e.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
+            if (p == null || p.IsReadOnly)
+                return;
+
+            string oldValue = p.AsString();
+            if (string.IsNullOrWhiteSpace(oldValue) || !oldValue.Contains(ApartmentInstanceMarker))
+                return;
+
+            string newValue = oldValue.Replace(ApartmentInstanceMarker, " ");
+            while (newValue.Contains("  "))
+                newValue = newValue.Replace("  ", " ");
+
+            newValue = newValue.Trim();
+            p.Set(newValue);
         }
     }
 }
