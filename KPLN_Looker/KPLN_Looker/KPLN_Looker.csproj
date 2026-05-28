@@ -55,12 +55,15 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2020\</OutputPath>
+    <DefineConstants>REVIT;Revit2020</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2024\</OutputPath>
+    <DefineConstants>REVIT;Revit2024</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
     <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Looker\2023\</OutputPath>
+    <DefineConstants>REVIT;Revit2023</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="RevitAPI">

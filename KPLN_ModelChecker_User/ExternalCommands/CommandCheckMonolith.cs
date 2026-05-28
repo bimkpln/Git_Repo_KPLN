@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.Forms;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 
 namespace KPLN_ModelChecker_User.ExternalCommands
@@ -78,7 +79,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                         if (e == null) return false;
 
                         Category cat = e.Category;
-                        if (cat == null || !allowedCategories.Contains((BuiltInCategory)cat.Id.IntegerValue))
+                        if (cat == null || !allowedCategories.Contains((BuiltInCategory)IDHelper.ElIdInt(cat.Id)))
                             return false;
 
                         string name = e.Name?.ToLowerInvariant() ?? "";

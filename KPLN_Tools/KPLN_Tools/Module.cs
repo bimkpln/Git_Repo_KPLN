@@ -522,11 +522,29 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
+                PushButtonData vk_auptDimensioner= CreateBtnData(
+                    ExtCmd_AUPT_TagPlacer.PluginName,
+                    ExtCmd_AUPT_TagPlacer.PluginName,
+                    "АУПТ: Расставляет автоматические марки для ответвлений",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExtCmd_AUPT_TagPlacer).FullName,
+                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
+                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
+                    "http://moodle");
+
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_autonumber);
+#if DEBUG
+                ovvkToolsPullDownBtn.AddPushButton(vk_auptDimensioner);
+#endif
             }
             #endregion
 

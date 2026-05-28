@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
+using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExternalCommands;
 using System;
 using System.Collections.Generic;
@@ -195,7 +196,7 @@ namespace KPLN_ModelChecker_User.Forms
                 {
                     if (count >= maxToShow) break;
 
-                    string display = $"       • {pair.Value} [ID {pair.Key.Id.IntegerValue}]\n";
+                    string display = $"       • {pair.Value} [ID {IDHelper.ElIdValue(pair.Key.Id)}]\n";
                     outputInvalidLevelElements.Add(new Run(display)
                     {
                         Foreground = Brushes.IndianRed
@@ -246,7 +247,7 @@ namespace KPLN_ModelChecker_User.Forms
                     if (count >= maxToShow) break;
 
                     string name = el.Name ?? "<без имени>";
-                    string id = el.Id.IntegerValue.ToString();
+                    string id = IDHelper.ElIdValue(el.Id).ToString();
 
                     report.Inlines.Add(new Run($"       • {name} [ID {id}]\n")
                     {
@@ -300,7 +301,7 @@ namespace KPLN_ModelChecker_User.Forms
                     if (count >= maxToShow) break;
 
                     string name = el.Name ?? "<без имени>";
-                    string id = el.Id.IntegerValue.ToString();
+                    string id = IDHelper.ElIdValue(el.Id).ToString();
 
                     report.Inlines.Add(new Run($"       • {name} [ID {id}]\n")
                     {
@@ -413,7 +414,7 @@ namespace KPLN_ModelChecker_User.Forms
                 .Select(room =>
                 {
                     string name = room.Name ?? "<Без имени>";
-                    string id = room.Id.IntegerValue.ToString();
+                    string id = IDHelper.ElIdValue(room.Id).ToString();
                     string kv = room.LookupParameter("КВ_Номер")?.AsString() ?? "-";
                     return $"КВ_Номер: {kv} - {name} ({id})";
                 }).ToList();

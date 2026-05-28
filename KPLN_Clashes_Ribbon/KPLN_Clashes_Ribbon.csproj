@@ -113,15 +113,15 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_Forms">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\2023\KPLN_Library_Forms.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Library_DBWorker">
-      <HintPath>..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="KPLN_Loader">
-      <HintPath>..\..\SetupFiles\Revit\1.Common\KPLN\2024\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2024\KPLN_Loader\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -187,7 +187,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -203,7 +203,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -219,7 +219,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -235,7 +235,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -251,7 +251,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -267,7 +267,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -283,7 +283,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -299,7 +299,7 @@
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>..\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
