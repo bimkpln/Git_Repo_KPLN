@@ -1212,7 +1212,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void LoadMultiStampCustom()
         {
-            ManualEditEnabled = GetBoolFromTitleBlock(_titleBlock, "Изм_Вручную_Вкл");
+            ManualEditEnabled = GetBoolFromTitleBlock(_titleBlock, "КолУчЛист_Вручную_Вкл");
             ManualDocDataEnabled = GetBoolFromTitleBlock(_titleBlock, "ИзмДокДата_Вручную_Вкл");
 
             foreach (SheetRevisionLine line in Lines)
@@ -1265,8 +1265,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void ApplyMultiStampCustom()
         {
-            SetBoolToTitleBlock(_titleBlock, "КолУчЛист_Вручную_Вкл", ManualEditEnabled);
-            SetBoolToTitleBlock(_titleBlock, "ИзмДокДата_Вручную_Вкл", ManualDocDataEnabled);
+            if (ManualEditEnabled)
+                SetBoolToTitleBlock(_titleBlock, "КолУчЛист_Вручную_Вкл", true);
+
+            if (ManualDocDataEnabled)
+                SetBoolToTitleBlock(_titleBlock, "ИзмДокДата_Вручную_Вкл", true);
 
             foreach (SheetRevisionLine line in Lines)
             {
