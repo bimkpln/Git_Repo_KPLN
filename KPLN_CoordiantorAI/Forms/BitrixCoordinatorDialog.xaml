@@ -1,0 +1,57 @@
+﻿<Window x:Class="KPLN_CoordiantorAI.Forms.BitrixCoordinatorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Добавить координатора"
+        Height="210"
+        Width="360"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF20242D"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="TextBlock" x:Key="LabelText">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource LabelText}" Text="ID пользователя Битрикс24"/>
+        <TextBox x:Name="UserIdTextBox" Grid.Row="1" Margin="0,0,0,10"/>
+
+        <StackPanel Grid.Row="2">
+            <TextBlock Style="{StaticResource LabelText}" Text="Имя"/>
+            <TextBox x:Name="UserNameTextBox"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Отмена" Click="OnCancelClick"/>
+            <Button Content="Добавить" Background="#FF2C6BED" BorderBrush="#FF2C6BED" Click="OnAddClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36915.13 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_CoordiantorAI", "KPLN_CoordiantorAI.csproj", "{E55D31DF-951A-45C7-A6B8-D1B647D12423}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Debug2024|x64 = Debug2024|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
+		Revit2024|x64 = Revit2024|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Debug2020|x64.Build.0 = Debug2020|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Debug2023|x64.Build.0 = Debug2023|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Debug2024|x64.ActiveCfg = Debug2024|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Debug2024|x64.Build.0 = Debug2024|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Revit2020|x64.Build.0 = Revit2020|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Revit2023|x64.Build.0 = Revit2023|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Revit2024|x64.ActiveCfg = Revit2024|x64
+		{E55D31DF-951A-45C7-A6B8-D1B647D12423}.Revit2024|x64.Build.0 = Revit2024|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F2ADD747-024A-4C72-84E9-DF996A2DC2F0}
+	EndGlobalSection
+EndGlobal

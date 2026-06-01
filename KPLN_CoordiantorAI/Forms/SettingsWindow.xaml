@@ -1,0 +1,552 @@
+﻿<Window x:Class="KPLN_CoordiantorAI.Forms.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN: Настройка ИИ"
+        Height="650" Width="1000" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF20242D"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FF20242D"/>
+        <SolidColorBrush x:Key="PanelBackgroundBrush" Color="#FF262B35"/>
+        <SolidColorBrush x:Key="ControlBackgroundBrush" Color="#FF2A303B"/>
+        <SolidColorBrush x:Key="ControlHoverBrush" Color="#FF333B49"/>
+        <SolidColorBrush x:Key="ControlSelectedBrush" Color="#FF2C6BED"/>
+        <SolidColorBrush x:Key="BorderBrushStable" Color="#FF343B49"/>
+        <SolidColorBrush x:Key="TextBrushStable" Color="#FFFFFFFF"/>
+
+        <Style TargetType="TextBlock" x:Key="LabelText">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="SectionHeader">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="10,5.5"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ToggleBorder"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="30"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Grid.Column="0"
+                                                                  Margin="10,0,4,0"
+                                                                  HorizontalAlignment="Left"
+                                                                  VerticalAlignment="Center"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  TextElement.Foreground="White"/>
+                                                <Path Grid.Column="1"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Fill="White"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="Background" Value="#FF333B49"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ToggleBorder" Property="BorderBrush" Value="#FF2C6BED"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Background="#FF2A303B"
+                                        BorderBrush="#FF4B5568"
+                                        BorderThickness="1"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ScrollViewer CanContentScroll="True"
+                                                  MaxHeight="220">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#FF333B49"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#FF2C6BED"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" x:Key="BaseButtonStyle">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF718096"/>
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.94"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF7FA4FF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.82"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.48"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}"/>
+        <Style TargetType="Button" x:Key="SuccessButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#FF2A7D47"/>
+            <Setter Property="BorderBrush" Value="#FF2A7D47"/>
+        </Style>
+        <Style TargetType="Button" x:Key="DangerButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Background" Value="#FF793627"/>
+            <Setter Property="BorderBrush" Value="#FF793627"/>
+        </Style>
+        <Style TargetType="Button" x:Key="PathActionButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="MinWidth" Value="38"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="16"/>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#FF20242D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="RowBackground" Value="#FF262B35"/>
+            <Setter Property="AlternatingRowBackground" Value="#FF2A303B"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+        </Style>
+        <Style TargetType="Button" x:Key="CoordinatorRemoveButton" BasedOn="{StaticResource BaseButtonStyle}">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="Background" Value="#FFB04646"/>
+            <Setter Property="BorderBrush" Value="#FFB04646"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushStable}"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrushStable}"/>
+            <Setter Property="Background" Value="{StaticResource ControlBackgroundBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrushStable}"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ControlHoverBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrushStable}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ControlSelectedBrush}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource ControlSelectedBrush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrushStable}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0">
+            <TabItem Header="БД">
+                <StackPanel Margin="14">
+                    <TextBlock Style="{StaticResource SectionHeader}" Text="База данных"/>
+                    <TextBlock Style="{StaticResource LabelText}" Text="Файл БД"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="DbPathTextBox" Grid.Column="0" IsReadOnly="True"/>
+                        <Button Grid.Column="1" Content="Обзор" Click="OnBrowseDatabaseFileClick"/>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource PathActionButton}"
+                                Content="📂"
+                                ToolTip="Открыть папку БД"
+                                Click="OnOpenDatabaseFolderClick"/>
+                    </Grid>
+                    <TextBlock Style="{StaticResource LabelText}" Text="Папка с эмбеддингами"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="EmbeddingFolderPathTextBox" Grid.Column="0"/>
+                        <Button Grid.Column="1" Content="Обзор" Click="OnBrowseEmbeddingFolderClick"/>
+                        <Button Grid.Column="2"
+                                Style="{StaticResource PathActionButton}"
+                                Content="📂"
+                                ToolTip="Открыть папку с эмбеддингами"
+                                Click="OnOpenEmbeddingFolderClick"/>
+                    </Grid>
+                    <TextBlock x:Name="DatabaseStatusTextBlock"
+                               Foreground="#FFB8C0CC"
+                               Margin="0,6,0,18"
+                               TextWrapping="Wrap"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Content="Создать БД"
+                                Style="{StaticResource SuccessButton}"
+                                Margin="0"
+                                Click="OnCreateDatabaseClick"/>
+                        <Button Content="Удалить все вопросы пользователей"
+                                Style="{StaticResource DangerButton}"
+                                Click="OnDeleteAllQuestionsClick"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="GigaChat">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="GigaChat"/>
+                        <TextBlock Style="{StaticResource LabelText}" Text="Auth URL"/>
+                        <TextBox x:Name="AuthUrlTextBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="API URL"/>
+                        <TextBox x:Name="ApiUrlTextBox" Margin="0,0,0,10"/>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource LabelText}" Text="Client ID"/>
+                                <TextBox x:Name="ClientIdTextBox"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Style="{StaticResource LabelText}" Text="Client Secret"/>
+                                <PasswordBox x:Name="ClientSecretPasswordBox"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Scope"/>
+                        <TextBox x:Name="ScopeTextBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Сертификат"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="CertificatePathTextBox" Grid.Column="0"/>
+                            <Button Grid.Column="1" Content="Обзор" Click="OnBrowseCertificateClick"/>
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource PathActionButton}"
+                                    Content="📂"
+                                    ToolTip="Открыть папку сертификата"
+                                    Click="OnOpenCertificateFolderClick"/>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Поиск">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="AI поиск"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Системный промт"/>
+                        <TextBox x:Name="SystemPromptTextBox"
+                                 MinHeight="130"
+                                 MaxHeight="210"
+                                 Margin="0,0,0,10"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Промт формата ответа и контекста"/>
+                        <TextBox x:Name="ResponseContextPromptTextBox"
+                                 MinHeight="150"
+                                 MaxHeight="230"
+                                 Margin="0,0,0,18"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Промт наводок, если статья не найдена"/>
+                        <TextBox x:Name="ArticleHintPromptTextBox"
+                                 MinHeight="110"
+                                 MaxHeight="190"
+                                 Margin="0,0,0,18"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                            <Button Content="Настроить алиасы статей"
+                                    Margin="0"
+                                    Background="#FF2C6BED"
+                                    BorderBrush="#FF2C6BED"
+                                    Click="OnConfigureArticleAliasesClick"/>
+                        </StackPanel>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Расширенные настройки AI поиска JSON"/>
+                        <TextBox x:Name="AiSearchSettingsJsonTextBox"
+                                 MinHeight="160"
+                                 MaxHeight="250"
+                                 Margin="0,0,0,18"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 FontFamily="Consolas"
+                                 VerticalScrollBarVisibility="Auto"/>
+                        <TextBlock Margin="0,-8,0,18"
+                                   Foreground="#FFB8C0CC"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"
+                                   LineHeight="17">
+                            <Run FontWeight="SemiBold" Text="enableEmbeddingSearch"/><Run Text=" - true/false, включает поиск по Moodle-эмбеддингам. Если false, AI отвечает без контекста Moodle."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="topK"/><Run Text=" - число от 1 до 10, сколько похожих статей передавать AI. Обычно 1-3; больше - шире контекст, но выше риск лишнего шума."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="minSimilarity"/><Run Text=" - порог похожести от -1.0 до 1.0. 0.0 почти ничего не отсекает; 0.45-0.65 строже фильтрует слабые совпадения."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="maxContextChars"/><Run Text=" - лимит символов HTML-контекста, который уйдет в AI. Практичный диапазон 8000-30000."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="allowAnswerWithoutContext"/><Run Text=" - true/false. Если false и статья не найдена по порогу, AI не будет фантазировать без источника; при заполненном промте наводок будет использоваться он."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="chatModel"/><Run Text=" - строка с названием модели для /chat/completions, например GigaChat."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="embeddingModel"/><Run Text=" - строка с названием модели для /embeddings, например Embeddings."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="sourceButtonText"/><Run Text=" - текст кнопки источника в ответе. Если источников несколько, добавится номер: Источник 1, Источник 2."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="moodleUrlTemplate"/><Run Text=" - шаблон ссылки Moodle. Обязательные плейсхолдеры: {book_id} и {chapter_id}."/>
+                            <LineBreak/>
+                            <Run FontWeight="SemiBold" Text="debugRetrieval"/><Run Text=" - true/false, добавляет score похожести к источникам и в контекст для диагностики поиска."/>
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Битрикс24">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Битрикс24"/>
+                        <TextBlock Style="{StaticResource LabelText}" Text="Входящий Webhook URL"/>
+                        <TextBox x:Name="BitrixWebhookUrlTextBox" Margin="0,0,0,14"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Что отправлять координатору"/>
+                        <ComboBox x:Name="BitrixMessageModeComboBox" Margin="0,0,0,14">
+                            <ComboBoxItem Content="Самое первое сообщение"/>
+                            <ComboBoxItem Content="Весь чат"/>
+                        </ComboBox>
+
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Ответственные по отделам"/>
+                        <ItemsControl x:Name="BitrixDepartmentsItemsControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#FF262B35"
+                                            BorderBrush="#FF343B49"
+                                            BorderThickness="1"
+                                            Padding="10"
+                                            Margin="0,0,0,10">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Foreground="White"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="14"
+                                                           Text="{Binding DepartmentName}"/>
+                                                <Button Grid.Column="1"
+                                                        Content="Добавить"
+                                                        Tag="{Binding}"
+                                                        Click="OnAddBitrixCoordinatorClick"/>
+                                            </Grid>
+
+                                            <CheckBox Content="Принудительно отправлять всем координаторам по разделу"
+                                                      IsChecked="{Binding NotifyAllCoordinators, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                            <ItemsControl ItemsSource="{Binding Coordinators}"
+                                                          Margin="0,10,0,0">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#FF2A303B"
+                                                                BorderBrush="#FF4B5568"
+                                                                BorderThickness="1"
+                                                                Padding="10,5"
+                                                                Margin="0,0,8,8">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Foreground="White"
+                                                                           VerticalAlignment="Center"
+                                                                           Text="{Binding ChipCaption}"/>
+                                                                <Button Style="{StaticResource CoordinatorRemoveButton}"
+                                                                        Content="×"
+                                                                        Tag="{Binding}"
+                                                                        Click="OnRemoveBitrixCoordinatorClick"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="1" Margin="0,14,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Закрыть" Click="OnCloseClick"/>
+            <Button Content="Сохранить" Background="#FF2C6BED" BorderBrush="#FF2C6BED" Click="OnSaveClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

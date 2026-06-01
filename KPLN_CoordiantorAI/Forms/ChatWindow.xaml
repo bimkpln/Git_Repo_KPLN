@@ -1,0 +1,459 @@
+﻿<Window x:Class="KPLN_CoordiantorAI.Forms.ChatWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Координатор ИИ"
+        Height="750"
+        Width="1100"
+        MinHeight="480"
+        MinWidth="680"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF20242D"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="Button" x:Key="ToolbarButton">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="4,0,0,0"/>
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.96"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.86"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" x:Key="SendButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="MinWidth" Value="92"/>
+            <Setter Property="Background" Value="#FF2C6BED"/>
+            <Setter Property="BorderBrush" Value="#FF2C6BED"/>
+        </Style>
+        <Style TargetType="Button" x:Key="NewChatButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="#FF2C6BED"/>
+            <Setter Property="BorderBrush" Value="#FF2C6BED"/>
+        </Style>
+        <Style TargetType="Button" x:Key="ModelWorkButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="#FF38404E"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Foreground" Value="#FF9DA8BA"/>
+        </Style>
+        <Style TargetType="Button" x:Key="CoordinatorCallButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="Margin" Value="0,6,0,0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="#FF1F7A55"/>
+            <Setter Property="BorderBrush" Value="#FF36B37E"/>
+        </Style>
+        <Style TargetType="Button" x:Key="CoordinatorHelpButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="8,2"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="#FF38404E"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF4A566A"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF7D91B0"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF2A303C"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF4B5568"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" x:Key="SourceLinkButtonStyle" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="9,2"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Background" Value="#FF2C6BED"/>
+            <Setter Property="BorderBrush" Value="#FF2C6BED"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF4B83F3"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF7AA6FF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF1E56C7"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF1E56C7"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Button" x:Key="ChatDeleteButtonStyle">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="MinHeight" Value="22"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="#FFB04646"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FFB04646"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FFCC5A5A"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FFCC5A5A"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="#FF963A3A"/>
+                                <Setter TargetName="ButtonBorder" Property="BorderBrush" Value="#FF963A3A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder" Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="DimText">
+            <Setter Property="Foreground" Value="#FFB8C0CC"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ListBoxItem" x:Key="ChatListItemStyle">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="#FF343B49"
+                                BorderThickness="1"
+                                Padding="0">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#FF303642"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#FF2C6BED"/>
+                                <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#FF2C6BED"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="Border" x:Key="BubbleBorder">
+            <Setter Property="MaxWidth" Value="360"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="10,4"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Background" Value="#FF303642"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsUserMessage}" Value="True">
+                    <Setter Property="Background" Value="#FF2C6BED"/>
+                    <Setter Property="HorizontalAlignment" Value="Right"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0"
+                Background="#FF262B35"
+                BorderBrush="#FF343B49"
+                BorderThickness="0,0,1,0"
+                Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Чаты"
+                           Foreground="White"
+                           FontWeight="SemiBold"
+                           FontSize="15"
+                           Margin="0,0,0,10"/>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                    <Button x:Name="NewChatButton"
+                            Style="{StaticResource NewChatButtonStyle}"
+                            Content="Новый чат"
+                            MouseEnter="OnNewChatButtonMouseEnter"
+                            MouseLeave="OnNewChatButtonMouseLeave"
+                            Click="OnNewChatClick"/>
+                </StackPanel>
+
+                <ListBox x:Name="SessionsListBox"
+                         Grid.Row="2"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         ItemContainerStyle="{StaticResource ChatListItemStyle}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         SelectionChanged="OnSessionsSelectionChanged">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Background="Transparent"
+                                  Tag="{Binding}"
+                                  ToolTip="{Binding FullQuestion}"
+                                  MouseLeftButtonUp="OnChatCardMouseLeftButtonUp">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0"
+                                           Text="{Binding Title}"
+                                           Foreground="White"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="10,8,36,0"/>
+                                <TextBlock Grid.Row="1"
+                                           Text="{Binding UpdatedAtCaption}"
+                                           Style="{StaticResource DimText}"
+                                           Margin="10,3,36,8"/>
+                                <Button Grid.RowSpan="2"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Bottom"
+                                        Style="{StaticResource ChatDeleteButtonStyle}"
+                                        Content="🗑"
+                                        Margin="0,0,-1,-1"
+                                        Tag="{Binding}"
+                                        Click="OnDeleteChatClick"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="#FF262B35" BorderBrush="#FF343B49" BorderThickness="0,0,0,1" Padding="12,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Координатор ИИ" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
+                        <TextBlock x:Name="SessionInfoTextBlock" Style="{StaticResource DimText}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="LikeButton" Style="{StaticResource ToolbarButton}" Content="👍  Лайк" MouseEnter="OnLikeButtonMouseEnter" MouseLeave="OnReactionButtonMouseLeave" Click="OnLikeClick"/>
+                        <Button x:Name="DislikeButton" Style="{StaticResource ToolbarButton}" Content="👎  Дизлайк" MouseEnter="OnDislikeButtonMouseEnter" MouseLeave="OnReactionButtonMouseLeave" Click="OnDislikeClick"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ListBox x:Name="MessagesListBox"
+                     Grid.Row="1"
+                     ItemsSource="{Binding Messages}"
+                     BorderThickness="0"
+                     Background="#FF20242D"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Border Style="{StaticResource BubbleBorder}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Text}"
+                                               Foreground="White"
+                                               FontSize="13"
+                                               TextWrapping="Wrap"
+                                               Loaded="OnMessageHtmlTextBlockLoaded"
+                                               DataContextChanged="OnMessageHtmlTextBlockDataContextChanged"/>
+                                    <TextBlock Text="{Binding CreatedAtCaption}"
+                                               Foreground="#CCFFFFFF"
+                                               FontSize="10"
+                                               HorizontalAlignment="Right"
+                                               Margin="0,4,0,0"/>
+                                    <Button Content="Не помогло. Написать координатору в Битрикс24"
+                                            Click="OnCoordinatorHelpClick">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource CoordinatorHelpButtonStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CanRequestCoordinatorHelp}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <ItemsControl ItemsSource="{Binding CoordinatorOffers}"
+                                                  Margin="0,4,0,0"
+                                                  FontSize="10.5">
+                                        <ItemsControl.Style>
+                                            <Style TargetType="ItemsControl">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasCoordinatorOffers}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ItemsControl.Style>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource CoordinatorCallButtonStyle}"
+                                                    Width="340"
+                                                    Tag="{Binding}"
+                                                    Click="OnCoordinatorCallClick">
+                                                    <Grid Width="316">
+                                                        <TextBlock Text="{Binding ButtonCaption}"
+                                                           TextAlignment="Left"
+                                                           TextWrapping="Wrap"
+                                                           HorizontalAlignment="Stretch"/>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Grid.Row="2" Background="#FF262B35" BorderBrush="#FF343B49" BorderThickness="0,1,0,0" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="StatusTextBlock"
+                               Grid.Row="0"
+                               Style="{StaticResource DimText}"
+                               Margin="2,0,0,6"
+                               Text="Готово"/>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="MessageTextBox"
+                                 Grid.Column="0"
+                                 MinHeight="34"
+                                 MaxHeight="92"
+                                 Padding="8"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 PreviewKeyDown="OnMessageTextBoxPreviewKeyDown"/>
+                        <Button x:Name="SendButton"
+                                Grid.Column="1"
+                                Style="{StaticResource SendButtonStyle}"
+                                Content="Отправить"
+                                Click="OnSendClick"/>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>
