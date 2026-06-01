@@ -1101,7 +1101,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Transaction transaction = null;
                 try
                 {
-                    transaction = new Transaction(_doc, "Удаление общего параметра");
+                    transaction = new Transaction(_doc, "KPLN. Удаление общего параметра");
                     transaction.Start();
 
                     if (_doc.IsFamilyDocument)
