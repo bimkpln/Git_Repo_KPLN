@@ -2633,7 +2633,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 }
             }
 
-            using (Transaction t = new Transaction(_doc, "Заполнение ИЗМов"))
+            using (Transaction t = new Transaction(_doc, "KPLN. Заполнение ИЗМов"))
             {
                 t.Start();
 

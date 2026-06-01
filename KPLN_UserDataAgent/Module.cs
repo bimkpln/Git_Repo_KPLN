@@ -30,7 +30,7 @@ namespace KPLN_UserDataAgent
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             _repository = new UserDataRepository(ModuleData.LocalDatabasePath, ModuleData.CentralDatabasePath);
-            _errorGuard = new ErrorGuard(ModuleData.ShowDebugErrors);
+            _errorGuard = new ErrorGuard(ModuleData.ShowDebugErrors, _repository.InsertError);
 
             _errorGuard.Run("Module.Execute", () =>
             {
@@ -79,47 +79,47 @@ namespace KPLN_UserDataAgent
 
         private static void OnDocumentOpened(object sender, DocumentOpenedEventArgs args)
         {
-            WriteEvent("Документ открыт", args.Document);
+            WriteEvent("DocumentOpened", args.Document);
         }
 
         private static void OnDocumentClosing(object sender, DocumentClosingEventArgs args)
         {
-            WriteEvent("Документ закрыт", args.Document);
+            WriteEvent("DocumentClosing", args.Document);
         }
 
         private static void OnDocumentSaving(object sender, DocumentSavingEventArgs args)
         {
-            WriteEvent("Сохранение документа", args.Document);
+            WriteEvent("DocumentSaving", args.Document);
         }
 
         private static void OnDocumentSaved(object sender, DocumentSavedEventArgs args)
         {
-            WriteEvent("Документ сохранён", args.Document);
+            WriteEvent("DocumentSaved", args.Document);
         }
 
         private static void OnDocumentSavingAs(object sender, DocumentSavingAsEventArgs args)
         {
-            WriteEvent("Сохранить документ как", args.Document);
+            WriteEvent("DocumentSavingAs", args.Document);
         }
 
         private static void OnDocumentSavedAs(object sender, DocumentSavedAsEventArgs args)
         {
-            WriteEvent("Документ сохранён как", args.Document);
+            WriteEvent("DocumentSavedAs", args.Document);
         }
 
         private static void OnDocumentSynchronizingWithCentral(object sender, DocumentSynchronizingWithCentralEventArgs args)
         {
-            WriteEvent("Синхронизировать документ с ЦМ", args.Document);
+            WriteEvent("DocumentSynchronizingWithCentral", args.Document);
         }
 
         private static void OnDocumentSynchronizedWithCentral(object sender, DocumentSynchronizedWithCentralEventArgs args)
         {
-            WriteEvent("Документ синхронизирован с ЦМ", args.Document);
+            WriteEvent("DocumentSynchronizedWithCentral", args.Document);
         }
 
         private static void OnViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            WriteEvent("Активирован вид", args.Document);
+            WriteEvent("ViewActivated", args.Document);
         }
 
         private static void OnIdling(object sender, IdlingEventArgs args)

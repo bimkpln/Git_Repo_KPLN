@@ -7,13 +7,15 @@ namespace KPLN_UserDataAgent.Services
     {
         private readonly object _lock = new object();
         private readonly bool _showDebugErrors;
+        private readonly Action<string, Exception> _errorSink;
         private DateTime _lastDialogTime = DateTime.MinValue;
         private string _pendingSource;
         private Exception _pendingException;
 
-        public ErrorGuard(bool showDebugErrors)
+        public ErrorGuard(bool showDebugErrors, Action<string, Exception> errorSink = null)
         {
             _showDebugErrors = showDebugErrors;
+            _errorSink = errorSink;
         }
 
         public void Run(string source, Action action)
@@ -36,6 +38,8 @@ namespace KPLN_UserDataAgent.Services
 
         public void QueueException(string source, Exception exception)
         {
+            TryWriteError(source, exception);
+
             if (!_showDebugErrors)
                 return;
 
@@ -43,6 +47,20 @@ namespace KPLN_UserDataAgent.Services
             {
                 _pendingSource = source;
                 _pendingException = exception;
+            }
+        }
+
+        private void TryWriteError(string source, Exception exception)
+        {
+            if (_errorSink == null || exception == null)
+                return;
+
+            try
+            {
+                _errorSink(source, exception);
+            }
+            catch
+            {
             }
         }
 

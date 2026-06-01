@@ -7,8 +7,11 @@ namespace KPLN_UserDataAgent.Services
     {
         private readonly UserDataRepository _repository;
         private readonly ErrorGuard _errorGuard;
+        private readonly object _randomLock = new object();
+        private readonly Random _random = new Random(Guid.NewGuid().GetHashCode());
         private Timer _timer;
         private int _isSyncing;
+        private int _isSoonSyncScheduled;
 
         public CentralSyncService(UserDataRepository repository, ErrorGuard errorGuard)
         {
@@ -21,8 +24,8 @@ namespace KPLN_UserDataAgent.Services
             if (_timer != null)
                 return;
 
-            TimeSpan startDelay = TimeSpan.FromSeconds(ModuleData.SyncStartDelaySeconds);
-            TimeSpan interval = TimeSpan.FromSeconds(ModuleData.SyncIntervalSeconds);
+            TimeSpan startDelay = GetDelayWithJitter(ModuleData.SyncStartDelaySeconds);
+            TimeSpan interval = GetDelayWithJitter(ModuleData.SyncIntervalSeconds);
             _timer = new Timer(OnTimer, null, startDelay, interval);
         }
 
@@ -32,9 +35,12 @@ namespace KPLN_UserDataAgent.Services
             if (timer == null)
                 return;
 
+            if (Interlocked.Exchange(ref _isSoonSyncScheduled, 1) == 1)
+                return;
+
             timer.Change(
-                TimeSpan.FromSeconds(ModuleData.SyncAfterWriteDelaySeconds),
-                TimeSpan.FromSeconds(ModuleData.SyncIntervalSeconds));
+                GetDelayWithJitter(ModuleData.SyncAfterWriteDelaySeconds),
+                GetDelayWithJitter(ModuleData.SyncIntervalSeconds));
         }
 
         public void Dispose()
@@ -59,8 +65,23 @@ namespace KPLN_UserDataAgent.Services
             }
             finally
             {
+                Interlocked.Exchange(ref _isSoonSyncScheduled, 0);
                 Interlocked.Exchange(ref _isSyncing, 0);
             }
+        }
+
+        private TimeSpan GetDelayWithJitter(int baseDelaySeconds)
+        {
+            int jitterSeconds = 0;
+            if (ModuleData.SyncRandomJitterSeconds > 0)
+            {
+                lock (_randomLock)
+                {
+                    jitterSeconds = _random.Next(0, ModuleData.SyncRandomJitterSeconds + 1);
+                }
+            }
+
+            return TimeSpan.FromSeconds(baseDelaySeconds + jitterSeconds);
         }
     }
 }

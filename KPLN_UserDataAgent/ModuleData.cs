@@ -35,55 +35,10 @@ namespace KPLN_UserDataAgent
         public static IntPtr RevitMainWindowHandle { get; set; }
 
         /// <summary>
-        /// Путь к общей SQLite-базе агента.
+        /// Путь к общей SQLite-базе.
         /// </summary>
         public const string CentralDatabasePath = @"Z:\Отдел BIM\Туленинов Роман\СТАТИСТИКА\KPLN_UserDataAgent.db";
-
-        /// <summary>
-        /// Compatibility alias for older module code.
-        /// </summary>
         public const string DatabasePath = CentralDatabasePath;
-
-        /// <summary>
-        /// Задержка первой попытки отправки локальной очереди в общую БД.
-        /// </summary>
-        public const int SyncStartDelaySeconds = 10;
-
-        /// <summary>
-        /// Интервал попыток отправки локальной очереди в общую БД.
-        /// </summary>
-        public const int SyncIntervalSeconds = 60;
-
-        /// <summary>
-        /// Задержка ускоренной попытки синхронизации после записи события.
-        /// </summary>
-        public const int SyncAfterWriteDelaySeconds = 2;
-
-        /// <summary>
-        /// Размер пачки событий за одну попытку отправки.
-        /// </summary>
-        public const int SyncBatchSize = 500;
-
-        /// <summary>
-        /// Таймаут ожидания локального SQLite lock.
-        /// </summary>
-        public const int LocalBusyTimeoutMs = 1000;
-
-        /// <summary>
-        /// Таймаут ожидания сетевого SQLite lock.
-        /// </summary>
-        public const int CentralBusyTimeoutMs = 1000;
-
-        /// <summary>
-        /// Минимальный интервал между debug-диалогами.
-        /// </summary>
-        public const int DebugDialogMinIntervalSeconds = 300;
-
-        /// <summary>
-        /// Временный активный режим отладки: ошибки показываются пользователю.
-        /// Для тихого режима заменить на false.
-        /// </summary>
-        public const bool ShowDebugErrors = true;
 
         /// <summary>
         /// Локальная SQLite-база-очередь на диске пользователя.
@@ -99,6 +54,71 @@ namespace KPLN_UserDataAgent
                     "KPLN_UserDataAgent_Local.db");
             }
         }
+
+        /// <summary>
+        /// Задержка первой фоновой попытки отправить локальную очередь в общую БД после запуска Revit.
+        /// Единица измерения: секунды.
+        /// </summary>
+        public const int SyncStartDelaySeconds = 60;
+
+        /// <summary>
+        /// Интервал регулярных фоновых попыток отправить локальную очередь в общую БД.
+        /// Если общая БД или сетевой диск недоступны, следующая попытка будет через этот интервал.
+        /// Единица измерения: секунды.
+        /// </summary>
+        public const int SyncIntervalSeconds = 300;
+
+        /// <summary>
+        /// Задержка ускоренной попытки синхронизации после записи нового события в локальную БД.
+        /// Единица измерения: секунды.
+        /// </summary>
+        public const int SyncAfterWriteDelaySeconds = 60;
+
+        /// <summary>
+        /// Случайная добавка к задержкам синхронизации, чтобы пользователи не били в общую БД одновременно.
+        /// Фактическая задержка = базовая задержка + случайное число от 0 до этого значения.
+        /// Единица измерения: секунды.
+        /// </summary>
+        public const int SyncRandomJitterSeconds = 120;
+
+        /// <summary>
+        /// Максимальное количество локальных событий, отправляемых в общую БД за одну попытку синхронизации.
+        /// Единица измерения: штуки записей.
+        /// </summary>
+        public const int SyncBatchSize = 200;
+
+        /// <summary>
+        /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.
+        /// Единица измерения: миллисекунды.
+        /// </summary>
+        public const int LocalBusyTimeoutMs = 1000;
+
+        /// <summary>
+        /// Таймаут ожидания блокировки общей SQLite-базы на сетевом диске.
+        /// Единица измерения: миллисекунды.
+        /// </summary>
+        public const int CentralBusyTimeoutMs = 5000;
+
+        /// <summary>
+        /// Максимальный размер текущей локальной SQLite-базы перед ротацией в архивную очередь.
+        /// Архивная очередь продолжает синхронизироваться в общую БД и удаляется только после успешной отправки всех записей.
+        /// Единица измерения: мегабайты.
+        /// </summary>
+        public const int LocalDatabaseRotationSizeMb = 50;
+
+
+        /// <summary>
+        /// Режим показа ошибок пользователю через диалог Revit.
+        /// false: скрытый режим, ошибки не показываются пользователю, но пишутся в техническую очередь AgentErrors.
+        /// </summary>
+        public const bool ShowDebugErrors = false;
+
+        /// <summary>
+        /// Минимальный интервал между debug-диалогами с ошибками.
+        /// Единица измерения: секунды.
+        /// </summary>
+        public const int DebugDialogMinIntervalSeconds = 300;
+
 
         private static string GetModuleFileCreationDate()
         {

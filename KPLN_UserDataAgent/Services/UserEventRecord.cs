@@ -5,6 +5,7 @@ namespace KPLN_UserDataAgent.Services
     internal sealed class UserEventRecord
     {
         public long LocalId { get; set; }
+        public string LocalDatabasePath { get; set; }
         public string SyncId { get; set; }
         public string EventTime { get; set; }
         public string WindowsUser { get; set; }
