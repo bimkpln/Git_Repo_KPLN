@@ -51,13 +51,13 @@
   </PropertyGroup>
   <!-- DEBUG OUTPUTS -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_UserDataAgent\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_UserDataAgent\2020\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_UserDataAgent\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_UserDataAgent\2023\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_UserDataAgent\2024\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_UserDataAgent\2024\</OutputPath>
   </PropertyGroup>
   <!-- RELEASE OUTPUTS -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
