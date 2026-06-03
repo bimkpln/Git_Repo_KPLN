@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using KPLN_Library_DBWorker.Core;
+using KPLN_Tools.ExternalCommands;
 
 namespace KPLN_Looker
 {
@@ -426,6 +427,10 @@ namespace KPLN_Looker
             Document doc = args.Document;
             if (doc == null) return;
 
+            
+            // Запускаю автосохранение
+            ExtCmd_AutoSaveConfig.Save(doc);
+
 
             #region Утсановка переменных, привязаных к виду
             // Имя файла
@@ -533,6 +538,9 @@ namespace KPLN_Looker
         {
             Document doc = args.Document;
             if (doc == null) return;
+
+            // Обновляю счётчик автосохранения
+            ExtCmd_AutoSaveConfig.UpdateLastAlarm(doc);
 
 #if REVIT
             if (MonitoredDocFilePath_ExceptARKon(doc) == null)

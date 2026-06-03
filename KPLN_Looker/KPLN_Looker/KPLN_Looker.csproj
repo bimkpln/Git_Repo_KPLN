@@ -133,6 +133,10 @@
           <HintPath>C:\KPLN_Debug\KPLN_ModelChecker_User\Debug\$(RevitVer)\KPLN_ModelChecker_User.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Tools">
+          <HintPath>C:\KPLN_Debug\KPLN_Tools\Debug\$(RevitVer)\KPLN_Tools.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
@@ -171,6 +175,10 @@
         </Reference>
         <Reference Include="KPLN_ModelChecker_User">
           <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ModelChecker_User\$(RevitVer)\KPLN_ModelChecker_User.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Tools">
+          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Tools\$(RevitVer)\KPLN_Tools.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Loader">
