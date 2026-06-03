@@ -1,0 +1,112 @@
+﻿<Window x:Class="KPLN_Tools.Forms.AutosaveForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d" 
+        SizeToContent="WidthAndHeight"
+        Height="225"
+        Width="450"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Title="KPLN: Автосохранение"
+        Foreground="White"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border
+        Style="{StaticResource RCTG}">
+        <StackPanel>
+            <StackPanel
+                DataContext="{Binding CurrentAutoSaveM, Mode=TwoWay}">
+                <CheckBox 
+                    Style="{StaticResource CHB}"
+                    Content="Включить автосохранение?"
+                    IsChecked="{Binding IsAutoSaveEnabled, Mode=TwoWay}"/>
+
+                <CheckBox 
+                    Style="{StaticResource CHB}"
+                    IsChecked="{Binding ShowWarningWindow, Mode=TwoWay}"
+                    IsEnabled="{Binding OptionsEnabled}">
+                    <CheckBox.Content>
+                        <TextBlock TextWrapping="Wrap">
+                            Показывать окно "Предупреждение об автосохранении"?
+                        </TextBlock>
+                    </CheckBox.Content>
+                </CheckBox>
+
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Интервал автосохранения, мин:"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <ComboBox 
+                        Width="150"
+                        IsEnabled="{Binding IntervalOptionsEnabled}"
+                        ItemsSource="{Binding Intervals}"
+                        SelectedItem="{Binding SelectedInterval, Mode=TwoWay}"
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+
+                <CheckBox 
+                    Style="{StaticResource CHB}"
+                    Content="Сохранять резервные копии отдельно?"
+                    IsChecked="{Binding IsSaveToCopiesEnabled, Mode=TwoWay}"/>
+
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Количество резерных копий, шт.:"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <ComboBox 
+                        Width="150"
+                        IsEnabled="{Binding IntervalCopiesCountEnabled}"
+                        ItemsSource="{Binding CopiesCountVar}"
+                        SelectedItem="{Binding CopiesCountSelected, Mode=TwoWay}"
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+            </StackPanel>
+
+            <DockPanel 
+                HorizontalAlignment="Right"
+                Margin="0,5,0,0">
+                <Button 
+                    Content="Принять"
+                    Style="{StaticResource BTN}"
+                    Width="80"
+                    Height="30"
+                    Command="{Binding OkCommandCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <Button 
+                    Content="Отмена"
+                    Style="{StaticResource BTN}"
+                    Width="80"
+                    Height="30"
+                    Command="{Binding CloseWindowCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+            </DockPanel>
+        </StackPanel>
+    </Border>
+</Window>

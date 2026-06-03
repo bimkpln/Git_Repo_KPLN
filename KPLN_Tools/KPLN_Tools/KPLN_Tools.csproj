@@ -235,6 +235,7 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_AutoSaveConfig.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
       <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
@@ -258,6 +259,8 @@
     <Compile Include="Forms\HiddenElementsFilterWindow.xaml.cs">
       <DependentUpon>HiddenElementsFilterWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\AutoSaveM.cs" />
+    <Compile Include="Forms\Models\AutoSaveVM.cs" />
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
     </Compile>
@@ -371,6 +374,9 @@
     </Compile>
     <Compile Include="Forms\ScanProgressWindow.xaml.cs">
       <DependentUpon>ScanProgressWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\AutosaveForm.xaml.cs">
+      <DependentUpon>AutosaveForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ScheduleSubForm.xaml.cs">
       <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
@@ -492,6 +498,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\AutosaveForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -534,6 +544,7 @@
     <EmbeddedResource Include="Imagens\hiddenElementsFilterSmall.png" />
     <EmbeddedResource Include="Imagens\SpecSumBig.png" />
     <EmbeddedResource Include="Imagens\SpecSumSmall.png" />
+    <EmbeddedResource Include="Imagens\diskBig.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

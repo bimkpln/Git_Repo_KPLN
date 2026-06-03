@@ -9,7 +9,7 @@ namespace KPLN_Tools.Forms
         {
             InitializeComponent();
 
-            DataContext = new ScheduleSubFormVM(header, currentValue); ;
+            DataContext = new ScheduleSubFormVM(header, currentValue);
         }
 
         public ScheduleSubFormVM SSFVm => DataContext as ScheduleSubFormVM;

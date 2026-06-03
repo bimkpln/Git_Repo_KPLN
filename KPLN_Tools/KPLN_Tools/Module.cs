@@ -1,4 +1,7 @@
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_Library_DBWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools.Common;
@@ -19,10 +22,7 @@ namespace KPLN_Tools
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
 
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
@@ -694,7 +694,33 @@ namespace KPLN_Tools
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
             }
 
-// Только для 20 версии, т.к.для более новых появилось событие изменения выбора пользователем
+            PushButtonData autoSaveConfig = CreateBtnData(
+                    ExtCmd_AutoSaveConfig.PluginName,
+                    ExtCmd_AutoSaveConfig.PluginName,
+                    "Настроить автосохранение локальной копии модели. ВАЖНО: синхронизация при этом не происходит, только сохранение локальной копии. " +
+                    "Если нужно внести изменения в модель из хранилища после вылета Revit - откройте последнюю локальную копию и произведите синхронизацию вручную",
+                    string.Format(
+                        "Возможности:\n " +
+                            "1. Вкл/выкл функцию автосохранения локальной копии.\n" +
+                            "2. Настройка частоты автосохранения.\n" +
+                            "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(ExtCmd_AutoSaveConfig).FullName,
+                    "KPLN_Tools.Imagens.diskBig.png",
+                    "KPLN_Tools.Imagens.diskBig.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1301#:~:text=%D0%9E%D0%A2%D0%94%D0%95%D0%9B%D0%AC%D0%9D%D0%AB%D0%99%20%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%90%D0%92%D0%A2%D0%9E%D0%A1%D0%9E%D0%A5%D0%A0%D0%90%D0%9D%D0%95%D0%9D%D0%98%D0%95%22",
+                    true);
+
+            panel.AddItem(autoSaveConfig);
+
+            var ascRI = panel.GetItems().FirstOrDefault(item => item.Name.Equals(ExtCmd_AutoSaveConfig.PluginName));
+            SetRIShowText(ascRI, false);
+
+
+            // Только для 20 версии, т.к.для более новых появилось событие изменения выбора пользователем
 #if Revit2020 || Debug2020
             PushButtonData sendMsgToBitrix = CreateBtnData(
                 CommandSendMsgToBitrix.PluginName,
@@ -765,15 +791,15 @@ namespace KPLN_Tools
             {
                 Text = text,
                 ToolTip = shortDescription,
-                LongDescription = longDescription
+                LongDescription = longDescription,                
             };
             data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
             data.Image = PngImageSource(smlImageName);
             data.LargeImage = PngImageSource(lrgImageName);
+
+            
             if (avclass)
-            {
                 data.AvailabilityClassName = typeof(StaticAvailable).FullName;
-            }
 
             return data;
         }
@@ -816,9 +842,7 @@ namespace KPLN_Tools
                 LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32),
             }) as PulldownButton;
 
-            // Тонкая настройка видимости RibbonItem
-            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(pullDownRI.GetId());
-            revitRibbonItem.ShowText = showName;
+            SetRIShowText(pullDownRI, showName);
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
             // Регистрация кнопки для смены иконок
@@ -826,6 +850,15 @@ namespace KPLN_Tools
 #endif
 
             return pullDownRI;
+        }
+
+        /// <summary>
+        /// Тонкая настройка видимости текста RibbonItem
+        /// </summary>
+        private static void SetRIShowText(RibbonItem ri, bool showName)
+        {
+            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(ri.GetId());
+            revitRibbonItem.ShowText = showName;
         }
     }
 }
