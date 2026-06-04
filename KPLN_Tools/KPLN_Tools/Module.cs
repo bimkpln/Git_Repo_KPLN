@@ -522,29 +522,35 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
-                PushButtonData vk_auptDimensioner= CreateBtnData(
+                PushButtonData auptTagPlacer= CreateBtnData(
                     ExtCmd_AUPT_TagPlacer.PluginName,
                     ExtCmd_AUPT_TagPlacer.PluginName,
                     "АУПТ: Расставляет автоматические марки для ответвлений",
                     string.Format(
+                        "Алгоритм запуска:\n" +
+                            "1. Открываем план, на котором нужно промаркировать трубы систем АУПТ;\n" +
+                            "2. Запускаем и настраиваем правила маркировки.\n\n" +
+                        "Логика работы:\n" +
+                            "0. Управляемая логика вынесена в стартовое окно;\n" +
+                            "1. Игнорируются вертикальные участки на планах (до 80°);\n" +
+                            "2. Марка поворачивается параллельно трубе;\n" +
+                            "3. Марка ставиться по центру участка (учитывая врезки и др. соединители);\n\n" +
                         "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                         ModuleData.Date,
                         ModuleData.Version,
                         ModuleData.ModuleName
                     ),
                     typeof(ExtCmd_AUPT_TagPlacer).FullName,
-                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
-                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
-                    "http://moodle");
+                    "KPLN_Tools.Imagens.auptTagSmall.png",
+                    "KPLN_Tools.Imagens.auptTagSmall.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
                 ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
                 ovvkToolsPullDownBtn.AddPushButton(ovvk_autonumber);
-#if DEBUG
-                ovvkToolsPullDownBtn.AddPushButton(vk_auptDimensioner);
-#endif
+                ovvkToolsPullDownBtn.AddPushButton(auptTagPlacer);
             }
             #endregion
 

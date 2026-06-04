@@ -1,0 +1,167 @@
+﻿<Window x:Class="KPLN_Tools.Forms.AUPT_TagPlacerForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d" 
+        SizeToContent="WidthAndHeight"
+        Width="450"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Title="KPLN: ПТ_Маркировка труб"
+        Foreground="White"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Border
+        Style="{StaticResource RCTG}">
+        <StackPanel>
+            <StackPanel
+                DataContext="{Binding AUPTTagPlacerModel}">
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Выбери марку труб:"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <ComboBox 
+                        Width="250"
+                        Style="{StaticResource CBX}"
+                        ItemsSource="{Binding DocTagTypeNames}"
+                        SelectedItem="{Binding SelectedTagTypeName}"
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+                
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Ключевая часть имени типа системы:"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <TextBox 
+                        Width="100"
+                        Style="{StaticResource TXB}"
+                        Foreground="Black"
+                        Text="{Binding AUPTSystemTypeNameMainPart}"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+                
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Min длина труб, мм:"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <TextBox 
+                        Width="100"
+                        Style="{StaticResource TXB}"
+                        Foreground="Black"
+                        Text="{Binding MINPipeLenght}"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Игнорировать уже промаркированные трубы?"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <CheckBox 
+                        Style="{StaticResource CHB}"
+                        IsChecked="{Binding IgnoreTagged}"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+                
+                <DockPanel 
+                    VerticalAlignment="Center">
+                    <TextBlock 
+                        Text="Игнорировать магистраль?"
+                        Style="{StaticResource TXT}"
+                        FontSize="14"
+                        VerticalAlignment="Center"/>
+                    <CheckBox 
+                        Style="{StaticResource CHB}"
+                        IsChecked="{Binding IngoreMainPipe}"
+                        HorizontalAlignment="Right"/>
+                </DockPanel>
+            </StackPanel>
+
+            <DockPanel 
+                HorizontalAlignment="Right"
+                Margin="0,5,0,0">
+                <Button 
+                    Content="Запуск"
+                    Style="{StaticResource BTN}"
+                    Width="80"
+                    Height="30"
+                    Command="{Binding RunCommandCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <Button 
+                    Content="Отмена"
+                    Style="{StaticResource BTN}"
+                    Width="80"
+                    Height="30"
+                    Command="{Binding CloseWindowCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+            </DockPanel>
+
+            <Expander 
+                Header="Подсказки"
+                IsExpanded="False"
+                Foreground ="#EDEDED"
+                VerticalAlignment = "Center"
+                FontSize = "16">
+                <StackPanel>
+                    <TextBlock 
+                        Style="{StaticResource TXT}"                       
+                        Opacity="0.5">
+                        <Bold>Примечание1: </Bold> Ключевая часть имени типа системы нужна, чтобы 
+                        отфильтровать АУПТ систему от других по параметру "Тип системы". Если на виде кроме АУПТ ничего нет - 
+                        можно оставить пустым
+                    </TextBlock>
+                    <TextBlock 
+                        Style="{StaticResource TXT}"                       
+                        Opacity="0.5">
+                        <Bold>Примечание2: </Bold> Min длина труб - это минимальная длина участка 
+                        горизонтальной трубы, на который будет добавлена марка
+                    </TextBlock>
+                    <TextBlock 
+                        Style="{StaticResource TXT}"                       
+                        Opacity="0.5">
+                        <Bold>Примечание3: </Bold> Игнорировать уже промаркированные трубы означает,
+                        что если на трубе на текущем виде есть марка того же типа, что и выбранная для
+                        маркировки этим плагином - горизонтальный участок трубы будет проигнорирован
+                    </TextBlock>
+                    <TextBlock 
+                        Style="{StaticResource TXT}"                       
+                        Opacity="0.5">
+                        <Bold>Примечание4: </Bold> Игнорировать магистраль означает,
+                        что магистральный (т.е. самый большой по сечению) трубопровод будет проигнорирован
+                    </TextBlock>
+                </StackPanel>
+            </Expander>
+            
+        </StackPanel>
+    </Border>
+</Window>

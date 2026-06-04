@@ -1,7 +1,9 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
+using KPLN_Tools.Forms.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace KPLN_Tools.Common.TagsHelpers
 {
@@ -15,176 +17,138 @@ namespace KPLN_Tools.Common.TagsHelpers
     {
         private readonly Document _doc;
         private readonly View _view;
-        private readonly FamilySymbol _tagSymbol;
-        private readonly AnnotationCollisionResolver _resolver;
+        private readonly AUPTTagPlacerM _placerM;
 
-        // Минимальный фрагмент, который маркируем
-        private const int MIN_LENGHT_MM = 15;
-        
-        // Шаг подбора позиции вдоль трубы (в долях от длины сегмента)
-        private const int STEPS_ALONG = 11;          // 0.50, 0.45, 0.55, 0.40, 0.60 ...
-        private const double PERP_OFFSET_MM = 300.0; // перпендикулярный сдвиг при коллизии
-        private const int PERP_TRIES = 4;            // ±300, ±600 ...
 
-        public TagPlacer(Document doc, View view, FamilySymbol tagSymbol, AnnotationCollisionResolver resolver)
+        public TagPlacer(Document doc, View view, AUPTTagPlacerM placerM)
         {
             _doc = doc;
             _view = view;
-            _tagSymbol = tagSymbol;
-            _resolver = resolver;
+            _placerM = placerM;
         }
 
-        public void PlaceForBranches(IEnumerable<Pipe> branchSegments, out int placed, out int skipped)
+        public void PlaceForBranches(IEnumerable<Pipe> branchSegments)
         {
-            placed = 0;
-            skipped = 0;
-
             foreach (Pipe pipe in branchSegments)
             {
-                if (TryPlaceOnPipe(pipe))
-                    placed++;
-                else
-                    skipped++;
-            }
-        }
-
-        private bool TryPlaceOnPipe(Pipe pipe)
-        {
-            if (!(pipe.Location is LocationCurve lc) || !(lc.Curve is Line line))
-                return false; // работаем только с прямыми сегментами
-
-            // Пропускаем вертикальные участки — на плане это точка, марка вдоль трубы не имеет смысла (допуск ~8° от вертикали)
-            XYZ dir3d = (line.GetEndPoint(1) - line.GetEndPoint(0)).Normalize();
-            if (Math.Abs(dir3d.Z) > 0.99) 
-                return false;
-
-            XYZ p0 = ProjectToView(line.GetEndPoint(0));
-            XYZ p1 = ProjectToView(line.GetEndPoint(1));
-            XYZ dir2d = (p1 - p0);
-#if Debug2020 || Revit2020
-            double dir2d_lenght = UnitUtils.ConvertFromInternalUnits(dir2d.GetLength(), DisplayUnitType.DUT_MILLIMETERS);
-#else
-            double dir2d_lenght = UnitUtils.ConvertFromInternalUnits(dir2d.GetLength(), UnitTypeId.Millimeters);
-#endif
-
-            if (dir2d_lenght < MIN_LENGHT_MM) 
-                return false;
-            
-            XYZ unit = dir2d.Normalize();
-
-            // Угол вдоль трубы, нормализованный к [-π/2, π/2], чтобы текст не оказался вверх ногами
-            double angle = Math.Atan2(unit.Y, unit.X);
-            if (angle > Math.PI / 2 + 1e-9) 
-                angle -= Math.PI;
-            else if (angle < -Math.PI / 2 - 1e-9) 
-                angle += Math.PI;
-
-            XYZ midpoint = (p0 + p1) * 0.5;
-
-            IndependentTag tag = IndependentTag.Create(
-                _doc, 
-                _view.Id, 
-                new Reference(pipe), 
-                false, 
-                TagMode.TM_ADDBY_CATEGORY, 
-                TagOrientation.Horizontal, 
-                midpoint);
-
-            if (tag == null) 
-                return false;
+                // Работаем только с прямыми сегментами
+                if (!(pipe.Location is LocationCurve lc) || !(lc.Curve is Line line))
+                    continue;
 
 
-            tag.ChangeTypeId(_tagSymbol.Id);
-
-
-            RotateTagAroundHead(tag, angle);
-            _doc.Regenerate();
-
-            // Перебор позиций вдоль сегмента
-            double[] tList = BuildAlongFractions();
-            foreach (double t in tList)
-            {
-                XYZ point = p0 + dir2d * t;
-                MoveTagHeadTo(tag, point);
-                _doc.Regenerate();
-
-                if (!_resolver.HasCollision(tag))
-                    return true;
-            }
-
-            // Перпендикулярный сдвиг с выноской
-            XYZ perp = new XYZ(-unit.Y, unit.X, 0).Normalize();
-#if Debug2020 || Revit2020
-            double offsetStep = UnitUtils.ConvertToInternalUnits(PERP_OFFSET_MM, DisplayUnitType.DUT_MILLIMETERS);
-#else
-            double offsetStep = UnitUtils.ConvertToInternalUnits(PERP_OFFSET_MM, UnitTypeId.Millimeters);
-#endif
-
-            try { tag.HasLeader = true; } catch { /* ignore */ }
-
-            for (int i = 1; i <= PERP_TRIES; i++)
-            {
-                foreach (int sign in new[] { 1, -1 })
+                // Игнор промаркированных (если нужно)
+                if (_placerM.IgnoreTagged)
                 {
-                    foreach (double t in tList)
+                    var elClassFilter = new ElementClassFilter(typeof(IndependentTag));
+                    // Фильтр по виду ElementOwnerViewFilter не применяю, т.к. нужна поддержка Р2020, там его нет
+                    var depElems = pipe.GetDependentElements(elClassFilter);
+                    if (depElems.Any())
                     {
-                        XYZ basePt = p0 + dir2d * t;
-                        XYZ shifted = basePt + perp * (offsetStep * i * sign);
-                        MoveTagHeadTo(tag, shifted);
-                        TrySetLeaderEnd(tag, pipe, basePt);
-                        _doc.Regenerate();
+                        var tagsOnView = depElems
+                            .Select(id => _doc.GetElement(id))
+                            .Where(e => 
+                                e != null 
+                                && e.OwnerViewId == _view.Id 
+                                && e.get_Parameter(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM).AsValueString().Equals(_placerM.SelectedTagTypeName));
 
-                        if (!_resolver.HasCollision(tag))
-                            return true;
+                        if (tagsOnView.Any())
+                            continue;
                     }
                 }
+
+
+                XYZ p0 = line.GetEndPoint(0);
+                XYZ p1 = line.GetEndPoint(1);
+
+
+                // Пропускаем вертикальные участки — на плане это точка, марка вдоль трубы не имеет смысла (допуск ~8° от вертикали)
+                XYZ dir3d = (p1 - p0).Normalize();
+                if (Math.Abs(dir3d.Z) > 0.99)
+                    continue;
+
+
+                // Пропускаю мелкие фрагменты
+                XYZ dir2d = (p1 - p0);
+#if Debug2020 || Revit2020
+                double dir2d_lenght = UnitUtils.ConvertFromInternalUnits(dir2d.GetLength(), DisplayUnitType.DUT_MILLIMETERS);
+#else
+                double dir2d_lenght = UnitUtils.ConvertFromInternalUnits(dir2d.GetLength(), UnitTypeId.Millimeters);
+#endif
+                if (dir2d_lenght < _placerM.MINPipeLenght)
+                    continue;
+
+
+                // Определяю направление трубы для поворота марки
+                XYZ unit = dir2d.Normalize();
+                // Угол вдоль трубы, нормализованный к [-π/2, π/2], чтобы текст не оказался вверх ногами
+                double angle = Math.Atan2(unit.Y, unit.X);
+                if (angle > Math.PI / 2 + 1e-9)
+                    angle -= Math.PI;
+                else if (angle < -Math.PI / 2 - 1e-9)
+                    angle += Math.PI;
+
+
+                // Определяю количество соед. трубы.
+                // Если их больше 2 - делю на отдельные марки на ответвления (такое возможно, если трубы соед. врезками)
+                var connMng = pipe.ConnectorManager;
+                var connSet = connMng.Connectors;
+                XYZ[] pipeSegmPnt;
+                // Если больше 2 - начинаю поиск средних по отрезкам
+                if (connSet.Size > 2)
+                {
+                    List<XYZ> splitPoints = new List<XYZ>();
+
+                    var iter = connSet.ForwardIterator();
+                    iter.Reset();
+                    while (iter.MoveNext())
+                    {
+                        if (!(iter.Current is Connector conn))
+                            continue;
+
+                        // Игнор крайних коннекторов
+                        XYZ connOrg = conn.Origin;
+                        if (connOrg.IsAlmostEqualTo(p0, 0.001) || connOrg.IsAlmostEqualTo(p1, 0.001))
+                            continue;
+
+                        splitPoints.Add(connOrg);
+                    }
+
+                    pipeSegmPnt = GetSegmentMidpoints(p0, p1, splitPoints, _placerM.MINPipeLenght);
+                }
+                // Если 2 - то просто центр
+                else
+                    pipeSegmPnt = new XYZ[] { (p0 + p1) * 0.5 };
+
+
+                foreach(XYZ pnt in pipeSegmPnt)
+                {
+                    IndependentTag tag = IndependentTag.Create(
+                        _doc,
+                        _view.Id,
+                        new Reference(pipe),
+                        false,
+                        TagMode.TM_ADDBY_CATEGORY,
+                        TagOrientation.Horizontal,
+                        pnt);
+
+                    if (tag == null)
+                        continue;
+
+
+                    // Применяю марку и вращаю 
+                    tag.ChangeTypeId(_placerM.SelectedTagType.Id);
+                    RotateTagAroundHead(tag, angle);
+                }
             }
-
-            _doc.Delete(tag.Id);
-            return false;
-        }
-
-        private static double[] BuildAlongFractions()
-        {
-            // 0.50, 0.45, 0.55, 0.40, 0.60, ..., но не выходим за 0.15..0.85
-            var list = new List<double> { 0.50 };
-            double step = 0.05;
-            for (int i = 1; i <= STEPS_ALONG; i++)
-            {
-                double down = 0.50 - step * i;
-                double up = 0.50 + step * i;
-                if (down >= 0.15) list.Add(down);
-                if (up <= 0.85) list.Add(up);
-            }
-            return list.ToArray();
-        }
-
-        private XYZ ProjectToView(XYZ p)
-        {
-            // Для плана — просто обнуляем Z до уровня вида (для коллизий и положения тега
-            // важна только XY-плоскость).
-            double z = 0;
-            try { z = _view.Origin.Z; } catch { z = 0; }
-            return new XYZ(p.X, p.Y, z);
-        }
-
-        private void MoveTagHeadTo(IndependentTag tag, XYZ target)
-        {
-            XYZ current = tag.TagHeadPosition;
-            XYZ delta = target - current;
-            if (delta.GetLength() < 1e-9) 
-                return;
-            
-            ElementTransformUtils.MoveElement(_doc, tag.Id, delta);
         }
 
         /// <summary>
         /// Поворот вдоль трубы — после Regenerate, чтобы TagHeadPosition был актуальным
         /// </summary>
-        private bool RotateTagAroundHead(IndependentTag tag, double angle)
+        private void RotateTagAroundHead(IndependentTag tag, double angle)
         {
             if (Math.Abs(angle) < 1e-9) 
-                return false;
+                return;
 
 #if !Debug2020 && !Revit2020
             XYZ head = tag.TagHeadPosition;
@@ -193,24 +157,33 @@ namespace KPLN_Tools.Common.TagsHelpers
 #else
             tag.TagOrientation = TagOrientation.Vertical;
 #endif
-
-            return true;
         }
 
-        private void TrySetLeaderEnd(IndependentTag tag, Pipe pipe, XYZ pointOnPipe)
+        private static XYZ[] GetSegmentMidpoints(XYZ p0, XYZ p1, List<XYZ> splitPoints, double minLengthMm)
         {
-            try
-            {
-#if !Debug2020 && !Revit2020
-                tag.SetLeaderEnd(new Reference(pipe), pointOnPipe);
+#if Debug2020 || Revit2020
+            double minLengthFt = UnitUtils.ConvertToInternalUnits(minLengthMm, DisplayUnitType.DUT_MILLIMETERS);
 #else
-                tag.LeaderEnd = pointOnPipe; // Revit 2020/2021: одиночный хост
+            double minLengthFt = UnitUtils.ConvertToInternalUnits(minLengthMm, UnitTypeId.Millimeters);
 #endif
-            }
-            catch
+
+            XYZ dir = p1 - p0;
+            double Project(XYZ pt) => (pt - p0).DotProduct(dir);
+
+            var nodes = new List<XYZ> { p0 };
+            nodes.AddRange(splitPoints.OrderBy(pt => Project(pt)));
+            nodes.Add(p1);
+
+            var midpoints = new List<XYZ>();
+            for (int i = 0; i < nodes.Count - 1; i++)
             {
-                // некоторые конфигурации тегов не поддерживают явное задание конца выноски
+                double length = nodes[i].DistanceTo(nodes[i + 1]);
+                if (length < minLengthFt) continue; // пропускаем короткие отрезки
+
+                midpoints.Add((nodes[i] + nodes[i + 1]) * 0.5);
             }
+
+            return midpoints.ToArray();
         }
     }
 }

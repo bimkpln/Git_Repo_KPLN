@@ -213,7 +213,6 @@
     </When>
   </Choose>
   <ItemGroup>
-    <Compile Include="Common\TagsHelpers\AnnotationCollisionResolver.cs" />
     <Compile Include="Common\IDHelper.cs" />
     <Compile Include="ExecutableCommand\ApartmentExecutionReportActionController.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.cs" />
@@ -250,6 +249,9 @@
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\AUPT_TagPlacerForm.xaml.cs">
+      <DependentUpon>AUPT_TagPlacerForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\EvacuationRoutesDialog.xaml.cs">
       <DependentUpon>EvacuationRoutesDialog.xaml</DependentUpon>
     </Compile>
@@ -259,7 +261,9 @@
     <Compile Include="Forms\HiddenElementsFilterWindow.xaml.cs">
       <DependentUpon>HiddenElementsFilterWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Models\AUPTTagPlacerM.cs" />
     <Compile Include="Forms\Models\AutoSaveM.cs" />
+    <Compile Include="Forms\Models\AUPTTagPlacerVM.cs" />
     <Compile Include="Forms\Models\AutoSaveVM.cs" />
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
@@ -482,6 +486,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\AUPT_TagPlacerForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -545,6 +553,8 @@
     <EmbeddedResource Include="Imagens\SpecSumBig.png" />
     <EmbeddedResource Include="Imagens\SpecSumSmall.png" />
     <EmbeddedResource Include="Imagens\diskBig.png" />
+    <EmbeddedResource Include="Imagens\auptTagBig.png" />
+    <EmbeddedResource Include="Imagens\auptTagSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
