@@ -4,7 +4,6 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using KPLN_Library_PluginActivityWorker;
-using KPLN_ViewsAndLists_Ribbon.Common;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -37,58 +36,17 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 return Result.Cancelled;
             }
 
-            // Получаю активное окно через окно винды.
-            // Причина: Диспетчер проекта в ревите - это отдельный вид, uidoc.ActiveView - возвращает его.
-            string activeViewName = string.Empty;
-            string rWindTitle = RevitWindowUtil.GetRevitWindowTitle();
-            int index = 1;
-            if (!string.IsNullOrWhiteSpace(rWindTitle))
-            {
-                rWindTitle = rWindTitle.Replace("[", "");
-                rWindTitle = rWindTitle.Replace("]", "");
-                
-                // Проверка по расширению файла. У некоторых оно скрыто
-                string[] splitRWindTitle = rWindTitle.Split(new string[] {".rvt - "}, System.StringSplitOptions.None);
-                
-                // Если не по расширению - то по имени ревит-пользователя
-                if (splitRWindTitle.Length == 1)
-                    splitRWindTitle = rWindTitle.Split(new string[] {$"{KPLN_Loader.Application.CurrentRevitUser.RevitUserName} - " }, System.StringSplitOptions.None);
 
-                // Если не по расширению - то по ещё хуже вариант - на фрагмент " - ", который запрещён в имени файла, но не факт, что его там нет
-                if (splitRWindTitle.Length == 1)
-                {
-                    splitRWindTitle = rWindTitle.Split(new string[] { " - " }, System.StringSplitOptions.None);
-                    // В начале тоже есть " - ", это имя самой программы ревит
-                    index = 2;
-                }
+            // Получаю активное окно 
+            View actView = uidoc.ActiveView;
+            View actGraphView = uidoc.ActiveGraphicalView;
+            string actGraphViewName = actGraphView.Title;
 
-                // Если нет - дроп
-                if (splitRWindTitle.Length == 1 || splitRWindTitle.Length > 3)
-                {
-                    MessageBox.Show(
-                        "Отправь разработчику - не удалось получить имя Revit-окна",
-                        "Ошибка",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-
-                    return Result.Cancelled;
-                }
-                
-                activeViewName = splitRWindTitle[index];
-            }
-
-            
-            IEnumerable<View> docViewsElem = new FilteredElementCollector(doc)
-                .OfClass(typeof(View))
-                .Cast<View>();
-            View actView = docViewsElem.FirstOrDefault(v => v.Title.Equals(activeViewName));
-            
-            
             // Блок ошибочного запуска
-            if (actView == null
-                || (actView.ViewType != ViewType.CeilingPlan
-                && actView.ViewType != ViewType.EngineeringPlan
-                && actView.ViewType != ViewType.FloorPlan))
+            if (actGraphView == null
+                || (actGraphView.ViewType != ViewType.CeilingPlan
+                && actGraphView.ViewType != ViewType.EngineeringPlan
+                && actGraphView.ViewType != ViewType.FloorPlan))
             {
                 MessageBox.Show(
                     "Запускай с активного плана этажа, плана потолков, или плана несущих конструкций (тыкни ЛКМ в рабочей области плана)",
@@ -100,11 +58,11 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             }
 
 
-            ViewCropRegionShapeManager vcrsManager = actView.GetCropRegionShapeManager();
-            
+            ViewCropRegionShapeManager vcrsManager = actGraphView.GetCropRegionShapeManager();
+
             // Настройки подрезки вида 
-            bool actViewCrop = actView.CropBoxActive;
-            bool actViewCropBoxVisible = actView.CropBoxVisible;
+            bool actViewCrop = actGraphView.CropBoxActive;
+            bool actViewCropBoxVisible = actGraphView.CropBoxVisible;
             IList<CurveLoop> actViewCropCurves = vcrsManager.GetCropShape();
             if (!actViewCrop)
             {
@@ -119,10 +77,10 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             }
 
             // Подрезка не может содержать несколько CurveLoop
-            CurveLoop actViewCropCurveLoop =  actViewCropCurves.FirstOrDefault();
+            CurveLoop actViewCropCurveLoop = actViewCropCurves.FirstOrDefault();
 
             // Настройки подрезки аннотаций
-            int actViewAnnCropParamData = actView.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE).AsInteger();
+            int actViewAnnCropParamData = actGraphView.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE).AsInteger();
             double bottomAnnCropOffset = 0;
             double leftAnnCropOffset = 0;
             double rightAnnCropOffset = 0;
@@ -137,27 +95,30 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
 
             // Собираю планы для анализа
-            List<View> selectedViews = new List<View>();
-
             // 1. Юзер выбрал их в модели
-            Selection sel = commandData.Application.ActiveUIDocument.Selection;
-            ElementId[] selIds = sel.GetElementIds().ToArray();
-            foreach (ElementId selId in selIds)
+            List<View> selectedViews = new List<View>();
+            if (actView.ViewType == ViewType.ProjectBrowser)
             {
-                Element elem = doc.GetElement(selId);
-                if (elem is View curView)
-                    selectedViews.Add(curView);
+                Selection sel = commandData.Application.ActiveUIDocument.Selection;
+                ElementId[] selIds = sel.GetElementIds().ToArray();
+                foreach (ElementId selId in selIds)
+                {
+                    Element elem = doc.GetElement(selId);
+                    if (elem is View curView)
+                        selectedViews.Add(curView);
+                }
             }
-
             // 2. Нужно окно с выбором
-            if (!selectedViews.Any())
+            else
             {
-                
-                
+                IEnumerable<View> docViewsElem = new FilteredElementCollector(doc)
+                    .OfClass(typeof(View))
+                    .Cast<View>();
+
                 List<ElementEntity> viewEntities = docViewsElem
                     .Where(v =>
                         (v.ViewType == ViewType.CeilingPlan || v.ViewType == ViewType.EngineeringPlan || v.ViewType == ViewType.FloorPlan)
-                        && !(v.Id.Equals(actView.Id))
+                        && !(v.Id.Equals(actGraphView.Id))
                         && !v.IsTemplate)
                     .Select(el => new ElementEntity(el)).ToList();
 
@@ -194,7 +155,6 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
                 return Result.Cancelled;
             }
-
 
 
             // Основной процесс
