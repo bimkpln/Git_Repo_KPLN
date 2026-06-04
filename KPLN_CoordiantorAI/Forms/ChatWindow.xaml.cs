@@ -21,7 +21,7 @@ namespace KPLN_CoordiantorAI.Forms
     public partial class ChatWindow : Window
     {
         private static readonly Regex SupportedHtmlTagRegex = new Regex(
-            "<\\s*(?<closing>/)?\\s*(?<tag>a|b|strong|i|em|p|div|br|ul|ol|li)\\b(?<attrs>[^>]*)>",
+            "<\\s*(?<closing>/)?\\s*(?<tag>a)\\b(?<attrs>[^>]*)>",
             RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static readonly Regex HtmlHrefRegex = new Regex(
             "\\bhref\\s*=\\s*([\"'])(?<href>.*?)\\1",
@@ -35,6 +35,9 @@ namespace KPLN_CoordiantorAI.Forms
         private static readonly Regex MarkdownBoldRegex = new Regex(
             "\\*\\*(?<text>.+?)\\*\\*",
             RegexOptions.Singleline);
+        private static readonly Regex HtmlLineBreakRegex = new Regex(
+            "<\\s*br\\s*/?\\s*>|<\\s*/\\s*(p|div|li|ul|ol)\\s*>|<\\s*li\\b[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static readonly Regex AnyHtmlTagRegex = new Regex("<[^>]+>", RegexOptions.Singleline);
         private static readonly Regex BrokenHtmlTailRegex = new Regex(
             "<\\s*/?\\s*(a|b|strong|i|em|p|div|br|ul|ol|li)?\\s*$",
@@ -53,6 +56,8 @@ namespace KPLN_CoordiantorAI.Forms
         private ChatSession _session;
         private bool _isWaitingForAnswer;
         private bool _ignoreSessionSelectionChanged;
+        private int _userMessageHistoryIndex = -1;
+        private string _messageDraftBeforeHistory = string.Empty;
 
         public ChatWindow(CoordinatorAiRepository repository, IAiChatClient aiClient, CurrentUserContext userContext)
         {
@@ -110,6 +115,7 @@ namespace KPLN_CoordiantorAI.Forms
             _ignoreSessionSelectionChanged = false;
 
             DataContext = _session;
+            ResetUserMessageHistoryNavigation();
             SessionInfoTextBlock.Text = string.Format(
                 "{0}. Отдел {1}",
                 string.IsNullOrWhiteSpace(_session.UserName) ? Environment.UserName : _session.UserName,
@@ -144,11 +150,120 @@ namespace KPLN_CoordiantorAI.Forms
 
         private async void OnMessageTextBoxPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.Key == Key.Up && !HasTextInputModifier() && IsCaretOnFirstInputLine())
+            {
+                e.Handled = ShowPreviousUserMessage();
+                return;
+            }
+
+            if (e.Key == Key.Down && !HasTextInputModifier() && IsCaretOnLastInputLine())
+            {
+                e.Handled = ShowNextUserMessage();
+                return;
+            }
+
             if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
                 return;
 
             e.Handled = true;
             await SendCurrentMessageAsync();
+        }
+
+        private bool ShowPreviousUserMessage()
+        {
+            IList<string> history = GetCurrentUserMessageHistory();
+            if (history.Count == 0)
+                return false;
+
+            if (_userMessageHistoryIndex < 0)
+            {
+                _messageDraftBeforeHistory = MessageTextBox.Text ?? string.Empty;
+                _userMessageHistoryIndex = history.Count - 1;
+            }
+            else if (_userMessageHistoryIndex > 0)
+            {
+                _userMessageHistoryIndex--;
+            }
+            else
+            {
+                return true;
+            }
+
+            SetMessageTextFromHistory(history[_userMessageHistoryIndex]);
+            return true;
+        }
+
+        private bool ShowNextUserMessage()
+        {
+            if (_userMessageHistoryIndex < 0)
+                return false;
+
+            IList<string> history = GetCurrentUserMessageHistory();
+            if (history.Count == 0)
+            {
+                ResetUserMessageHistoryNavigation();
+                return false;
+            }
+
+            if (_userMessageHistoryIndex < history.Count - 1)
+            {
+                _userMessageHistoryIndex++;
+                SetMessageTextFromHistory(history[_userMessageHistoryIndex]);
+            }
+            else
+            {
+                string draft = _messageDraftBeforeHistory ?? string.Empty;
+                ResetUserMessageHistoryNavigation();
+                SetMessageTextFromHistory(draft);
+            }
+
+            return true;
+        }
+
+        private IList<string> GetCurrentUserMessageHistory()
+        {
+            List<string> history = new List<string>();
+            if (_session == null || _session.Messages == null)
+                return history;
+
+            foreach (ChatMessage message in _session.Messages)
+            {
+                if (message == null || message.Role != ChatMessageRole.User || string.IsNullOrWhiteSpace(message.Text))
+                    continue;
+
+                history.Add(message.Text.Trim());
+            }
+
+            return history;
+        }
+
+        private void SetMessageTextFromHistory(string text)
+        {
+            MessageTextBox.Text = text ?? string.Empty;
+            MessageTextBox.CaretIndex = MessageTextBox.Text.Length;
+            MessageTextBox.ScrollToEnd();
+        }
+
+        private void ResetUserMessageHistoryNavigation()
+        {
+            _userMessageHistoryIndex = -1;
+            _messageDraftBeforeHistory = string.Empty;
+        }
+
+        private static bool HasTextInputModifier()
+        {
+            return Keyboard.Modifiers != ModifierKeys.None;
+        }
+
+        private bool IsCaretOnFirstInputLine()
+        {
+            return MessageTextBox.GetLineIndexFromCharacterIndex(MessageTextBox.CaretIndex) <= 0;
+        }
+
+        private bool IsCaretOnLastInputLine()
+        {
+            int lineIndex = MessageTextBox.GetLineIndexFromCharacterIndex(MessageTextBox.CaretIndex);
+            return lineIndex >= MessageTextBox.LineCount - 1;
         }
 
         private void OnNewChatClick(object sender, RoutedEventArgs e)
@@ -253,6 +368,7 @@ namespace KPLN_CoordiantorAI.Forms
             };
 
             _session.Messages.Add(userMessage);
+            ResetUserMessageHistoryNavigation();
             MessageTextBox.Clear();
             ScrollMessagesToEnd();
             SaveSessionSafely();
@@ -408,32 +524,37 @@ namespace KPLN_CoordiantorAI.Forms
                 MessagesListBox.Items.Refresh();
         }
 
-        private void OnMessageHtmlTextBlockLoaded(object sender, RoutedEventArgs e)
+        private void OnMessageRichTextBoxLoaded(object sender, RoutedEventArgs e)
         {
-            RenderMessageHtml(sender as TextBlock, (sender as TextBlock)?.DataContext as ChatMessage);
+            RenderMessageHtml(sender as RichTextBox, (sender as RichTextBox)?.DataContext as ChatMessage);
         }
 
-        private void OnMessageHtmlTextBlockDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        private void OnMessageRichTextBoxDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
-            RenderMessageHtml(sender as TextBlock, e.NewValue as ChatMessage);
+            RenderMessageHtml(sender as RichTextBox, e.NewValue as ChatMessage);
         }
 
-        private void RenderMessageHtml(TextBlock textBlock, ChatMessage message)
+        private void RenderMessageHtml(RichTextBox richTextBox, ChatMessage message)
         {
-            if (textBlock == null || message == null)
+            if (richTextBox == null)
+                return;
+
+            Paragraph paragraph;
+            richTextBox.Document = CreateMessageDocument(richTextBox, out paragraph);
+            if (message == null)
                 return;
 
             string html = message.Text ?? string.Empty;
-            textBlock.Inlines.Clear();
 
             Stack<MessageInlineFrame> frames = new Stack<MessageInlineFrame>();
             Stack<MessageListFrame> lists = new Stack<MessageListFrame>();
             int textIndex = 0;
             foreach (Match match in SupportedHtmlTagRegex.Matches(html))
             {
-                AddFormattedMessageText(GetMessageInlines(textBlock, frames), html.Substring(textIndex, match.Index - textIndex));
+                AddFormattedMessageText(GetMessageInlines(paragraph.Inlines, frames), html.Substring(textIndex, match.Index - textIndex));
                 RenderMessageTag(
-                    textBlock,
+                    richTextBox,
+                    paragraph.Inlines,
                     frames,
                     lists,
                     match.Groups["tag"].Value.ToLowerInvariant(),
@@ -442,11 +563,31 @@ namespace KPLN_CoordiantorAI.Forms
                 textIndex = match.Index + match.Length;
             }
 
-            AddFormattedMessageText(GetMessageInlines(textBlock, frames), html.Substring(textIndex));
+            AddFormattedMessageText(GetMessageInlines(paragraph.Inlines, frames), html.Substring(textIndex));
+        }
+
+        private static FlowDocument CreateMessageDocument(RichTextBox richTextBox, out Paragraph paragraph)
+        {
+            FlowDocument document = new FlowDocument
+            {
+                PagePadding = new Thickness(0),
+                Background = Brushes.Transparent,
+                FontFamily = richTextBox.FontFamily,
+                FontSize = richTextBox.FontSize,
+                Foreground = richTextBox.Foreground
+            };
+
+            paragraph = new Paragraph
+            {
+                Margin = new Thickness(0)
+            };
+            document.Blocks.Add(paragraph);
+            return document;
         }
 
         private void RenderMessageTag(
-            TextBlock textBlock,
+            RichTextBox richTextBox,
+            InlineCollection rootInlines,
             Stack<MessageInlineFrame> frames,
             Stack<MessageListFrame> lists,
             string tag,
@@ -455,11 +596,11 @@ namespace KPLN_CoordiantorAI.Forms
         {
             if (isClosing)
             {
-                CloseMessageTag(textBlock, frames, lists, tag);
+                CloseMessageTag(rootInlines, frames, lists, tag);
                 return;
             }
 
-            InlineCollection inlines = GetMessageInlines(textBlock, frames);
+            InlineCollection inlines = GetMessageInlines(rootInlines, frames);
             if (tag == "br")
             {
                 AddMessageBreak(inlines);
@@ -488,31 +629,25 @@ namespace KPLN_CoordiantorAI.Forms
 
             if (tag == "b" || tag == "strong")
             {
-                Bold bold = new Bold();
-                inlines.Add(bold);
-                frames.Push(new MessageInlineFrame(tag, bold.Inlines));
                 return;
             }
 
             if (tag == "i" || tag == "em")
             {
-                Italic italic = new Italic();
-                inlines.Add(italic);
-                frames.Push(new MessageInlineFrame(tag, italic.Inlines));
                 return;
             }
 
             if (tag == "a")
-                AddMessageLink(textBlock, frames, attributes);
+                AddMessageLink(richTextBox, rootInlines, frames, attributes);
         }
 
         private void CloseMessageTag(
-            TextBlock textBlock,
+            InlineCollection rootInlines,
             Stack<MessageInlineFrame> frames,
             Stack<MessageListFrame> lists,
             string tag)
         {
-            InlineCollection inlines = GetMessageInlines(textBlock, frames);
+            InlineCollection inlines = GetMessageInlines(rootInlines, frames);
             if (tag == "p" || tag == "div" || tag == "li")
             {
                 AddMessageBlockBreak(inlines);
@@ -531,7 +666,11 @@ namespace KPLN_CoordiantorAI.Forms
             CloseMessageInlineFrame(frames, tag);
         }
 
-        private void AddMessageLink(TextBlock textBlock, Stack<MessageInlineFrame> frames, string attributes)
+        private void AddMessageLink(
+            FrameworkElement resourceHost,
+            InlineCollection rootInlines,
+            Stack<MessageInlineFrame> frames,
+            string attributes)
         {
             Match hrefMatch = HtmlHrefRegex.Match(attributes ?? string.Empty);
             string decodedHref = hrefMatch.Success
@@ -547,7 +686,7 @@ namespace KPLN_CoordiantorAI.Forms
 
             if (SourceLinkAttributeRegex.IsMatch(attributes ?? string.Empty))
             {
-                AddSourceLinkButton(textBlock, frames, uri, GetSourceLinkLabel(attributes));
+                AddSourceLinkButton(resourceHost, rootInlines, frames, uri, GetSourceLinkLabel(attributes));
                 return;
             }
 
@@ -557,7 +696,7 @@ namespace KPLN_CoordiantorAI.Forms
                 Foreground = Brushes.LightSkyBlue
             };
             hyperlink.RequestNavigate += OnMessageHyperlinkRequestNavigate;
-            GetMessageInlines(textBlock, frames).Add(hyperlink);
+            GetMessageInlines(rootInlines, frames).Add(hyperlink);
             frames.Push(new MessageInlineFrame("a", hyperlink.Inlines));
         }
 
@@ -571,7 +710,12 @@ namespace KPLN_CoordiantorAI.Forms
             return string.IsNullOrWhiteSpace(label) ? "Источник" : label;
         }
 
-        private void AddSourceLinkButton(TextBlock textBlock, Stack<MessageInlineFrame> frames, Uri uri, string label)
+        private void AddSourceLinkButton(
+            FrameworkElement resourceHost,
+            InlineCollection rootInlines,
+            Stack<MessageInlineFrame> frames,
+            Uri uri,
+            string label)
         {
             Button button = new Button
             {
@@ -580,7 +724,7 @@ namespace KPLN_CoordiantorAI.Forms
                 ToolTip = "Открыть источник"
             };
 
-            Style style = TryFindResource("SourceLinkButtonStyle") as Style;
+            Style style = resourceHost.TryFindResource("SourceLinkButtonStyle") as Style;
             if (style != null)
                 button.Style = style;
 
@@ -590,15 +734,15 @@ namespace KPLN_CoordiantorAI.Forms
                 Padding = new Thickness(0, 6, 6, 0),
                 Child = button
             };
-            GetMessageInlines(textBlock, frames).Add(new InlineUIContainer(sourceButtonHost)
+            GetMessageInlines(rootInlines, frames).Add(new InlineUIContainer(sourceButtonHost)
             {
                 BaselineAlignment = BaselineAlignment.Center
             });
         }
 
-        private static InlineCollection GetMessageInlines(TextBlock textBlock, Stack<MessageInlineFrame> frames)
+        private static InlineCollection GetMessageInlines(InlineCollection rootInlines, Stack<MessageInlineFrame> frames)
         {
-            return frames.Count == 0 ? textBlock.Inlines : frames.Peek().Inlines;
+            return frames.Count == 0 ? rootInlines : frames.Peek().Inlines;
         }
 
         private static void CloseMessageInlineFrame(Stack<MessageInlineFrame> frames, string tag)
@@ -639,18 +783,7 @@ namespace KPLN_CoordiantorAI.Forms
             if (string.IsNullOrWhiteSpace(text))
                 return;
 
-            int textIndex = 0;
-            foreach (Match match in MarkdownBoldRegex.Matches(text))
-            {
-                AddPlainMessageText(inlines, text.Substring(textIndex, match.Index - textIndex));
-
-                Bold bold = new Bold();
-                AddPlainMessageText(bold.Inlines, match.Groups["text"].Value);
-                inlines.Add(bold);
-                textIndex = match.Index + match.Length;
-            }
-
-            AddPlainMessageText(inlines, text.Substring(textIndex));
+            AddPlainMessageText(inlines, MarkdownBoldRegex.Replace(text, "${text}"));
         }
 
         private static void AddPlainMessageText(InlineCollection inlines, string text)
@@ -766,7 +899,8 @@ namespace KPLN_CoordiantorAI.Forms
 
         private static string GetMessageDisplayText(string html)
         {
-            string text = AnyHtmlTagRegex.Replace(html ?? string.Empty, string.Empty);
+            string text = HtmlLineBreakRegex.Replace(html ?? string.Empty, "\n");
+            text = AnyHtmlTagRegex.Replace(text, string.Empty);
             text = WebUtility.HtmlDecode(text);
             text = AnyHtmlTagRegex.Replace(text, string.Empty);
             text = BrokenHtmlTailRegex.Replace(text, string.Empty);
