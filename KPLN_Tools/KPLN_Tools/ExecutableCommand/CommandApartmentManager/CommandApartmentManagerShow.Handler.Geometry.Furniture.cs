@@ -209,6 +209,7 @@ namespace KPLN_Tools.ExecutableCommand
                     }
 
                     ApplyFamilyInstanceFlipState(nestedFi, created, debugMessages);
+                    ApplyFamilyInstanceAxisFlipCorrection(nestedFi, created, debugMessages);
                     CopyFurnitureDimensionParameters(nestedFi, created, debugMessages);
                 }
                 catch (Exception ex)
@@ -351,6 +352,96 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+        private static void ApplyFamilyInstanceAxisFlipCorrection(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
+        {
+            if (source == null || target == null)
+                return;
+
+            ApplyHandAxisFlipCorrection(source, target, debugMessages);
+            ApplyFacingAxisFlipCorrection(source, target, debugMessages);
+        }
+
+        private static void ApplyHandAxisFlipCorrection(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
+        {
+            XYZ sourceHand = GetFamilyInstanceHandDirection2D(source, null);
+            XYZ targetHand = GetFamilyInstanceHandDirection2D(target, null);
+
+            if (!ShouldFlipFurnitureAxis(targetHand, sourceHand))
+                return;
+
+            if (!CanFlipHand(target))
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Невозможно исправить HandOrientation у мебели/сантехники ID = " + IDHelper.ElIdValue(source.Id) + ": созданный тип не поддерживает flipHand.");
+
+                return;
+            }
+
+            try
+            {
+                target.flipHand();
+                TryRegenerateFurnitureDocument(target.Document);
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось исправить HandOrientation у мебели/сантехники ID = " + IDHelper.ElIdValue(source.Id) + ": " + ex.Message);
+            }
+        }
+
+        private static void ApplyFacingAxisFlipCorrection(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
+        {
+            XYZ sourceFacing = GetFamilyInstanceFacingDirection2D(source, null);
+            XYZ targetFacing = GetFamilyInstanceFacingDirection2D(target, null);
+
+            if (!ShouldFlipFurnitureAxis(targetFacing, sourceFacing))
+                return;
+
+            if (!CanFlipFacing(target))
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Невозможно исправить FacingOrientation у мебели/сантехники ID = " + IDHelper.ElIdValue(source.Id) + ": созданный тип не поддерживает flipFacing.");
+
+                return;
+            }
+
+            try
+            {
+                target.flipFacing();
+                TryRegenerateFurnitureDocument(target.Document);
+            }
+            catch (Exception ex)
+            {
+                if (debugMessages != null)
+                    debugMessages.Add("Не удалось исправить FacingOrientation у мебели/сантехники ID = " + IDHelper.ElIdValue(source.Id) + ": " + ex.Message);
+            }
+        }
+
+        private static bool ShouldFlipFurnitureAxis(XYZ targetDirection, XYZ sourceDirection)
+        {
+            if (targetDirection == null || sourceDirection == null)
+                return false;
+
+            double dot = Dot2D(targetDirection, sourceDirection);
+            double cross = Math.Abs(Cross2D(targetDirection, sourceDirection));
+
+            return dot < -0.98 && cross < 0.05;
+        }
+
+        private static void TryRegenerateFurnitureDocument(Document doc)
+        {
+            if (doc == null)
+                return;
+
+            try
+            {
+                doc.Regenerate();
+            }
+            catch
+            {
+            }
+        }
+
         private static void ApplyFamilyInstanceFlipState(FamilyInstance source, FamilyInstance target, List<string> debugMessages)
         {
             if (source == null || target == null)
@@ -384,6 +475,7 @@ namespace KPLN_Tools.ExecutableCommand
             try
             {
                 target.flipHand();
+                TryRegenerateFurnitureDocument(target.Document);
             }
             catch (Exception ex)
             {
@@ -416,6 +508,7 @@ namespace KPLN_Tools.ExecutableCommand
             try
             {
                 target.flipFacing();
+                TryRegenerateFurnitureDocument(target.Document);
             }
             catch (Exception ex)
             {

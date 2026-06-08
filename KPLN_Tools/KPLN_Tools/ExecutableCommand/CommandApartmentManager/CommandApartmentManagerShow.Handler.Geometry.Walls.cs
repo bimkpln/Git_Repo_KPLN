@@ -25,13 +25,10 @@ namespace KPLN_Tools.ExecutableCommand
         private class ShaftWallAxisSplitResult
         {
             public List<Line> RegularAxisLines { get; set; }
-            public List<Line> ShaftAxisLines { get; set; }
-            public HashSet<string> MatchedMarkerKeys { get; set; }
         }
 
         private class ShaftMarkerLineData
         {
-            public string Key { get; set; }
             public Line Line { get; set; }
         }
 
@@ -673,9 +670,7 @@ namespace KPLN_Tools.ExecutableCommand
         {
             ShaftWallAxisSplitResult result = new ShaftWallAxisSplitResult
             {
-                RegularAxisLines = new List<Line>(),
-                ShaftAxisLines = new List<Line>(),
-                MatchedMarkerKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                RegularAxisLines = new List<Line>()
             };
 
             if (apartmentAxisLines == null || apartmentAxisLines.Count == 0)
@@ -694,7 +689,6 @@ namespace KPLN_Tools.ExecutableCommand
 
                     markerLines.Add(new ShaftMarkerLineData
                     {
-                        Key = BuildLineMarkerKey(marker.ProjectP0, marker.ProjectP1),
                         Line = Line.CreateBound(marker.ProjectP0, marker.ProjectP1)
                     });
                 }
@@ -745,9 +739,6 @@ namespace KPLN_Tools.ExecutableCommand
                         continue;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(markerLine.Key))
-                        result.MatchedMarkerKeys.Add(markerLine.Key);
-
                     if (overlap != null)
                         shaftIntervals.Add(overlap);
                 }
@@ -759,18 +750,6 @@ namespace KPLN_Tools.ExecutableCommand
                 }
 
                 List<Interval1D> mergedShaftIntervals = MergeIntervals(shaftIntervals);
-                foreach (Interval1D shaftInterval in mergedShaftIntervals)
-                {
-                    double shaftFrom = Math.Max(from, shaftInterval.From);
-                    double shaftTo = Math.Min(to, shaftInterval.To);
-                    if (shaftTo - shaftFrom <= tol)
-                        continue;
-
-                    Line shaftAxis = BuildGenericAxisLine(dir, offset, z, shaftFrom, shaftTo);
-                    if (shaftAxis != null && shaftAxis.Length > tol)
-                        result.ShaftAxisLines.Add(shaftAxis);
-                }
-
                 List<Interval1D> regularIntervals = SubtractIntervals(
                     new Interval1D { From = from, To = to },
                     mergedShaftIntervals);
@@ -787,7 +766,6 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             result.RegularAxisLines = MergeCollinearLines(result.RegularAxisLines);
-            result.ShaftAxisLines = MergeCollinearLines(result.ShaftAxisLines);
             return result;
         }
 
@@ -847,13 +825,72 @@ namespace KPLN_Tools.ExecutableCommand
             return true;
         }
 
-        private static List<Line> BuildShaftWallAxesFromUnmatchedMarkers(List<FamilyShaftWallMarker> shaftMarkers,
-            HashSet<string> matchedMarkerKeys, WallType shaftWallType, List<FamilyShaftFillRegion> shaftFillRegions,
+        private static List<Line> BuildShaftWallAxesFromMarkers(List<FamilyShaftWallMarker> shaftMarkers,
+            WallType shaftWallType, List<Line> apartmentAxisLines,
             out int skippedMarkers)
         {
             skippedMarkers = 0;
             List<Line> result = new List<Line>();
             if (shaftMarkers == null || shaftMarkers.Count == 0 || shaftWallType == null)
+                return result;
+
+            double wallWidth = GetWallTypeWidthInternal(shaftWallType);
+            if (wallWidth <= 1e-9)
+            {
+                skippedMarkers = shaftMarkers.Count;
+                return result;
+            }
+
+            List<ShaftMarkerLineData> markerLines = BuildShaftMarkerLineData(shaftMarkers);
+            foreach (ShaftMarkerLineData markerLine in markerLines)
+            {
+                if (markerLine == null || markerLine.Line == null)
+                    continue;
+
+                Line axisLine = BuildShaftWallAxisFromFaceLine(markerLine.Line, wallWidth, markerLines, apartmentAxisLines);
+                if (axisLine != null && axisLine.Length > 1e-6)
+                    result.Add(axisLine);
+                else
+                    skippedMarkers++;
+            }
+
+            return MergeCollinearLines(result);
+        }
+
+        private static List<Line> BuildShaftReferenceAxisLines(List<Line> apartmentAxisLines, List<ExistingWallLineInfo> existingWalls)
+        {
+            List<Line> result = new List<Line>();
+
+            if (apartmentAxisLines != null)
+            {
+                foreach (Line axisLine in apartmentAxisLines)
+                {
+                    if (axisLine != null && axisLine.Length > 1e-6)
+                        result.Add(axisLine);
+                }
+            }
+
+            if (existingWalls != null)
+            {
+                foreach (ExistingWallLineInfo existingWall in existingWalls)
+                {
+                    if (existingWall == null || existingWall.P0 == null || existingWall.P1 == null)
+                        continue;
+
+                    if (Distance2D(existingWall.P0, existingWall.P1) <= IDHelper.ConvertMmToInternal(10))
+                        continue;
+
+                    result.Add(Line.CreateBound(existingWall.P0, existingWall.P1));
+                }
+            }
+
+            return MergeCollinearLines(result);
+        }
+
+        private static List<ShaftMarkerLineData> BuildShaftMarkerLineData(List<FamilyShaftWallMarker> shaftMarkers)
+        {
+            List<ShaftMarkerLineData> result = new List<ShaftMarkerLineData>();
+            if (shaftMarkers == null)
                 return result;
 
             foreach (FamilyShaftWallMarker marker in shaftMarkers)
@@ -864,60 +901,29 @@ namespace KPLN_Tools.ExecutableCommand
                 if (Distance2D(marker.ProjectP0, marker.ProjectP1) < IDHelper.ConvertMmToInternal(10))
                     continue;
 
-                string key = BuildLineMarkerKey(marker.ProjectP0, marker.ProjectP1);
-                if (matchedMarkerKeys != null && matchedMarkerKeys.Contains(key))
-                    continue;
-
-                Line faceLine = Line.CreateBound(marker.ProjectP0, marker.ProjectP1);
-                Line axisLine = BuildShaftWallAxisIntoFillRegion(faceLine, shaftWallType, shaftFillRegions);
-                if (axisLine != null && axisLine.Length > 1e-6)
-                    result.Add(axisLine);
-                else
-                    skippedMarkers++;
+                result.Add(new ShaftMarkerLineData
+                {
+                    Line = Line.CreateBound(marker.ProjectP0, marker.ProjectP1)
+                });
             }
 
-            return MergeCollinearLines(result);
+            return result;
         }
 
-        private static Line BuildShaftWallAxisIntoFillRegion(Line faceLine, WallType wallType, List<FamilyShaftFillRegion> shaftFillRegions)
+        private static Line BuildShaftWallAxisFromFaceLine(Line faceLine, double wallWidth, List<ShaftMarkerLineData> shaftMarkerLines,
+            List<Line> apartmentAxisLines)
         {
-            if (faceLine == null || wallType == null)
+            if (faceLine == null || wallWidth <= 1e-9)
+                return null;
+
+            XYZ interiorDirection = ResolveShaftInteriorDirectionFromCornerMarkers(faceLine, shaftMarkerLines);
+            if (interiorDirection == null)
+                interiorDirection = ResolveShaftInteriorDirectionFromNearestParallelLine(faceLine, apartmentAxisLines);
+            if (interiorDirection == null)
                 return null;
 
             XYZ p0 = faceLine.GetEndPoint(0);
             XYZ p1 = faceLine.GetEndPoint(1);
-            XYZ dir = Normalize2D(p1 - p0);
-            if (dir == null)
-                return null;
-
-            double wallWidth = GetWallTypeWidthInternal(wallType);
-            if (wallWidth <= 1e-9)
-                return null;
-
-            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
-            FamilyShaftFillRegion fillRegion = FindShaftFillRegionForFaceLine(faceLine, shaftFillRegions);
-            if (fillRegion == null || fillRegion.Boundary == null || fillRegion.Boundary.Count < 3)
-                return null;
-
-            XYZ interiorPoint = TryGetPolygonCentroid(fillRegion.Boundary);
-            if (interiorPoint == null)
-                interiorPoint = GetAveragePoint(fillRegion.Boundary);
-
-            if (interiorPoint == null)
-                return null;
-
-            XYZ mid = new XYZ(
-                0.5 * (p0.X + p1.X),
-                0.5 * (p0.Y + p1.Y),
-                0.5 * (p0.Z + p1.Z));
-
-            XYZ toInterior = Normalize2D(interiorPoint - mid);
-            if (toInterior == null)
-                return null;
-
-            XYZ interiorDirection = Dot2D(toInterior, normal) >= 0
-                ? normal
-                : new XYZ(-normal.X, -normal.Y, 0);
 
             double halfWidth = wallWidth / 2.0;
             XYZ offset = new XYZ(interiorDirection.X * halfWidth, interiorDirection.Y * halfWidth, 0);
@@ -927,102 +933,179 @@ namespace KPLN_Tools.ExecutableCommand
                 new XYZ(p1.X + offset.X, p1.Y + offset.Y, p1.Z));
         }
 
-        private static FamilyShaftFillRegion FindShaftFillRegionForFaceLine(Line faceLine, List<FamilyShaftFillRegion> shaftFillRegions)
+        private static XYZ ResolveShaftInteriorDirectionFromCornerMarkers(Line faceLine, List<ShaftMarkerLineData> shaftMarkerLines)
         {
-            if (faceLine == null || shaftFillRegions == null || shaftFillRegions.Count == 0)
+            if (faceLine == null || shaftMarkerLines == null || shaftMarkerLines.Count < 2)
                 return null;
 
-            FamilyShaftFillRegion bestRegion = null;
-            double bestArea = double.PositiveInfinity;
-            foreach (FamilyShaftFillRegion region in shaftFillRegions)
+            XYZ p0 = faceLine.GetEndPoint(0);
+            XYZ p1 = faceLine.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return null;
+
+            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+            double endpointTol = IDHelper.ConvertMmToInternal(20);
+            const double perpendicularTol = 0.15;
+
+            XYZ resolved = null;
+            foreach (ShaftMarkerLineData markerLine in shaftMarkerLines)
             {
-                if (region == null || region.Boundary == null || region.Boundary.Count < 3)
+                if (markerLine == null || markerLine.Line == null || LinesEqual2D(faceLine, markerLine.Line, endpointTol))
                     continue;
 
-                if (!ShaftFaceLineMatchesFillRegionEdge(faceLine, region.Boundary))
+                XYZ other0 = markerLine.Line.GetEndPoint(0);
+                XYZ other1 = markerLine.Line.GetEndPoint(1);
+                XYZ otherDir = Normalize2D(other1 - other0);
+                if (otherDir == null || Math.Abs(Dot2D(dir, otherDir)) > perpendicularTol)
                     continue;
 
-                double area = Math.Abs(GetSignedAreaXY(region.Boundary));
-                if (area <= IDHelper.ConvertMmToInternal(100) * IDHelper.ConvertMmToInternal(100))
+                XYZ sharedPoint;
+                XYZ farPoint;
+                if (!TryGetSharedEndpointAndFarPoint(p0, p1, other0, other1, endpointTol, out sharedPoint, out farPoint))
                     continue;
 
-                if (area < bestArea)
+                XYZ toFar = Normalize2D(farPoint - sharedPoint);
+                if (toFar == null)
+                    continue;
+
+                double side = Dot2D(toFar, normal);
+                if (Math.Abs(side) < 0.85)
+                    continue;
+
+                XYZ candidate = side > 0
+                    ? normal
+                    : new XYZ(-normal.X, -normal.Y, 0);
+
+                if (resolved == null)
                 {
-                    bestArea = area;
-                    bestRegion = region;
+                    resolved = candidate;
+                    continue;
                 }
+
+                if (Dot2D(resolved, candidate) < 0.98)
+                    return null;
             }
 
-            return bestRegion;
+            return resolved;
         }
 
-        private static bool ShaftFaceLineMatchesFillRegionEdge(Line faceLine, List<XYZ> boundary)
+        private static XYZ ResolveShaftInteriorDirectionFromNearestParallelLine(Line faceLine, List<Line> apartmentAxisLines)
         {
-            if (faceLine == null || boundary == null || boundary.Count < 3)
-                return false;
+            if (faceLine == null || apartmentAxisLines == null || apartmentAxisLines.Count == 0)
+                return null;
 
-            XYZ f0 = faceLine.GetEndPoint(0);
-            XYZ f1 = faceLine.GetEndPoint(1);
-            XYZ faceDir = Normalize2D(f1 - f0);
-            if (faceDir == null)
-                return false;
+            XYZ p0 = faceLine.GetEndPoint(0);
+            XYZ p1 = faceLine.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return null;
 
-            double faceLength = Distance2D(f0, f1);
-            double collinearTol = IDHelper.ConvertMmToInternal(25);
-            double minOverlap = faceLength * 0.7;
+            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+            double faceLength = Distance2D(p0, p1);
+            double minOverlap = Math.Min(faceLength * 0.2, IDHelper.ConvertMmToInternal(200));
+            minOverlap = Math.Max(minOverlap, IDHelper.ConvertMmToInternal(20));
+            double minDistance = IDHelper.ConvertMmToInternal(1);
 
-            for (int i = 0; i < boundary.Count; i++)
+            XYZ bestDirection = null;
+            double bestDistance = double.PositiveInfinity;
+
+            foreach (Line axisLine in apartmentAxisLines)
             {
-                XYZ e0 = boundary[i];
-                XYZ e1 = boundary[(i + 1) % boundary.Count];
-                if (e0 == null || e1 == null || Distance2D(e0, e1) < IDHelper.ConvertMmToInternal(10))
+                if (axisLine == null || axisLine.Length < 1e-6)
                     continue;
 
-                if (!AreCollinear2D(f0, f1, e0, e1, collinearTol))
+                XYZ a0 = axisLine.GetEndPoint(0);
+                XYZ a1 = axisLine.GetEndPoint(1);
+                XYZ axisDir = Normalize2D(a1 - a0);
+                if (axisDir == null)
                     continue;
 
-                double fT0 = Dot2D(f0, faceDir);
-                double fT1 = Dot2D(f1, faceDir);
-                double fFrom = Math.Min(fT0, fT1);
-                double fTo = Math.Max(fT0, fT1);
+                if (Math.Abs(Dot2D(dir, axisDir)) < 0.98)
+                    continue;
 
-                double eT0 = Dot2D(e0, faceDir);
-                double eT1 = Dot2D(e1, faceDir);
-                double eFrom = Math.Min(eT0, eT1);
-                double eTo = Math.Max(eT0, eT1);
+                double signedDistance0 = Dot2D(a0 - p0, normal);
+                double signedDistance1 = Dot2D(a1 - p0, normal);
+                if (Math.Abs(signedDistance0 - signedDistance1) > IDHelper.ConvertMmToInternal(10))
+                    continue;
 
-                double overlap = Math.Min(fTo, eTo) - Math.Max(fFrom, eFrom);
-                if (overlap >= minOverlap)
-                    return true;
+                double distance = Math.Abs(0.5 * (signedDistance0 + signedDistance1));
+                if (distance <= minDistance || distance >= bestDistance)
+                    continue;
+
+                double axisT0 = Dot2D(a0, dir);
+                double axisT1 = Dot2D(a1, dir);
+                double axisFrom = Math.Min(axisT0, axisT1);
+                double axisTo = Math.Max(axisT0, axisT1);
+
+                double faceT0 = Dot2D(p0, dir);
+                double faceT1 = Dot2D(p1, dir);
+                double faceFrom = Math.Min(faceT0, faceT1);
+                double faceTo = Math.Max(faceT0, faceT1);
+
+                double overlap = Math.Min(faceTo, axisTo) - Math.Max(faceFrom, axisFrom);
+                if (overlap < minOverlap)
+                    continue;
+
+                bestDistance = distance;
+                bestDirection = signedDistance0 >= 0
+                    ? normal
+                    : new XYZ(-normal.X, -normal.Y, 0);
+            }
+
+            return bestDirection;
+        }
+
+        private static bool TryGetSharedEndpointAndFarPoint(XYZ p0, XYZ p1, XYZ other0, XYZ other1, double tol,
+            out XYZ sharedPoint, out XYZ farPoint)
+        {
+            sharedPoint = null;
+            farPoint = null;
+
+            if (Distance2D(p0, other0) <= tol)
+            {
+                sharedPoint = p0;
+                farPoint = other1;
+                return true;
+            }
+
+            if (Distance2D(p0, other1) <= tol)
+            {
+                sharedPoint = p0;
+                farPoint = other0;
+                return true;
+            }
+
+            if (Distance2D(p1, other0) <= tol)
+            {
+                sharedPoint = p1;
+                farPoint = other1;
+                return true;
+            }
+
+            if (Distance2D(p1, other1) <= tol)
+            {
+                sharedPoint = p1;
+                farPoint = other0;
+                return true;
             }
 
             return false;
         }
 
-        private static XYZ GetAveragePoint(List<XYZ> points)
+        private static bool LinesEqual2D(Line a, Line b, double tol)
         {
-            if (points == null || points.Count == 0)
-                return null;
+            if (a == null || b == null)
+                return false;
 
-            double x = 0;
-            double y = 0;
-            double z = 0;
-            int count = 0;
+            XYZ a0 = a.GetEndPoint(0);
+            XYZ a1 = a.GetEndPoint(1);
+            XYZ b0 = b.GetEndPoint(0);
+            XYZ b1 = b.GetEndPoint(1);
 
-            foreach (XYZ point in points)
-            {
-                if (point == null)
-                    continue;
-
-                x += point.X;
-                y += point.Y;
-                z += point.Z;
-                count++;
-            }
-
-            return count > 0
-                ? new XYZ(x / count, y / count, z / count)
-                : null;
+            return
+                (Distance2D(a0, b0) <= tol && Distance2D(a1, b1) <= tol) ||
+                (Distance2D(a0, b1) <= tol && Distance2D(a1, b0) <= tol);
         }
 
         private static double GetWallTypeWidthInternal(WallType wallType)

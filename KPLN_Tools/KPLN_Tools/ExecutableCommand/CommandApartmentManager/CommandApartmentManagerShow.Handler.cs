@@ -216,11 +216,6 @@ namespace KPLN_Tools.ExecutableCommand
             public XYZ ProjectP1 { get; set; }
         }
 
-        private class FamilyShaftFillRegion
-        {
-            public List<XYZ> Boundary { get; set; }
-        }
-
         private class FamilyLoggiaWallMarker
         {
             public XYZ ProjectP0 { get; set; }

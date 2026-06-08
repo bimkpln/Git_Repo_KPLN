@@ -1550,217 +1550,6 @@ namespace KPLN_Tools.ExecutableCommand
             return shafts;
         }
 
-        private static List<FamilyShaftFillRegion> CollectShaftFillRegionsFromApartmentInstance(Document ownerDoc, FamilyInstance apartmentInstance)
-        {
-            List<FamilyShaftFillRegion> result = new List<FamilyShaftFillRegion>();
-            if (ownerDoc == null || apartmentInstance == null || apartmentInstance.Symbol == null || apartmentInstance.Symbol.Family == null)
-                return result;
-
-            Transform apartmentTransform = apartmentInstance.GetTransform() ?? Transform.Identity;
-
-            foreach (FamilyShaftFillRegion localRegion in CollectShaftFillRegionsFromApartmentFamily(ownerDoc, apartmentInstance.Symbol.Family))
-            {
-                if (localRegion == null || localRegion.Boundary == null || localRegion.Boundary.Count < 3)
-                    continue;
-
-                List<XYZ> boundary = new List<XYZ>();
-                foreach (XYZ localPoint in localRegion.Boundary)
-                {
-                    if (localPoint == null)
-                        continue;
-
-                    try
-                    {
-                        boundary.Add(apartmentTransform.OfPoint(localPoint));
-                    }
-                    catch
-                    {
-                    }
-                }
-
-                if (boundary.Count >= 3)
-                {
-                    result.Add(new FamilyShaftFillRegion
-                    {
-                        Boundary = boundary
-                    });
-                }
-            }
-
-            return result;
-        }
-
-        private static List<FamilyShaftFillRegion> CollectShaftFillRegionsFromApartmentFamily(Document ownerDoc, Family apartmentFamily)
-        {
-            List<FamilyShaftFillRegion> result = new List<FamilyShaftFillRegion>();
-            if (ownerDoc == null || apartmentFamily == null)
-                return result;
-
-            CollectShaftFillRegionsFromFamilyRecursive(ownerDoc, apartmentFamily, Transform.Identity, result, 0);
-            return result;
-        }
-
-        private static void CollectShaftFillRegionsFromFamilyRecursive(Document ownerDoc, Family family, Transform accumulatedLocalTransform,
-            List<FamilyShaftFillRegion> regions, int depth)
-        {
-            if (ownerDoc == null || family == null || accumulatedLocalTransform == null || regions == null)
-                return;
-
-            if (depth > 12)
-                return;
-
-            Document familyDoc = null;
-
-            try
-            {
-                familyDoc = ownerDoc.EditFamily(family);
-
-                CollectShaftFillRegionLoops(familyDoc, accumulatedLocalTransform, regions);
-
-                List<FamilyInstance> nestedInstances = new FilteredElementCollector(familyDoc)
-                    .OfClass(typeof(FamilyInstance))
-                    .Cast<FamilyInstance>()
-                    .ToList();
-
-                foreach (FamilyInstance fi in nestedInstances)
-                {
-                    if (fi == null || fi.Symbol == null || fi.Symbol.Family == null)
-                        continue;
-
-                    Transform localTransform = fi.GetTransform();
-                    if (localTransform == null)
-                        localTransform = Transform.Identity;
-
-                    Transform currentLocalTransform = accumulatedLocalTransform.Multiply(localTransform);
-                    CollectShaftFillRegionsFromFamilyRecursive(familyDoc, fi.Symbol.Family, currentLocalTransform, regions, depth + 1);
-                }
-            }
-            catch
-            {
-            }
-            finally
-            {
-                if (familyDoc != null)
-                {
-                    try
-                    {
-                        familyDoc.Close(false);
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
-
-        private static void CollectShaftFillRegionLoops(Document familyDoc, Transform accumulatedLocalTransform, List<FamilyShaftFillRegion> regions)
-        {
-            if (familyDoc == null || accumulatedLocalTransform == null || regions == null)
-                return;
-
-            List<FilledRegion> filledRegions = new FilteredElementCollector(familyDoc)
-                .OfClass(typeof(FilledRegion))
-                .Cast<FilledRegion>()
-                .ToList();
-
-            foreach (FilledRegion filledRegion in filledRegions)
-            {
-                if (filledRegion == null)
-                    continue;
-
-                IList<CurveLoop> boundaries = null;
-                try
-                {
-                    boundaries = filledRegion.GetBoundaries();
-                }
-                catch
-                {
-                    boundaries = null;
-                }
-
-                if (boundaries == null)
-                    continue;
-
-                foreach (CurveLoop boundaryLoop in boundaries)
-                {
-                    List<XYZ> boundary = BuildTransformedBoundaryPoints(boundaryLoop, accumulatedLocalTransform);
-                    if (boundary == null || boundary.Count < 3)
-                        continue;
-
-                    if (Math.Abs(GetSignedAreaXY(boundary)) < IDHelper.ConvertMmToInternal(100) * IDHelper.ConvertMmToInternal(100))
-                        continue;
-
-                    regions.Add(new FamilyShaftFillRegion
-                    {
-                        Boundary = boundary
-                    });
-                }
-            }
-        }
-
-        private static List<XYZ> BuildTransformedBoundaryPoints(CurveLoop boundaryLoop, Transform transform)
-        {
-            List<XYZ> result = new List<XYZ>();
-            if (boundaryLoop == null || transform == null)
-                return result;
-
-            foreach (Curve curve in boundaryLoop)
-            {
-                if (curve == null || !curve.IsBound)
-                    continue;
-
-                List<XYZ> points = new List<XYZ>();
-                Line line = curve as Line;
-                if (line != null)
-                {
-                    points.Add(line.GetEndPoint(0));
-                    points.Add(line.GetEndPoint(1));
-                }
-                else
-                {
-                    IList<XYZ> tessellated = null;
-                    try
-                    {
-                        tessellated = curve.Tessellate();
-                    }
-                    catch
-                    {
-                        tessellated = null;
-                    }
-
-                    if (tessellated != null)
-                        points.AddRange(tessellated);
-                }
-
-                foreach (XYZ point in points)
-                {
-                    if (point == null)
-                        continue;
-
-                    XYZ transformedPoint;
-                    try
-                    {
-                        transformedPoint = transform.OfPoint(point);
-                    }
-                    catch
-                    {
-                        continue;
-                    }
-
-                    if (transformedPoint == null)
-                        continue;
-
-                    if (result.Count == 0 || Distance2D(result[result.Count - 1], transformedPoint) > IDHelper.ConvertMmToInternal(1))
-                        result.Add(transformedPoint);
-                }
-            }
-
-            if (result.Count > 1 && Distance2D(result[0], result[result.Count - 1]) <= IDHelper.ConvertMmToInternal(1))
-                result.RemoveAt(result.Count - 1);
-
-            return result;
-        }
-
         private static void CollectShaftWallMarkersFromFamilyRecursive(Document ownerDoc, Family family, Transform accumulatedLocalTransform,
             List<FamilyShaftWallMarker> shafts, int depth)
         {
@@ -2647,7 +2436,6 @@ namespace KPLN_Tools.ExecutableCommand
                     WallType shaftWallType = null;
                     List<Line> shaftAxisLines = new List<Line>();
                     List<FamilyShaftWallMarker> shaftMarkers = CollectShaftWallMarkersFromApartmentInstance(doc, apartmentFi);
-                    List<FamilyShaftFillRegion> shaftFillRegions = CollectShaftFillRegionsFromApartmentInstance(doc, apartmentFi);
 
                     if (shaftMarkers.Count > 0)
                     {
@@ -2669,24 +2457,24 @@ namespace KPLN_Tools.ExecutableCommand
                                 apartmentWallThicknessInternal,
                                 shaftWallType);
 
+                            List<Line> shaftReferenceAxisLines = BuildShaftReferenceAxisLines(apartmentAxisLines, existingWalls);
                             apartmentAxisLines = shaftSplit.RegularAxisLines;
-                            shaftAxisLines = shaftSplit.ShaftAxisLines;
-                            int skippedStandaloneShaftMarkers;
-                            shaftAxisLines.AddRange(BuildShaftWallAxesFromUnmatchedMarkers(
+
+                            int skippedShaftMarkers;
+                            shaftAxisLines = BuildShaftWallAxesFromMarkers(
                                 shaftMarkers,
-                                shaftSplit.MatchedMarkerKeys,
                                 shaftWallType,
-                                shaftFillRegions,
-                                out skippedStandaloneShaftMarkers));
+                                shaftReferenceAxisLines,
+                                out skippedShaftMarkers);
                             shaftAxisLines = MergeCollinearLines(shaftAxisLines);
 
-                            if (skippedStandaloneShaftMarkers > 0)
+                            if (skippedShaftMarkers > 0)
                             {
                                 AddApartmentDiagnostic(
                                     state,
                                     debugMessages,
                                     "Для квартиры ID = " + IDHelper.ElIdValue(apartmentFi.Id) +
-                                    " пропущено маркеров шахты без совпадающей цветовой области: " + skippedStandaloneShaftMarkers + ".");
+                                    " пропущено маркеров шахты без однозначной стороны смещения: " + skippedShaftMarkers + ".");
                             }
 
                             if (shaftAxisLines.Count == 0)
