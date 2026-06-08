@@ -12,12 +12,10 @@ namespace KPLN_Tools.ExecutableCommand
     {
         private class CreatedApartmentWallGeometry
         {
-            public Dictionary<long, List<Wall>> CreatedWallsByApartment { get; private set; }
             public Dictionary<long, List<Wall>> DoorHostWallsByApartment { get; private set; }
 
             public CreatedApartmentWallGeometry()
             {
-                CreatedWallsByApartment = new Dictionary<long, List<Wall>>();
                 DoorHostWallsByApartment = new Dictionary<long, List<Wall>>();
             }
         }
@@ -43,6 +41,7 @@ namespace KPLN_Tools.ExecutableCommand
             using (Transaction t = new Transaction(doc, "KPLN. Геометрия стен"))
             {
                 t.Start();
+                ApplyApartmentFailureHandling(t);
 
                 foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
                 {
@@ -118,7 +117,6 @@ namespace KPLN_Tools.ExecutableCommand
                     if (createdWallsForApartment.Count > 0)
                         state.HasCreatedWalls = true;
 
-                    result.CreatedWallsByApartment[apartmentKey] = createdWallsForApartment;
                     result.DoorHostWallsByApartment[apartmentKey] = createdDoorHostWallsForApartment;
                 }
 
@@ -188,86 +186,6 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return MergeCollinearLines(finalAxisLines);
-        }
-
-        private static void DeleteIsolatedCreatedWalls(Document doc, List<Wall> createdWallsForApartment)
-        {
-            if (doc == null || createdWallsForApartment == null || createdWallsForApartment.Count == 0)
-                return;
-
-            double tol = IDHelper.ConvertMmToInternal(10);
-            List<Wall> validWalls = createdWallsForApartment
-                .Where(x => x != null && x.IsValidObject)
-                .ToList();
-
-            if (validWalls.Count == 0)
-                return;
-
-            List<ElementId> wallsToDelete = new List<ElementId>();
-
-            foreach (Wall currentWall in validWalls)
-            {
-                if (currentWall == null || !currentWall.IsValidObject)
-                    continue;
-
-                LocationCurve currentLc = currentWall.Location as LocationCurve;
-                if (currentLc == null)
-                    continue;
-
-                Line currentLine = currentLc.Curve as Line;
-                if (currentLine == null || currentLine.Length < 1e-9)
-                    continue;
-
-                XYZ a0 = currentLine.GetEndPoint(0);
-                XYZ a1 = currentLine.GetEndPoint(1);
-
-                bool hasConnection = false;
-
-                foreach (Wall otherWall in validWalls)
-                {
-                    if (otherWall == null || !otherWall.IsValidObject || otherWall.Id == currentWall.Id)
-                        continue;
-
-                    LocationCurve otherLc = otherWall.Location as LocationCurve;
-                    if (otherLc == null)
-                        continue;
-
-                    Line otherLine = otherLc.Curve as Line;
-                    if (otherLine == null || otherLine.Length < 1e-9)
-                        continue;
-
-                    XYZ b0 = otherLine.GetEndPoint(0);
-                    XYZ b1 = otherLine.GetEndPoint(1);
-
-                    bool touchesByEndpoints =
-                        Distance2D(a0, b0) <= tol ||
-                        Distance2D(a0, b1) <= tol ||
-                        Distance2D(a1, b0) <= tol ||
-                        Distance2D(a1, b1) <= tol;
-
-                    XYZ intersection;
-                    bool intersects = TryIntersectSegments2D(a0, a1, b0, b1, out intersection, tol);
-
-                    if (touchesByEndpoints || intersects)
-                    {
-                        hasConnection = true;
-                        break;
-                    }
-                }
-
-                if (!hasConnection)
-                    wallsToDelete.Add(currentWall.Id);
-            }
-
-            if (wallsToDelete.Count > 0)
-            {
-                doc.Delete(wallsToDelete);
-
-                createdWallsForApartment.RemoveAll(x =>
-                    x == null ||
-                    !x.IsValidObject ||
-                    wallsToDelete.Any(id => id == x.Id));
-            }
         }
 
         private static Line GetWallAxisLine(Wall wall)
@@ -855,6 +773,292 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return MergeCollinearLines(result);
+        }
+
+        private static List<Line> BuildRoomSeparatorLinesFromMarkers(List<FamilyRoomSeparatorMarker> separatorMarkers)
+        {
+            List<Line> result = new List<Line>();
+            if (separatorMarkers == null || separatorMarkers.Count == 0)
+                return result;
+
+            foreach (FamilyRoomSeparatorMarker marker in separatorMarkers)
+            {
+                if (marker == null || marker.ProjectP0 == null || marker.ProjectP1 == null)
+                    continue;
+
+                if (Distance2D(marker.ProjectP0, marker.ProjectP1) < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                result.Add(Line.CreateBound(marker.ProjectP0, marker.ProjectP1));
+            }
+
+            return result;
+        }
+
+        private static List<Line> TrimRoomSeparatorLinesToWallBoundaries(List<Line> roomSeparatorLines, List<Line> apartmentAxisLines,
+            List<ExistingWallLineInfo> existingWalls, double wallThicknessInternal)
+        {
+            List<Line> result = new List<Line>();
+            if (roomSeparatorLines == null || roomSeparatorLines.Count == 0)
+                return result;
+
+            List<ExistingWallLineInfo> wallInfos = new List<ExistingWallLineInfo>();
+            if (existingWalls != null)
+                wallInfos.AddRange(existingWalls.Where(x => x != null));
+
+            wallInfos.AddRange(BuildWallLineInfoFromAxisLines(apartmentAxisLines, wallThicknessInternal));
+
+            foreach (Line roomSeparatorLine in roomSeparatorLines)
+            {
+                if (roomSeparatorLine == null || roomSeparatorLine.Length < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                Line boundedLine = TrimRoomSeparatorLineToNearestWallIntersections(roomSeparatorLine, wallInfos);
+                if (boundedLine == null || boundedLine.Length < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                foreach (Line nonOverlappingPart in SubtractExistingWallsFromNewLine(boundedLine, wallInfos, 0))
+                {
+                    if (nonOverlappingPart != null && nonOverlappingPart.Length >= IDHelper.ConvertMmToInternal(10))
+                        result.Add(nonOverlappingPart);
+                }
+            }
+
+            return DeduplicateLines(result);
+        }
+
+        private static List<ExistingWallLineInfo> BuildWallLineInfoFromAxisLines(IEnumerable<Line> axisLines, double wallThicknessInternal)
+        {
+            List<ExistingWallLineInfo> result = new List<ExistingWallLineInfo>();
+            if (axisLines == null)
+                return result;
+
+            foreach (Line axisLine in axisLines)
+            {
+                if (axisLine == null || axisLine.Length < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                XYZ p0 = axisLine.GetEndPoint(0);
+                XYZ p1 = axisLine.GetEndPoint(1);
+                XYZ dir = Normalize2D(p1 - p0);
+                if (dir == null)
+                    continue;
+
+                result.Add(new ExistingWallLineInfo
+                {
+                    WallId = ElementId.InvalidElementId,
+                    P0 = p0,
+                    P1 = p1,
+                    Dir = dir,
+                    Z = 0.5 * (p0.Z + p1.Z),
+                    ThicknessInternal = wallThicknessInternal
+                });
+            }
+
+            return result;
+        }
+
+        private static Line TrimRoomSeparatorLineToNearestWallIntersections(Line sourceLine, List<ExistingWallLineInfo> wallInfos)
+        {
+            if (sourceLine == null || wallInfos == null || wallInfos.Count == 0)
+                return sourceLine;
+
+            double minLength = IDHelper.ConvertMmToInternal(10);
+            double tol = IDHelper.ConvertMmToInternal(20);
+            XYZ p0 = sourceLine.GetEndPoint(0);
+            XYZ p1 = sourceLine.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return sourceLine;
+
+            double length = Distance2D(p0, p1);
+            if (length < minLength)
+                return null;
+
+            List<double> parameters = new List<double>();
+
+            foreach (ExistingWallLineInfo wallInfo in wallInfos)
+            {
+                if (wallInfo == null || wallInfo.P0 == null || wallInfo.P1 == null)
+                    continue;
+
+                XYZ wallDir = Normalize2D(wallInfo.P1 - wallInfo.P0);
+                if (wallDir == null)
+                    continue;
+
+                if (Math.Abs(Cross2D(dir, wallDir)) <= 1e-6)
+                    continue;
+
+                XYZ intersection;
+                if (!TryIntersectSegments2D(p0, p1, wallInfo.P0, wallInfo.P1, out intersection, tol))
+                    continue;
+
+                double t = Dot2D(intersection - p0, dir);
+                if (t >= -tol && t <= length + tol)
+                    parameters.Add(Math.Max(0, Math.Min(length, t)));
+            }
+
+            if (parameters.Count < 2)
+                return sourceLine;
+
+            List<double> ordered = new List<double>();
+            foreach (double parameter in parameters.OrderBy(x => x))
+            {
+                if (ordered.Count == 0 || Math.Abs(parameter - ordered[ordered.Count - 1]) > tol)
+                    ordered.Add(parameter);
+            }
+
+            double mid = length / 2.0;
+            double from = ordered.Where(x => x <= mid + tol).DefaultIfEmpty(double.NaN).Max();
+            double to = ordered.Where(x => x >= mid - tol).DefaultIfEmpty(double.NaN).Min();
+
+            if (double.IsNaN(from) || double.IsNaN(to) || to - from < minLength)
+                return sourceLine;
+
+            XYZ rp0 = new XYZ(p0.X + dir.X * from, p0.Y + dir.Y * from, p0.Z);
+            XYZ rp1 = new XYZ(p0.X + dir.X * to, p0.Y + dir.Y * to, p0.Z);
+
+            if (Distance2D(rp0, rp1) < minLength)
+                return null;
+
+            return Line.CreateBound(rp0, rp1);
+        }
+
+        private static List<Line> DeduplicateLines(List<Line> source)
+        {
+            List<Line> result = new List<Line>();
+            if (source == null)
+                return result;
+
+            HashSet<string> keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Line line in source)
+            {
+                if (line == null || line.Length < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                string key = BuildLineMarkerKey(line.GetEndPoint(0), line.GetEndPoint(1));
+                if (keys.Contains(key))
+                    continue;
+
+                keys.Add(key);
+                result.Add(line);
+            }
+
+            return result;
+        }
+
+        private static List<Line> RemoveWallAxisSegmentsAtRoomSeparators(List<Line> wallAxisLines, List<Line> roomSeparatorLines,
+            double wallThicknessInternal)
+        {
+            const double tol = 1e-6;
+            List<Line> result = new List<Line>();
+
+            if (wallAxisLines == null || wallAxisLines.Count == 0)
+                return result;
+
+            if (roomSeparatorLines == null || roomSeparatorLines.Count == 0 || wallThicknessInternal <= 1e-9)
+                return MergeCollinearLines(wallAxisLines);
+
+            double distanceTol = wallThicknessInternal / 2.0 + IDHelper.ConvertMmToInternal(80);
+            double minOverlap = IDHelper.ConvertMmToInternal(20);
+
+            foreach (Line axis in wallAxisLines)
+            {
+                if (axis == null || axis.Length <= tol)
+                    continue;
+
+                List<Line> remaining = SubtractRoomSeparatorsFromWallAxis(axis, roomSeparatorLines, distanceTol, minOverlap);
+                foreach (Line line in remaining)
+                {
+                    if (line != null && line.Length > tol)
+                        result.Add(line);
+                }
+            }
+
+            return MergeCollinearLines(result);
+        }
+
+        private static List<Line> SubtractRoomSeparatorsFromWallAxis(Line axis, List<Line> roomSeparatorLines, double distanceTol, double minOverlap)
+        {
+            const double tol = 1e-6;
+            List<Line> result = new List<Line>();
+            if (axis == null)
+                return result;
+
+            XYZ p0 = axis.GetEndPoint(0);
+            XYZ p1 = axis.GetEndPoint(1);
+            XYZ dir = Normalize2D(p1 - p0);
+            if (dir == null)
+                return result;
+
+            dir = CanonicalizeDirection(dir);
+            XYZ normal = new XYZ(-dir.Y, dir.X, 0);
+            double offset = Dot2D(p0, normal);
+            double z = 0.5 * (p0.Z + p1.Z);
+            double t0 = Dot2D(p0, dir);
+            double t1 = Dot2D(p1, dir);
+            double from = Math.Min(t0, t1);
+            double to = Math.Max(t0, t1);
+
+            List<Interval1D> cuts = new List<Interval1D>();
+
+            foreach (Line separator in roomSeparatorLines)
+            {
+                if (separator == null || separator.Length <= tol)
+                    continue;
+
+                XYZ s0 = separator.GetEndPoint(0);
+                XYZ s1 = separator.GetEndPoint(1);
+                XYZ separatorDir = Normalize2D(s1 - s0);
+                if (separatorDir == null)
+                    continue;
+
+                if (Math.Abs(Dot2D(dir, separatorDir)) < 0.98)
+                    continue;
+
+                double separatorOffset0 = Dot2D(s0, normal);
+                double separatorOffset1 = Dot2D(s1, normal);
+                if (Math.Max(Math.Abs(separatorOffset0 - offset), Math.Abs(separatorOffset1 - offset)) > distanceTol)
+                    continue;
+
+                double separatorT0 = Dot2D(s0, dir);
+                double separatorT1 = Dot2D(s1, dir);
+                double separatorFrom = Math.Min(separatorT0, separatorT1);
+                double separatorTo = Math.Max(separatorT0, separatorT1);
+                double overlapFrom = Math.Max(from, separatorFrom);
+                double overlapTo = Math.Min(to, separatorTo);
+
+                if (overlapTo - overlapFrom < minOverlap)
+                    continue;
+
+                cuts.Add(new Interval1D
+                {
+                    From = overlapFrom,
+                    To = overlapTo
+                });
+            }
+
+            if (cuts.Count == 0)
+            {
+                result.Add(axis);
+                return result;
+            }
+
+            List<Interval1D> remainingIntervals = SubtractIntervals(
+                new Interval1D { From = from, To = to },
+                MergeIntervals(cuts));
+
+            foreach (Interval1D interval in remainingIntervals)
+            {
+                if (interval == null || interval.To - interval.From <= tol)
+                    continue;
+
+                Line line = BuildGenericAxisLine(dir, offset, z, interval.From, interval.To);
+                if (line != null && line.Length > tol)
+                    result.Add(line);
+            }
+
+            return result;
         }
 
         private static List<Line> BuildShaftReferenceAxisLines(List<Line> apartmentAxisLines, List<ExistingWallLineInfo> existingWalls)

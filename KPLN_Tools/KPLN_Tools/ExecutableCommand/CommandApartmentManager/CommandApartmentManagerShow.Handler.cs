@@ -22,6 +22,66 @@ namespace KPLN_Tools.ExecutableCommand
 
         private ApartmentManagerWindow _window;
 
+        private static void ApplyApartmentFailureHandling(Transaction transaction)
+        {
+            if (transaction == null)
+                return;
+
+            FailureHandlingOptions options = transaction.GetFailureHandlingOptions();
+            if (options == null)
+                return;
+
+            options.SetFailuresPreprocessor(new ApartmentWarningSuppressor());
+            transaction.SetFailureHandlingOptions(options);
+        }
+
+        private class ApartmentWarningSuppressor : IFailuresPreprocessor
+        {
+            public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+            {
+                if (failuresAccessor == null)
+                    return FailureProcessingResult.Continue;
+
+                IList<FailureMessageAccessor> failures = failuresAccessor.GetFailureMessages();
+                if (failures == null || failures.Count == 0)
+                    return FailureProcessingResult.Continue;
+
+                foreach (FailureMessageAccessor failure in failures.ToList())
+                {
+                    if (failure == null || failure.GetSeverity() != FailureSeverity.Warning)
+                        continue;
+
+                    string description = null;
+                    try
+                    {
+                        description = failure.GetDescriptionText();
+                    }
+                    catch
+                    {
+                        description = null;
+                    }
+
+                    if (ShouldSuppressApartmentWarning(description))
+                        failuresAccessor.DeleteWarning(failure);
+                }
+
+                return FailureProcessingResult.Continue;
+            }
+        }
+
+        private static bool ShouldSuppressApartmentWarning(string description)
+        {
+            if (string.IsNullOrWhiteSpace(description))
+                return false;
+
+            string normalized = description
+                .Replace('ё', 'е')
+                .ToLowerInvariant();
+
+            return normalized.Contains("слегка отклони") ||
+                   normalized.Contains("slightly off axis");
+        }
+
         public string GetName()
         {
             return "KPLN. Менеджер квартир";
@@ -101,11 +161,13 @@ namespace KPLN_Tools.ExecutableCommand
             public List<Line> ShaftAxisLines { get; set; }
             public WallType LoggiaWallType { get; set; }
             public List<Line> LoggiaAxisLines { get; set; }
+            public List<Line> RoomSeparatorLines { get; set; }
         }
 
         private class ApartmentProcessState
         {
             public ElementId ApartmentId { get; set; }
+            public string ApartmentFamilyName { get; set; }
             public ElementId NavigationElementId { get; set; }
             public List<ElementId> NavigationElementIds { get; set; }
             public List<ElementId> CreatedElementIds { get; set; }
@@ -117,6 +179,8 @@ namespace KPLN_Tools.ExecutableCommand
             public bool HasInstalledWindows { get; set; }
             public int FoundEntranceDoorsCount { get; set; }
             public int InstalledEntranceDoorsCount { get; set; }
+            public int FoundRoomSeparatorsCount { get; set; }
+            public int CreatedRoomSeparatorsCount { get; set; }
             public int SkippedRoomsCount { get; set; }
             public int SkippedWallsCount { get; set; }
             public int SkippedDoorsCount { get; set; }
@@ -124,7 +188,6 @@ namespace KPLN_Tools.ExecutableCommand
             public List<string> FurnitureErrors { get; set; }
             public List<string> ErrorMessages { get; set; }
             public bool HasRoomAreaMismatch { get; set; }
-            public bool HasDeletedRoomMismatch { get; set; }
 
             public ApartmentProcessState()
             {
@@ -222,6 +285,12 @@ namespace KPLN_Tools.ExecutableCommand
             public XYZ ProjectP1 { get; set; }
         }
 
+        private class FamilyRoomSeparatorMarker
+        {
+            public XYZ ProjectP0 { get; set; }
+            public XYZ ProjectP1 { get; set; }
+        }
+
         private class HelperLineCandidate
         {
             public XYZ P0 { get; set; }
@@ -300,13 +369,15 @@ namespace KPLN_Tools.ExecutableCommand
             public string RoomName { get; set; }
             public XYZ InsertPoint { get; set; }
             public double ExpectedAreaInternal { get; set; }
+            public bool HasShaftInside { get; set; }
         }
 
         private class PreparedApartmentRooms
         {
             public ElementId ApartmentId { get; set; }
             public List<PreparedRoomPlacement> Rooms { get; set; }
-            public bool IgnoreAreaMismatchDueToLoggia { get; set; }
+            public bool HasRoomSeparators { get; set; }
+            public bool HasShafts { get; set; }
 
             public PreparedApartmentRooms()
             {
@@ -315,14 +386,6 @@ namespace KPLN_Tools.ExecutableCommand
         }
 
         private class RoomAreaMismatchInfo
-        {
-            public ElementId ApartmentId { get; set; }
-            public string RoomName { get; set; }
-            public double ExpectedAreaInternal { get; set; }
-            public double ActualAreaInternal { get; set; }
-        }
-
-        private class DeletedRoomMismatchInfo
         {
             public ElementId ApartmentId { get; set; }
             public string RoomName { get; set; }

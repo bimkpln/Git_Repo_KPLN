@@ -817,7 +817,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return windows;
 
             HashSet<long> visitedInstances = new HashSet<long>();
-            CollectPlacedInstanceHelperLinesRecursive(ownerDoc, apartmentInstance, windows, null, visitedInstances, 0);
+            CollectPlacedInstanceHelperLinesRecursive(ownerDoc, apartmentInstance, windows, null, null, visitedInstances, 0);
 
             if (windows.Count == 0 && apartmentInstance.Symbol != null && apartmentInstance.Symbol.Family != null)
             {
@@ -845,7 +845,7 @@ namespace KPLN_Tools.ExecutableCommand
                 return shafts;
 
             HashSet<long> visitedInstances = new HashSet<long>();
-            CollectPlacedInstanceHelperLinesRecursive(ownerDoc, apartmentInstance, null, shafts, visitedInstances, 0);
+            CollectPlacedInstanceHelperLinesRecursive(ownerDoc, apartmentInstance, null, shafts, null, visitedInstances, 0);
 
             if (shafts.Count == 0 && apartmentInstance.Symbol != null && apartmentInstance.Symbol.Family != null)
             {
@@ -864,6 +864,34 @@ namespace KPLN_Tools.ExecutableCommand
             }
 
             return DeduplicateShaftWallMarkers(shafts);
+        }
+
+        private static List<FamilyRoomSeparatorMarker> CollectRoomSeparatorMarkersFromApartmentInstance(Document ownerDoc, FamilyInstance apartmentInstance)
+        {
+            List<FamilyRoomSeparatorMarker> separators = new List<FamilyRoomSeparatorMarker>();
+            if (ownerDoc == null || apartmentInstance == null)
+                return separators;
+
+            HashSet<long> visitedInstances = new HashSet<long>();
+            CollectPlacedInstanceHelperLinesRecursive(ownerDoc, apartmentInstance, null, null, separators, visitedInstances, 0);
+
+            if (separators.Count == 0 && apartmentInstance.Symbol != null && apartmentInstance.Symbol.Family != null)
+            {
+                Transform apartmentTransform = apartmentInstance.GetTransform() ?? Transform.Identity;
+                foreach (FamilyRoomSeparatorMarker localMarker in CollectRoomSeparatorMarkersFromApartmentFamily(ownerDoc, apartmentInstance.Symbol.Family))
+                {
+                    if (localMarker == null || localMarker.ProjectP0 == null || localMarker.ProjectP1 == null)
+                        continue;
+
+                    separators.Add(new FamilyRoomSeparatorMarker
+                    {
+                        ProjectP0 = apartmentTransform.OfPoint(localMarker.ProjectP0),
+                        ProjectP1 = apartmentTransform.OfPoint(localMarker.ProjectP1)
+                    });
+                }
+            }
+
+            return DeduplicateRoomSeparatorMarkers(separators);
         }
 
         private static List<FamilyLoggiaWallMarker> CollectLoggiaWallMarkersFromApartmentInstance(Document ownerDoc, FamilyInstance apartmentInstance)
@@ -933,7 +961,8 @@ namespace KPLN_Tools.ExecutableCommand
         }
 
         private static void CollectPlacedInstanceHelperLinesRecursive(Document ownerDoc, FamilyInstance instance,
-            List<FamilyWindowMarker> windows, List<FamilyShaftWallMarker> shafts, HashSet<long> visitedInstanceIds, int depth)
+            List<FamilyWindowMarker> windows, List<FamilyShaftWallMarker> shafts, List<FamilyRoomSeparatorMarker> separators,
+            HashSet<long> visitedInstanceIds, int depth)
         {
             if (ownerDoc == null || instance == null || visitedInstanceIds == null)
                 return;
@@ -947,7 +976,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             visitedInstanceIds.Add(id);
 
-            AddHelperLinesFromPlacedInstance(ownerDoc, instance, windows, shafts);
+            AddHelperLinesFromPlacedInstance(ownerDoc, instance, windows, shafts, separators);
 
             ICollection<ElementId> subIds = null;
             try
@@ -968,18 +997,19 @@ namespace KPLN_Tools.ExecutableCommand
                 if (subFi == null)
                     continue;
 
-                CollectPlacedInstanceHelperLinesRecursive(ownerDoc, subFi, windows, shafts, visitedInstanceIds, depth + 1);
+                CollectPlacedInstanceHelperLinesRecursive(ownerDoc, subFi, windows, shafts, separators, visitedInstanceIds, depth + 1);
             }
         }
 
         private static void AddHelperLinesFromPlacedInstance(Document doc, FamilyInstance instance,
-            List<FamilyWindowMarker> windows, List<FamilyShaftWallMarker> shafts)
+            List<FamilyWindowMarker> windows, List<FamilyShaftWallMarker> shafts, List<FamilyRoomSeparatorMarker> separators)
         {
             if (doc == null || instance == null)
                 return;
 
             bool explicitWindow = IsWindowHelperInstance(instance);
             bool explicitShaft = IsShaftWallHelperInstance(instance);
+            bool explicitSeparator = IsRoomSeparatorHelperInstance(instance);
 
             if (windows != null)
             {
@@ -995,6 +1025,14 @@ namespace KPLN_Tools.ExecutableCommand
                     AddLongestShaftWallMarkerFromInstanceGeometry(doc, instance, shafts);
                 else
                     AddStyledShaftWallMarkersFromInstanceGeometry(doc, instance, shafts);
+            }
+
+            if (separators != null)
+            {
+                if (explicitSeparator)
+                    AddLongestRoomSeparatorMarkerFromInstanceGeometry(doc, instance, separators);
+                else
+                    AddStyledRoomSeparatorMarkersFromInstanceGeometry(doc, instance, separators);
             }
         }
 
@@ -1041,6 +1079,31 @@ namespace KPLN_Tools.ExecutableCommand
             foreach (HelperLineCandidate line in CollectHelperLineCandidates(doc, instance, IsShaftWallHelperName, false))
             {
                 shafts.Add(new FamilyShaftWallMarker
+                {
+                    ProjectP0 = line.P0,
+                    ProjectP1 = line.P1
+                });
+            }
+        }
+
+        private static void AddLongestRoomSeparatorMarkerFromInstanceGeometry(Document doc, FamilyInstance instance, List<FamilyRoomSeparatorMarker> separators)
+        {
+            HelperLineCandidate best = GetBestHelperLineCandidate(doc, instance, IsRoomSeparatorHelperName, true);
+            if (best == null)
+                return;
+
+            separators.Add(new FamilyRoomSeparatorMarker
+            {
+                ProjectP0 = best.P0,
+                ProjectP1 = best.P1
+            });
+        }
+
+        private static void AddStyledRoomSeparatorMarkersFromInstanceGeometry(Document doc, FamilyInstance instance, List<FamilyRoomSeparatorMarker> separators)
+        {
+            foreach (HelperLineCandidate line in CollectHelperLineCandidates(doc, instance, IsRoomSeparatorHelperName, false))
+            {
+                separators.Add(new FamilyRoomSeparatorMarker
                 {
                     ProjectP0 = line.P0,
                     ProjectP1 = line.P1
@@ -1227,6 +1290,11 @@ namespace KPLN_Tools.ExecutableCommand
         private static bool IsShaftWallHelperInstance(FamilyInstance instance)
         {
             return HelperInstanceMatchesName(instance, IsShaftWallHelperName);
+        }
+
+        private static bool IsRoomSeparatorHelperInstance(FamilyInstance instance)
+        {
+            return HelperInstanceMatchesName(instance, IsRoomSeparatorHelperName);
         }
 
         private static bool IsLoggiaWallHelperInstance(FamilyInstance instance)
@@ -1468,6 +1536,29 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
+        private static List<FamilyRoomSeparatorMarker> DeduplicateRoomSeparatorMarkers(List<FamilyRoomSeparatorMarker> source)
+        {
+            List<FamilyRoomSeparatorMarker> result = new List<FamilyRoomSeparatorMarker>();
+            if (source == null)
+                return result;
+
+            HashSet<string> keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (FamilyRoomSeparatorMarker marker in source)
+            {
+                if (marker == null || marker.ProjectP0 == null || marker.ProjectP1 == null)
+                    continue;
+
+                string key = BuildLineMarkerKey(marker.ProjectP0, marker.ProjectP1);
+                if (keys.Contains(key))
+                    continue;
+
+                keys.Add(key);
+                result.Add(marker);
+            }
+
+            return result;
+        }
+
         private static string BuildLineMarkerKey(XYZ p0, XYZ p1)
         {
             string a = BuildPointMarkerKey(p0);
@@ -1550,6 +1641,17 @@ namespace KPLN_Tools.ExecutableCommand
             return shafts;
         }
 
+        private static List<FamilyRoomSeparatorMarker> CollectRoomSeparatorMarkersFromApartmentFamily(Document ownerDoc, Family apartmentFamily)
+        {
+            List<FamilyRoomSeparatorMarker> separators = new List<FamilyRoomSeparatorMarker>();
+            if (ownerDoc == null || apartmentFamily == null)
+                return separators;
+
+            CollectRoomSeparatorMarkersFromFamilyRecursive(ownerDoc, apartmentFamily, Transform.Identity, separators, 0);
+
+            return separators;
+        }
+
         private static void CollectShaftWallMarkersFromFamilyRecursive(Document ownerDoc, Family family, Transform accumulatedLocalTransform,
             List<FamilyShaftWallMarker> shafts, int depth)
         {
@@ -1583,6 +1685,59 @@ namespace KPLN_Tools.ExecutableCommand
 
                     Transform currentLocalTransform = accumulatedLocalTransform.Multiply(localTransform);
                     CollectShaftWallMarkersFromFamilyRecursive(familyDoc, fi.Symbol.Family, currentLocalTransform, shafts, depth + 1);
+                }
+            }
+            catch
+            {
+            }
+            finally
+            {
+                if (familyDoc != null)
+                {
+                    try
+                    {
+                        familyDoc.Close(false);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
+        private static void CollectRoomSeparatorMarkersFromFamilyRecursive(Document ownerDoc, Family family, Transform accumulatedLocalTransform,
+            List<FamilyRoomSeparatorMarker> separators, int depth)
+        {
+            if (ownerDoc == null || family == null || accumulatedLocalTransform == null || separators == null)
+                return;
+
+            if (depth > 12)
+                return;
+
+            Document familyDoc = null;
+
+            try
+            {
+                familyDoc = ownerDoc.EditFamily(family);
+
+                CollectRoomSeparatorHelperLines(familyDoc, accumulatedLocalTransform, separators);
+
+                List<FamilyInstance> nestedInstances = new FilteredElementCollector(familyDoc)
+                    .OfClass(typeof(FamilyInstance))
+                    .Cast<FamilyInstance>()
+                    .ToList();
+
+                foreach (FamilyInstance fi in nestedInstances)
+                {
+                    if (fi == null || fi.Symbol == null || fi.Symbol.Family == null)
+                        continue;
+
+                    Transform localTransform = fi.GetTransform();
+                    if (localTransform == null)
+                        localTransform = Transform.Identity;
+
+                    Transform currentLocalTransform = accumulatedLocalTransform.Multiply(localTransform);
+                    CollectRoomSeparatorMarkersFromFamilyRecursive(familyDoc, fi.Symbol.Family, currentLocalTransform, separators, depth + 1);
                 }
             }
             catch
@@ -1747,6 +1902,58 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
+        private static void CollectRoomSeparatorHelperLines(Document familyDoc, Transform accumulatedLocalTransform, List<FamilyRoomSeparatorMarker> separators)
+        {
+            if (familyDoc == null || accumulatedLocalTransform == null || separators == null)
+                return;
+
+            List<CurveElement> curves = new FilteredElementCollector(familyDoc)
+                .OfClass(typeof(CurveElement))
+                .Cast<CurveElement>()
+                .ToList();
+
+            foreach (CurveElement curveElement in curves)
+            {
+                if (curveElement == null || !IsRoomSeparatorHelperCurve(curveElement))
+                    continue;
+
+                Curve curve = null;
+                try
+                {
+                    curve = curveElement.GeometryCurve;
+                }
+                catch
+                {
+                    curve = null;
+                }
+
+                if (curve == null || !curve.IsBound)
+                    continue;
+
+                XYZ p0;
+                XYZ p1;
+
+                try
+                {
+                    p0 = accumulatedLocalTransform.OfPoint(curve.GetEndPoint(0));
+                    p1 = accumulatedLocalTransform.OfPoint(curve.GetEndPoint(1));
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (p0 == null || p1 == null || Distance2D(p0, p1) < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                separators.Add(new FamilyRoomSeparatorMarker
+                {
+                    ProjectP0 = p0,
+                    ProjectP1 = p1
+                });
+            }
+        }
+
         private static bool IsShaftWallHelperCurve(CurveElement curveElement)
         {
             if (curveElement == null)
@@ -1774,6 +1981,33 @@ namespace KPLN_Tools.ExecutableCommand
             return false;
         }
 
+        private static bool IsRoomSeparatorHelperCurve(CurveElement curveElement)
+        {
+            if (curveElement == null)
+                return false;
+
+            Element lineStyle = null;
+            try
+            {
+                lineStyle = curveElement.LineStyle;
+            }
+            catch
+            {
+                lineStyle = null;
+            }
+
+            GraphicsStyle graphicsStyle = lineStyle as GraphicsStyle;
+            Category styleCategory = graphicsStyle != null ? graphicsStyle.GraphicsStyleCategory : null;
+
+            if (IsRoomSeparatorHelperName(styleCategory != null ? styleCategory.Name : null))
+                return true;
+
+            if (IsRoomSeparatorHelperName(curveElement.Category != null ? curveElement.Category.Name : null))
+                return true;
+
+            return false;
+        }
+
         private static bool IsShaftWallHelperName(string value)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -1785,6 +2019,19 @@ namespace KPLN_Tools.ExecutableCommand
                 .Trim();
 
             return normalized.IndexOf("шахта", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsRoomSeparatorHelperName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string normalized = value
+                .Replace('ё', 'е')
+                .Replace('Ё', 'Е')
+                .Trim();
+
+            return normalized.IndexOf("разделитель", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool IsLoggiaWallHelperName(string value)
@@ -2364,6 +2611,7 @@ namespace KPLN_Tools.ExecutableCommand
                     continue;
 
                 ApartmentProcessState state = GetOrCreateApartmentState(apartmentStates, apartmentFi.Id);
+                state.ApartmentFamilyName = GetApartmentFamilyReportName(apartmentFi);
                 if (state.Restore2DInfo == null)
                     state.Restore2DInfo = BuildRestore2DInfo(apartmentFi, targetPlan);
 
@@ -2432,6 +2680,24 @@ namespace KPLN_Tools.ExecutableCommand
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
                     apartmentAxisLines = RemoveSegmentsOverlappingExistingWalls(apartmentAxisLines, existingWalls, apartmentWallThicknessInternal);
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+
+                    List<FamilyRoomSeparatorMarker> roomSeparatorMarkers = CollectRoomSeparatorMarkersFromApartmentInstance(doc, apartmentFi);
+                    List<Line> roomSeparatorLines = BuildRoomSeparatorLinesFromMarkers(roomSeparatorMarkers);
+                    state.FoundRoomSeparatorsCount = roomSeparatorLines.Count;
+
+                    if (roomSeparatorLines.Count > 0)
+                    {
+                        apartmentAxisLines = RemoveWallAxisSegmentsAtRoomSeparators(
+                            apartmentAxisLines,
+                            roomSeparatorLines,
+                            apartmentWallThicknessInternal);
+                        apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                        roomSeparatorLines = TrimRoomSeparatorLinesToWallBoundaries(
+                            roomSeparatorLines,
+                            apartmentAxisLines,
+                            existingWalls,
+                            apartmentWallThicknessInternal);
+                    }
 
                     WallType shaftWallType = null;
                     List<Line> shaftAxisLines = new List<Line>();
@@ -2523,7 +2789,7 @@ namespace KPLN_Tools.ExecutableCommand
                         }
                     }
 
-                    if (apartmentAxisLines.Count == 0 && shaftAxisLines.Count == 0)
+                    if (apartmentAxisLines.Count == 0 && shaftAxisLines.Count == 0 && roomSeparatorLines.Count == 0)
                     {
                         if (state.SkippedRoomsCount == 0)
                             state.SkippedRoomsCount = roomInstances.Count;
@@ -2541,7 +2807,8 @@ namespace KPLN_Tools.ExecutableCommand
                             ShaftWallType = shaftWallType,
                             ShaftAxisLines = shaftAxisLines,
                             LoggiaWallType = loggiaWallType,
-                            LoggiaAxisLines = loggiaAxisLines
+                            LoggiaAxisLines = loggiaAxisLines,
+                            RoomSeparatorLines = roomSeparatorLines
                         });
 
                         state.HasPreparedWalls = true;
@@ -2553,7 +2820,15 @@ namespace KPLN_Tools.ExecutableCommand
                     PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
                     preparedWindowsByApartment.Add(preparedWindows);
 
-                    PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(doc, apartmentFi, loggiaAxisLines, apartmentAxisLines, targetPlan, debugMessages);
+                    PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(
+                        doc,
+                        apartmentFi,
+                        loggiaAxisLines,
+                        apartmentAxisLines,
+                        shaftAxisLines,
+                        roomSeparatorLines,
+                        targetPlan,
+                        debugMessages);
                     preparedRoomsByApartment.Add(preparedRooms);
                 }
                 catch (Exception exApartment)
@@ -2583,7 +2858,6 @@ namespace KPLN_Tools.ExecutableCommand
 
             int createdRoomsCount = 0;
             List<RoomAreaMismatchInfo> roomAreaMismatches = new List<RoomAreaMismatchInfo>();
-            List<DeletedRoomMismatchInfo> deletedRoomMismatches = new List<DeletedRoomMismatchInfo>();
 
             if (preparedApartments.Count > 0)
             {
@@ -2622,16 +2896,18 @@ namespace KPLN_Tools.ExecutableCommand
                     doc,
                     preparedApartments,
                     preparedRoomsByApartment,
-                    createdWallGeometry.CreatedWallsByApartment,
                     targetPlan.GenLevel,
                     roomAreaMismatches,
-                    deletedRoomMismatches,
-                    apartmentStates);
+                    apartmentStates,
+                    targetPlan,
+                    debugMessages);
             }
 
             ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, debugMessages, apartmentStates);
+            roomAreaMismatches = FilterRoomAreaMismatchesForRoomSeparators(roomAreaMismatches, apartmentStates);
+            RefreshRoomAreaMismatchFlags(apartmentStates, roomAreaMismatches);
 
-            List<ApartmentExecutionReportItem> reportItems = BuildExecutionReportItems(doc, apartmentStates, deletedRoomMismatches);
+            List<ApartmentExecutionReportItem> reportItems = BuildExecutionReportItems(doc, apartmentStates, roomAreaMismatches);
 
             int processedApartmentsCount = apartmentStates.Count;
             int foundEntranceDoorsCount = apartmentStates.Values
@@ -2640,9 +2916,175 @@ namespace KPLN_Tools.ExecutableCommand
             int installedEntranceDoorsCount = apartmentStates.Values
                 .Where(x => x != null)
                 .Sum(x => x.InstalledEntranceDoorsCount);
+            int foundRoomSeparatorsCount = apartmentStates.Values
+                .Where(x => x != null)
+                .Sum(x => x.FoundRoomSeparatorsCount);
+            int createdRoomSeparatorsCount = apartmentStates.Values
+                .Where(x => x != null)
+                .Sum(x => x.CreatedRoomSeparatorsCount);
+            int roomAreaMismatchCount = roomAreaMismatches.Count;
 
             ShowExecutionReportWindow(uidoc, targetPlan.Name, processedApartmentsCount, apartmentInstances.Count, createdRoomsCount, totalRoomsPlanned,
-                installedDoorsCount, totalDoorsPlanned, foundEntranceDoorsCount, installedEntranceDoorsCount, installedWindowsCount, totalWindowsPlanned, reportItems);
+                createdRoomSeparatorsCount, foundRoomSeparatorsCount, roomAreaMismatchCount,
+                installedDoorsCount, totalDoorsPlanned, foundEntranceDoorsCount, installedEntranceDoorsCount,
+                installedWindowsCount, totalWindowsPlanned, reportItems);
+        }
+
+        private static List<RoomAreaMismatchInfo> FilterRoomAreaMismatchesForRoomSeparators(
+            List<RoomAreaMismatchInfo> roomAreaMismatches,
+            Dictionary<long, ApartmentProcessState> apartmentStates)
+        {
+            if (roomAreaMismatches == null || roomAreaMismatches.Count == 0 || apartmentStates == null || apartmentStates.Count == 0)
+                return roomAreaMismatches ?? new List<RoomAreaMismatchInfo>();
+
+            double areaToleranceSquareMeters = 0.1;
+            List<RoomAreaMismatchInfo> result = new List<RoomAreaMismatchInfo>();
+            List<RoomAreaMismatchInfo> mismatchesWithoutApartment = new List<RoomAreaMismatchInfo>();
+
+            foreach (IGrouping<long, RoomAreaMismatchInfo> group in roomAreaMismatches
+                .Where(x => x != null && x.ApartmentId != null)
+                .GroupBy(x => IDHelper.ElIdValue(x.ApartmentId)))
+            {
+                ApartmentProcessState state;
+                List<RoomAreaMismatchInfo> mismatchesForApartment = group.ToList();
+                bool hasRoomSeparators =
+                    apartmentStates.TryGetValue(group.Key, out state) &&
+                    state != null &&
+                    state.FoundRoomSeparatorsCount > 0;
+
+                if (hasRoomSeparators)
+                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(mismatchesForApartment, areaToleranceSquareMeters);
+
+                result.AddRange(mismatchesForApartment);
+            }
+
+            mismatchesWithoutApartment.AddRange(roomAreaMismatches.Where(x => x == null || x.ApartmentId == null));
+            result.AddRange(mismatchesWithoutApartment);
+            return result;
+        }
+
+        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters)
+        {
+            if (mismatches == null || mismatches.Count < 2)
+                return mismatches ?? new List<RoomAreaMismatchInfo>();
+
+            HashSet<RoomAreaMismatchInfo> ignoredMismatches = new HashSet<RoomAreaMismatchInfo>();
+            List<RoomAreaMismatchInfo> zeroActualMismatches = mismatches
+                .Where(x =>
+                    x != null &&
+                    IDHelper.ConvertInternalAreaToSquareMeters(x.ActualAreaInternal) <= areaToleranceSquareMeters &&
+                    IDHelper.ConvertInternalAreaToSquareMeters(x.ExpectedAreaInternal) > areaToleranceSquareMeters)
+                .OrderByDescending(x => IDHelper.ConvertInternalAreaToSquareMeters(x.ExpectedAreaInternal))
+                .ToList();
+
+            List<RoomAreaMismatchInfo> combinedActualMismatches = mismatches
+                .Where(x =>
+                    x != null &&
+                    IDHelper.ConvertInternalAreaToSquareMeters(x.ActualAreaInternal) - IDHelper.ConvertInternalAreaToSquareMeters(x.ExpectedAreaInternal) > areaToleranceSquareMeters)
+                .OrderByDescending(x => IDHelper.ConvertInternalAreaToSquareMeters(x.ActualAreaInternal) - IDHelper.ConvertInternalAreaToSquareMeters(x.ExpectedAreaInternal))
+                .ToList();
+
+            foreach (RoomAreaMismatchInfo combinedMismatch in combinedActualMismatches)
+            {
+                if (ignoredMismatches.Contains(combinedMismatch))
+                    continue;
+
+                double expectedArea = IDHelper.ConvertInternalAreaToSquareMeters(combinedMismatch.ExpectedAreaInternal);
+                double actualArea = IDHelper.ConvertInternalAreaToSquareMeters(combinedMismatch.ActualAreaInternal);
+                double missingPartArea = actualArea - expectedArea;
+
+                if (missingPartArea <= areaToleranceSquareMeters)
+                    continue;
+
+                List<RoomAreaMismatchInfo> availableZeroActualMismatches = zeroActualMismatches
+                    .Where(x => !ignoredMismatches.Contains(x))
+                    .ToList();
+
+                List<RoomAreaMismatchInfo> matchingParts;
+                if (!TryFindExpectedAreaSubset(availableZeroActualMismatches, missingPartArea, areaToleranceSquareMeters, out matchingParts))
+                    continue;
+
+                ignoredMismatches.Add(combinedMismatch);
+                foreach (RoomAreaMismatchInfo matchingPart in matchingParts)
+                    ignoredMismatches.Add(matchingPart);
+            }
+
+            if (ignoredMismatches.Count == 0)
+                return mismatches;
+
+            return mismatches
+                .Where(x => x != null && !ignoredMismatches.Contains(x))
+                .ToList();
+        }
+
+        private static bool TryFindExpectedAreaSubset(
+            List<RoomAreaMismatchInfo> candidates,
+            double targetAreaSquareMeters,
+            double areaToleranceSquareMeters,
+            out List<RoomAreaMismatchInfo> result)
+        {
+            result = new List<RoomAreaMismatchInfo>();
+
+            if (candidates == null || candidates.Count == 0)
+                return false;
+
+            return TryFindExpectedAreaSubset(candidates, 0, targetAreaSquareMeters, areaToleranceSquareMeters, new List<RoomAreaMismatchInfo>(), result);
+        }
+
+        private static bool TryFindExpectedAreaSubset(
+            List<RoomAreaMismatchInfo> candidates,
+            int startIndex,
+            double remainingAreaSquareMeters,
+            double areaToleranceSquareMeters,
+            List<RoomAreaMismatchInfo> current,
+            List<RoomAreaMismatchInfo> result)
+        {
+            if (Math.Abs(remainingAreaSquareMeters) <= areaToleranceSquareMeters && current.Count > 0)
+            {
+                result.AddRange(current);
+                return true;
+            }
+
+            if (remainingAreaSquareMeters < -areaToleranceSquareMeters)
+                return false;
+
+            for (int i = startIndex; i < candidates.Count; i++)
+            {
+                RoomAreaMismatchInfo candidate = candidates[i];
+                if (candidate == null)
+                    continue;
+
+                double candidateArea = IDHelper.ConvertInternalAreaToSquareMeters(candidate.ExpectedAreaInternal);
+                current.Add(candidate);
+
+                if (TryFindExpectedAreaSubset(candidates, i + 1, remainingAreaSquareMeters - candidateArea, areaToleranceSquareMeters, current, result))
+                    return true;
+
+                current.RemoveAt(current.Count - 1);
+            }
+
+            return false;
+        }
+
+        private static void RefreshRoomAreaMismatchFlags(
+            Dictionary<long, ApartmentProcessState> apartmentStates,
+            List<RoomAreaMismatchInfo> roomAreaMismatches)
+        {
+            if (apartmentStates == null || apartmentStates.Count == 0)
+                return;
+
+            HashSet<long> apartmentsWithMismatches = new HashSet<long>(
+                (roomAreaMismatches ?? new List<RoomAreaMismatchInfo>())
+                .Where(x => x != null && x.ApartmentId != null)
+                .Select(x => IDHelper.ElIdValue(x.ApartmentId)));
+
+            foreach (ApartmentProcessState state in apartmentStates.Values)
+            {
+                if (state == null || state.ApartmentId == null)
+                    continue;
+
+                state.HasRoomAreaMismatch = apartmentsWithMismatches.Contains(IDHelper.ElIdValue(state.ApartmentId));
+            }
         }
 
         private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages,
@@ -2713,7 +3155,9 @@ namespace KPLN_Tools.ExecutableCommand
         }
 
         private void ShowExecutionReportWindow(UIDocument uidoc, string planName, int processedApartments, int totalApartments, int createdRoomsCount,
-            int totalRoomsPlanned, int installedDoorsCount, int totalDoorsPlanned, int foundEntranceDoorsCount, int installedEntranceDoorsCount,
+            int totalRoomsPlanned, int createdRoomSeparatorsCount, int foundRoomSeparatorsCount,
+            int roomAreaMismatchCount,
+            int installedDoorsCount, int totalDoorsPlanned, int foundEntranceDoorsCount, int installedEntranceDoorsCount,
             int installedWindowsCount, int totalWindowsPlanned,
             List<ApartmentExecutionReportItem> reportItems)
         {
@@ -2744,6 +3188,16 @@ namespace KPLN_Tools.ExecutableCommand
 
                 summaryItem.Lines.Add(new ApartmentExecutionReportLine
                 {
+                    Text = "Разделитель: " + createdRoomSeparatorsCount + " из " + foundRoomSeparatorsCount
+                });
+
+                summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                {
+                    Text = "Несовпадений площадей: " + roomAreaMismatchCount
+                });
+
+                summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                {
                     Text = "Создано дверей: " + installedDoorsCount + " из " + totalDoorsPlanned
                 });
 
@@ -2769,7 +3223,7 @@ namespace KPLN_Tools.ExecutableCommand
         private static List<ApartmentExecutionReportItem> BuildExecutionReportItems(
             Document doc,
             Dictionary<long, ApartmentProcessState> apartmentStates,
-            List<DeletedRoomMismatchInfo> deletedRoomMismatches)
+            List<RoomAreaMismatchInfo> roomAreaMismatches)
         {
             List<ApartmentExecutionReportItem> result = new List<ApartmentExecutionReportItem>();
 
@@ -2786,7 +3240,9 @@ namespace KPLN_Tools.ExecutableCommand
                 ApartmentExecutionReportItem reportItem = new ApartmentExecutionReportItem
                 {
                     ApartmentId = apartmentId,
-                    CustomHeaderText = "Ошибки квартиры [" + apartmentId + "]"
+                    CustomHeaderText = !string.IsNullOrWhiteSpace(state.ApartmentFamilyName)
+                        ? state.ApartmentFamilyName
+                        : "Квартира [" + apartmentId + "]"
                 };
 
                 AddExistingNavigationCandidatesToReport(doc, reportItem, state);
@@ -2800,8 +3256,8 @@ namespace KPLN_Tools.ExecutableCommand
                 bool hasSkippedWindows = state.SkippedWindowsCount > 0;
                 bool hasFurnitureErrors = state.FurnitureErrors != null && state.FurnitureErrors.Count > 0;
                 bool hasErrorMessages = state.ErrorMessages != null && state.ErrorMessages.Count > 0;
-                bool hasProblematicDeletedRooms = state.HasDeletedRoomMismatch || state.HasRoomAreaMismatch;
-                bool hasReportableErrors = hasSkippedRooms || hasSkippedDoors || hasSkippedWindows || hasFurnitureErrors || hasErrorMessages || hasProblematicDeletedRooms;
+                bool hasAreaMismatches = state.HasRoomAreaMismatch;
+                bool hasReportableErrors = hasSkippedRooms || hasSkippedDoors || hasSkippedWindows || hasFurnitureErrors || hasErrorMessages || hasAreaMismatches;
 
                 if (hasReportableErrors)
                 {
@@ -2885,9 +3341,9 @@ namespace KPLN_Tools.ExecutableCommand
                     }
                 }
 
-                if (deletedRoomMismatches != null)
+                if (roomAreaMismatches != null)
                 {
-                    List<DeletedRoomMismatchInfo> deletedForApartment = deletedRoomMismatches
+                    List<RoomAreaMismatchInfo> mismatchesForApartment = roomAreaMismatches
                         .Where(x =>
                             x != null &&
                             x.ApartmentId != null &&
@@ -2895,16 +3351,31 @@ namespace KPLN_Tools.ExecutableCommand
                         .OrderBy(x => x.RoomName)
                         .ToList();
 
-                    foreach (DeletedRoomMismatchInfo deletedItem in deletedForApartment)
+                    if (mismatchesForApartment.Count > 0)
                     {
-                        string expectedText = IDHelper.ConvertInternalAreaToSquareMeters(deletedItem.ExpectedAreaInternal).ToString("0.##");
-                        string actualText = IDHelper.ConvertInternalAreaToSquareMeters(deletedItem.ActualAreaInternal).ToString("0.##");
+                        reportItem.Lines.Add(new ApartmentExecutionReportLine
+                        {
+                            Text = "Несовпадения площадей: " + mismatchesForApartment.Count,
+                            Foreground = System.Windows.Media.Brushes.Red,
+                            FontSize = 14,
+                            FontWeight = FontWeights.SemiBold
+                        });
+
+                    }
+
+                    foreach (RoomAreaMismatchInfo mismatchItem in mismatchesForApartment)
+                    {
+                        double expectedArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatchItem.ExpectedAreaInternal);
+                        double actualArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatchItem.ActualAreaInternal);
+                        string expectedText = expectedArea.ToString("0.##");
+                        string actualText = actualArea.ToString("0.##");
+                        string differenceText = (actualArea - expectedArea).ToString("+0.##;-0.##;0");
 
                         reportItem.Lines.Add(new ApartmentExecutionReportLine
                         {
-                            Text = "-- Не совпавшее помещение: " +
-                                   (string.IsNullOrWhiteSpace(deletedItem.RoomName) ? "Помещение" : deletedItem.RoomName) +
-                                   " | 2D = " + expectedText + " м², 3D = " + actualText + " м²",
+                            Text = "-- Площадь: " +
+                                   (string.IsNullOrWhiteSpace(mismatchItem.RoomName) ? "Помещение" : mismatchItem.RoomName) +
+                                   " | 2D = " + expectedText + " м², 3D = " + actualText + " м², Δ = " + differenceText + " м²",
                             Foreground = System.Windows.Media.Brushes.DarkOrange
                         });
                     }
@@ -2936,6 +3407,23 @@ namespace KPLN_Tools.ExecutableCommand
             AddNavigationElementCandidate(state, apartmentId);
 
             return state;
+        }
+
+        private static string GetApartmentFamilyReportName(FamilyInstance apartmentFi)
+        {
+            if (apartmentFi == null)
+                return null;
+
+            if (apartmentFi.Symbol != null)
+            {
+                if (apartmentFi.Symbol.Family != null && !string.IsNullOrWhiteSpace(apartmentFi.Symbol.Family.Name))
+                    return apartmentFi.Symbol.Family.Name.Trim();
+
+                if (!string.IsNullOrWhiteSpace(apartmentFi.Symbol.Name))
+                    return apartmentFi.Symbol.Name.Trim();
+            }
+
+            return null;
         }
 
         private static void AddApartmentDiagnostic(ApartmentProcessState state, List<string> debugMessages, string message)

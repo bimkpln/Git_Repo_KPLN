@@ -11,9 +11,9 @@ namespace KPLN_Tools.ExecutableCommand
     internal partial class ApartmentManagerExternalHandler
     {
         private int PlaceRoomGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
-            List<PreparedApartmentRooms> preparedRoomsByApartment, Dictionary<long, List<Wall>> createdWallsByApartment,
-            Level roomLevel, List<RoomAreaMismatchInfo> roomAreaMismatches, List<DeletedRoomMismatchInfo> deletedRoomMismatches,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+            List<PreparedApartmentRooms> preparedRoomsByApartment,
+            Level roomLevel, List<RoomAreaMismatchInfo> roomAreaMismatches,
+            Dictionary<long, ApartmentProcessState> apartmentStates, ViewPlan roomPlan, List<string> debugMessages)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || roomLevel == null)
                 return 0;
@@ -23,6 +23,7 @@ namespace KPLN_Tools.ExecutableCommand
             using (Transaction t = new Transaction(doc, "KPLN. Геометрия помещений"))
             {
                 t.Start();
+                ApplyApartmentFailureHandling(t);
 
                 foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
                 {
@@ -33,24 +34,37 @@ namespace KPLN_Tools.ExecutableCommand
                         ? preparedRoomsByApartment.FirstOrDefault(x => x != null && x.ApartmentId == apartmentWalls.ApartmentId)
                         : null;
 
-                    if (apartmentRooms == null || apartmentRooms.Rooms == null || apartmentRooms.Rooms.Count == 0)
-                        continue;
-
                     ApartmentProcessState state = GetOrCreateApartmentState(apartmentStates, apartmentWalls.ApartmentId);
-                    List<Wall> createdWallsForApartment = GetCreatedWallsForApartment(createdWallsByApartment, apartmentWalls.ApartmentId);
+
+                    int createdRoomsForApartment = 0;
+                    int roomsForApartmentCount = apartmentRooms != null && apartmentRooms.Rooms != null ? apartmentRooms.Rooms.Count : 0;
 
                     int mismatchesBefore = roomAreaMismatches != null ? roomAreaMismatches.Count : 0;
-                    int deletedBefore = deletedRoomMismatches != null ? deletedRoomMismatches.Count : 0;
                     List<ElementId> createdRoomIds = new List<ElementId>();
 
-                    int createdRoomsForApartment = PlaceRoomsForApartment(
+                    int createdRoomSeparators = PlaceRoomSeparatorsForApartment(
                         doc,
-                        apartmentRooms,
+                        apartmentWalls,
+                        apartmentWalls.RoomSeparatorLines,
                         roomLevel,
-                        roomAreaMismatches,
-                        deletedRoomMismatches,
-                        createdWallsForApartment,
-                        createdRoomIds);
+                        roomPlan,
+                        state,
+                        debugMessages);
+                    if (createdRoomSeparators > 0)
+                    {
+                        state.CreatedRoomSeparatorsCount += createdRoomSeparators;
+                        doc.Regenerate();
+                    }
+
+                    if (apartmentRooms != null && apartmentRooms.Rooms != null && apartmentRooms.Rooms.Count > 0)
+                    {
+                        createdRoomsForApartment = PlaceRoomsForApartment(
+                            doc,
+                            apartmentRooms,
+                            roomLevel,
+                            roomAreaMismatches,
+                            createdRoomIds);
+                    }
 
                     foreach (ElementId createdRoomId in createdRoomIds)
                         AddCreatedElementCandidate(state, createdRoomId);
@@ -60,15 +74,12 @@ namespace KPLN_Tools.ExecutableCommand
                     if (createdRoomsForApartment > 0)
                         state.HasCreatedRooms = true;
 
-                    int skippedRoomsForApartment = apartmentRooms.Rooms.Count - createdRoomsForApartment;
+                    int skippedRoomsForApartment = roomsForApartmentCount - createdRoomsForApartment;
                     if (skippedRoomsForApartment > 0)
                         state.SkippedRoomsCount += skippedRoomsForApartment;
 
                     if (roomAreaMismatches != null && roomAreaMismatches.Count > mismatchesBefore)
                         state.HasRoomAreaMismatch = true;
-
-                    if (deletedRoomMismatches != null && deletedRoomMismatches.Count > deletedBefore)
-                        state.HasDeletedRoomMismatch = true;
                 }
 
                 doc.Regenerate();
@@ -78,12 +89,83 @@ namespace KPLN_Tools.ExecutableCommand
             return createdRoomsCount;
         }
 
+        private int PlaceRoomSeparatorsForApartment(Document doc, PreparedApartmentWalls apartmentWalls, List<Line> roomSeparatorLines,
+            Level roomLevel, ViewPlan roomPlan, ApartmentProcessState state, List<string> debugMessages)
+        {
+            if (doc == null || apartmentWalls == null || roomSeparatorLines == null ||
+                roomSeparatorLines.Count == 0 || roomLevel == null || roomPlan == null)
+            {
+                return 0;
+            }
+
+            SketchPlane sketchPlane = null;
+            try
+            {
+                Plane plane = Plane.CreateByNormalAndOrigin(
+                    XYZ.BasisZ,
+                    new XYZ(0, 0, roomLevel.Elevation));
+                sketchPlane = SketchPlane.Create(doc, plane);
+            }
+            catch (Exception ex)
+            {
+                AddApartmentDiagnostic(
+                    state,
+                    debugMessages,
+                    "Для квартиры ID = " + IDHelper.ElIdValue(apartmentWalls.ApartmentId) +
+                    " не удалось создать рабочую плоскость разделителей помещений: " + ex.Message);
+                return 0;
+            }
+
+            int createdCount = 0;
+            foreach (Line sourceLine in roomSeparatorLines)
+            {
+                if (sourceLine == null || sourceLine.Length < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                try
+                {
+                    XYZ p0 = sourceLine.GetEndPoint(0);
+                    XYZ p1 = sourceLine.GetEndPoint(1);
+                    Line projectedLine = Line.CreateBound(
+                        new XYZ(p0.X, p0.Y, roomLevel.Elevation),
+                        new XYZ(p1.X, p1.Y, roomLevel.Elevation));
+
+                    CurveArray curves = new CurveArray();
+                    curves.Append(projectedLine);
+
+                    ModelCurveArray createdCurves = doc.Create.NewRoomBoundaryLines(sketchPlane, curves, roomPlan);
+                    if (createdCurves == null)
+                        continue;
+
+                    foreach (ModelCurve modelCurve in createdCurves)
+                    {
+                        if (modelCurve == null)
+                            continue;
+
+                        createdCount++;
+                        AddCreatedElementCandidate(state, modelCurve.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Для квартиры ID = " + IDHelper.ElIdValue(apartmentWalls.ApartmentId) +
+                        " не удалось создать разделитель помещения: " + ex.Message);
+                }
+            }
+
+            return createdCount;
+        }
+
         private PreparedApartmentRooms PrepareRoomsForApartment(Document doc, FamilyInstance apartmentFi, List<Line> loggiaAxisLines,
-            List<Line> apartmentAxisLines, View geometryView, List<string> debugMessages)
+            List<Line> apartmentAxisLines, List<Line> shaftAxisLines, List<Line> roomSeparatorLines, View geometryView, List<string> debugMessages)
         {
             PreparedApartmentRooms result = new PreparedApartmentRooms();
             result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
-            result.IgnoreAreaMismatchDueToLoggia = loggiaAxisLines != null && loggiaAxisLines.Count > 0;
+            result.HasRoomSeparators = roomSeparatorLines != null && roomSeparatorLines.Count > 0;
+            result.HasShafts = shaftAxisLines != null && shaftAxisLines.Count > 0;
 
             if (doc == null || apartmentFi == null)
                 return result;
@@ -103,7 +185,26 @@ namespace KPLN_Tools.ExecutableCommand
                     double expectedAreaInternal = 0;
                     TryGetAreaParamFromElementOrType(roomFi, out expectedAreaInternal, "КП_Р_Площадь", "КП_Р_ПЛОЩАДЬ");
 
-                    XYZ insertPointInProject = GetRoomPlacementPointFromInstance(roomFi, geometryView);
+                    RoomBoundaryLoopData loopData;
+                    string diagnostic;
+                    if (!TryBuildRoomBoundaryLoopFromInstanceGeometry(roomFi, geometryView, out loopData, out diagnostic) ||
+                        loopData == null ||
+                        loopData.Vertices == null ||
+                        loopData.Vertices.Count < 3)
+                    {
+                        if (debugMessages != null)
+                        {
+                            debugMessages.Add(
+                                "Для вложенного помещения ID = " +
+                                IDHelper.ElIdValue(roomFi.Id) +
+                                " не удалось собрать контур для точки помещения." +
+                                (string.IsNullOrWhiteSpace(diagnostic) ? "" : " Диагностика: " + diagnostic + "."));
+                        }
+
+                        continue;
+                    }
+
+                    XYZ insertPointInProject = FindInteriorPointForRoomLoop(loopData.Vertices);
                     if (insertPointInProject == null)
                     {
                         if (debugMessages != null)
@@ -122,7 +223,8 @@ namespace KPLN_Tools.ExecutableCommand
                         ApartmentId = apartmentFi.Id,
                         RoomName = roomName.Trim(),
                         InsertPoint = insertPointInProject,
-                        ExpectedAreaInternal = expectedAreaInternal
+                        ExpectedAreaInternal = expectedAreaInternal,
+                        HasShaftInside = RoomContainsAnyLine(loopData.Vertices, shaftAxisLines)
                     });
                 }
                 catch (Exception ex)
@@ -137,6 +239,36 @@ namespace KPLN_Tools.ExecutableCommand
             AddSyntheticLoggiaRoomPlacements(result, apartmentFi, doc, loggiaAxisLines, apartmentAxisLines);
 
             return result;
+        }
+
+        private static bool RoomContainsAnyLine(List<XYZ> roomVertices, List<Line> lines)
+        {
+            if (roomVertices == null || roomVertices.Count < 3 || lines == null || lines.Count == 0)
+                return false;
+
+            double tolerance = IDHelper.ConvertMmToInternal(20);
+
+            foreach (Line line in lines)
+            {
+                if (line == null || line.Length < IDHelper.ConvertMmToInternal(10))
+                    continue;
+
+                XYZ p0 = line.GetEndPoint(0);
+                XYZ p1 = line.GetEndPoint(1);
+                XYZ mid = new XYZ(
+                    0.5 * (p0.X + p1.X),
+                    0.5 * (p0.Y + p1.Y),
+                    0.5 * (p0.Z + p1.Z));
+
+                if (IsPointInsidePolygon2D(p0, roomVertices, tolerance) ||
+                    IsPointInsidePolygon2D(p1, roomVertices, tolerance) ||
+                    IsPointInsidePolygon2D(mid, roomVertices, tolerance))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static void AddSyntheticLoggiaRoomPlacements(PreparedApartmentRooms result, FamilyInstance apartmentFi, Document doc,
@@ -351,9 +483,24 @@ namespace KPLN_Tools.ExecutableCommand
             return false;
         }
 
+        private static bool ShouldReportRoomAreaMismatch(PreparedRoomPlacement preparedRoom,
+            double expectedAreaSquareMeters, double actualAreaSquareMeters, double areaToleranceSquareMeters)
+        {
+            if (Math.Abs(expectedAreaSquareMeters - actualAreaSquareMeters) <= areaToleranceSquareMeters)
+                return false;
+
+            if (preparedRoom != null &&
+                preparedRoom.HasShaftInside &&
+                actualAreaSquareMeters < expectedAreaSquareMeters)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
         private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel,
-            List<RoomAreaMismatchInfo> roomAreaMismatches, List<DeletedRoomMismatchInfo> deletedRoomMismatches, List<Wall> createdWallsForApartment,
-            List<ElementId> createdRoomIds = null)
+            List<RoomAreaMismatchInfo> roomAreaMismatches, List<ElementId> createdRoomIds = null)
         {
             if (doc == null || apartmentRooms == null || roomLevel == null)
                 return 0;
@@ -376,7 +523,7 @@ namespace KPLN_Tools.ExecutableCommand
                         preparedRoom.InsertPoint.Y,
                         roomLevel.Elevation + IDHelper.ConvertMmToInternal(100));
 
-                    if (HasRoomAtPoint(doc, roomLevel, roomPoint))
+                    if (!apartmentRooms.HasRoomSeparators && HasRoomAtPoint(doc, roomLevel, roomPoint))
                         continue;
 
                     UV roomUv = new UV(preparedRoom.InsertPoint.X, preparedRoom.InsertPoint.Y);
@@ -389,14 +536,19 @@ namespace KPLN_Tools.ExecutableCommand
                     if (roomNameParam != null && !roomNameParam.IsReadOnly && !string.IsNullOrWhiteSpace(preparedRoom.RoomName))
                         roomNameParam.Set(preparedRoom.RoomName);
 
+                    doc.Regenerate();
+
                     if (preparedRoom.ExpectedAreaInternal > 0)
                     {
                         double actualAreaInternal = createdRoom.Area;
                         double expectedAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(preparedRoom.ExpectedAreaInternal);
                         double actualAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(actualAreaInternal);
 
-                        if (Math.Abs(expectedAreaSquareMeters - actualAreaSquareMeters) > areaToleranceSquareMeters &&
-                            !apartmentRooms.IgnoreAreaMismatchDueToLoggia)
+                        if (ShouldReportRoomAreaMismatch(
+                            preparedRoom,
+                            expectedAreaSquareMeters,
+                            actualAreaSquareMeters,
+                            areaToleranceSquareMeters))
                         {
                             if (roomAreaMismatches != null)
                             {
@@ -408,21 +560,6 @@ namespace KPLN_Tools.ExecutableCommand
                                     ActualAreaInternal = actualAreaInternal
                                 });
                             }
-
-                            if (deletedRoomMismatches != null)
-                            {
-                                deletedRoomMismatches.Add(new DeletedRoomMismatchInfo
-                                {
-                                    ApartmentId = preparedRoom.ApartmentId,
-                                    RoomName = preparedRoom.RoomName,
-                                    ExpectedAreaInternal = preparedRoom.ExpectedAreaInternal,
-                                    ActualAreaInternal = actualAreaInternal
-                                });
-                            }
-
-                            doc.Delete(createdRoom.Id);
-                            DeleteIsolatedCreatedWalls(doc, createdWallsForApartment);
-                            continue;
                         }
                     }
 
