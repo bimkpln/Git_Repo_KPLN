@@ -215,13 +215,19 @@
   <ItemGroup>
     <Compile Include="Common\TagsHelpers\AnnotationCollisionResolver.cs" />
     <Compile Include="Common\IDHelper.cs" />
-    <Compile Include="ExecutableCommand\ApartmentExecutionReportActionController.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Presets.cs" />
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\ApartmentExecutionReportActionController.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\ApartmentPresetsPanelVm.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Geometry.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Geometry.Doors.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Geometry.Furniture.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Geometry.Rooms.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Geometry.Walls.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Geometry.Windows.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManager\CommandApartmentManagerShow.Handler.Presets.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
@@ -245,7 +251,6 @@
     <Compile Include="Forms\ApartmentManagerWindow.xaml.cs">
       <DependentUpon>ApartmentManagerWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ExecutableCommand\ApartmentPresetsPanelVm.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>

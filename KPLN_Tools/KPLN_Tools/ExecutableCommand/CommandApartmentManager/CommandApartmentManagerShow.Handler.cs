@@ -99,6 +99,8 @@ namespace KPLN_Tools.ExecutableCommand
             public List<Line> AxisLines { get; set; }
             public WallType ShaftWallType { get; set; }
             public List<Line> ShaftAxisLines { get; set; }
+            public WallType LoggiaWallType { get; set; }
+            public List<Line> LoggiaAxisLines { get; set; }
         }
 
         private class ApartmentProcessState
@@ -202,26 +204,6 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        private class FamilyRoomMarker
-        {
-            public string RoomCategory { get; set; }
-            public Transform LocalTransform { get; set; }
-            public double WidthInternal { get; set; }
-            public double DepthInternal { get; set; }
-            public double ExpectedAreaInternal { get; set; }
-        }
-
-        private class FamilyDoorMarker
-        {
-            public string DoorTypeName2D { get; set; }
-            public int DoorWidthMm { get; set; }
-            public XYZ LocalPoint { get; set; }
-            public Transform LocalTransform { get; set; }
-            public string RoomCategory { get; set; }
-            public string Comment { get; set; }
-            public bool IsEntranceDoor { get; set; }
-        }
-
         private class FamilyWindowMarker
         {
             public XYZ LocalP0 { get; set; }
@@ -229,6 +211,17 @@ namespace KPLN_Tools.ExecutableCommand
         }
 
         private class FamilyShaftWallMarker
+        {
+            public XYZ ProjectP0 { get; set; }
+            public XYZ ProjectP1 { get; set; }
+        }
+
+        private class FamilyShaftFillRegion
+        {
+            public List<XYZ> Boundary { get; set; }
+        }
+
+        private class FamilyLoggiaWallMarker
         {
             public XYZ ProjectP0 { get; set; }
             public XYZ ProjectP1 { get; set; }
@@ -318,6 +311,7 @@ namespace KPLN_Tools.ExecutableCommand
         {
             public ElementId ApartmentId { get; set; }
             public List<PreparedRoomPlacement> Rooms { get; set; }
+            public bool IgnoreAreaMismatchDueToLoggia { get; set; }
 
             public PreparedApartmentRooms()
             {

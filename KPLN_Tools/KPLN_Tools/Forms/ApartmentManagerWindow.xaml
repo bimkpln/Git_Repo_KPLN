@@ -1,7 +1,6 @@
 ﻿<Window x:Class="KPLN_Tools.Forms.ApartmentManagerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:KPLN_Tools.Forms"
         Title="KPLN. Менеджер квартир"
         Width="1540" Height="730" ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         FontFamily="Century Gothic" UseLayoutRounding="True" SnapsToDevicePixels="True"
@@ -9,7 +8,42 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <local:NullToVisibilityConverter x:Key="NullToVis"/>
+
+        <Style x:Key="VisibleWhenPreviewNotNullStyle" TargetType="{x:Type FrameworkElement}">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Preview}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="VisibleWhenPreviewNullStyle" TargetType="{x:Type FrameworkElement}">
+            <Setter Property="Visibility" Value="Collapsed"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Preview}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="VisibleWhenTooltipPreviewNotNullStyle" TargetType="{x:Type ToolTip}">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PlacementTarget.DataContext.Preview, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="VisibleWhenSelectedPlanNotNullStyle" TargetType="{x:Type FrameworkElement}">
+            <Setter Property="Visibility" Value="Visible"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding PresetsVm.SelectedPlan}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <Style x:Key="FlatTileButtonStyle" TargetType="Button">
             <Setter Property="BorderThickness" Value="0"/>
@@ -181,7 +215,7 @@
                                                 <Button.ToolTip>
                                                     <ToolTip Placement="Mouse"
                                                              HasDropShadow="True"
-                                                             Visibility="{Binding Preview, Converter={StaticResource NullToVis}, ConverterParameter=NotNull}">
+                                                             Style="{StaticResource VisibleWhenTooltipPreviewNotNullStyle}">
 
                                                         <Border Background="White"
                                                                 BorderBrush="Black"
@@ -211,7 +245,7 @@
                                                                SnapsToDevicePixels="True"
                                                                UseLayoutRounding="True"
                                                                RenderOptions.BitmapScalingMode="Fant"
-                                                               Visibility="{Binding Preview, Converter={StaticResource NullToVis}, ConverterParameter=NotNull}"/>
+                                                               Style="{StaticResource VisibleWhenPreviewNotNullStyle}"/>
                                                     </Border>
 
                                                     <TextBlock Text="{Binding Title}"
@@ -222,7 +256,7 @@
                                                                TextAlignment="Center"
                                                                TextWrapping="Wrap"
                                                                Margin="8"
-                                                               Visibility="{Binding Preview, Converter={StaticResource NullToVis}}"/>
+                                                               Style="{StaticResource VisibleWhenPreviewNullStyle}"/>
                                                 </Grid>
                                             </Button>
 
@@ -314,7 +348,7 @@
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
-                              Visibility="{Binding PresetsVm.SelectedPlan, Converter={StaticResource NullToVis}, ConverterParameter=NotNull}">
+                              Style="{StaticResource VisibleWhenSelectedPlanNotNullStyle}">
 
                     <StackPanel Margin="12">
                         <GroupBox Header="План" Margin="0,0,0,10">
@@ -336,6 +370,7 @@
                                     <RowDefinition Height="10"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="10"/>
+                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
@@ -414,7 +449,6 @@
                                              DataObject.Pasting="DigitsOnly_Pasting"/>
                                 </Grid>
 
-                                <!-- ИЗМЕНЕНО: Стена шахты и ComboBox теперь с новой строки -->
                                 <Grid Grid.Row="8"
                                       Margin="0,0,0,10"
                                       Visibility="{Binding PresetsVm.HasShaftWallMarkers, Converter={StaticResource BoolToVis}}">
@@ -435,7 +469,27 @@
                                               SelectedItem="{Binding PresetsVm.SelectedShaftWallType}"/>
                                 </Grid>
 
-                                <ItemsControl Grid.Row="9"
+                                <Grid Grid.Row="9"
+                                      Margin="0,0,0,10"
+                                      Visibility="{Binding PresetsVm.HasLoggiaWallMarkers, Converter={StaticResource BoolToVis}}">
+
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="4"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0"
+                                               Text="Стена лоджии:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Row="2"
+                                              ItemsSource="{Binding PresetsVm.LoggiaWallTypeOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedLoggiaWallType}"/>
+                                </Grid>
+
+                                <ItemsControl Grid.Row="10"
                                               ItemsSource="{Binding PresetsVm.WallAssignments}">
 
                                     <ItemsControl.ItemTemplate>

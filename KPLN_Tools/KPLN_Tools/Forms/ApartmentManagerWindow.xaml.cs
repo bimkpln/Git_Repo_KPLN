@@ -4,13 +4,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data.SQLite;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -993,27 +991,6 @@ namespace KPLN_Tools.Forms
             EventHandler h = CanExecuteChanged;
             if (h != null)
                 h(this, EventArgs.Empty);
-        }
-    }
-
-    public class NullToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            bool invert = parameter != null &&
-                          string.Equals(parameter.ToString(), "NotNull", StringComparison.OrdinalIgnoreCase);
-
-            bool isNull = (value == null);
-
-            if (!invert)
-                return isNull ? Visibility.Visible : Visibility.Collapsed;
-
-            return isNull ? Visibility.Collapsed : Visibility.Visible;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotSupportedException();
         }
     }
 
