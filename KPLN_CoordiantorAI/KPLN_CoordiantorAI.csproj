@@ -64,6 +64,9 @@
       <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
       <Private>False</Private>
@@ -125,6 +128,9 @@
     <Compile Include="Common\PromptDefaults.cs" />
     <Compile Include="Common\StubGigaChatClient.cs" />
     <Compile Include="Common\SubDepartmentNameResolver.cs" />
+    <Compile Include="ExternalAIModel\ChatLogger.cs" />
+    <Compile Include="ExternalAIModel\Commands.cs" />
+    <Compile Include="ExternalAIModel\Connection.cs" />
     <Compile Include="ExternalCommands\SettingsAI.cs" />
     <Compile Include="ExternalCommands\StartAI.cs" />
     <Compile Include="Forms\ArticleAliasesWindow.xaml.cs">
@@ -135,6 +141,9 @@
     </Compile>
     <Compile Include="Forms\ChatWindow.xaml.cs">
       <DependentUpon>ChatWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ExternalModelWindow.xaml.cs">
+      <DependentUpon>ExternalModelWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
@@ -173,6 +182,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\ChatWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ExternalModelWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -1,4 +1,6 @@
 ﻿using KPLN_CoordiantorAI.Common;
+using Autodesk.Revit.UI;
+using KPLN_CoordiantorAI.ExternalModel;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
@@ -32,6 +34,9 @@ namespace KPLN_CoordiantorAI.Forms
         private static readonly Regex SourceLinkLabelRegex = new Regex(
             "\\bdata-source-label\\s*=\\s*([\"'])(?<label>.*?)\\1",
             RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex SourceAnchorRegex = new Regex(
+            "<\\s*a\\b(?<attrs>[^>]*)>.*?<\\s*/\\s*a\\s*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
         private static readonly Regex MarkdownBoldRegex = new Regex(
             "\\*\\*(?<text>.+?)\\*\\*",
             RegexOptions.Singleline);
@@ -53,13 +58,20 @@ namespace KPLN_CoordiantorAI.Forms
         private readonly Bitrix24Settings _bitrix24Settings;
         private readonly CurrentUserContext _userContext;
         private readonly ObservableCollection<ChatSession> _sessions;
+        private readonly Autodesk.Revit.DB.Document _revitDocument;
+        private readonly UIDocument _revitUiDocument;
         private ChatSession _session;
         private bool _isWaitingForAnswer;
         private bool _ignoreSessionSelectionChanged;
         private int _userMessageHistoryIndex = -1;
         private string _messageDraftBeforeHistory = string.Empty;
 
-        public ChatWindow(CoordinatorAiRepository repository, IAiChatClient aiClient, CurrentUserContext userContext)
+        public ChatWindow(
+            CoordinatorAiRepository repository,
+            IAiChatClient aiClient,
+            CurrentUserContext userContext,
+            Autodesk.Revit.DB.Document revitDocument,
+            UIDocument revitUiDocument)
         {
             if (repository == null)
                 throw new ArgumentNullException(nameof(repository));
@@ -71,6 +83,8 @@ namespace KPLN_CoordiantorAI.Forms
             _bitrix24Client = new Bitrix24Client();
             _gigaChatSettings = _repository.LoadGigaChatSettings();
             _bitrix24Settings = _repository.LoadBitrix24Settings();
+            _revitDocument = revitDocument;
+            _revitUiDocument = revitUiDocument;
             _userContext = new CurrentUserContext
             {
                 UserName = userContext == null ? Environment.UserName : userContext.UserName,
@@ -82,6 +96,9 @@ namespace KPLN_CoordiantorAI.Forms
             _sessions = new ObservableCollection<ChatSession>(_repository.LoadActiveChatSessionsForUser(_userContext.UserName));
             if (_sessions.Count == 0)
                 _sessions.Add(CreateNewSession());
+
+            foreach (ChatSession session in _sessions)
+                PrepareSessionSourceLinks(session);
 
             _session = _sessions[0];
 
@@ -114,6 +131,7 @@ namespace KPLN_CoordiantorAI.Forms
             SessionsListBox.SelectedItem = _session;
             _ignoreSessionSelectionChanged = false;
 
+            PrepareSessionSourceLinks(_session);
             DataContext = _session;
             ResetUserMessageHistoryNavigation();
             SessionInfoTextBlock.Text = string.Format(
@@ -278,6 +296,42 @@ namespace KPLN_CoordiantorAI.Forms
             SaveSessionSafely();
         }
 
+        private void OnModelWorkClick(object sender, RoutedEventArgs e)
+        {
+            if (_revitDocument == null || _revitUiDocument == null)
+            {
+                MessageBox.Show(this, "Не найден активный документ Revit.", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            ExternalModelSettings settings = _repository.LoadExternalModelSettings();
+            ConnectionType connectionType;
+            if (!Enum.TryParse(settings.ConnectionTypeName, true, out connectionType))
+            {
+                MessageBox.Show(this, "В настройках не указан способ подключения внешней модели (conType).", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (connectionType == ConnectionType.OnlineAPI &&
+                (string.IsNullOrWhiteSpace(settings.OnlineServerUrl) || string.IsNullOrWhiteSpace(settings.ApiKey)))
+            {
+                MessageBox.Show(this, "Для OnlineAPI укажите ONLINE_SERVER_URL и API_KEY во вкладке \"Внешняя модель\".", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            if (connectionType == ConnectionType.LocalServer && string.IsNullOrWhiteSpace(settings.LocalServerUrl))
+            {
+                MessageBox.Show(this, "Для LocalServer укажите LOCAL_SERVER_URL во вкладке \"Внешняя модель\".", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            ExternalModelWindow modelWindow = new ExternalModelWindow(_revitDocument, _revitUiDocument, connectionType, settings)
+            {
+                Owner = this
+            };
+            modelWindow.Show();
+        }
+
         private void OnDeleteChatClick(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
@@ -384,12 +438,14 @@ namespace KPLN_CoordiantorAI.Forms
             {
                 List<ChatMessage> requestMessages = _session.Messages.ToList();
                 string answer = await _aiClient.SendAsync(requestMessages, _gigaChatSettings, CancellationToken.None);
-                _session.Messages.Add(new ChatMessage
+                ChatMessage assistantMessage = new ChatMessage
                 {
                     Role = ChatMessageRole.Assistant,
                     Text = answer,
                     CanRequestCoordinatorHelp = true
-                });
+                };
+                PrepareMessageSourceLinks(assistantMessage);
+                _session.Messages.Add(assistantMessage);
             }
             catch (Exception ex)
             {
@@ -520,6 +576,7 @@ namespace KPLN_CoordiantorAI.Forms
 
         private void RefreshMessagesList()
         {
+            PrepareSessionSourceLinks(_session);
             if (MessagesListBox != null)
                 MessagesListBox.Items.Refresh();
         }
@@ -544,7 +601,8 @@ namespace KPLN_CoordiantorAI.Forms
             if (message == null)
                 return;
 
-            string html = message.Text ?? string.Empty;
+            PrepareMessageSourceLinks(message);
+            string html = RemoveSourceLinksFromHtml(message.Text ?? string.Empty);
 
             Stack<MessageInlineFrame> frames = new Stack<MessageInlineFrame>();
             Stack<MessageListFrame> lists = new Stack<MessageListFrame>();
@@ -553,7 +611,6 @@ namespace KPLN_CoordiantorAI.Forms
             {
                 AddFormattedMessageText(GetMessageInlines(paragraph.Inlines, frames), html.Substring(textIndex, match.Index - textIndex));
                 RenderMessageTag(
-                    richTextBox,
                     paragraph.Inlines,
                     frames,
                     lists,
@@ -586,7 +643,6 @@ namespace KPLN_CoordiantorAI.Forms
         }
 
         private void RenderMessageTag(
-            RichTextBox richTextBox,
             InlineCollection rootInlines,
             Stack<MessageInlineFrame> frames,
             Stack<MessageListFrame> lists,
@@ -638,7 +694,7 @@ namespace KPLN_CoordiantorAI.Forms
             }
 
             if (tag == "a")
-                AddMessageLink(richTextBox, rootInlines, frames, attributes);
+                AddMessageLink(rootInlines, frames, attributes);
         }
 
         private void CloseMessageTag(
@@ -666,27 +722,16 @@ namespace KPLN_CoordiantorAI.Forms
             CloseMessageInlineFrame(frames, tag);
         }
 
-        private void AddMessageLink(
-            FrameworkElement resourceHost,
-            InlineCollection rootInlines,
-            Stack<MessageInlineFrame> frames,
-            string attributes)
+        private void AddMessageLink(InlineCollection rootInlines, Stack<MessageInlineFrame> frames, string attributes)
         {
-            Match hrefMatch = HtmlHrefRegex.Match(attributes ?? string.Empty);
-            string decodedHref = hrefMatch.Success
-                ? WebUtility.HtmlDecode(hrefMatch.Groups["href"].Value).Trim()
-                : string.Empty;
             Uri uri;
-            if (!Uri.TryCreate(decodedHref, UriKind.Absolute, out uri) ||
-                (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
-                 !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            if (!TryGetMessageLinkUri(attributes, out uri))
             {
                 return;
             }
 
             if (SourceLinkAttributeRegex.IsMatch(attributes ?? string.Empty))
             {
-                AddSourceLinkButton(resourceHost, rootInlines, frames, uri, GetSourceLinkLabel(attributes));
                 return;
             }
 
@@ -700,6 +745,75 @@ namespace KPLN_CoordiantorAI.Forms
             frames.Push(new MessageInlineFrame("a", hyperlink.Inlines));
         }
 
+        private void PrepareSessionSourceLinks(ChatSession session)
+        {
+            if (session == null || session.Messages == null)
+                return;
+
+            foreach (ChatMessage message in session.Messages)
+                PrepareMessageSourceLinks(message);
+        }
+
+        private void PrepareMessageSourceLinks(ChatMessage message)
+        {
+            if (message == null || message.SourceLinks == null)
+                return;
+
+            message.SourceLinks.Clear();
+            string html = message.Text ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(html))
+                return;
+
+            HashSet<string> knownUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Match match in SupportedHtmlTagRegex.Matches(html))
+            {
+                if (match.Groups["closing"].Success)
+                    continue;
+
+                string tag = match.Groups["tag"].Value;
+                string attributes = match.Groups["attrs"].Value;
+                if (!string.Equals(tag, "a", StringComparison.OrdinalIgnoreCase) ||
+                    !SourceLinkAttributeRegex.IsMatch(attributes ?? string.Empty))
+                {
+                    continue;
+                }
+
+                Uri uri;
+                if (!TryGetMessageLinkUri(attributes, out uri) || !knownUrls.Add(uri.AbsoluteUri))
+                    continue;
+
+                message.SourceLinks.Add(new MessageSourceLink
+                {
+                    Caption = GetSourceLinkLabel(attributes),
+                    Url = uri.AbsoluteUri
+                });
+            }
+        }
+
+        private static string RemoveSourceLinksFromHtml(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return string.Empty;
+
+            return SourceAnchorRegex.Replace(html, match =>
+                SourceLinkAttributeRegex.IsMatch(match.Groups["attrs"].Value ?? string.Empty)
+                    ? string.Empty
+                    : match.Value);
+        }
+
+        private static bool TryGetMessageLinkUri(string attributes, out Uri uri)
+        {
+            uri = null;
+            Match hrefMatch = HtmlHrefRegex.Match(attributes ?? string.Empty);
+            string decodedHref = hrefMatch.Success
+                ? WebUtility.HtmlDecode(hrefMatch.Groups["href"].Value).Trim()
+                : string.Empty;
+
+            return Uri.TryCreate(decodedHref, UriKind.Absolute, out uri) &&
+                (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase));
+        }
+
         private static string GetSourceLinkLabel(string attributes)
         {
             Match labelMatch = SourceLinkLabelRegex.Match(attributes ?? string.Empty);
@@ -708,36 +822,6 @@ namespace KPLN_CoordiantorAI.Forms
                 : string.Empty;
 
             return string.IsNullOrWhiteSpace(label) ? "Источник" : label;
-        }
-
-        private void AddSourceLinkButton(
-            FrameworkElement resourceHost,
-            InlineCollection rootInlines,
-            Stack<MessageInlineFrame> frames,
-            Uri uri,
-            string label)
-        {
-            Button button = new Button
-            {
-                Content = label,
-                Tag = uri,
-                ToolTip = "Открыть источник"
-            };
-
-            Style style = resourceHost.TryFindResource("SourceLinkButtonStyle") as Style;
-            if (style != null)
-                button.Style = style;
-
-            button.Click += OnSourceLinkButtonClick;
-            Border sourceButtonHost = new Border
-            {
-                Padding = new Thickness(0, 6, 6, 0),
-                Child = button
-            };
-            GetMessageInlines(rootInlines, frames).Add(new InlineUIContainer(sourceButtonHost)
-            {
-                BaselineAlignment = BaselineAlignment.Center
-            });
         }
 
         private static InlineCollection GetMessageInlines(InlineCollection rootInlines, Stack<MessageInlineFrame> frames)
@@ -1064,6 +1148,7 @@ namespace KPLN_CoordiantorAI.Forms
             SendButton.IsEnabled = !isWaiting;
             SessionsListBox.IsEnabled = !isWaiting;
             NewChatButton.IsEnabled = !isWaiting;
+            ModelWorkButton.IsEnabled = !isWaiting;
             StatusTextBlock.Text = isWaiting ? "Ожидание ответа ИИ..." : "Готово";
 
             if (!isWaiting)

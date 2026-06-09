@@ -35,6 +35,15 @@ namespace KPLN_CoordiantorAI.Common
         private static readonly Regex SourceStandaloneMentionRegex = new Regex(
             "\\s*\\b(?:источник(?:е|а|у|ом)?|source)\\s*S\\d+\\b\\s*",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        private static readonly Regex HtmlAnchorTagRegex = new Regex(
+            "<\\s*a\\b(?<attrs>[^>]*)>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex HtmlHrefAttributeRegex = new Regex(
+            "\\bhref\\s*=\\s*(?:(['\"])(?<href>.*?)\\1|(?<href>[^\\s>]+))",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex PlainHttpUrlRegex = new Regex(
+            "https?://[^\\s\"'<>]+",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
         private string _accessToken;
         private DateTime _accessTokenExpiresAtUtc;
@@ -571,7 +580,9 @@ namespace KPLN_CoordiantorAI.Common
             UsedSourceMarker marker = ExtractUsedSourceMarker(answer);
             IList<MoodleEmbeddingSearchResult> usedResults = marker.Found
                 ? GetUsedSourceResults(searchResults, marker.SourceIds)
-                : new List<MoodleEmbeddingSearchResult>();
+                : GetPrimarySourceResults(searchResults);
+            if (usedResults.Count == 0)
+                usedResults = GetPrimarySourceResults(searchResults);
 
             return AppendSourceLinks(CleanVisibleSourceIdMentions(marker.CleanAnswer), usedResults, aiSearchOptions);
         }
@@ -627,6 +638,11 @@ namespace KPLN_CoordiantorAI.Common
             return usedResults;
         }
 
+        private static IList<MoodleEmbeddingSearchResult> GetPrimarySourceResults(IList<MoodleEmbeddingSearchResult> searchResults)
+        {
+            return GetUniqueSourceResults(searchResults, 1);
+        }
+
         private static string GetSourceId(int index)
         {
             return "S" + index.ToString(CultureInfo.InvariantCulture);
@@ -640,31 +656,217 @@ namespace KPLN_CoordiantorAI.Common
             if (searchResults == null || searchResults.Count == 0)
                 return answer;
 
-            List<MoodleEmbeddingSearchResult> sourceResults = searchResults
-                .Where(result => result != null &&
-                    result.Article != null &&
-                    !string.IsNullOrWhiteSpace(result.Article.SourceUrl))
-                .ToList();
-            sourceResults = GetUniqueSourceResults(sourceResults, sourceResults.Count).ToList();
-            if (sourceResults.Count == 0)
+            MoodleEmbeddingSearchResult primaryResult = GetPrimarySourceResults(searchResults).FirstOrDefault();
+            if (primaryResult == null)
                 return answer;
 
-            StringBuilder builder = new StringBuilder(answer.TrimEnd());
+            List<SourceLinkInfo> sourceLinks = BuildArticleSourceLinks(primaryResult);
+            if (sourceLinks.Count == 0)
+                return answer;
+
+            StringBuilder builder = new StringBuilder(RemoveVisibleSourceUrlMentions(answer, sourceLinks).TrimEnd());
             builder.Append("<br><br>");
-            for (int i = 0; i < sourceResults.Count; i++)
+            for (int i = 0; i < sourceLinks.Count; i++)
             {
                 if (i > 0)
                     builder.Append(" ");
 
-                MoodleEmbeddingSearchResult result = sourceResults[i];
+                SourceLinkInfo sourceLink = sourceLinks[i];
                 builder.Append("<a data-source=\"true\" data-source-label=\"")
-                    .Append(WebUtility.HtmlEncode(GetSourceButtonText(aiSearchOptions, i + 1, sourceResults.Count, result.Score)))
+                    .Append(WebUtility.HtmlEncode(GetSourceButtonText(aiSearchOptions, i + 1, sourceLinks.Count, sourceLink.Score)))
                     .Append("\" href=\"")
-                    .Append(WebUtility.HtmlEncode(result.Article.SourceUrl.Trim()))
+                    .Append(WebUtility.HtmlEncode(sourceLink.Url))
                     .Append("\"></a>");
             }
 
             return builder.ToString();
+        }
+
+        private static string RemoveVisibleSourceUrlMentions(string answer, IEnumerable<SourceLinkInfo> sourceLinks)
+        {
+            string cleanAnswer = answer ?? string.Empty;
+            if (sourceLinks == null)
+                return cleanAnswer;
+
+            HashSet<string> urlVariants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (SourceLinkInfo sourceLink in sourceLinks)
+            {
+                if (sourceLink == null)
+                    continue;
+
+                foreach (string urlVariant in GetVisibleSourceUrlVariants(sourceLink.Url))
+                    urlVariants.Add(urlVariant);
+            }
+
+            foreach (string urlVariant in urlVariants.OrderByDescending(value => value.Length))
+            {
+                if (string.IsNullOrWhiteSpace(urlVariant))
+                    continue;
+
+                cleanAnswer = Regex.Replace(
+                    cleanAnswer,
+                    "(?<![\"'])\\s*(?:[-–—]\\s*)?" + Regex.Escape(urlVariant) + "\\s*(?:[-–—]\\s*)?",
+                    " ",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            }
+
+            return CleanSourceUrlRemovalArtifacts(cleanAnswer);
+        }
+
+        private static IEnumerable<string> GetVisibleSourceUrlVariants(string sourceUrl)
+        {
+            string normalizedSourceUrl = NormalizeSourceUrl(sourceUrl);
+            if (string.IsNullOrWhiteSpace(normalizedSourceUrl))
+                yield break;
+
+            yield return normalizedSourceUrl;
+            yield return WebUtility.HtmlEncode(normalizedSourceUrl);
+
+            Uri uri;
+            if (!Uri.TryCreate(normalizedSourceUrl, UriKind.Absolute, out uri))
+                yield break;
+
+            yield return uri.AbsoluteUri;
+            yield return WebUtility.HtmlEncode(uri.AbsoluteUri);
+
+            string unescapedUrl;
+            if (TryUnescapeUriString(uri.AbsoluteUri, out unescapedUrl))
+            {
+                yield return unescapedUrl;
+                yield return WebUtility.HtmlEncode(unescapedUrl);
+            }
+        }
+
+        private static bool TryUnescapeUriString(string value, out string result)
+        {
+            result = string.Empty;
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            try
+            {
+                result = Uri.UnescapeDataString(value);
+                return !string.IsNullOrWhiteSpace(result);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string CleanSourceUrlRemovalArtifacts(string answer)
+        {
+            string cleanAnswer = answer ?? string.Empty;
+            cleanAnswer = Regex.Replace(cleanAnswer, "[\\(\\[]\\s*[\\)\\]]", string.Empty, RegexOptions.CultureInvariant);
+            cleanAnswer = Regex.Replace(cleanAnswer, "[ \\t]+(\\r?\\n)", "$1", RegexOptions.CultureInvariant);
+            cleanAnswer = Regex.Replace(cleanAnswer, "[ \\t]{2,}", " ", RegexOptions.CultureInvariant);
+            cleanAnswer = Regex.Replace(cleanAnswer, "\\s+([,.;:!?])", "$1", RegexOptions.CultureInvariant);
+            cleanAnswer = Regex.Replace(cleanAnswer, "([\\(\\[])\\s+", "$1", RegexOptions.CultureInvariant);
+            cleanAnswer = Regex.Replace(cleanAnswer, "\\s+([\\)\\]])", "$1", RegexOptions.CultureInvariant);
+            cleanAnswer = Regex.Replace(cleanAnswer, "(?<=[.!?:;])(?=\\S)", " ", RegexOptions.CultureInvariant);
+            return cleanAnswer.Trim();
+        }
+
+        private static List<SourceLinkInfo> BuildArticleSourceLinks(MoodleEmbeddingSearchResult primaryResult)
+        {
+            List<SourceLinkInfo> sourceLinks = new List<SourceLinkInfo>();
+            if (primaryResult == null || primaryResult.Article == null)
+                return sourceLinks;
+
+            HashSet<string> sourceKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            AddSourceLink(sourceLinks, sourceKeys, primaryResult.Article.SourceUrl, primaryResult.Score);
+            foreach (string htmlSourceUrl in ExtractHtmlSourceUrls(primaryResult.Article.Html, primaryResult.Article.SourceUrl))
+                AddSourceLink(sourceLinks, sourceKeys, htmlSourceUrl, double.NaN);
+
+            return sourceLinks;
+        }
+
+        private static void AddSourceLink(
+            ICollection<SourceLinkInfo> sourceLinks,
+            ISet<string> sourceKeys,
+            string sourceUrl,
+            double score)
+        {
+            string normalizedSourceUrl = NormalizeSourceUrl(sourceUrl);
+            if (string.IsNullOrWhiteSpace(normalizedSourceUrl))
+                return;
+
+            Uri uri;
+            if (!Uri.TryCreate(normalizedSourceUrl, UriKind.Absolute, out uri) ||
+                (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+                 !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            string sourceKey = GetSourceDedupKey(uri.AbsoluteUri);
+            if (string.IsNullOrWhiteSpace(sourceKey) || !sourceKeys.Add(sourceKey))
+                return;
+
+            sourceLinks.Add(new SourceLinkInfo(uri.AbsoluteUri, score));
+        }
+
+        private static IEnumerable<string> ExtractHtmlSourceUrls(string html, string baseSourceUrl)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                yield break;
+
+            foreach (Match anchorMatch in HtmlAnchorTagRegex.Matches(html))
+            {
+                Match hrefMatch = HtmlHrefAttributeRegex.Match(anchorMatch.Groups["attrs"].Value ?? string.Empty);
+                if (!hrefMatch.Success)
+                    continue;
+
+                string resolvedUrl;
+                if (TryResolveHtmlSourceUrl(hrefMatch.Groups["href"].Value, baseSourceUrl, out resolvedUrl))
+                    yield return resolvedUrl;
+            }
+
+            foreach (Match urlMatch in PlainHttpUrlRegex.Matches(html))
+            {
+                string resolvedUrl;
+                if (TryResolveHtmlSourceUrl(urlMatch.Value, baseSourceUrl, out resolvedUrl))
+                    yield return resolvedUrl;
+            }
+        }
+
+        private static bool TryResolveHtmlSourceUrl(string sourceUrl, string baseSourceUrl, out string resolvedUrl)
+        {
+            resolvedUrl = string.Empty;
+            string normalizedSourceUrl = NormalizeSourceUrl(sourceUrl).TrimEnd('.', ',', ';', ')', ']');
+            if (string.IsNullOrWhiteSpace(normalizedSourceUrl) ||
+                normalizedSourceUrl.StartsWith("#", StringComparison.Ordinal) ||
+                normalizedSourceUrl.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase) ||
+                normalizedSourceUrl.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase) ||
+                normalizedSourceUrl.StartsWith("tel:", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            Uri uri;
+            if (!Uri.TryCreate(normalizedSourceUrl, UriKind.Absolute, out uri))
+            {
+                Uri baseUri;
+                if (!Uri.TryCreate(NormalizeSourceUrl(baseSourceUrl), UriKind.Absolute, out baseUri) ||
+                    !Uri.TryCreate(baseUri, normalizedSourceUrl, out uri))
+                {
+                    return false;
+                }
+            }
+
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            resolvedUrl = uri.AbsoluteUri;
+            return true;
+        }
+
+        private static string NormalizeSourceUrl(string sourceUrl)
+        {
+            return WebUtility.HtmlDecode(sourceUrl ?? string.Empty).Trim();
         }
 
         private static IList<MoodleEmbeddingSearchResult> GetUniqueSourceResults(
@@ -695,7 +897,7 @@ namespace KPLN_CoordiantorAI.Common
 
         private static string GetSourceDedupKey(string sourceUrl)
         {
-            string decodedSourceUrl = WebUtility.HtmlDecode(sourceUrl ?? string.Empty).Trim();
+            string decodedSourceUrl = NormalizeSourceUrl(sourceUrl);
             if (string.IsNullOrWhiteSpace(decodedSourceUrl))
                 return string.Empty;
 
@@ -714,7 +916,7 @@ namespace KPLN_CoordiantorAI.Common
             if (totalCount > 1)
                 sourceButtonText += " " + index;
 
-            if (aiSearchOptions != null && aiSearchOptions.DebugRetrieval)
+            if (aiSearchOptions != null && aiSearchOptions.DebugRetrieval && !double.IsNaN(score))
             {
                 sourceButtonText += " (" + score.ToString("0.00", CultureInfo.InvariantCulture) + ")";
             }
@@ -736,6 +938,19 @@ namespace KPLN_CoordiantorAI.Common
             public IList<string> SourceIds { get; private set; }
 
             public bool Found { get; private set; }
+        }
+
+        private sealed class SourceLinkInfo
+        {
+            public SourceLinkInfo(string url, double score)
+            {
+                Url = url;
+                Score = score;
+            }
+
+            public string Url { get; private set; }
+
+            public double Score { get; private set; }
         }
 
         private static DateTime GetTokenExpiresAtUtc(GigaChatTokenResponse tokenResponse)
