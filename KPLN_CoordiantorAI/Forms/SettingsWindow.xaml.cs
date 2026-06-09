@@ -26,6 +26,7 @@ namespace KPLN_CoordiantorAI.Forms
         {
             DbPathTextBox.Text = _repository.DatabaseFilePath;
             LoadGigaChatSettings();
+            LoadExternalModelSettings();
             LoadBitrix24Settings();
             UpdateDatabaseStatus();
         }
@@ -50,6 +51,20 @@ namespace KPLN_CoordiantorAI.Forms
             _articleAliasesJson = string.IsNullOrWhiteSpace(settings.ArticleAliasesJson)
                 ? ArticleAliasSettings.EmptyJson
                 : settings.ArticleAliasesJson;
+        }
+
+        private void LoadExternalModelSettings()
+        {
+            ExternalModelSettings settings = _repository.DatabaseExists
+                ? _repository.LoadExternalModelSettings()
+                : new ExternalModelSettings();
+
+            ExternalModelApiKeyPasswordBox.Password = settings.ApiKey;
+            ExternalModelOnlineUrlTextBox.Text = settings.OnlineServerUrl;
+            ExternalModelLogFolderTextBox.Text = settings.LogFolder;
+            ExternalModelSystemPromptTextBox.Text = settings.SystemPrompt;
+            ExternalModelLocalUrlTextBox.Text = settings.LocalServerUrl;
+            SelectExternalModelConnectionType(settings.ConnectionTypeName);
         }
 
         private void LoadBitrix24Settings()
@@ -78,12 +93,45 @@ namespace KPLN_CoordiantorAI.Forms
             return settings;
         }
 
+        private void SelectExternalModelConnectionType(string connectionTypeName)
+        {
+            ExternalModelConnectionTypeComboBox.SelectedIndex = -1;
+            string normalized = (connectionTypeName ?? string.Empty).Trim();
+            for (int i = 0; i < ExternalModelConnectionTypeComboBox.Items.Count; i++)
+            {
+                ComboBoxItem item = ExternalModelConnectionTypeComboBox.Items[i] as ComboBoxItem;
+                if (item != null && string.Equals(item.Content as string, normalized, StringComparison.OrdinalIgnoreCase))
+                {
+                    ExternalModelConnectionTypeComboBox.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
+        private string GetSelectedExternalModelConnectionType()
+        {
+            ComboBoxItem selectedItem = ExternalModelConnectionTypeComboBox.SelectedItem as ComboBoxItem;
+            return selectedItem == null ? string.Empty : (selectedItem.Content as string) ?? string.Empty;
+        }
+
+        private static bool HasExternalModelSettingsValue(ExternalModelSettings settings)
+        {
+            return settings != null &&
+                (!string.IsNullOrWhiteSpace(settings.ApiKey) ||
+                 !string.IsNullOrWhiteSpace(settings.OnlineServerUrl) ||
+                 !string.IsNullOrWhiteSpace(settings.LogFolder) ||
+                 !string.IsNullOrWhiteSpace(settings.SystemPrompt) ||
+                 !string.IsNullOrWhiteSpace(settings.ConnectionTypeName) ||
+                 !string.IsNullOrWhiteSpace(settings.LocalServerUrl));
+        }
+
         private void OnCreateDatabaseClick(object sender, RoutedEventArgs e)
         {
             try
             {
                 _repository.EnsureDatabase();
                 LoadGigaChatSettings();
+                LoadExternalModelSettings();
                 LoadBitrix24Settings();
                 UpdateDatabaseStatus();
                 MessageBox.Show(this, "БД создана или обновлена.", "Координатор ИИ", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -119,6 +167,18 @@ namespace KPLN_CoordiantorAI.Forms
                     AiSearchSettingsJson = AiSearchSettingsJsonTextBox.Text,
                     ArticleAliasesJson = _articleAliasesJson
                 });
+
+                ExternalModelSettings externalModelSettings = new ExternalModelSettings
+                {
+                    ApiKey = ExternalModelApiKeyPasswordBox.Password,
+                    OnlineServerUrl = ExternalModelOnlineUrlTextBox.Text,
+                    LogFolder = ExternalModelLogFolderTextBox.Text,
+                    SystemPrompt = ExternalModelSystemPromptTextBox.Text,
+                    ConnectionTypeName = GetSelectedExternalModelConnectionType(),
+                    LocalServerUrl = ExternalModelLocalUrlTextBox.Text
+                };
+                if (HasExternalModelSettingsValue(externalModelSettings) || _repository.HasExternalModelSettings())
+                    _repository.SaveExternalModelSettings(externalModelSettings);
 
                 if (_bitrix24Settings == null)
                     _bitrix24Settings = CreateDefaultBitrix24Settings();
@@ -202,6 +262,22 @@ namespace KPLN_CoordiantorAI.Forms
             }
         }
 
+        private void OnBrowseExternalModelLogFolderClick(object sender, RoutedEventArgs e)
+        {
+            using (WinForms.FolderBrowserDialog dialog = new WinForms.FolderBrowserDialog())
+            {
+                dialog.Description = "Выберите папку для логирования внешней модели";
+                dialog.ShowNewFolderButton = true;
+
+                string currentPath = (ExternalModelLogFolderTextBox.Text ?? string.Empty).Trim();
+                if (Directory.Exists(currentPath))
+                    dialog.SelectedPath = currentPath;
+
+                if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                    ExternalModelLogFolderTextBox.Text = dialog.SelectedPath;
+            }
+        }
+
         private void OnOpenDatabaseFolderClick(object sender, RoutedEventArgs e)
         {
             OpenDirectory(_repository.DatabaseFolder);
@@ -210,6 +286,11 @@ namespace KPLN_CoordiantorAI.Forms
         private void OnOpenEmbeddingFolderClick(object sender, RoutedEventArgs e)
         {
             OpenDirectory(EmbeddingFolderPathTextBox.Text);
+        }
+
+        private void OnOpenExternalModelLogFolderClick(object sender, RoutedEventArgs e)
+        {
+            OpenDirectory(ExternalModelLogFolderTextBox.Text);
         }
 
         private void OnOpenCertificateFolderClick(object sender, RoutedEventArgs e)

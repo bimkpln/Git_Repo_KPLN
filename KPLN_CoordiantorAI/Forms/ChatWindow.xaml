@@ -56,10 +56,10 @@
             <Setter Property="BorderBrush" Value="#FF2C6BED"/>
         </Style>
         <Style TargetType="Button" x:Key="ModelWorkButtonStyle" BasedOn="{StaticResource ToolbarButton}">
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="Background" Value="#FF38404E"/>
-            <Setter Property="BorderBrush" Value="#FF4B5568"/>
-            <Setter Property="Foreground" Value="#FF9DA8BA"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Background" Value="#FF1F7A55"/>
+            <Setter Property="BorderBrush" Value="#FF36B37E"/>
+            <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style TargetType="Button" x:Key="CoordinatorCallButtonStyle" BasedOn="{StaticResource ToolbarButton}">
             <Setter Property="Margin" Value="0,6,0,0"/>
@@ -273,6 +273,10 @@
                            Margin="0,0,0,10"/>
 
                 <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                    <Button x:Name="ModelWorkButton"
+                            Style="{StaticResource ModelWorkButtonStyle}"
+                            Content="Работа с моделью"
+                            Click="OnModelWorkClick"/>
                     <Button x:Name="NewChatButton"
                             Style="{StaticResource NewChatButtonStyle}"
                             Content="Новый чат"
@@ -372,6 +376,34 @@
                                                  VerticalScrollBarVisibility="Disabled"
                                                  Loaded="OnMessageRichTextBoxLoaded"
                                                  DataContextChanged="OnMessageRichTextBoxDataContextChanged"/>
+                                    <ItemsControl ItemsSource="{Binding SourceLinks}"
+                                                  Margin="0,6,0,0">
+                                        <ItemsControl.Style>
+                                            <Style TargetType="ItemsControl">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasSourceLinks}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ItemsControl.Style>
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Style="{StaticResource SourceLinkButtonStyle}"
+                                                        Content="{Binding Caption}"
+                                                        Tag="{Binding Uri}"
+                                                        ToolTip="{Binding Url}"
+                                                        Margin="0,0,6,4"
+                                                        Click="OnSourceLinkButtonClick"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                     <TextBlock Text="{Binding CreatedAtCaption}"
                                                Foreground="#CCFFFFFF"
                                                FontSize="10"

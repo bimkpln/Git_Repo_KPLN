@@ -32,6 +32,7 @@ namespace KPLN_CoordiantorAI.Common
             Id = Guid.NewGuid().ToString("N");
             CreatedAt = DateTime.Now;
             CoordinatorOffers = new ObservableCollection<Bitrix24CoordinatorContact>();
+            SourceLinks = new ObservableCollection<MessageSourceLink>();
         }
 
         public string Id { get; set; }
@@ -44,6 +45,8 @@ namespace KPLN_CoordiantorAI.Common
 
         public ObservableCollection<Bitrix24CoordinatorContact> CoordinatorOffers { get; private set; }
 
+        public ObservableCollection<MessageSourceLink> SourceLinks { get; private set; }
+
         public bool IsUserMessage
         {
             get { return Role == ChatMessageRole.User; }
@@ -52,6 +55,11 @@ namespace KPLN_CoordiantorAI.Common
         public bool HasCoordinatorOffers
         {
             get { return CoordinatorOffers != null && CoordinatorOffers.Count > 0; }
+        }
+
+        public bool HasSourceLinks
+        {
+            get { return SourceLinks != null && SourceLinks.Count > 0; }
         }
 
         public bool CanRequestCoordinatorHelp { get; set; }
@@ -64,6 +72,22 @@ namespace KPLN_CoordiantorAI.Common
         public string CreatedAtCaption
         {
             get { return CreatedAt.ToString("HH:mm"); }
+        }
+    }
+
+    public sealed class MessageSourceLink
+    {
+        public string Caption { get; set; }
+
+        public string Url { get; set; }
+
+        public Uri Uri
+        {
+            get
+            {
+                Uri uri;
+                return Uri.TryCreate(Url, UriKind.Absolute, out uri) ? uri : null;
+            }
         }
     }
 
@@ -181,6 +205,21 @@ namespace KPLN_CoordiantorAI.Common
         public string AiSearchSettingsJson { get; set; }
 
         public string ArticleAliasesJson { get; set; }
+    }
+
+    public sealed class ExternalModelSettings
+    {
+        public string ApiKey { get; set; }
+
+        public string OnlineServerUrl { get; set; }
+
+        public string LogFolder { get; set; }
+
+        public string SystemPrompt { get; set; }
+
+        public string ConnectionTypeName { get; set; }
+
+        public string LocalServerUrl { get; set; }
     }
 
     public sealed class SubDepartmentInfo
