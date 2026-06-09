@@ -79,7 +79,13 @@ namespace KPLN_Tools.ExecutableCommand
                 .ToLowerInvariant();
 
             return normalized.Contains("слегка отклони") ||
-                   normalized.Contains("slightly off axis");
+                   normalized.Contains("slightly off axis") ||
+                   (normalized.Contains("стена") &&
+                    normalized.Contains("линия-разделитель помещений") &&
+                    normalized.Contains("перекры")) ||
+                   (normalized.Contains("wall") &&
+                    normalized.Contains("room separation") &&
+                    normalized.Contains("overlap"));
         }
 
         public string GetName()
