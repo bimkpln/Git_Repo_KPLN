@@ -106,6 +106,14 @@
                     Height="30"
                     Command="{Binding CloseWindowCmd}"
                     CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
+                <Button 
+                    Content="Инструкция"
+                    Style="{StaticResource BTN}"
+                    Background ="Red"
+                    Width="100"
+                    Height="30"
+                    Command="{Binding HelpCommandCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
             </DockPanel>
         </StackPanel>
     </Border>
