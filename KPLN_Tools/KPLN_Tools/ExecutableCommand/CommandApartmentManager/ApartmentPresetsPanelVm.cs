@@ -41,6 +41,7 @@ namespace KPLN_Tools.Forms
     public class ApartmentPlanPresetOption
     {
         public string PlanName { get; set; }
+        public string ModelSignature { get; set; }
 
         public string LowerConstraintText { get; set; }
         public string UpperConstraintText { get; set; }
@@ -85,6 +86,7 @@ namespace KPLN_Tools.Forms
         {
             ApartmentPlanPresetOption result = new ApartmentPlanPresetOption();
             result.PlanName = PlanName;
+            result.ModelSignature = ModelSignature;
             result.LowerConstraintText = LowerConstraintText;
             result.UpperConstraintText = UpperConstraintText;
             result.WallThicknesses = WallThicknesses != null ? new List<int>(WallThicknesses) : new List<int>();
@@ -570,6 +572,9 @@ namespace KPLN_Tools.Forms
                 preserved.SelectedPlanName = SelectedPlan != null
                     ? SelectedPlan.PlanName
                     : preserved.SelectedPlanName;
+                preserved.SelectedPlanModelSignature = SelectedPlan != null
+                    ? SelectedPlan.ModelSignature
+                    : preserved.SelectedPlanModelSignature;
                 preserved.LowerConstraint = LowerConstraintText;
                 preserved.UpperConstraint = UpperConstraintText;
                 preserved.BaseOffset = ParseInt(BaseOffsetText);
@@ -606,6 +611,7 @@ namespace KPLN_Tools.Forms
             ApartmentPresetData result = new ApartmentPresetData
             {
                 SelectedPlanName = SelectedPlan != null ? SelectedPlan.PlanName : "",
+                SelectedPlanModelSignature = SelectedPlan != null ? SelectedPlan.ModelSignature : "",
                 LowerConstraint = LowerConstraintText,
                 UpperConstraint = UpperConstraintText,
                 BaseOffset = ParseInt(BaseOffsetText),
@@ -688,6 +694,7 @@ namespace KPLN_Tools.Forms
             _selectedPlan.HasShaftWallMarkers = resolved.HasShaftWallMarkers;
             _selectedPlan.LoggiaWallTypeOptions = resolved.LoggiaWallTypeOptions ?? new List<string>();
             _selectedPlan.HasLoggiaWallMarkers = resolved.HasLoggiaWallMarkers;
+            _selectedPlan.ModelSignature = resolved.ModelSignature;
             _selectedPlan.RoomCategories = resolved.RoomCategories ?? new List<string>();
             _selectedPlan.DoorRequirements = resolved.DoorRequirements ?? new List<ApartmentDoorRequirementOption>();
             _selectedPlan.DoorTypeOptionsByRequirementKey = resolved.DoorTypeOptionsByRequirementKey ?? new Dictionary<string, List<string>>();
@@ -1018,7 +1025,7 @@ namespace KPLN_Tools.Forms
 
             if (_isDataStale)
             {
-                StatusText = "Данные устарели после размещения 2D-семейства. Нажмите «Обновить данные».";
+                StatusText = "Данные устарели после изменения 2D-семейств квартир. Нажмите «Обновить данные».";
                 return;
             }
 
@@ -1057,6 +1064,9 @@ namespace KPLN_Tools.Forms
 
             if (string.IsNullOrWhiteSpace(result.UpperConstraint))
                 result.UpperConstraint = "Неприсоединённая";
+
+            if (string.IsNullOrWhiteSpace(result.SelectedPlanModelSignature))
+                result.SelectedPlanModelSignature = "";
 
             if (result.WallHeight <= 0)
                 result.WallHeight = 3000;

@@ -40,6 +40,7 @@ namespace KPLN_Tools.Forms
     public class ApartmentPresetData
     {
         public string SelectedPlanName { get; set; }
+        public string SelectedPlanModelSignature { get; set; }
 
         public string LowerConstraint { get; set; }
         public string UpperConstraint { get; set; }
@@ -65,6 +66,7 @@ namespace KPLN_Tools.Forms
             return new ApartmentPresetData
             {
                 SelectedPlanName = SelectedPlanName,
+                SelectedPlanModelSignature = SelectedPlanModelSignature,
                 LowerConstraint = LowerConstraint,
                 UpperConstraint = UpperConstraint,
                 BaseOffset = BaseOffset,
@@ -110,6 +112,7 @@ namespace KPLN_Tools.Forms
                 : new ApartmentPresetData
                 {
                     SelectedPlanName = "",
+                    SelectedPlanModelSignature = "",
                     LowerConstraint = "",
                     UpperConstraint = "Неприсоединённая",
                     BaseOffset = 0,

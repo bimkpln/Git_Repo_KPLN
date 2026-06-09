@@ -427,8 +427,12 @@ namespace KPLN_Tools.ExecutableCommand
 
                     case RequestType.ConvertTo3D:
                         string validationMessage;
-                        if (!ValidatePresetBeforeConvertTo3D(doc, _requestedPresetData, out validationMessage))
+                        bool isPresetDataStale;
+                        if (!ValidatePresetBeforeConvertTo3D(doc, _requestedPresetData, out validationMessage, out isPresetDataStale))
                         {
+                            if (isPresetDataStale)
+                                MarkApartmentPresetDataStaleInWindow();
+
                             TaskDialog.Show("Предупреждение", validationMessage);
                             return;
                         }
@@ -794,7 +798,7 @@ namespace KPLN_Tools.ExecutableCommand
             int skippedCount = 0;
             List<string> errors = new List<string>();
 
-            using (Transaction t = new Transaction(doc, "KPLN. Обновление марок квартир"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Обновление марок квартир"))
             {
                 t.Start();
 
@@ -885,7 +889,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             FamilySymbol symbol = null;
 
-            using (Transaction t = new Transaction(doc, "Загрузка семейства квартиры"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Загрузка семейства квартиры"))
             {
                 t.Start();
 
@@ -908,7 +912,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             int placedCount = 0;
 
-            using (TransactionGroup tg = new TransactionGroup(doc, "Размещение семейства квартиры"))
+            using (TransactionGroup tg = new TransactionGroup(doc, "KPLN. Менеджер квартир. Размещение семейства квартиры"))
             {
                 tg.Start();
 
@@ -925,7 +929,7 @@ namespace KPLN_Tools.ExecutableCommand
                         break;
                     }
 
-                    using (Transaction t = new Transaction(doc, "Размещение семейства квартиры"))
+                    using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Размещение семейства квартиры"))
                     {
                         t.Start();
 

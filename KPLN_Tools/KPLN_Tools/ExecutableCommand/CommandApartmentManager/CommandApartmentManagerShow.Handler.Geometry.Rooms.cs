@@ -20,7 +20,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             int createdRoomsCount = 0;
 
-            using (Transaction t = new Transaction(doc, "KPLN. Геометрия помещений"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Геометрия помещений"))
             {
                 t.Start();
                 ApplyApartmentFailureHandling(t);

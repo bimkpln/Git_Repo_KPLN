@@ -211,6 +211,7 @@ namespace KPLN_Tools.ExecutableCommand
                     ApplyFamilyInstanceFlipState(nestedFi, created, debugMessages);
                     ApplyFamilyInstanceAxisFlipCorrection(nestedFi, created, debugMessages);
                     CopyFurnitureDimensionParameters(nestedFi, created, debugMessages);
+                    CopyFurnitureYesNoParameter(nestedFi, created, debugMessages, "Раскладной");
                 }
                 catch (Exception ex)
                 {
@@ -282,6 +283,27 @@ namespace KPLN_Tools.ExecutableCommand
             CopyFurnitureLengthParameter(source, target, debugMessages, "Длина", "Length", "КП_Длина", "ADSK_Размер_Длина");
         }
 
+        private static void CopyFurnitureYesNoParameter(FamilyInstance source, FamilyInstance target, List<string> debugMessages, params string[] parameterNames)
+        {
+            if (source == null || target == null || parameterNames == null || parameterNames.Length == 0)
+                return;
+
+            bool sourceValue;
+            if (!TryGetYesNoParamFromElementOrType(source, out sourceValue, parameterNames))
+                return;
+
+            if (TrySetYesNoParamOnElementOrType(target, sourceValue, parameterNames))
+                return;
+
+            if (debugMessages != null)
+            {
+                debugMessages.Add(
+                    "Не удалось перенести параметр '" + parameterNames[0] +
+                    "' у мебели/сантехники ID = " + IDHelper.ElIdValue(source.Id) +
+                    " в созданный экземпляр ID = " + IDHelper.ElIdValue(target.Id) + ".");
+            }
+        }
+
         private static void CopyFurnitureLengthParameter(FamilyInstance source, FamilyInstance target, List<string> debugMessages, params string[] parameterNames)
         {
             if (source == null || target == null || parameterNames == null || parameterNames.Length == 0)
@@ -331,6 +353,66 @@ namespace KPLN_Tools.ExecutableCommand
                 Parameter p = typeElem.LookupParameter(parameterName);
                 if (TrySetLengthParameter(p, valueInternal))
                     return true;
+            }
+
+            return false;
+        }
+
+        private static bool TrySetYesNoParamOnElementOrType(Element element, bool value, params string[] parameterNames)
+        {
+            if (element == null || parameterNames == null || parameterNames.Length == 0)
+                return false;
+
+            foreach (string parameterName in parameterNames)
+            {
+                Parameter p = element.LookupParameter(parameterName);
+                if (TrySetYesNoParameter(p, value))
+                    return true;
+            }
+
+            Element typeElem = null;
+            if (element.Document != null)
+            {
+                ElementId typeId = element.GetTypeId();
+                if (typeId != ElementId.InvalidElementId)
+                    typeElem = element.Document.GetElement(typeId);
+            }
+
+            if (typeElem == null)
+                return false;
+
+            foreach (string parameterName in parameterNames)
+            {
+                Parameter p = typeElem.LookupParameter(parameterName);
+                if (TrySetYesNoParameter(p, value))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool TrySetYesNoParameter(Parameter parameter, bool value)
+        {
+            if (parameter == null || parameter.IsReadOnly)
+                return false;
+
+            try
+            {
+                if (parameter.StorageType == StorageType.Integer)
+                {
+                    parameter.Set(value ? 1 : 0);
+                    return true;
+                }
+
+                if (parameter.StorageType == StorageType.String)
+                {
+                    parameter.Set(value ? "1" : "0");
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
             }
 
             return false;

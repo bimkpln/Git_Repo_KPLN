@@ -96,6 +96,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             option.LowerConstraintText = BuildLowerConstraintTextForPlan(doc, plan);
             option.UpperConstraintText = "Неприсоединённая";
+            option.ModelSignature = BuildApartmentPlanModelSignature(doc, plan);
             option.WallThicknesses = BuildWallThicknessesForPlan(doc, plan);
             option.WallTypeOptionsByThickness = BuildWallTypeOptionsByThicknessForPlan(doc, plan);
             option.WindowTypeOptions = BuildWindowTypeOptions(doc);
@@ -113,6 +114,27 @@ namespace KPLN_Tools.ExecutableCommand
             option.DoorTypeOptionsByRequirementKey = BuildDoorTypeOptionsByRequirementForPlan(doc, option.DoorRequirements);
 
             return option;
+        }
+
+        private static string BuildApartmentPlanModelSignature(Document doc, ViewPlan plan)
+        {
+            if (doc == null || plan == null)
+                return "";
+
+            List<FamilyInstance> apartments = GetPlacedApartmentInstancesForPlan(doc, plan)
+                .Where(x => x != null)
+                .OrderBy(x => IDHelper.ElIdValue(x.Id))
+                .ToList();
+
+            if (apartments.Count == 0)
+                return "count=0";
+
+            return "count=" + apartments.Count + ";" + string.Join(
+                ";",
+                apartments.Select(x =>
+                    IDHelper.ElIdValue(x.Id) +
+                    ":loggia=" +
+                    (IsLoggiaEnabled(x) ? "1" : "0")));
         }
 
         private string BuildLowerConstraintTextForPlan(Document doc, ViewPlan plan)
@@ -2362,13 +2384,15 @@ namespace KPLN_Tools.ExecutableCommand
             return null;
         }
 
-        private bool ValidatePresetBeforeConvertTo3D(Document doc, ApartmentPresetData preset, out string validationMessage)
+        private bool ValidatePresetBeforeConvertTo3D(Document doc, ApartmentPresetData preset, out string validationMessage, out bool isPresetDataStale)
         {
             validationMessage = "";
+            isPresetDataStale = false;
 
             ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
             {
                 SelectedPlanName = "",
+                SelectedPlanModelSignature = "",
                 LowerConstraint = "",
                 UpperConstraint = "Неприсоединённая",
                 BaseOffset = 0,
@@ -2396,6 +2420,15 @@ namespace KPLN_Tools.ExecutableCommand
             }
             else
             {
+                string savedSignature = effectivePreset.SelectedPlanModelSignature;
+                string currentSignature = BuildApartmentPlanModelSignature(doc, targetPlan);
+                if (!string.IsNullOrWhiteSpace(savedSignature) &&
+                    !string.Equals(savedSignature, currentSignature, StringComparison.Ordinal))
+                {
+                    isPresetDataStale = true;
+                    otherProblems.Add("Данные плана устарели: изменился состав 2D-семейств квартир или параметр 'Лоджия'. Нажмите 'Обновить данные'.");
+                }
+
                 List<int> requiredThicknesses = BuildWallThicknessesForPlan(doc, targetPlan);
 
                 if (requiredThicknesses.Count == 0)
@@ -2550,6 +2583,7 @@ namespace KPLN_Tools.ExecutableCommand
             ApartmentPresetData effectivePreset = preset ?? new ApartmentPresetData
             {
                 SelectedPlanName = "",
+                SelectedPlanModelSignature = "",
                 LowerConstraint = "",
                 UpperConstraint = "Неприсоединённая",
                 BaseOffset = 0,
@@ -3098,8 +3132,8 @@ namespace KPLN_Tools.ExecutableCommand
 
             string transactionName =
                 action == ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
-                    ? "KPLN. Сохранение 2D-семейств с подложки"
-                    : "KPLN. Полное удаление 2D-подложки";
+                    ? "KPLN. Менеджер квартир. Сохранение 2D-семейств с подложки"
+                    : "KPLN. Менеджер квартир. Полное удаление 2D-подложки";
 
             using (Transaction t = new Transaction(doc, transactionName))
             {

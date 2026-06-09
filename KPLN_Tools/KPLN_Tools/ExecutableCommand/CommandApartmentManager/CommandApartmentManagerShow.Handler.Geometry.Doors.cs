@@ -20,7 +20,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             int installedDoorsCount = 0;
 
-            using (Transaction t = new Transaction(doc, "KPLN. Геометрия дверей"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Геометрия дверей"))
             {
                 t.Start();
 
@@ -2405,7 +2405,7 @@ namespace KPLN_Tools.ExecutableCommand
             if (!needCreateLeft && !needCreateRight)
                 return result;
 
-            using (Transaction t = new Transaction(doc, "KPLN. Создание парных типов двери"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Создание парных типов двери"))
             {
                 t.Start();
 

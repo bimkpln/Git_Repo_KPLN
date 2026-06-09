@@ -20,7 +20,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             int installedWindowsCount = 0;
 
-            using (Transaction t = new Transaction(doc, "KPLN. Геометрия окон"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Геометрия окон"))
             {
                 t.Start();
 

@@ -160,7 +160,7 @@ namespace KPLN_Tools.ExecutableCommand
 
             int deletedCount = 0;
 
-            using (Transaction t = new Transaction(doc, "KPLN. Удаление остатков квартиры"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Удаление остатков квартиры"))
             {
                 t.Start();
 
@@ -205,7 +205,7 @@ namespace KPLN_Tools.ExecutableCommand
             FamilyInstance restored;
             XYZ point = new XYZ(_restoreInfo.X, _restoreInfo.Y, _restoreInfo.Z);
 
-            using (Transaction t = new Transaction(doc, "KPLN. Возврат 2D-семейства квартиры"))
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Возврат 2D-семейства квартиры"))
             {
                 t.Start();
 
