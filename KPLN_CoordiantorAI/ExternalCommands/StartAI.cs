@@ -29,7 +29,9 @@ namespace KPLN_CoordiantorAI.ExternalCommands
                 repository.EnsureDatabase();
 
                 CurrentUserContext userContext = new CurrentUserContextService().GetCurrentUserContext();
-                ChatWindow chatWindow = new ChatWindow(repository, new GigaChatClient(), userContext);
+                UIDocument uiDocument = commandData.Application.ActiveUIDocument;
+                Document document = uiDocument == null ? null : uiDocument.Document;
+                ChatWindow chatWindow = new ChatWindow(repository, new GigaChatClient(), userContext, document, uiDocument);
                 SetRevitOwner(chatWindow);
                 chatWindow.Show();
 

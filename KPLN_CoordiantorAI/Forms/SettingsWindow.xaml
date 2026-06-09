@@ -387,6 +387,53 @@
                 </ScrollViewer>
             </TabItem>
 
+            <TabItem Header="Внешняя модель">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="14">
+                        <TextBlock Style="{StaticResource SectionHeader}" Text="Внешняя модель"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Способ подключения (conType)"/>
+                        <ComboBox x:Name="ExternalModelConnectionTypeComboBox" Margin="0,0,0,10">
+                            <ComboBoxItem Content="OnlineAPI"/>
+                            <ComboBoxItem Content="LocalServer"/>
+                        </ComboBox>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="API ключ (API_KEY)"/>
+                        <PasswordBox x:Name="ExternalModelApiKeyPasswordBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="URL к API (ONLINE_SERVER_URL)"/>
+                        <TextBox x:Name="ExternalModelOnlineUrlTextBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="URL локалки (LOCAL_SERVER_URL)"/>
+                        <TextBox x:Name="ExternalModelLocalUrlTextBox" Margin="0,0,0,10"/>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Папка для логирования (logFolder)"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ExternalModelLogFolderTextBox" Grid.Column="0"/>
+                            <Button Grid.Column="1" Content="Обзор" Click="OnBrowseExternalModelLogFolderClick"/>
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource PathActionButton}"
+                                    Content="📂"
+                                    ToolTip="Открыть папку логов внешней модели"
+                                    Click="OnOpenExternalModelLogFolderClick"/>
+                        </Grid>
+
+                        <TextBlock Style="{StaticResource LabelText}" Text="Системный промпт (systemPrompt)"/>
+                        <TextBox x:Name="ExternalModelSystemPromptTextBox"
+                                 MinHeight="180"
+                                 MaxHeight="280"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <TabItem Header="Поиск">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="14">

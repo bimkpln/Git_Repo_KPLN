@@ -106,6 +106,74 @@ namespace KPLN_CoordiantorAI.Common
             }
         }
 
+        public ExternalModelSettings LoadExternalModelSettings()
+        {
+            ExternalModelSettings settings = new ExternalModelSettings();
+            if (!DatabaseExists)
+                return settings;
+
+            EnsureDatabase();
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+                settings.ApiKey = GetSetting(connection, "ExternalModel.ApiKey", string.Empty);
+                settings.OnlineServerUrl = GetSetting(connection, "ExternalModel.OnlineServerUrl", string.Empty);
+                settings.LogFolder = GetSetting(connection, "ExternalModel.LogFolder", string.Empty);
+                settings.SystemPrompt = GetSetting(connection, "ExternalModel.SystemPrompt", string.Empty);
+                settings.ConnectionTypeName = GetSetting(connection, "ExternalModel.ConnectionTypeName", string.Empty);
+                settings.LocalServerUrl = GetSetting(connection, "ExternalModel.LocalServerUrl", string.Empty);
+            }
+
+            return settings;
+        }
+
+        public void SaveExternalModelSettings(ExternalModelSettings settings)
+        {
+            if (settings == null)
+                throw new ArgumentNullException(nameof(settings));
+
+            EnsureDatabase();
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            {
+                connection.Open();
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    SetSetting(connection, transaction, "ExternalModel.ApiKey", settings.ApiKey);
+                    SetSetting(connection, transaction, "ExternalModel.OnlineServerUrl", settings.OnlineServerUrl);
+                    SetSetting(connection, transaction, "ExternalModel.LogFolder", settings.LogFolder);
+                    SetSetting(connection, transaction, "ExternalModel.SystemPrompt", settings.SystemPrompt);
+                    SetSetting(connection, transaction, "ExternalModel.ConnectionTypeName", settings.ConnectionTypeName);
+                    SetSetting(connection, transaction, "ExternalModel.LocalServerUrl", settings.LocalServerUrl);
+                    transaction.Commit();
+                }
+            }
+        }
+
+        public bool HasExternalModelSettings()
+        {
+            if (!DatabaseExists)
+                return false;
+
+            EnsureDatabase();
+            using (SQLiteConnection connection = new SQLiteConnection(ConnectionString))
+            using (SQLiteCommand command = new SQLiteCommand(
+                string.Format(
+                    "SELECT COUNT(*) FROM {0} WHERE Key IN (" +
+                    "'ExternalModel.ApiKey', " +
+                    "'ExternalModel.OnlineServerUrl', " +
+                    "'ExternalModel.LogFolder', " +
+                    "'ExternalModel.SystemPrompt', " +
+                    "'ExternalModel.ConnectionTypeName', " +
+                    "'ExternalModel.LocalServerUrl');",
+                    SettingsTableName),
+                connection))
+            {
+                connection.Open();
+                object result = command.ExecuteScalar();
+                return Convert.ToInt32(result) > 0;
+            }
+        }
+
         public Bitrix24Settings LoadBitrix24Settings()
         {
             Bitrix24Settings settings = CreateDefaultBitrix24Settings();
