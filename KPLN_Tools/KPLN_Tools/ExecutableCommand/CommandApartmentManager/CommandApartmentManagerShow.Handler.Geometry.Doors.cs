@@ -72,7 +72,24 @@ namespace KPLN_Tools.ExecutableCommand
 
         private static XYZ ResolveDoorPlacementSideDirection(PreparedDoorPlacement preparedDoor, Wall hostWall, XYZ projectedPoint)
         {
-            return null;
+            if (preparedDoor == null || hostWall == null || projectedPoint == null)
+                return null;
+
+            XYZ sourceSideDirection = Normalize2D(preparedDoor.SourceRoomCalculationSideDirection);
+            if (sourceSideDirection == null)
+                return null;
+
+            XYZ wallNormal = GetWallAxisNormal2D(hostWall);
+            if (wallNormal == null)
+                return null;
+
+            double side = Dot2D(sourceSideDirection, wallNormal);
+            if (Math.Abs(side) < 0.15)
+                return null;
+
+            return side >= 0
+                ? wallNormal
+                : new XYZ(-wallNormal.X, -wallNormal.Y, 0);
         }
 
         private static void ApplyDoorPlacementSideDirection(Document doc, FamilyInstance createdDoor, PreparedDoorPlacement preparedDoor,
@@ -82,11 +99,136 @@ namespace KPLN_Tools.ExecutableCommand
             if (createdDoor == null || desiredSideDirection == null)
                 return;
 
-            XYZ facing = GetFamilyInstanceFacingDirection2D(createdDoor, null);
-            if (facing == null || Dot2D(facing, desiredSideDirection) >= 0)
+            TryRegenerateDoorDocument(doc);
+
+            bool isOnDesiredSide;
+            double currentScore;
+            if (!TryIsDoorCalculationPointOnDesiredSide(createdDoor, projectedPoint, desiredSideDirection, out isOnDesiredSide, out currentScore))
                 return;
 
-            TryFlipDoorFacing(doc, createdDoor, debugMessages);
+            if (isOnDesiredSide)
+                return;
+
+            if (!TryFlipDoorFacing(doc, createdDoor, debugMessages))
+            {
+                if (debugMessages != null)
+                {
+                    debugMessages.Add(
+                        "Не удалось перенести дверь ID = " + IDHelper.ElIdValue(createdDoor.Id) +
+                        " на нужную грань стены: семейство не поддерживает flipFacing.");
+                }
+
+                return;
+            }
+
+            TryRegenerateDoorDocument(doc);
+
+            bool isOnDesiredSideAfterFlip;
+            double flippedScore;
+            if (TryIsDoorCalculationPointOnDesiredSide(createdDoor, projectedPoint, desiredSideDirection, out isOnDesiredSideAfterFlip, out flippedScore) &&
+                isOnDesiredSideAfterFlip)
+            {
+                return;
+            }
+
+            TryFlipDoorFacing(doc, createdDoor, null);
+            TryRegenerateDoorDocument(doc);
+
+            if (debugMessages != null)
+            {
+                debugMessages.Add(
+                    "Не удалось перенести дверь ID = " + IDHelper.ElIdValue(createdDoor.Id) +
+                    " на нужную грань стены по точке принадлежности помещению. До flip = " +
+                    FormatDouble(currentScore) + ", после flip = " + FormatDouble(flippedScore) + ".");
+            }
+        }
+
+        private static void TryRegenerateDoorDocument(Document doc)
+        {
+            if (doc == null)
+                return;
+
+            try
+            {
+                doc.Regenerate();
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool TryIsDoorCalculationPointOnDesiredSide(FamilyInstance door, XYZ projectedPoint, XYZ desiredSideDirection,
+            out bool isOnDesiredSide, out double score)
+        {
+            isOnDesiredSide = false;
+            score = double.NegativeInfinity;
+
+            if (door == null || projectedPoint == null || desiredSideDirection == null)
+                return false;
+
+            XYZ calculationPoint;
+            if (!TryGetDoorSpatialElementCalculationPoint(door, out calculationPoint) || calculationPoint == null)
+                return false;
+
+            XYZ calculationDirection = Normalize2D(calculationPoint - projectedPoint);
+            if (calculationDirection == null)
+                return false;
+
+            score = Dot2D(calculationDirection, desiredSideDirection);
+            if (Math.Abs(score) < 0.05)
+                return false;
+
+            isOnDesiredSide = score > 0;
+            return true;
+        }
+
+        private static bool TryGetDoorSpatialElementCalculationPoint(FamilyInstance door, out XYZ point)
+        {
+            point = null;
+
+            if (door == null || door.Document == null)
+                return false;
+
+            try
+            {
+                ICollection<ElementId> dependentIds = door.GetDependentElements(new ElementClassFilter(typeof(SpatialElementCalculationPoint)));
+                if (dependentIds != null)
+                {
+                    foreach (ElementId dependentId in dependentIds)
+                    {
+                        SpatialElementCalculationPoint calculationPoint =
+                            door.Document.GetElement(dependentId) as SpatialElementCalculationPoint;
+
+                        if (calculationPoint == null || calculationPoint.Position == null)
+                            continue;
+
+                        point = calculationPoint.Position;
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                point = null;
+            }
+
+            return false;
+        }
+
+        private static XYZ GetDoorRoomCalculationSideDirection(FamilyInstance door, XYZ insertPoint)
+        {
+            if (door == null || insertPoint == null)
+                return null;
+
+            XYZ calculationPoint;
+            if (!TryGetDoorSpatialElementCalculationPoint(door, out calculationPoint) || calculationPoint == null)
+                return null;
+
+            XYZ sideDirection = Normalize2D(calculationPoint - insertPoint);
+            if (sideDirection == null)
+                return null;
+
+            return sideDirection;
         }
 
         private static XYZ GetRoomCenterPoint(FamilyInstance roomFi)
@@ -212,16 +354,6 @@ namespace KPLN_Tools.ExecutableCommand
                 }
 
                 FamilySymbol symbolToPlace = preparedDoor.DoorSymbol;
-
-                bool useOppositeDoorType =
-                    preparedDoor.RequiresOppositeDoorTypeAfterWallFlip ||
-                    (hostFromExistingWall &&
-                     ShouldUseOppositeDoorTypeForExistingHost(hostWall, preparedDoor, projectedPoint));
-
-                if (useOppositeDoorType)
-                {
-                    symbolToPlace = GetOppositeDoorSymbol(doc, symbolToPlace);
-                }
 
                 if (symbolToPlace == null)
                 {
@@ -368,7 +500,6 @@ namespace KPLN_Tools.ExecutableCommand
 
             double referenceOffset = Math.Max(GetWallHalfWidth(hostWall) + IDHelper.ConvertMmToInternal(300), IDHelper.ConvertMmToInternal(500));
             preparedDoor.InteriorReferencePoint = projectedPoint + interiorDirection * referenceOffset;
-            preparedDoor.RequiresOppositeDoorTypeAfterWallFlip = false;
             List<string> entranceDiagnostics = new List<string>();
 
             bool hostAxisReversed = EnsureEntranceHostWallNormalOutside(
@@ -380,8 +511,7 @@ namespace KPLN_Tools.ExecutableCommand
                 entranceDiagnostics,
                 null);
 
-            FamilySymbol sourceEntranceDoorSymbol = preparedDoor.DoorSymbol;
-            FamilySymbol entranceDoorSymbol = ResolveEntranceDoorSymbolForExterior(doc, preparedDoor, sourceEntranceDoorSymbol, outwardDirection);
+            FamilySymbol entranceDoorSymbol = preparedDoor.DoorSymbol;
             if (entranceDoorSymbol == null)
             {
                 AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
@@ -436,19 +566,6 @@ namespace KPLN_Tools.ExecutableCommand
             if (entranceInsertionPoint == null)
                 entranceInsertionPoint = projectedPoint;
 
-            if (sourceEntranceDoorSymbol != null &&
-                entranceDoorSymbol != null &&
-                IDHelper.ElIdValue(sourceEntranceDoorSymbol.Id) != IDHelper.ElIdValue(entranceDoorSymbol.Id))
-            {
-                AddApartmentDiagnostic(
-                    null,
-                    entranceDiagnostics,
-                    "Входная дверь ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
-                    ": 2D facing смотрит внутрь квартиры, выбран парный тип '" +
-                    BuildDoorTypeDisplayName(entranceDoorSymbol) + "' вместо '" +
-                    BuildDoorTypeDisplayName(sourceEntranceDoorSymbol) + "'.");
-            }
-
             preparedDoor.DoorSymbol = entranceDoorSymbol;
             preparedDoor.SelectedDoorTypeName = BuildDoorTypeDisplayName(entranceDoorSymbol);
 
@@ -484,7 +601,7 @@ namespace KPLN_Tools.ExecutableCommand
                         baseLevel,
                         projectedPoint,
                         outwardDirection,
-                        sourceEntranceDoorSymbol,
+                        entranceDoorSymbol,
                         entranceDoorSymbol,
                         entranceReferenceDirection,
                         useEntranceReferenceDirection,
@@ -550,6 +667,7 @@ namespace KPLN_Tools.ExecutableCommand
             {
                 OrientEntranceDoorBy2DSource(doc, createdDoor, preparedDoor, hostWall, projectedPoint, entranceDiagnostics, null);
                 EnsureEntranceDoorFacesOutward(doc, createdDoor, outwardDirection, entranceDiagnostics);
+                ApplyDoorPlacementSideDirection(doc, createdDoor, preparedDoor, hostWall, projectedPoint, entranceDiagnostics);
 
                 string entranceValidationDiagnostic;
                 if (!IsEntranceDoorPlacementAcceptable(createdDoor, hostWall, outwardDirection, preparedDoor, out entranceValidationDiagnostic))
@@ -654,39 +772,6 @@ namespace KPLN_Tools.ExecutableCommand
                    ", проекция = " + FormatPointMm(nearestProjectedPoint);
         }
 
-        private static bool ShouldUseOppositeDoorTypeForExistingHost(Wall hostWall, PreparedDoorPlacement preparedDoor, XYZ projectedPoint)
-        {
-            if (hostWall == null || preparedDoor == null || projectedPoint == null)
-                return false;
-
-            XYZ referencePoint = null;
-
-            if (preparedDoor.RelatedRoom2D != null)
-            {
-                referencePoint = GetClosestPointOnRoomRectangle(preparedDoor.RelatedRoom2D, preparedDoor.InsertPoint) ??
-                                 GetRoomCenterPoint(preparedDoor.RelatedRoom2D);
-            }
-
-            if (referencePoint == null)
-                referencePoint = preparedDoor.InteriorReferencePoint;
-
-            if (referencePoint == null)
-                return false;
-
-            Line wallAxis = GetWallAxisLine(hostWall);
-            if (wallAxis == null)
-                return false;
-
-            XYZ wallDir = Normalize2D(wallAxis.GetEndPoint(1) - wallAxis.GetEndPoint(0));
-            if (wallDir == null)
-                return false;
-
-            XYZ wallNormal = new XYZ(-wallDir.Y, wallDir.X, 0);
-            XYZ toReference = referencePoint - projectedPoint;
-
-            return Dot2D(toReference, wallNormal) > 0;
-        }
-
         private static FamilyInstance CreateDoorFamilyInstance(Document doc, XYZ projectedPoint, FamilySymbol symbolToPlace, Wall hostWall,
             Level baseLevel, PreparedDoorPlacement preparedDoor, List<string> debugMessages)
         {
@@ -703,29 +788,6 @@ namespace KPLN_Tools.ExecutableCommand
             ApplyDoorPlacementSideDirection(doc, createdDoor, preparedDoor, hostWall, projectedPoint, debugMessages);
 
             return createdDoor;
-        }
-
-        private FamilySymbol ResolveEntranceDoorSymbolForExterior(Document doc, PreparedDoorPlacement preparedDoor, FamilySymbol baseSymbol,
-            XYZ outwardDirection)
-        {
-            if (doc == null || preparedDoor == null || baseSymbol == null)
-                return baseSymbol;
-
-            XYZ sourceFacing = Normalize2D(preparedDoor.SourceFacingDirection);
-            XYZ outward = Normalize2D(outwardDirection);
-
-            if (sourceFacing == null || outward == null)
-                return baseSymbol;
-
-            double facingToOutside = Dot2D(sourceFacing, outward);
-            if (facingToOutside >= -0.25)
-                return baseSymbol;
-
-            FamilySymbol oppositeSymbol = GetOppositeDoorSymbol(doc, baseSymbol);
-            if (oppositeSymbol == null || IDHelper.ElIdValue(oppositeSymbol.Id) == IDHelper.ElIdValue(baseSymbol.Id))
-                return baseSymbol;
-
-            return oppositeSymbol;
         }
 
         private static XYZ GetEntranceDoorInsertionPoint(FamilyInstance apartmentFi, Document doc, XYZ projectedPoint, Wall hostWall,
@@ -1111,8 +1173,6 @@ namespace KPLN_Tools.ExecutableCommand
             List<FamilySymbol> symbols = new List<FamilySymbol>();
             AddUniqueFamilySymbol(symbols, preferredSymbol);
             AddUniqueFamilySymbol(symbols, sourceSymbol);
-            AddUniqueFamilySymbol(symbols, GetOppositeDoorSymbol(doc, preferredSymbol));
-            AddUniqueFamilySymbol(symbols, GetOppositeDoorSymbol(doc, sourceSymbol));
 
             List<Tuple<string, XYZ, bool>> references = new List<Tuple<string, XYZ, bool>>();
             if (useFirstReferenceDirection)
@@ -1992,39 +2052,6 @@ namespace KPLN_Tools.ExecutableCommand
             }
         }
 
-        private FamilySymbol GetOppositeDoorSymbol(Document doc, FamilySymbol currentSymbol)
-        {
-            if (doc == null || currentSymbol == null || currentSymbol.Family == null)
-                return currentSymbol;
-
-            string currentTypeName = currentSymbol.Name ?? "";
-            DoorOpeningMarker currentMarker = GetDoorOpeningMarkerFromTypeName(currentTypeName);
-
-            if (currentMarker == DoorOpeningMarker.None)
-                return currentSymbol;
-
-            DoorOpeningMarker oppositeMarker =
-                currentMarker == DoorOpeningMarker.Left
-                    ? DoorOpeningMarker.Right
-                    : DoorOpeningMarker.Left;
-
-            string targetTypeName = ReplaceDoorOpeningMarker(currentTypeName, oppositeMarker);
-
-            FamilySymbol result = FindFamilySymbolByTypeName(doc, currentSymbol.Family, targetTypeName);
-            if (result != null)
-                return result;
-
-            if (oppositeMarker == DoorOpeningMarker.Right)
-            {
-                string altRightTypeName = ReplaceDoorOpeningMarker(currentTypeName, DoorOpeningMarker.RightAlt);
-                result = FindFamilySymbolByTypeName(doc, currentSymbol.Family, altRightTypeName);
-                if (result != null)
-                    return result;
-            }
-
-            return currentSymbol;
-        }
-
         private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages, ApartmentProcessState state = null)
         {
             PreparedApartmentDoors result = new PreparedApartmentDoors();
@@ -2174,27 +2201,9 @@ namespace KPLN_Tools.ExecutableCommand
                 return false;
             }
 
-            if (isEntranceDoor)
-            {
-                try
-                {
-                    DoorTypeMirrorEnsureResult ensureResult = EnsureDoorMirrorTypeExists(doc, baseDoorSymbol);
-                    if (ensureResult != null && ensureResult.HasMessage)
-                        entranceDiagnostics.Add(ensureResult.Message);
-                }
-                catch (Exception ex)
-                {
-                    AddApartmentDiagnostic(
-                        state,
-                        debugMessages,
-                        "Не удалось подготовить парный тип входной двери для '" +
-                        BuildDoorTypeDisplayName(baseDoorSymbol) + "': " + ex.Message);
-                }
-            }
-
-            FamilySymbol resolvedDoorSymbol = isEntranceDoor || sourceDoorFi == null
+            FamilySymbol resolvedDoorSymbol = sourceDoorFi == null
                 ? baseDoorSymbol
-                : ResolveDoorSymbolForPlacement(doc, sourceDoorFi, baseDoorSymbol, debugMessages);
+                : ResolveDoorSymbolForPlacement(doc, typeName, baseDoorSymbol, debugMessages);
 
             if (resolvedDoorSymbol == null)
             {
@@ -2214,6 +2223,8 @@ namespace KPLN_Tools.ExecutableCommand
             XYZ expectedRoomPoint = matchedRoom != null
                 ? GetRoomCenterPoint(matchedRoom)
                 : GetApartmentInteriorReferencePoint(apartmentFi, doc);
+
+            XYZ sourceRoomCalculationSideDirection = GetDoorRoomCalculationSideDirection(sourceDoorFi, insertPointInProject);
 
             if (isEntranceDoor)
             {
@@ -2239,9 +2250,9 @@ namespace KPLN_Tools.ExecutableCommand
                 InteriorReferencePoint = expectedRoomPoint,
                 SourceHandDirection = sourceHandDirection,
                 SourceFacingDirection = sourceFacingDirection,
+                SourceRoomCalculationSideDirection = sourceRoomCalculationSideDirection,
                 IsEntranceDoor = isEntranceDoor,
-                Diagnostics = entranceDiagnostics,
-                RequiresOppositeDoorTypeAfterWallFlip = false
+                Diagnostics = entranceDiagnostics
             });
 
             return true;
@@ -2460,9 +2471,9 @@ namespace KPLN_Tools.ExecutableCommand
             return result;
         }
 
-        private FamilySymbol ResolveDoorSymbolForPlacement(Document doc, FamilyInstance source2DDoor, FamilySymbol baseDoorSymbol, List<string> debugMessages)
+        private FamilySymbol ResolveDoorSymbolForPlacement(Document doc, string source2DTypeName, FamilySymbol baseDoorSymbol, List<string> debugMessages)
         {
-            if (doc == null || source2DDoor == null || baseDoorSymbol == null)
+            if (doc == null || string.IsNullOrWhiteSpace(source2DTypeName) || baseDoorSymbol == null)
                 return baseDoorSymbol;
 
             string baseTypeName = baseDoorSymbol.Name ?? "";
@@ -2475,12 +2486,10 @@ namespace KPLN_Tools.ExecutableCommand
             if (ensureResult != null && ensureResult.HasMessage && debugMessages != null)
                 debugMessages.Add(ensureResult.Message);
 
-            bool faceFlip;
-            bool mirrored;
-            if (!TryGetDoorOrientationFlags(source2DDoor, out faceFlip, out mirrored))
+            DoorOpeningMarker desiredMarker;
+            if (!TryGetDoorOpeningMarkerFrom2DTypeName(source2DTypeName, out desiredMarker))
                 return baseDoorSymbol;
 
-            DoorOpeningMarker desiredMarker = ResolveDesiredDoorOpeningMarker(faceFlip, mirrored);
             if (desiredMarker == DoorOpeningMarker.None)
                 return baseDoorSymbol;
 
@@ -2515,154 +2524,40 @@ namespace KPLN_Tools.ExecutableCommand
             return baseDoorSymbol;
         }
 
-        private static bool TryGetDoorOrientationFlags(FamilyInstance doorFi, out bool faceFlip, out bool mirrored)
+        private static bool TryGetDoorOpeningMarkerFrom2DTypeName(string typeName, out DoorOpeningMarker marker)
         {
-            faceFlip = false;
-            mirrored = false;
+            marker = DoorOpeningMarker.None;
 
-            if (doorFi == null)
+            if (string.IsNullOrWhiteSpace(typeName))
                 return false;
 
-            bool hasFaceFlip = TryGetYesNoParamFromElementOrType(doorFi, out faceFlip, "faceFlip", "FaceFlip", "Facing Flip", "FacingFlipped");
-            bool hasMirrored = TryGetYesNoParamFromElementOrType(doorFi, out mirrored, "mirrored", "Mirrored");
+            string normalized = typeName
+                .Replace('ё', 'е')
+                .Replace('Ё', 'Е')
+                .Trim();
 
-            if (!hasFaceFlip)
+            for (int i = normalized.Length - 1; i >= 0; i--)
             {
-                try
+                char c = normalized[i];
+                if (char.IsWhiteSpace(c) || c == '.' || c == ',' || c == ';')
+                    continue;
+
+                if (c == 'Л' || c == 'л' || c == 'L' || c == 'l')
                 {
-                    faceFlip = doorFi.FacingFlipped;
-                    hasFaceFlip = true;
+                    marker = DoorOpeningMarker.Left;
+                    return true;
                 }
-                catch
+
+                if (c == 'П' || c == 'п' || c == 'P' || c == 'p')
                 {
+                    marker = DoorOpeningMarker.Right;
+                    return true;
                 }
-            }
 
-            if (!hasMirrored)
-            {
-                try
-                {
-                    mirrored = doorFi.Mirrored;
-                    hasMirrored = true;
-                }
-                catch
-                {
-                }
-            }
-
-            return hasFaceFlip && hasMirrored;
-        }
-
-        private static bool TryGetYesNoParamFromElementOrType(Element e, out bool value, params string[] paramNames)
-        {
-            value = false;
-
-            if (e == null || paramNames == null || paramNames.Length == 0)
-                return false;
-
-            foreach (string paramName in paramNames)
-            {
-                Parameter p = e.LookupParameter(paramName);
-                if (p != null)
-                {
-                    if (p.StorageType == StorageType.Integer)
-                    {
-                        value = p.AsInteger() != 0;
-                        return true;
-                    }
-
-                    if (p.StorageType == StorageType.String)
-                    {
-                        string s = p.AsString();
-                        if (!string.IsNullOrWhiteSpace(s))
-                        {
-                            s = s.Trim();
-                            if (string.Equals(s, "true", StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(s, "yes", StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(s, "1", StringComparison.OrdinalIgnoreCase))
-                            {
-                                value = true;
-                                return true;
-                            }
-
-                            if (string.Equals(s, "false", StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(s, "no", StringComparison.OrdinalIgnoreCase) ||
-                                string.Equals(s, "0", StringComparison.OrdinalIgnoreCase))
-                            {
-                                value = false;
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            Element typeElem = null;
-            if (e.Document != null)
-            {
-                ElementId typeId = e.GetTypeId();
-                if (typeId != ElementId.InvalidElementId)
-                    typeElem = e.Document.GetElement(typeId);
-            }
-
-            if (typeElem != null)
-            {
-                foreach (string paramName in paramNames)
-                {
-                    Parameter p = typeElem.LookupParameter(paramName);
-                    if (p != null)
-                    {
-                        if (p.StorageType == StorageType.Integer)
-                        {
-                            value = p.AsInteger() != 0;
-                            return true;
-                        }
-
-                        if (p.StorageType == StorageType.String)
-                        {
-                            string s = p.AsString();
-                            if (!string.IsNullOrWhiteSpace(s))
-                            {
-                                s = s.Trim();
-                                if (string.Equals(s, "true", StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(s, "yes", StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(s, "1", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    value = true;
-                                    return true;
-                                }
-
-                                if (string.Equals(s, "false", StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(s, "no", StringComparison.OrdinalIgnoreCase) ||
-                                    string.Equals(s, "0", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    value = false;
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
+                break;
             }
 
             return false;
-        }
-
-        private static DoorOpeningMarker ResolveDesiredDoorOpeningMarker(bool faceFlip, bool mirrored)
-        {
-            if (!faceFlip && !mirrored)
-                return DoorOpeningMarker.Left;
-
-            if (faceFlip && mirrored)
-                return DoorOpeningMarker.Left;
-
-            if (faceFlip && !mirrored)
-                return DoorOpeningMarker.Right;
-
-            if (!faceFlip && mirrored)
-                return DoorOpeningMarker.Right;
-
-            return DoorOpeningMarker.None;
         }
 
         private static FamilySymbol FindFamilySymbolByTypeName(Document doc, Family family, string typeName)

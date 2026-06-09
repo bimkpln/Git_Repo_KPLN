@@ -358,6 +358,41 @@ namespace KPLN_Tools.ExecutableCommand
             return false;
         }
 
+        private static bool TryGetYesNoParamFromElementOrType(Element element, out bool value, params string[] parameterNames)
+        {
+            value = false;
+
+            if (element == null || parameterNames == null || parameterNames.Length == 0)
+                return false;
+
+            foreach (string parameterName in parameterNames)
+            {
+                Parameter p = element.LookupParameter(parameterName);
+                if (TryGetYesNoParameterValue(p, out value))
+                    return true;
+            }
+
+            Element typeElem = null;
+            if (element.Document != null)
+            {
+                ElementId typeId = element.GetTypeId();
+                if (typeId != ElementId.InvalidElementId)
+                    typeElem = element.Document.GetElement(typeId);
+            }
+
+            if (typeElem == null)
+                return false;
+
+            foreach (string parameterName in parameterNames)
+            {
+                Parameter p = typeElem.LookupParameter(parameterName);
+                if (TryGetYesNoParameterValue(p, out value))
+                    return true;
+            }
+
+            return false;
+        }
+
         private static bool TrySetYesNoParamOnElementOrType(Element element, bool value, params string[] parameterNames)
         {
             if (element == null || parameterNames == null || parameterNames.Length == 0)

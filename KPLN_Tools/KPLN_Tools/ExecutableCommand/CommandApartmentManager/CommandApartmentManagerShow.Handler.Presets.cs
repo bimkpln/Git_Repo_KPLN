@@ -2906,6 +2906,16 @@ namespace KPLN_Tools.ExecutableCommand
                     connectTol,
                     apartmentStates);
 
+                createdRoomsCount = PlaceRoomGeometryInTransaction(
+                    doc,
+                    preparedApartments,
+                    preparedRoomsByApartment,
+                    targetPlan.GenLevel,
+                    roomAreaMismatches,
+                    apartmentStates,
+                    targetPlan,
+                    debugMessages);
+
                 installedDoorsCount = PlaceDoorGeometryInTransaction(
                     doc,
                     preparedApartments,
@@ -2925,16 +2935,6 @@ namespace KPLN_Tools.ExecutableCommand
                     baseLevel,
                     debugMessages,
                     apartmentStates);
-
-                createdRoomsCount = PlaceRoomGeometryInTransaction(
-                    doc,
-                    preparedApartments,
-                    preparedRoomsByApartment,
-                    targetPlan.GenLevel,
-                    roomAreaMismatches,
-                    apartmentStates,
-                    targetPlan,
-                    debugMessages);
             }
 
             ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, debugMessages, apartmentStates);

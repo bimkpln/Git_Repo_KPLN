@@ -325,9 +325,9 @@ namespace KPLN_Tools.ExecutableCommand
             public XYZ InteriorReferencePoint { get; set; }
             public XYZ SourceHandDirection { get; set; }
             public XYZ SourceFacingDirection { get; set; }
+            public XYZ SourceRoomCalculationSideDirection { get; set; }
             public bool IsEntranceDoor { get; set; }
             public List<string> Diagnostics { get; set; }
-            public bool RequiresOppositeDoorTypeAfterWallFlip { get; set; }
         }
 
         private class PreparedApartmentDoors
