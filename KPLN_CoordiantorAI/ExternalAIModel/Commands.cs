@@ -1,3 +1,9 @@
+using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Architecture;
+using Autodesk.Revit.DB.Structure;
+using Autodesk.Revit.UI;
+using KPLN_CoordiantorAI.Common;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -8,11 +14,6 @@ using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Autodesk.Revit.ApplicationServices;
-using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Architecture;
-using Autodesk.Revit.DB.Structure;
-using Autodesk.Revit.UI;
 #if R2023 || R2024
 using static Autodesk.Revit.DB.SpecTypeId;
 #endif
@@ -41,7 +42,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             return new ViewInfo
             {
-                ViewId = activeView.Id.IntegerValue,
+                ViewId = IDHelper.ElIdInt(activeView.Id),
                 ViewName = activeView.Name,
                 ViewType = activeView.ViewType.ToString(),
                 IsSheet = activeView is ViewSheet
@@ -61,7 +62,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         public static ViewElementsResult GetAllElementsShownInView(Document doc, int viewOrSheetId)
         {
-            ElementId viewId = new ElementId(viewOrSheetId);
+            ElementId viewId = IDHelper.ToElementId(viewOrSheetId);
             View view = doc.GetElement(viewId) as View;
 
             if (view == null)
@@ -82,7 +83,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             var elementIds = new List<long>();
             foreach (Element elem in collector)
             {
-                elementIds.Add(elem.Id.IntegerValue);
+                elementIds.Add(IDHelper.ElIdInt(elem.Id));
             }
 
             return new ViewElementsResult
@@ -122,9 +123,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     matchingCategories.Add(new CategoryInfo
                     {
-                        Id = category.Id.IntegerValue,
+                        Id = IDHelper.ElIdInt(category.Id),
                         Name = categoryName,
-                        BuiltInCategory = (BuiltInCategory)category.Id.IntegerValue
+                        BuiltInCategory = (BuiltInCategory)IDHelper.ElIdInt(category.Id)
                     });
                 }
             }
@@ -149,7 +150,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (Element elem in elements)
             {
-                elementIds.Add(elem.Id.IntegerValue);
+                elementIds.Add(IDHelper.ElIdInt(elem.Id));
             }
 
             return elementIds;
@@ -172,7 +173,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 result.Add(new CategoryInfo
                 {
-                    Id = cat.Id.IntegerValue,
+                    Id = IDHelper.ElIdInt(cat.Id),
                     Name = cat.Name
                 });
             }
@@ -197,7 +198,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int idInt in elementIds.Distinct())
             {
-                var eid = new ElementId(idInt);
+                var eid = IDHelper.ToElementId(idInt);
                 Element elem = doc.GetElement(eid);
                 if (elem == null)
                     continue;
@@ -208,7 +209,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 result[idInt] = new CategoryInfo
                 {
-                    Id = cat.Id.IntegerValue,
+                    Id = IDHelper.ElIdInt(cat.Id),
                     Name = cat.Name
                 };
             }
@@ -235,7 +236,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int idInt in elementIds.Distinct())
             {
-                var eid = new ElementId(idInt);
+                var eid = IDHelper.ToElementId(idInt);
                 Element elem = doc.GetElement(eid);
                 if (elem == null) continue;
 
@@ -250,7 +251,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     string typeName = typeElem.Name ?? "Без имени";
                     typeMap[idInt] = new ElementTypeInfo
                     {
-                        TypeId = typeId.IntegerValue,
+                        TypeId = IDHelper.ElIdInt(typeId),
                         TypeName = typeName
                     };
                 }
@@ -280,18 +281,17 @@ namespace KPLN_CoordiantorAI.ExternalModel
             foreach (int typeIdInt in typeIds.Distinct())
             {
                 processedTypes++;
-                var typeId = new ElementId(typeIdInt);
+                var typeId = IDHelper.ToElementId(typeIdInt);
                 var elemIds = new List<int>();
 
                 // Фильтр по TypeId
                 var collector = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType();  // Только экземпляры
 
-
                 foreach (Element elem in collector)
                 {
-                    if (elem.GetTypeId().IntegerValue == typeIdInt)
-                        elemIds.Add(elem.Id.IntegerValue);
+                    if (IDHelper.ElIdInt(elem.GetTypeId()) == typeIdInt)
+                        elemIds.Add(IDHelper.ElIdInt(elem.Id));
                 }
 
                 elementIdsPerType[typeIdInt] = elemIds;
@@ -343,7 +343,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 FamilyInstance fi = elem as FamilyInstance;
                 if (fi != null && fi.Symbol != null && fi.Symbol.Family != null)
                 {
-                    int familyId = fi.Symbol.Family.Id.IntegerValue;
+                    int familyId = IDHelper.ElIdInt(fi.Symbol.Family.Id);
                     if (loadedInstanceCountMap.ContainsKey(familyId))
                         loadedInstanceCountMap[familyId]++;
                     else
@@ -354,7 +354,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             // ========== 4. Добавляем загружаемые семейства ==========
             foreach (Family family in loadedFamilies)
             {
-                int familyId = family.Id.IntegerValue;
+                int familyId = IDHelper.ElIdInt(family.Id);
 
                 if (existingLoadedIds.Contains(familyId))
                     continue;
@@ -426,7 +426,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        isLoadedFamilyType = (symbol.Family != null && symbol.Family.Id.IntegerValue != -1); //значит с-во загружаемое
+                        isLoadedFamilyType = (symbol.Family != null && IDHelper.ElIdInt(symbol.Family.Id) != -1); //значит с-во загружаемое
                     }
                     catch
                     {
@@ -529,7 +529,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 FamilyInstance fi = elem as FamilyInstance;
                 if (fi != null && fi.Symbol != null && fi.Symbol.Family != null)
                 {
-                    int fId = fi.Symbol.Family.Id.IntegerValue;
+                    int fId = IDHelper.ElIdInt(fi.Symbol.Family.Id);
                     if (loadedInstanceCount.ContainsKey(fId))
                         loadedInstanceCount[fId]++;
                     else
@@ -559,11 +559,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
             //ОБРАБОТКА ЗАГРУЖАЕМЫХ СЕМЕЙСТВ
             foreach (var inst in loadedFamilies)
             {
-                if (inst.FamilyCategory == null || inst.FamilyCategory.Id.IntegerValue != categoryId)
+                if (inst.FamilyCategory == null || IDHelper.ElIdInt(inst.FamilyCategory.Id) != categoryId)
                     continue;
 
                 //Получаем ID
-                int familyId = inst.Id.IntegerValue;
+                int familyId = IDHelper.ElIdInt(inst.Id);
 
                 if (families.Any(f => f.FamilyId == familyId))
                     continue;
@@ -589,12 +589,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
             //ОБРАБОТКА СИСТЕМНЫХ СЕМЕЙСТВ
             foreach (var syselemType in allElementTypes)
             {
-                if (syselemType.Category == null || syselemType.Category.Id.IntegerValue != categoryId)
+                if (syselemType.Category == null || IDHelper.ElIdInt(syselemType.Category.Id) != categoryId)
                     continue;
 
                 // Проверяем, является ли типоразмер загружаемым семейством
                 FamilySymbol symbol = syselemType as FamilySymbol;
-                if (symbol != null && symbol.Family != null && symbol.Family.Id.IntegerValue != -1)
+                if (symbol != null && symbol.Family != null && IDHelper.ElIdInt(symbol.Family.Id) != -1)
                     continue;
 
                 //Получаем ID
@@ -615,7 +615,6 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     IsPlacedInModel = isPlacedInModel,
                     InstanceCount = instanceCount
                 });
-
             }
 
 
@@ -640,12 +639,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 if (ReferenceEquals(x, y)) return true;
                 if (x is null || y is null) return false;
-                return x.Id.IntegerValue == y.Id.IntegerValue;
+                return IDHelper.ElIdInt(x.Id) == IDHelper.ElIdInt(y.Id);
             }
 
             public int GetHashCode(Family obj)
             {
-                return obj.Id.IntegerValue;
+                return IDHelper.ElIdInt(obj.Id);
             }
         }
 
@@ -681,7 +680,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 types.Add(new FamilyTypeInfo
                 {
-                    TypeId = t.Id.IntegerValue,
+                    TypeId = IDHelper.ElIdInt(t.Id),
                     TypeName = t.Name
                 });
             }
@@ -739,10 +738,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 // Коллектор только по этому TypeId
                 var instancesOfType = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
-                    .Where(e => e.GetTypeId().IntegerValue == type.Id.IntegerValue);
+                    .Where(e => IDHelper.ElIdInt(e.GetTypeId()) == IDHelper.ElIdInt(type.Id));
 
                 foreach (var inst in instancesOfType)
-                    list.Add(inst.Id.IntegerValue);
+                    list.Add(IDHelper.ElIdInt(inst.Id));
             }
 
             return new
@@ -770,7 +769,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         {
             var result = new List<ElementParameterInfo>();
 
-            var elem = doc.GetElement(new ElementId(elementId));
+            var elem = doc.GetElement(IDHelper.ToElementId(elementId));
             if (elem == null)
                 return new { parameters = result };
 
@@ -807,11 +806,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                 var refElem = doc.GetElement(id);
                                 value = refElem != null
                                     ? refElem.Name
-                                    : id.IntegerValue.ToString();
+                                    : IDHelper.ElIdInt(id).ToString();
                             }
                             else
                             {
-                                value = id.IntegerValue.ToString();
+                                value = IDHelper.ElIdInt(id).ToString();
                             }
                         }
                         else
@@ -827,7 +826,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 // У Definition нет “Id” как у параметров семейства, поэтому используем Id самого параметра
-                int paramId = p.Id?.IntegerValue ?? 0;
+                int paramId = p.Id != null ? IDHelper.ElIdInt(p.Id) : 0;
 
                 result.Add(new ElementParameterInfo
                 {
@@ -860,7 +859,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int eidInt in elementIds.Distinct())
             {
-                var elem = doc.GetElement(new ElementId(eidInt));
+                var elem = doc.GetElement(IDHelper.ToElementId(eidInt));
                 if (elem == null)
                 {
                     values[eidInt] = null;
@@ -871,7 +870,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 Parameter p = null;
                 foreach (Parameter param in elem.Parameters)
                 {
-                    if (param?.Id != null && param.Id.IntegerValue == idParameter)
+                    if (param?.Id != null && IDHelper.ElIdInt(param.Id) == idParameter)
                     {
                         p = param;
                         break;
@@ -909,11 +908,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                 var refElem = doc.GetElement(id);
                                 val = refElem != null
                                     ? refElem.Name
-                                    : id.IntegerValue.ToString();
+                                    : IDHelper.ElIdInt(id).ToString();
                             }
                             else
                             {
-                                val = id.IntegerValue.ToString();
+                                val = IDHelper.ElIdInt(id).ToString();
                             }
                         }
                         else
@@ -953,7 +952,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         {
             var result = new List<AdditionalPropertyInfo>();
 
-            var elem = doc.GetElement(new ElementId(elementId));
+            var elem = doc.GetElement(IDHelper.ToElementId(elementId));
             if (elem == null)
                 return new { additional_properties = result };
 
@@ -968,12 +967,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
             }
 
             // Общие свойства Element
-            AddProp("Id", elem.Id.IntegerValue);
+            AddProp("Id", IDHelper.ElIdInt(elem.Id));
             AddProp("UniqueId", elem.UniqueId);
             AddProp("Name", elem.Name);
             AddProp("Category", elem.Category?.Name);
-            AddProp("LevelId", elem.LevelId?.IntegerValue);
-            AddProp("OwnerViewId", elem.OwnerViewId?.IntegerValue);
+            AddProp("LevelId", elem.LevelId != null ? IDHelper.ElIdInt(elem.LevelId) : (int?)null);
+            AddProp("OwnerViewId", elem.OwnerViewId != null ? IDHelper.ElIdInt(elem.OwnerViewId) : (int?)null);
 
             var loc = elem.Location;
             if (loc is LocationPoint lp)
@@ -1008,16 +1007,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 AddProp("FamilyName", fi.Symbol?.FamilyName);
                 AddProp("SymbolName", fi.Symbol?.Name);
-                AddProp("HostId", fi.Host?.Id.IntegerValue);
-                AddProp("RoomId", fi.Room?.Id.IntegerValue);
-                AddProp("SpaceId", fi.Space?.Id.IntegerValue);
+                AddProp("HostId", fi.Host != null ? IDHelper.ElIdInt(fi.Host.Id) : (int?)null);
+                AddProp("RoomId", fi.Room != null ? IDHelper.ElIdInt(fi.Room.Id) : (int?)null);
+                AddProp("SpaceId", fi.Space != null ? IDHelper.ElIdInt(fi.Space.Id) : (int?)null);
             }
             else if (elem is Room room)
             {
                 AddProp("RoomNumber", room.Number);
                 AddProp("RoomName", room.Name);
                 AddProp("RoomArea", room.Area);
-                AddProp("RoomLevelId", room.LevelId.IntegerValue);
+                AddProp("RoomLevelId", IDHelper.ElIdInt(room.LevelId));
             }
 
             return new
@@ -1042,7 +1041,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int eidInt in elementIds.Distinct())
             {
-                var elem = doc.GetElement(new ElementId(eidInt));
+                var elem = doc.GetElement(IDHelper.ToElementId(eidInt));
                 if (elem == null)
                 {
                     invalidElementIds.Add(eidInt);
@@ -1056,7 +1055,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 switch (propertyName)
                 {
                     case "Id":
-                        value = elem.Id.IntegerValue.ToString();
+                        value = IDHelper.ElIdInt(elem.Id).ToString();
                         found = true;
                         break;
 
@@ -1076,12 +1075,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         break;
 
                     case "LevelId":
-                        value = elem.LevelId?.IntegerValue.ToString();
+                        value = elem.LevelId != null ? IDHelper.ElIdInt(elem.LevelId).ToString() : null;
                         found = true;
                         break;
 
                     case "OwnerViewId":
-                        value = elem.OwnerViewId?.IntegerValue.ToString();
+                        value = elem.OwnerViewId != null ? IDHelper.ElIdInt(elem.OwnerViewId).ToString() : null;
                         found = true;
                         break;
                 }
@@ -1173,15 +1172,15 @@ namespace KPLN_CoordiantorAI.ExternalModel
                             found = true;
                             break;
                         case "HostId":
-                            value = fi.Host?.Id.IntegerValue.ToString();
+                            value = fi.Host != null ? IDHelper.ElIdInt(fi.Host.Id).ToString() : null;
                             found = true;
                             break;
                         case "RoomId":
-                            value = fi.Room?.Id.IntegerValue.ToString();
+                            value = fi.Room != null ? IDHelper.ElIdInt(fi.Room.Id).ToString() : null;
                             found = true;
                             break;
                         case "SpaceId":
-                            value = fi.Space?.Id.IntegerValue.ToString();
+                            value = fi.Space != null ? IDHelper.ElIdInt(fi.Space.Id).ToString() : null;
                             found = true;
                             break;
                     }
@@ -1203,7 +1202,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                             found = true;
                             break;
                         case "RoomLevelId":
-                            value = room.LevelId.IntegerValue.ToString();
+                            value = IDHelper.ElIdInt(room.LevelId).ToString();
                             found = true;
                             break;
                     }
@@ -1255,7 +1254,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int eidInt in elementIds.Distinct())
             {
-                var elem = doc.GetElement(new ElementId(eidInt));
+                var elem = doc.GetElement(IDHelper.ToElementId(eidInt));
                 if (elem == null)
                     continue;
 
@@ -1296,7 +1295,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         }
 
                     }
-                    catch (Exception ex)
+                    catch
                     {
                         // Логировать ошибку и пропустить элемент
                         continue;
@@ -1332,11 +1331,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int eidInt in elementIds.Distinct())
             {
-                var elem = doc.GetElement(new ElementId(eidInt));
+                var elem = doc.GetElement(IDHelper.ToElementId(eidInt));
                 if (elem == null) continue;
 
                 var view = idSheet.HasValue
-                    ? doc.GetElement(new ElementId(idSheet.Value)) as View
+                    ? doc.GetElement(IDHelper.ToElementId(idSheet.Value)) as View
                     : doc.ActiveView;
 
                 var bbox = elem.get_BoundingBox(view);
@@ -1409,7 +1408,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     LineCount = 0
                 };
 
-                Element elem = doc.GetElement(new ElementId(eid));
+                Element elem = doc.GetElement(IDHelper.ToElementId(eid));
 
                 if (elem == null)
                 {
@@ -1580,7 +1579,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     Lines = new List<BoundaryLineInfo>()
                 };
 
-                Room room = doc.GetElement(new ElementId(roomId)) as Room;
+                Room room = doc.GetElement(IDHelper.ToElementId(roomId)) as Room;
 
                 if (room == null)
                 {
@@ -1668,7 +1667,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int eidInt in elementIds.Distinct())
             {
-                Element elem = doc.GetElement(new ElementId(eidInt));
+                Element elem = doc.GetElement(IDHelper.ToElementId(eidInt));
                 if (elem == null)
                     continue;
 
@@ -1677,24 +1676,25 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 // FamilyInstance (окна, двери, сантехника) — основной случай
                 if (elem is FamilyInstance fi)
                 {
-                    hostId = fi.Host?.Id.IntegerValue;
+                    hostId = fi.Host != null ? IDHelper.ElIdInt(fi.Host.Id) : (int?)null;
                 }
                 // MEPCurve (трубы, воздуховоды) — HostId
                 else if (elem is InsulationLiningBase lining)
                 {
-                    hostId = lining.HostElementId?.IntegerValue;
+                    hostId = lining.HostElementId != null ? IDHelper.ElIdInt(lining.HostElementId) : (int?)null;
                 }
                 // WallSweeps, InsulationLining — GetHostIds()
                 else if (elem is WallSweep wallSweep)
                 {
                     var hostIdsList = wallSweep.GetHostIds();
                     if (hostIdsList != null && hostIdsList.Count > 0)
-                        hostId = hostIdsList[0].IntegerValue;
+                        hostId = IDHelper.ElIdInt(hostIdsList[0]);
                 }
                 // AreaReinforcement и подобные
                 else if (elem is AreaReinforcement areaReinforcement)
                 {
-                    hostId = areaReinforcement.GetHostId()?.IntegerValue;
+                    ElementId areaHostId = areaReinforcement.GetHostId();
+                    hostId = areaHostId != null ? IDHelper.ElIdInt(areaHostId) : (int?)null;
                 }
 
                 // Если хост найден — добавляем в результат
@@ -1720,7 +1720,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int eidInt in elementIds.Distinct())
             {
-                Element elem = doc.GetElement(new ElementId(eidInt));
+                Element elem = doc.GetElement(IDHelper.ToElementId(eidInt));
                 if (elem == null)
                     continue;
 
@@ -1752,7 +1752,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (int typeIdInt in typeIds.Distinct())
             {
-                var typeElem = doc.GetElement(new ElementId(typeIdInt)) as ElementType;
+                var typeElem = doc.GetElement(IDHelper.ToElementId(typeIdInt)) as ElementType;
                 if (typeElem == null)
                     continue;
 
@@ -2116,7 +2116,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     description = warning.GetDescriptionText(),
                     severity = warning.GetSeverity().ToString(),
-                    element_ids = failingElementIds.Select(id => id.IntegerValue).ToList()
+                    element_ids = failingElementIds.Select(id => IDHelper.ElIdInt(id)).ToList()
                 });
             }
 
@@ -2239,7 +2239,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(elementId);
+                        ElementId elemId = IDHelper.ToElementId(elementId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -2373,7 +2373,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(elementId);
+                        ElementId elemId = IDHelper.ToElementId(elementId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -2493,7 +2493,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 // Преобразуем ElementId в int
                 var elementIds = selectedIds
-                    .Select(id => id.IntegerValue)
+                    .Select(IDHelper.ElIdInt)
                     .ToList();
 
                 // Дополнительная информация о выделении (опционально)
@@ -2505,7 +2505,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         elementsInfo.Add(new
                         {
-                            id = id.IntegerValue,
+                            id = IDHelper.ElIdInt(id),
                             name = elem.Name ?? "Unnamed",
                             category = elem.Category?.Name ?? "Unknown"
                         });
@@ -2567,7 +2567,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 foreach (int id in elementIds.Distinct())
                 {
-                    ElementId elemId = new ElementId(id);
+                    ElementId elemId = IDHelper.ToElementId(id);
                     Element element = doc.GetElement(elemId);
 
                     if (element == null)
@@ -2658,7 +2658,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 // Получаем вид по ID
-                ElementId viewElemId = new ElementId(viewId);
+                ElementId viewElemId = IDHelper.ToElementId(viewId);
                 View view = doc.GetElement(viewElemId) as View;
 
                 if (view == null)
@@ -2692,7 +2692,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(elementId);
+                        ElementId elemId = IDHelper.ToElementId(elementId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -2836,14 +2836,15 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 // Линии проекции
                 line_color = GetColorInfo(overrides.ProjectionLineColor),
-                line_pattern_id = overrides.ProjectionLinePatternId?.IntegerValue,
+                line_pattern_id = overrides.ProjectionLinePatternId != null ? IDHelper.ElIdInt(overrides.ProjectionLinePatternId) : (int?)null,
                 line_weight = overrides.ProjectionLineWeight != -1 ? overrides.ProjectionLineWeight : (int?)null,
+
                 // Поверхности
-                surface_foreground_pattern_id = overrides.SurfaceForegroundPatternId?.IntegerValue,
+                surface_foreground_pattern_id = overrides.SurfaceForegroundPatternId != null ? IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId) : (int?)null,
                 surface_foreground_pattern_color = GetColorInfo(overrides.SurfaceForegroundPatternColor),
                 surface_foreground_pattern_visible = overrides.IsSurfaceForegroundPatternVisible,
 
-                surface_background_pattern_id = overrides.SurfaceBackgroundPatternId?.IntegerValue,
+                surface_background_pattern_id = overrides.SurfaceBackgroundPatternId != null ? IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId) : (int?)null,
                 surface_background_pattern_color = GetColorInfo(overrides.SurfaceBackgroundPatternColor),
                 surface_background_pattern_visible = overrides.IsSurfaceBackgroundPatternVisible,
                 transparency = overrides.Transparency
@@ -2853,14 +2854,15 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 // Линии разреза
                 line_color = GetColorInfo(overrides.CutLineColor),
-                line_pattern_id = overrides.CutLinePatternId?.IntegerValue,
+                line_pattern_id = overrides.CutLinePatternId != null ? IDHelper.ElIdInt(overrides.CutLinePatternId) : (int?)null,
                 line_weight = overrides.CutLineWeight != -1 ? overrides.CutLineWeight : (int?)null,
+
                 // Поверхности разреза
-                foreground_pattern_id = overrides.CutForegroundPatternId?.IntegerValue,
+                foreground_pattern_id = overrides.CutForegroundPatternId != null ? IDHelper.ElIdInt(overrides.CutForegroundPatternId) : (int?)null,
                 foreground_pattern_color = GetColorInfo(overrides.CutForegroundPatternColor),
                 foreground_pattern_visible = overrides.IsCutForegroundPatternVisible,
 
-                background_pattern_id = overrides.CutBackgroundPatternId?.IntegerValue,
+                background_pattern_id = overrides.CutBackgroundPatternId != null ? IDHelper.ElIdInt(overrides.CutBackgroundPatternId) : (int?)null,
                 background_pattern_color = GetColorInfo(overrides.CutBackgroundPatternColor),
                 background_pattern_visible = overrides.IsCutBackgroundPatternVisible
             };
@@ -2917,9 +2919,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             // 3. Проверка паттернов линий
             bool hasProjectionLinePattern = overrides.ProjectionLinePatternId != null &&
-                                            overrides.ProjectionLinePatternId.IntegerValue > 0;
+                                            IDHelper.ElIdInt(overrides.ProjectionLinePatternId) > 0;
+
             bool hasCutLinePattern = overrides.CutLinePatternId != null &&
-                                     overrides.CutLinePatternId.IntegerValue > 0;
+                                     IDHelper.ElIdInt(overrides.CutLinePatternId) > 0;
 
             // 4. Проверка цветов паттернов поверхностей
             bool hasSurfaceForegroundColor = overrides.SurfaceForegroundPatternColor != null &&
@@ -2935,15 +2938,15 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             // 6. Проверка ID паттернов поверхностей
             bool hasSurfaceForegroundPattern = overrides.SurfaceForegroundPatternId != null &&
-                                                overrides.SurfaceForegroundPatternId.IntegerValue > 0;
+                                               IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId) > 0;
             bool hasSurfaceBackgroundPattern = overrides.SurfaceBackgroundPatternId != null &&
-                                                overrides.SurfaceBackgroundPatternId.IntegerValue > 0;
+                                               IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId) > 0;
 
             // 7. Проверка ID паттернов разреза
             bool hasCutForegroundPattern = overrides.CutForegroundPatternId != null &&
-                                            overrides.CutForegroundPatternId.IntegerValue > 0;
+                                           IDHelper.ElIdInt(overrides.CutForegroundPatternId) > 0;
             bool hasCutBackgroundPattern = overrides.CutBackgroundPatternId != null &&
-                                            overrides.CutBackgroundPatternId.IntegerValue > 0;
+                                           IDHelper.ElIdInt(overrides.CutBackgroundPatternId) > 0;
 
             // 8. Проверка видимости паттернов
             bool hasSurfaceForegroundVisible = overrides.IsSurfaceForegroundPatternVisible;
@@ -3012,7 +3015,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(viewId);
+                        ElementId elemId = IDHelper.ToElementId(viewId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -3064,7 +3067,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                             // Получаем категории, к которым применяется фильтр [citation:5]
                             ICollection<ElementId> categoryIds = filter.GetCategories();
-                            var categoryIdList = categoryIds?.Select(id => id.IntegerValue).ToList() ?? new List<int>();
+                            var categoryIdList = categoryIds?.Select(IDHelper.ElIdInt).ToList() ?? new List<int>();
 
                             // Получаем видимость фильтра в виде [citation:7]
                             bool isVisible = view.GetFilterVisibility(filterId);
@@ -3074,7 +3077,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                             filtersList.Add(new
                             {
-                                filterId = filterId.IntegerValue,
+                                filterId = IDHelper.ElIdInt(filterId),
                                 filterName = filter.Name ?? "Unnamed",
                                 categories = categoryIdList,
                                 isVisible = isVisible,
@@ -3224,14 +3227,14 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         // Получаем категории, к которым применяется фильтр
                         ICollection<ElementId> categoryIds = filter.GetCategories();
-                        var categoryIdList = categoryIds?.Select(id => id.IntegerValue).ToList() ?? new List<int>();
+                        var categoryIdList = categoryIds?.Select(IDHelper.ElIdInt).ToList() ?? new List<int>();
 
                         // Получаем информацию о правилах фильтра
                         var rulesInfo = GetFilterRulesInfo(filter);
 
                         result.Add(new
                         {
-                            filterId = filter.Id.IntegerValue,
+                            filterId = IDHelper.ElIdInt(filter.Id),
                             filterName = filter.Name ?? "Unnamed",
                             categories = categoryIdList,
                             hasRules = rulesInfo.hasRules,
@@ -3244,7 +3247,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         result.Add(new
                         {
-                            filterId = filter.Id.IntegerValue,
+                            filterId = IDHelper.ElIdInt(filter.Id),
                             filterName = filter.Name ?? "Unnamed",
                             error = $"Ошибка при получении информации: {ex.Message}"
                         });
@@ -3352,7 +3355,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 // Получаем вид по ID
-                ElementId viewElemId = new ElementId(viewId);
+                ElementId viewElemId = IDHelper.ToElementId(viewId);
                 View view = doc.GetElement(viewElemId) as View;
 
                 if (view == null)
@@ -3386,7 +3389,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId filterElemId = new ElementId(filterId);
+                        ElementId filterElemId = IDHelper.ToElementId(filterId);
 
                         // Проверяем, существует ли фильтр в документе
                         ParameterFilterElement filter = doc.GetElement(filterElemId) as ParameterFilterElement;
@@ -3470,16 +3473,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 // Линии проекции
                 line_color = GetColorInfo(overrides.ProjectionLineColor),
-                line_pattern_id = overrides.ProjectionLinePatternId?.IntegerValue,
+                line_pattern_id = overrides.ProjectionLinePatternId != null ? IDHelper.ElIdInt(overrides.ProjectionLinePatternId) : (int?)null,
                 line_weight = overrides.ProjectionLineWeight != -1 ? overrides.ProjectionLineWeight : (int?)null,
 
                 // Заливка поверхности (передний план)
-                surface_foreground_pattern_id = overrides.SurfaceForegroundPatternId?.IntegerValue,
+                surface_foreground_pattern_id = overrides.SurfaceForegroundPatternId != null ? IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId) : (int?)null,
                 surface_foreground_pattern_color = GetColorInfo(overrides.SurfaceForegroundPatternColor),
                 surface_foreground_pattern_visible = overrides.IsSurfaceForegroundPatternVisible,
 
                 // Заливка поверхности (задний план)
-                surface_background_pattern_id = overrides.SurfaceBackgroundPatternId?.IntegerValue,
+                surface_background_pattern_id = overrides.SurfaceBackgroundPatternId != null ? IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId) : (int?)null,
                 surface_background_pattern_color = GetColorInfo(overrides.SurfaceBackgroundPatternColor),
                 surface_background_pattern_visible = overrides.IsSurfaceBackgroundPatternVisible,
 
@@ -3492,16 +3495,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 // Линии разреза
                 line_color = GetColorInfo(overrides.CutLineColor),
-                line_pattern_id = overrides.CutLinePatternId?.IntegerValue,
+                line_pattern_id = overrides.CutLinePatternId != null ? IDHelper.ElIdInt(overrides.CutLinePatternId) : (int?)null,
                 line_weight = overrides.CutLineWeight != -1 ? overrides.CutLineWeight : (int?)null,
 
                 // Заливка разреза (передний план)
-                foreground_pattern_id = overrides.CutForegroundPatternId?.IntegerValue,
+                foreground_pattern_id = overrides.CutForegroundPatternId != null ? IDHelper.ElIdInt(overrides.CutForegroundPatternId) : (int?)null,
                 foreground_pattern_color = GetColorInfo(overrides.CutForegroundPatternColor),
                 foreground_pattern_visible = overrides.IsCutForegroundPatternVisible,
 
                 // Заливка разреза (задний план)
-                background_pattern_id = overrides.CutBackgroundPatternId?.IntegerValue,
+                background_pattern_id = overrides.CutBackgroundPatternId != null ? IDHelper.ElIdInt(overrides.CutBackgroundPatternId) : (int?)null,
                 background_pattern_color = GetColorInfo(overrides.CutBackgroundPatternColor),
                 background_pattern_visible = overrides.IsCutBackgroundPatternVisible
             };
@@ -3533,9 +3536,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             // 3. Проверка паттернов линий
             bool hasProjectionLinePattern = overrides.ProjectionLinePatternId != null &&
-                                            overrides.ProjectionLinePatternId.IntegerValue > 0;
+                                            IDHelper.ElIdInt(overrides.ProjectionLinePatternId) > 0;
             bool hasCutLinePattern = overrides.CutLinePatternId != null &&
-                                     overrides.CutLinePatternId.IntegerValue > 0;
+                                     IDHelper.ElIdInt(overrides.CutLinePatternId) > 0;
 
             // 4. Проверка цветов паттернов поверхностей
             bool hasSurfaceForegroundColor = overrides.SurfaceForegroundPatternColor != null &&
@@ -3551,15 +3554,15 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             // 6. Проверка ID паттернов поверхностей
             bool hasSurfaceForegroundPattern = overrides.SurfaceForegroundPatternId != null &&
-                                                overrides.SurfaceForegroundPatternId.IntegerValue > 0;
+                                               IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId) > 0;
             bool hasSurfaceBackgroundPattern = overrides.SurfaceBackgroundPatternId != null &&
-                                                overrides.SurfaceBackgroundPatternId.IntegerValue > 0;
+                                               IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId) > 0;
 
             // 7. Проверка ID паттернов разреза
             bool hasCutForegroundPattern = overrides.CutForegroundPatternId != null &&
-                                            overrides.CutForegroundPatternId.IntegerValue > 0;
+                                           IDHelper.ElIdInt(overrides.CutForegroundPatternId) > 0;
             bool hasCutBackgroundPattern = overrides.CutBackgroundPatternId != null &&
-                                            overrides.CutBackgroundPatternId.IntegerValue > 0;
+                                           IDHelper.ElIdInt(overrides.CutBackgroundPatternId) > 0;
 
             // 8. Проверка видимости паттернов (если видимость вылкючена, значит переопределение задано)
             bool hasSurfaceForegroundVisible = !overrides.IsSurfaceForegroundPatternVisible;
@@ -3611,7 +3614,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             var result = new Dictionary<int, object>();
             int processedCount = 0;
 
-            ElementId viewElemId = new ElementId(viewId);
+            ElementId viewElemId = IDHelper.ToElementId(viewId);
             View view = doc.GetElement(viewElemId) as View;
 
 
@@ -3666,9 +3669,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     }
 
 
-                    result[catId.IntegerValue] = new
+                    result[IDHelper.ElIdInt(catId)] = new
                     {
-                        category_id = catId.IntegerValue,
+                        category_id = IDHelper.ElIdInt(catId),
                         category_name = cat.Name ?? "Unnamed",
                         is_hidden = isHidden,
                         overrides = overrideInfo
@@ -3752,7 +3755,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             try
             {
                 // Получаем вид по ID
-                ElementId viewElemId = new ElementId(viewId);
+                ElementId viewElemId = IDHelper.ToElementId(viewId);
                 View view = doc.GetElement(viewElemId) as View;
 
                 if (view == null)
@@ -3934,7 +3937,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 // Далее идёт основной код для Revit 2024 и выше...
                 // Получаем вид по ID
-                ElementId viewElemId = new ElementId(viewId);
+                ElementId viewElemId = IDHelper.ToElementId(viewId);
                 View view = doc.GetElement(viewElemId) as View;
 
                 if (view == null)
@@ -4161,7 +4164,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(sheetId);
+                        ElementId elemId = IDHelper.ToElementId(sheetId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -4204,8 +4207,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                             sheetContents.Add(new
                             {
-                                viewportId = viewportId.IntegerValue,
-                                referencedViewId = referencedViewId.IntegerValue,
+                                viewportId = IDHelper.ElIdInt(viewportId),
+                                referencedViewId = IDHelper.ElIdInt(referencedViewId),
                                 viewName = referencedView?.Name ?? "Unknown",
                                 type = DetermineViewportType(referencedView)
                             });
@@ -4230,8 +4233,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                             sheetContents.Add(new
                             {
-                                viewportId = scheduleInstance.Id.IntegerValue,
-                                referencedViewId = scheduleViewId.IntegerValue,
+                                viewportId = IDHelper.ElIdInt(scheduleInstance.Id),
+                                referencedViewId = IDHelper.ElIdInt(scheduleViewId),
                                 viewName = schedule?.Name ?? "Unknown",
                                 type = type
                             });
@@ -4247,16 +4250,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                         // Добавляем ID видовых экранов
                         foreach (var viewportId in viewportIds)
-                            addedElementIds.Add(viewportId.IntegerValue);
+                            addedElementIds.Add(IDHelper.ElIdInt(viewportId));
 
                         // Добавляем ID спецификаций
                         foreach (var scheduleInstance in scheduleInstances)
-                            addedElementIds.Add(scheduleInstance.Id.IntegerValue);
+                            addedElementIds.Add(IDHelper.ElIdInt(scheduleInstance.Id));
 
                         // Проходим по всем элементам на листе и добавляем те, которые ещё не добавлены
                         foreach (Element elem in allElementsOnSheet)
                         {
-                            int ElemId = elem.Id.IntegerValue;
+                            int ElemId = IDHelper.ElIdInt(elem.Id);
 
                             // Пропускаем уже добавленные элементы
                             if (addedElementIds.Contains(ElemId))
@@ -4267,9 +4270,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                             sheetContents.Add(new
                             {
-                                viewportId = elemId,                    // ID элемента
-                                referencedViewId = (int?)null,          // У таких элементов нет ссылочного вида
-                                viewName = GetElementDisplayName(elem), // Имя элемента (если есть)
+                                viewportId = ElemId,                     // ID элемента
+                                referencedViewId = (int?)null,           // У таких элементов нет ссылочного вида
+                                viewName = GetElementDisplayName(elem),  // Имя элемента (если есть)
                                 type = elementType
                             });
                         }
@@ -4405,7 +4408,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             if (elem is RevisionCloud) return "Облако ревизии";
 
             // Штампы
-            if (elem.Category != null && elem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks) return "Основная надпись (штамп)";
+            if (elem.Category != null && IDHelper.ElIdInt(elem.Category.Id) == (int)BuiltInCategory.OST_TitleBlocks) return "Основная надпись (штамп)";
 
             // Изображения
             if (elem is ImageInstance) return "Изображение";
@@ -4463,7 +4466,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             }
 
             // У штампов получаем номер листа через параметр
-            if (elem.Category != null && elem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_TitleBlocks)
+            if (elem.Category != null && IDHelper.ElIdInt(elem.Category.Id) == (int)BuiltInCategory.OST_TitleBlocks)
             {
                 Parameter sheetNumParam = elem.get_Parameter(BuiltInParameter.SHEET_NUMBER);
                 if (sheetNumParam != null && sheetNumParam.HasValue)
@@ -4507,7 +4510,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(scheduleId);
+                        ElementId elemId = IDHelper.ToElementId(scheduleId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -4676,8 +4679,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                                             combinedParameters.Add(new
                                             {
-                                                parameterId = paramId.IntegerValue,
-                                                parameterName = paramName ?? $"Unknown_{paramId.IntegerValue}",
+                                                parameterId = IDHelper.ElIdInt(paramId),
+                                                parameterName = paramName ?? $"Unknown_{IDHelper.ElIdInt(paramId)}",
                                                 prefix = prefix,
                                                 separator = separator,
                                                 suffix = suffix,
@@ -4697,7 +4700,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                     SchedulableField schedulableField = field.GetSchedulableField();
                                     if (schedulableField != null && schedulableField.ParameterId != null)
                                     {
-                                        parameterId = schedulableField.ParameterId.IntegerValue;
+                                        parameterId = IDHelper.ElIdInt(schedulableField.ParameterId);
                                     }
                                 }
                                 catch { }
@@ -4746,7 +4749,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                         SchedulableField sf = filterField.GetSchedulableField();
                                         if (sf != null && sf.ParameterId != null)
                                         {
-                                            fieldParameterId = sf.ParameterId.IntegerValue;
+                                            fieldParameterId = IDHelper.ElIdInt(sf.ParameterId);
                                         }
                                     }
                                     catch { }
@@ -4774,12 +4777,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
                             }
                             else if (filter.IsElementIdValue)
                             {
-                                int elemIdValue = filter.GetElementIdValue().IntegerValue;
+                                int elemIdValue = IDHelper.ElIdInt(filter.GetElementIdValue());
                                 filterValue = elemIdValue;
                                 filterValueType = "ElementId";
 
                                 // Для ElementId можно попробовать получить имя элемента
-                                Element referencedElem = doc.GetElement(new ElementId(elemIdValue));
+                                Element referencedElem = doc.GetElement(IDHelper.ToElementId(elemIdValue));
                                 if (referencedElem != null)
                                 {
                                     filterValue = new { id = elemIdValue, name = referencedElem.Name ?? referencedElem.GetType().Name };
@@ -4810,9 +4813,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         // Дополнительная информация о спецификации
                         var scheduleInfo = new
                         {
-                            scheduleId = schedule.Id.IntegerValue,
+                            scheduleId = IDHelper.ElIdInt(schedule.Id),
                             scheduleName = schedule.Name ?? "Unnamed",
-                            categoryId = definition.CategoryId?.IntegerValue ?? -1,
+                            categoryId = definition.CategoryId != null ? IDHelper.ElIdInt(definition.CategoryId) : -1,
                             categoryName = GetCategoryName(doc, definition.CategoryId),
                             columns = columns,
                             columnsCount = columns.Count,
@@ -4893,7 +4896,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         /// </summary>
         private static string GetCategoryName(Document doc, ElementId categoryId)
         {
-            if (categoryId == null || categoryId.IntegerValue == -1)
+            if (categoryId == null || IDHelper.ElIdInt(categoryId) == -1)
                 return null;
 
             try
@@ -4962,7 +4965,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     try
                     {
-                        ElementId elemId = new ElementId(scheduleId);
+                        ElementId elemId = IDHelper.ToElementId(scheduleId);
                         Element element = doc.GetElement(elemId);
 
                         if (element == null)
@@ -5021,7 +5024,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                         SchedulableField sf = field.GetSchedulableField();
                                         if (sf != null && sf.ParameterId != null)
                                         {
-                                            parameterId = sf.ParameterId.IntegerValue;
+                                            parameterId = IDHelper.ElIdInt(sf.ParameterId);
                                         }
                                     }
                                 }
@@ -5062,7 +5065,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                         var scheduleSortingInfo = new
                         {
-                            scheduleId = schedule.Id.IntegerValue,
+                            scheduleId = IDHelper.ElIdInt(schedule.Id),
                             scheduleName = schedule.Name ?? "Unnamed",
                             hasSorting = hasCustomSorting,
                             sortLevelsCount = sortGroups.Count,
@@ -5294,7 +5297,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 // Получаем фильтр по ID
-                ElementId filterElemId = new ElementId(filterId);
+                ElementId filterElemId = IDHelper.ToElementId(filterId);
                 ParameterFilterElement filter = doc.GetElement(filterElemId) as ParameterFilterElement;
 
                 if (filter == null)
@@ -5327,7 +5330,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 foreach (int elementId in elementIds.Distinct())
                 {
-                    ElementId elemId = new ElementId(elementId);
+                    ElementId elemId = IDHelper.ToElementId(elementId);
                     Element element = doc.GetElement(elemId);
 
                     if (element == null)
@@ -5349,7 +5352,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 foreach (Element element in elementsToCheck)
                 {
                     bool passes = elementFilter.PassesFilter(element);
-                    results[element.Id.IntegerValue] = passes;
+                    results[IDHelper.ElIdInt(element.Id)] = passes;
                 }
 
                 //// Добавляем не найденные элементы с false
@@ -5458,7 +5461,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 foreach (int id in elementIds.Distinct())
                 {
-                    Element elem = doc.GetElement(new ElementId(id));
+                    Element elem = doc.GetElement(IDHelper.ToElementId(id));
                     if (elem == null)
                     {
                         invalidIds.Add(id);
@@ -5944,7 +5947,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         //            };
         //        }
 
-        //        ElementId linkElemId = new ElementId(elementId);
+        //        ElementId linkElemId = IDHelper.ToElementId(elementId);
         //        Element element = mainDoc.GetElement(linkElemId);
 
         //        if (element == null)
