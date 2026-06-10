@@ -215,13 +215,8 @@
   <ItemGroup>
     <Compile Include="Common\TagsHelpers\AnnotationCollisionResolver.cs" />
     <Compile Include="Common\IDHelper.cs" />
-    <Compile Include="ExecutableCommand\ApartmentExecutionReportActionController.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Presets.cs" />
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
-    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
@@ -236,16 +231,6 @@
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
-    <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
-      <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ApartmentImportWindow.xaml.cs">
-      <DependentUpon>ApartmentImportWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ApartmentManagerWindow.xaml.cs">
-      <DependentUpon>ApartmentManagerWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="ExecutableCommand\ApartmentPresetsPanelVm.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -464,18 +449,6 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
-    <Page Include="Forms\ApartmentExecutionReportWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\ApartmentImportWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Forms\ApartmentManagerWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -527,8 +500,6 @@
     <EmbeddedResource Include="Imagens\evacuationRoutesBig_dark.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall.png" />
     <EmbeddedResource Include="Imagens\evacuationRoutesSmall_dark.png" />
-    <EmbeddedResource Include="Imagens\ApartmentManagerBig.png" />
-    <EmbeddedResource Include="Imagens\ApartmentManagerSmall.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeElementsInLevelSmall.png" />
     <EmbeddedResource Include="Imagens\hiddenElementsFilterSmall.png" />

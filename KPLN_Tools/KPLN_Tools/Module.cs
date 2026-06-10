@@ -277,20 +277,6 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.gnsAreaBig.png",
                     "KPLN_Tools.Imagens.gnsAreaSmall.png",
                     "http://moodle");
-                PushButtonData apartmentManager = CreateBtnData(
-                    "Менеджер квартир",
-                    "Менеджер квартир",
-                    "Библиотека квартир с планировками",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(CommandApartmentManagerShow).FullName,
-                    "KPLN_Tools.Imagens.ApartmentManagerBig.png",
-                    "KPLN_Tools.Imagens.ApartmentManagerSmall.png",
-                    "http://moodle");
 
                 PushButtonData arPyatnGraph = CreateBtnData(
                     "Пятнография: Экспликация",
@@ -338,8 +324,7 @@ namespace KPLN_Tools
                     "http://moodle/mod/book/view.php?id=502&chapterid=1350");
 
 
-                arToolsPullDownBtn.AddPushButton(arGNSArea);
-                arToolsPullDownBtn.AddPushButton(apartmentManager);               
+                arToolsPullDownBtn.AddPushButton(arGNSArea);        
 #if Debug2023 || Revit2023
                 arToolsPullDownBtn.AddPushButton(arPyatnGraph);
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
