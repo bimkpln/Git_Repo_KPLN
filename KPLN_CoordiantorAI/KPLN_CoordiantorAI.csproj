@@ -134,6 +134,7 @@
     <Compile Include="Common\CurrentUserContextService.cs" />
     <Compile Include="Common\GigaChatClient.cs" />
     <Compile Include="Common\IAIChatClient.cs" />
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="Common\MoodleEmbeddingIndex.cs" />
     <Compile Include="Common\PromptDefaults.cs" />
     <Compile Include="Common\StubGigaChatClient.cs" />

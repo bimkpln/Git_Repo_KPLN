@@ -49,7 +49,6 @@ namespace KPLN_CoordiantorAI.Forms
 
         private Border _typingIndicator;
         private DispatcherTimer _typingTimer;
-        private string _baseTypingText = "ИИ печатает";
 
 
         public ExternalModelWindow(
@@ -320,7 +319,7 @@ namespace KPLN_CoordiantorAI.Forms
                 case "get_all_elements_shown_in_view":
                     var viewIdParam = toolCall["function"]?["arguments"]?.ToString();
                     var args = JObject.Parse(viewIdParam ?? "{}");
-                    int viewId = args["viewOrSheetId"]?.Value<int>() ?? _doc.ActiveView.Id.IntegerValue;
+                    int viewId = args["viewOrSheetId"]?.Value<int>() ?? IDHelper.ElIdInt(_doc.ActiveView.Id);
                     var elementsResult = Commands.GetAllElementsShownInView(_doc, viewId);
                     toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementsResult);
 
@@ -2527,7 +2526,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                 return responseJson;
             }
-            catch (Exception ex)
+            catch 
             {
                 return responseJson;  // Если не JSON — возвращаем как текст
             }
