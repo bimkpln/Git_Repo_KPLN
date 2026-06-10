@@ -1,4 +1,5 @@
 ﻿using KPLN_Library_ConfigWorker;
+using KPLN_Tools.Forms.Models.Core;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
