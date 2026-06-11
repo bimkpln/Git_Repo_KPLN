@@ -5932,8 +5932,22 @@ namespace KPLN_Tools.Forms
                 var options2 = new CopyPasteOptions();
                 options2.SetDuplicateTypeNamesHandler(new UseDestinationTypesHandler());
 
-                var delta = pickPoint - center;
+
+
+
+
+
+                //var delta = pickPoint - center;
+                //var transform = Autodesk.Revit.DB.Transform.CreateTranslation(delta);
+                XYZ rawDelta = pickPoint - center;
+                XYZ normal = targetDraftingView.ViewDirection.Normalize();
+                XYZ delta = rawDelta - normal.Multiply(rawDelta.DotProduct(normal));
                 var transform = Autodesk.Revit.DB.Transform.CreateTranslation(delta);
+
+
+
+
+
 
                 try
                 {
