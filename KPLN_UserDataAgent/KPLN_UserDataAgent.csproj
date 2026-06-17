@@ -115,9 +115,11 @@
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\AgentErrorRecord.cs" />
+    <Compile Include="Services\CentralDatabasePathBuilder.cs" />
     <Compile Include="Services\CentralSyncService.cs" />
     <Compile Include="Services\DocumentSnapshot.cs" />
     <Compile Include="Services\ErrorGuard.cs" />
+    <Compile Include="Services\ReferenceDepartmentLookup.cs" />
     <Compile Include="Services\UserContextSnapshot.cs" />
     <Compile Include="Services\UserDataRepository.cs" />
     <Compile Include="Services\UserEventRecord.cs" />

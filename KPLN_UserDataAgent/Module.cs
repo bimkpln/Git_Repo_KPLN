@@ -27,7 +27,6 @@ namespace KPLN_UserDataAgent
         public Result Execute(UIControlledApplication application, string tabName)
         {
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
-            ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
             _repository = new UserDataRepository(ModuleData.LocalDatabasePath, ModuleData.CentralDatabasePath);
             _errorGuard = new ErrorGuard(ModuleData.ShowDebugErrors, _repository.InsertError);
@@ -182,12 +181,10 @@ namespace KPLN_UserDataAgent
             if (document == null)
                 return;
 
-            DocumentSnapshot documentSnapshot = DocumentSnapshot.FromDocument(document);
             UserContextSnapshot userContext = UserContextSnapshot.Current();
             UserEventRecord record = UserEventRecord.Create(
                 eventName,
                 transactionName,
-                documentSnapshot,
                 userContext,
                 addedCount,
                 modifiedCount,

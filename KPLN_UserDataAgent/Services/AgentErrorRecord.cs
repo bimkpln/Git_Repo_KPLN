@@ -11,8 +11,7 @@ namespace KPLN_UserDataAgent.Services
         public string SyncId { get; set; }
         public string ErrorTime { get; set; }
         public string WindowsUser { get; set; }
-        public int SubDepartmentId { get; set; }
-        public int RevitVersion { get; set; }
+        public string DepartmentKey { get; set; }
         public string Source { get; set; }
         public string ErrorType { get; set; }
         public string ErrorMessage { get; set; }
@@ -26,8 +25,7 @@ namespace KPLN_UserDataAgent.Services
                 SyncId = Guid.NewGuid().ToString("N"),
                 ErrorTime = DateTime.Now.ToString("yyyy.MM.dd. HH:mm:ss"),
                 WindowsUser = userContext.UserName ?? string.Empty,
-                SubDepartmentId = userContext.SubDepartmentId,
-                RevitVersion = ModuleData.RevitVersion,
+                DepartmentKey = userContext.DepartmentKey ?? CentralDatabasePathBuilder.UnknownDepartmentKey,
                 Source = source ?? string.Empty,
                 ErrorType = Truncate(exception == null ? string.Empty : exception.GetType().FullName),
                 ErrorMessage = Truncate(exception == null ? string.Empty : exception.Message ?? string.Empty),

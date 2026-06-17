@@ -1,4 +1,4 @@
-using Autodesk.Revit.UI;
+ï»¿using Autodesk.Revit.UI;
 using System;
 
 namespace KPLN_UserDataAgent.Services
@@ -93,7 +93,7 @@ namespace KPLN_UserDataAgent.Services
                 TaskDialog.Show(
                     "KPLN UserDataAgent",
                     string.Format(
-                        "Îøèáêà â {0}:{1}{2}",
+                        "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ {0}:{1}{2}",
                         source,
                         Environment.NewLine,
                         exception));

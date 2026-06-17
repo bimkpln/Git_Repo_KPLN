@@ -7,12 +7,11 @@ namespace KPLN_UserDataAgent.Services
     internal sealed class UserContextSnapshot
     {
         public string UserName { get; private set; }
-        public int SubDepartmentId { get; private set; }
+        public string DepartmentKey { get; private set; }
 
         public static UserContextSnapshot Current()
         {
             string userName = "DB_USER_NOT_FOUND";
-            int subDepartmentId = -1;
 
             try
             {
@@ -27,20 +26,7 @@ namespace KPLN_UserDataAgent.Services
                         if (!string.IsNullOrWhiteSpace(fullName))
                             userName = fullName;
                     }
-
-                    if (user.SubDepartmentId > 0)
-                        subDepartmentId = user.SubDepartmentId;
                 }
-            }
-            catch
-            {
-            }
-
-            try
-            {
-                DBSubDepartment subDepartment = SQLiteMainService.CurrentUserDBSubDepartment;
-                if (subDepartment != null && subDepartment.Id > 0)
-                    subDepartmentId = subDepartment.Id;
             }
             catch
             {
@@ -49,7 +35,9 @@ namespace KPLN_UserDataAgent.Services
             return new UserContextSnapshot
             {
                 UserName = userName,
-                SubDepartmentId = subDepartmentId
+                DepartmentKey = ReferenceDepartmentLookupService.ResolveDepartmentKey(
+                    userName,
+                    ModuleData.ReferenceDatabasePath)
             };
         }
     }

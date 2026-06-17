@@ -25,20 +25,34 @@ namespace KPLN_UserDataAgent
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
 
         /// <summary>
-        /// Версия Revit, в которой запускается плагин.
-        /// </summary>
-        public static int RevitVersion { get; set; }
-
-        /// <summary>
         /// Ссылка на основное окно Revit.
         /// </summary>
         public static IntPtr RevitMainWindowHandle { get; set; }
 
         /// <summary>
-        /// Путь к общей SQLite-базе.
+        /// Корневая папка общей статистики.
         /// </summary>
-        public const string CentralDatabasePath = @"Z:\Отдел BIM\Туленинов Роман\СТАТИСТИКА\KPLN_UserDataAgent.db";
-        public const string DatabasePath = CentralDatabasePath;
+        public const string StatisticsDirectory = @"Z:\Отдел BIM\Туленинов Роман\СТАТИСТИКА";
+
+        /// <summary>
+        /// Корневая папка центральных SQLite-баз агента.
+        /// Внутри создаются файлы по отделу и месяцу с UserEvents, EventTransactions и AgentErrors.
+        /// </summary>
+        public static string CentralDatabasePath
+        {
+            get { return Path.Combine(StatisticsDirectory, "UserEvents"); }
+        }
+
+        public static string DatabasePath
+        {
+            get { return CentralDatabasePath; }
+        }
+
+        /// <summary>
+        /// Справочная SQLite-база пользователей KPLN Loader.
+        /// Используется для определения отдела пользователя при выборе центральной БД.
+        /// </summary>
+        public const string ReferenceDatabasePath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
 
         /// <summary>
         /// Локальная SQLite-база-очередь на диске пользователя.
@@ -52,6 +66,22 @@ namespace KPLN_UserDataAgent
                     "KPLN",
                     "UserDataAgent",
                     "KPLN_UserDataAgent_Local.db");
+            }
+        }
+
+        /// <summary>
+        /// Локальный кэш последнего успешно прочитанного соответствия пользователей и отделов.
+        /// Если справочная БД временно недоступна, агент использует этот кэш.
+        /// </summary>
+        public static string LocalDepartmentLookupCachePath
+        {
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "KPLN",
+                    "UserDataAgent",
+                    "KPLN_UserDataAgent_DepartmentLookup.cache");
             }
         }
 
@@ -86,6 +116,12 @@ namespace KPLN_UserDataAgent
         /// Единица измерения: штуки записей.
         /// </summary>
         public const int SyncBatchSize = 200;
+
+        /// <summary>
+        /// Количество последних месяцев, которые хранятся в центральных базах агента.
+        /// Текущий месяц входит в этот лимит.
+        /// </summary>
+        public const int CentralDatabaseRetentionMonths = 4;
 
         /// <summary>
         /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.
