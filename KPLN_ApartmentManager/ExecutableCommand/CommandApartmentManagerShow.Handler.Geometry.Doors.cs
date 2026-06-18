@@ -4,12 +4,17 @@ using KPLN_ApartmentManager.Common;
 using KPLN_ApartmentManager.Forms;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace KPLN_ApartmentManager.ExecutableCommand
 {
     internal partial class ApartmentManagerExternalHandler
     {
+        private const bool EnableTemporaryDoorDebugLog = true;
+        private const string TemporaryDoorDebugPrefix = "TEMP_DOOR_LOG";
+        private const string TemporaryDoorDebugFileName = "KPLN_ApartmentManager_Doors.log";
+
         private int PlaceDoorGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
             List<PreparedApartmentDoors> preparedDoorsByApartment, Dictionary<long, List<Wall>> doorHostWallsByApartment,
             List<ExistingWallLineInfo> existingWalls, Level baseLevel, List<string> debugMessages,
@@ -19,6 +24,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return 0;
 
             int installedDoorsCount = 0;
+            ResetTemporaryDoorDebugLog(doc, baseLevel, preparedApartments, preparedDoorsByApartment);
 
             using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Геометрия дверей"))
             {
@@ -65,7 +71,18 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 }
 
                 doc.Regenerate();
-                t.Commit();
+
+                try
+                {
+                    AppendTemporaryDoorDebugLog("Commit дверной транзакции: старт. Создано дверей до Commit = " + installedDoorsCount + ".");
+                    t.Commit();
+                    AppendTemporaryDoorDebugLog("Commit дверной транзакции: успешно.");
+                }
+                catch (Exception ex)
+                {
+                    AppendTemporaryDoorDebugLog("Commit дверной транзакции: ошибка: " + ex.Message);
+                    throw;
+                }
             }
 
             return installedDoorsCount;
@@ -132,6 +149,248 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             catch
             {
             }
+        }
+
+        private static string GetTemporaryDoorDebugLogPath()
+        {
+            try
+            {
+                return Path.Combine(Path.GetTempPath(), TemporaryDoorDebugFileName);
+            }
+            catch
+            {
+                return TemporaryDoorDebugFileName;
+            }
+        }
+
+        private static void ResetTemporaryDoorDebugLog(Document doc, Level baseLevel, List<PreparedApartmentWalls> preparedApartments,
+            List<PreparedApartmentDoors> preparedDoorsByApartment)
+        {
+            if (!EnableTemporaryDoorDebugLog)
+                return;
+
+            try
+            {
+                int apartmentCount = preparedApartments != null ? preparedApartments.Count : 0;
+                int doorCount = preparedDoorsByApartment != null
+                    ? preparedDoorsByApartment.Where(x => x != null && x.Doors != null).Sum(x => x.Doors.Count)
+                    : 0;
+
+                string header =
+                    "=== " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " ===" + Environment.NewLine +
+                    TemporaryDoorDebugPrefix + ": старт диагностики дверей." + Environment.NewLine +
+                    TemporaryDoorDebugPrefix + ": документ = '" + (doc != null ? doc.Title : "<нет>") + "'" + Environment.NewLine +
+                    TemporaryDoorDebugPrefix + ": уровень = " + FormatLevelDebugText(baseLevel) + Environment.NewLine +
+                    TemporaryDoorDebugPrefix + ": квартир = " + apartmentCount + ", подготовленных дверей = " + doorCount + Environment.NewLine;
+
+                File.WriteAllText(GetTemporaryDoorDebugLogPath(), header);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void AppendTemporaryDoorDebugLog(string message)
+        {
+            if (!EnableTemporaryDoorDebugLog || string.IsNullOrWhiteSpace(message))
+                return;
+
+            try
+            {
+                File.AppendAllText(
+                    GetTemporaryDoorDebugLogPath(),
+                    DateTime.Now.ToString("HH:mm:ss.fff") + " " + message + Environment.NewLine);
+            }
+            catch
+            {
+            }
+        }
+
+        private static void AddDoorTemporaryDiagnostic(ApartmentProcessState state, List<string> debugMessages,
+            PreparedDoorPlacement preparedDoor, string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            string text =
+                TemporaryDoorDebugPrefix +
+                ": дверь 2D ID = " + FormatElementIdForDiagnostic(preparedDoor != null ? preparedDoor.Door2DId : ElementId.InvalidElementId) +
+                ": " + message;
+
+            AppendTemporaryDoorDebugLog(text);
+            AddApartmentDiagnostic(state, debugMessages, text);
+        }
+
+        private static string BuildDoorPlacementDebugMessage(string stage, PreparedDoorPlacement preparedDoor, FamilySymbol symbol,
+            Wall hostWall, XYZ sourceProjectedPoint, XYZ alignedProjectedPoint, Level baseLevel, bool hostFromExistingWall,
+            double distanceToWallAxis, Room expectedRoom)
+        {
+            return stage +
+                   ". Квартира ID = " + FormatElementIdForDiagnostic(preparedDoor != null ? preparedDoor.ApartmentId : ElementId.InvalidElementId) +
+                   ", тип = '" + BuildDoorTypeDisplayName(symbol) + "'" +
+                   ", входная = " + (preparedDoor != null && preparedDoor.IsEntranceDoor ? "да" : "нет") +
+                   ", уровень пресета = " + FormatLevelDebugText(baseLevel) +
+                   ", исходная точка 2D = " + FormatPointMm(preparedDoor != null ? preparedDoor.InsertPoint : null) +
+                   ", проекция на host до Z-правки = " + FormatPointMm(sourceProjectedPoint) +
+                   ", проекция на host после Z-правки = " + FormatPointMm(alignedProjectedPoint) +
+                   ", host из " + (hostFromExistingWall ? "существующих стен" : "созданных стен") +
+                   ", расстояние до оси = " + FormatLengthMm(distanceToWallAxis) +
+                   ", ожидаемый Room = '" + FormatDiagnosticValue(FormatRoomLookupValue(expectedRoom)) + "'" +
+                   ". " + BuildWallDebugText(hostWall, baseLevel);
+        }
+
+        private static string BuildDoorInstanceDebugText(FamilyInstance door, XYZ insertionPoint, Wall hostWall)
+        {
+            if (door == null)
+                return "созданный экземпляр = <нет>";
+
+            string bboxText = "<нет>";
+            try
+            {
+                BoundingBoxXYZ bbox = door.get_BoundingBox(null);
+                if (bbox != null)
+                    bboxText = "[" + FormatLengthMm(bbox.Min.Z) + " .. " + FormatLengthMm(bbox.Max.Z) + "]";
+            }
+            catch
+            {
+            }
+
+            return "созданный экземпляр ID = " + IDHelper.ElIdValue(door.Id) +
+                   ", точка вставки = " + FormatPointMm(insertionPoint) +
+                   ", host ID = " + (hostWall != null ? IDHelper.ElIdValue(hostWall.Id).ToString() : "<нет>") +
+                   ", bbox Z = " + bboxText +
+                   ", INSTANCE_REFERENCE_LEVEL_PARAM = " + FormatParameterForLog(door, BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM) +
+                   ", INSTANCE_ELEVATION_PARAM = " + FormatParameterForLog(door, BuiltInParameter.INSTANCE_ELEVATION_PARAM) +
+                   ", INSTANCE_FREE_HOST_OFFSET_PARAM = " + FormatParameterForLog(door, BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM) +
+                   ", 'Отметка от уровня' = " + FormatLookupParameterForLog(door, "Отметка от уровня", "Elevation from Level", "Offset from Level") +
+                   ", 'Смещение от главной модели' = " + FormatLookupParameterForLog(door, "Смещение от главной модели", "Offset from Host", "Offset from Main Model");
+        }
+
+        private static string BuildWallDebugText(Wall wall, Level baseLevel)
+        {
+            if (wall == null)
+                return "host-стена = <нет>";
+
+            double wallHeight = GetWallHeightInternal(wall);
+            if (wallHeight <= IDHelper.ConvertMmToInternal(500))
+                wallHeight = IDHelper.ConvertMmToInternal(3000);
+
+            double z0;
+            double z1;
+            GetWallVerticalExtents(wall, baseLevel, wallHeight, out z0, out z1);
+
+            Line axis = GetWallAxisLine(wall);
+            string axisText = axis != null
+                ? FormatPointMm(axis.GetEndPoint(0)) + " -> " + FormatPointMm(axis.GetEndPoint(1))
+                : "<нет>";
+
+            string wallTypeName = "<нет>";
+            try
+            {
+                wallTypeName = wall.WallType != null ? wall.WallType.Name : "<нет>";
+            }
+            catch
+            {
+            }
+
+            return "host ID = " + IDHelper.ElIdValue(wall.Id) +
+                   ", тип host = '" + wallTypeName + "'" +
+                   ", ось host = " + axisText +
+                   ", Z host = [" + FormatLengthMm(z0) + " .. " + FormatLengthMm(z1) + "]" +
+                   ", высота host = " + FormatLengthMm(wallHeight) +
+                   ", ширина host = " + FormatLengthMm(GetWallHalfWidth(wall) * 2.0) +
+                   ", WALL_BASE_CONSTRAINT = " + FormatParameterForLog(wall, BuiltInParameter.WALL_BASE_CONSTRAINT) +
+                   ", WALL_BASE_OFFSET = " + FormatParameterForLog(wall, BuiltInParameter.WALL_BASE_OFFSET) +
+                   ", WALL_HEIGHT_TYPE = " + FormatParameterForLog(wall, BuiltInParameter.WALL_HEIGHT_TYPE) +
+                   ", WALL_USER_HEIGHT_PARAM = " + FormatParameterForLog(wall, BuiltInParameter.WALL_USER_HEIGHT_PARAM);
+        }
+
+        private static string FormatLevelDebugText(Level level)
+        {
+            if (level == null)
+                return "<нет>";
+
+            return "'" + level.Name + "' [" + IDHelper.ElIdValue(level.Id) + "], elevation = " + FormatLengthMm(level.Elevation);
+        }
+
+        private static string FormatParameterForLog(Element element, BuiltInParameter builtInParameter)
+        {
+            try
+            {
+                Parameter parameter = element != null ? element.get_Parameter(builtInParameter) : null;
+                return FormatParameterForLog(element, parameter);
+            }
+            catch
+            {
+                return "<ошибка>";
+            }
+        }
+
+        private static string FormatLookupParameterForLog(Element element, params string[] parameterNames)
+        {
+            if (element == null || parameterNames == null)
+                return "<нет>";
+
+            foreach (string parameterName in parameterNames)
+            {
+                if (string.IsNullOrWhiteSpace(parameterName))
+                    continue;
+
+                try
+                {
+                    Parameter parameter = element.LookupParameter(parameterName);
+                    if (parameter != null)
+                        return FormatParameterForLog(element, parameter);
+                }
+                catch
+                {
+                }
+            }
+
+            return "<нет>";
+        }
+
+        private static string FormatParameterForLog(Element owner, Parameter parameter)
+        {
+            if (parameter == null)
+                return "<нет>";
+
+            try
+            {
+                if (parameter.StorageType == StorageType.Double)
+                    return FormatLengthMm(parameter.AsDouble());
+
+                if (parameter.StorageType == StorageType.Integer)
+                    return parameter.AsInteger().ToString();
+
+                if (parameter.StorageType == StorageType.String)
+                    return "'" + (parameter.AsString() ?? "") + "'";
+
+                if (parameter.StorageType == StorageType.ElementId)
+                {
+                    ElementId id = parameter.AsElementId();
+                    string name = null;
+
+                    try
+                    {
+                        Element element = owner != null && owner.Document != null ? owner.Document.GetElement(id) : null;
+                        name = element != null ? element.Name : null;
+                    }
+                    catch
+                    {
+                        name = null;
+                    }
+
+                    return (!string.IsNullOrWhiteSpace(name) ? "'" + name + "' " : "") +
+                           "[" + FormatElementIdForDiagnostic(id) + "]";
+                }
+            }
+            catch
+            {
+                return "<ошибка>";
+            }
+
+            return "<нет>";
         }
 
         private static bool TryIsDoorCalculationPointOnDesiredSide(FamilyInstance door, XYZ projectedPoint, XYZ desiredSideDirection,
@@ -368,6 +627,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     continue;
                 }
 
+                XYZ sourceProjectedPoint = projectedPoint;
+                projectedPoint = AlignHostedFamilyInsertionPointToHostWallBase(projectedPoint, hostWall, baseLevel);
+                AddDoorTemporaryDiagnostic(
+                    state,
+                    debugMessages,
+                    preparedDoor,
+                    BuildDoorPlacementDebugMessage(
+                        "Обычная дверь: host найден",
+                        preparedDoor,
+                        symbolToPlace,
+                        hostWall,
+                        sourceProjectedPoint,
+                        projectedPoint,
+                        baseLevel,
+                        hostFromExistingWall,
+                        distanceToWallAxis,
+                        expectedRoom));
+
                 try
                 {
                     if (!symbolToPlace.IsActive)
@@ -413,11 +690,22 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         " в стену ID = " + IDHelper.ElIdValue(hostWall.Id) +
                         ", тип '" + BuildDoorTypeDisplayName(symbolToPlace) + "'. Попытки: " +
                         attemptsDiagnostic);
+                    AddDoorTemporaryDiagnostic(
+                        state,
+                        debugMessages,
+                        preparedDoor,
+                        "Обычная дверь: не поставлена. Попытки: " + attemptsDiagnostic);
                     continue;
                 }
 
                 if (createdDoor != null)
                 {
+                    AddDoorTemporaryDiagnostic(
+                        state,
+                        debugMessages,
+                        preparedDoor,
+                        "Обычная дверь: создана. " + BuildDoorInstanceDebugText(createdDoor, projectedPoint, hostWall));
+
                     installedCount++;
 
                     if (createdDoorIds != null)
@@ -433,6 +721,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         "Revit не создал дверь ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
                        " в стене ID = " + IDHelper.ElIdValue(hostWall.Id) +
                         ", тип '" + BuildDoorTypeDisplayName(symbolToPlace) + "'.");
+                    AddDoorTemporaryDiagnostic(
+                        state,
+                        debugMessages,
+                        preparedDoor,
+                        "Обычная дверь: TryCreateDoorInExpectedRoom вернул true, но createdDoor = null.");
                 }
             }
 
@@ -547,6 +840,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 symbolToPlace,
                 hostWall,
                 projectedPoint,
+                baseLevel,
                 expectedRoom,
                 out initialDoor,
                 out initialMatch,
@@ -603,7 +897,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         }
 
         private static bool TryCreateDoorAndReadRoomSide(Document doc, string attemptName, FamilySymbol symbolToPlace,
-            Wall hostWall, XYZ projectedPoint, Room expectedRoom,
+            Wall hostWall, XYZ projectedPoint, Level baseLevel, Room expectedRoom,
             out FamilyInstance createdDoor, out DoorRoomSideMatch match, out string diagnostic)
         {
             createdDoor = null;
@@ -611,32 +905,58 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             diagnostic = attemptName + ": <нет данных>";
 
             XYZ referenceDirection = GetWallAxisDirection2D(hostWall);
-            if (referenceDirection == null)
+            bool useLevelHostOverload = ShouldCreateHostedFamilyWithLevelHostOverload(hostWall, baseLevel);
+            if (!useLevelHostOverload && referenceDirection == null)
             {
                 diagnostic = attemptName + ": не удалось определить вектор оси стены.";
                 return false;
             }
 
+            XYZ apiInsertionPoint = useLevelHostOverload
+                ? GetDoorHostLevelInsertionPoint(projectedPoint, hostWall, baseLevel)
+                : projectedPoint;
+            string creationMode = useLevelHostOverload
+                ? "host+level"
+                : "referenceDirection";
+
             try
             {
-                createdDoor = CreateDoorFamilyInstance(
-                    doc,
-                    projectedPoint,
-                    symbolToPlace,
-                    hostWall,
-                    referenceDirection);
+                createdDoor = useLevelHostOverload
+                    ? TryCreateDoorDefault(doc, projectedPoint, symbolToPlace, hostWall, baseLevel)
+                    : CreateDoorFamilyInstance(
+                        doc,
+                        projectedPoint,
+                        symbolToPlace,
+                        hostWall,
+                        referenceDirection);
             }
             catch (Exception ex)
             {
                 diagnostic = attemptName + ": ошибка вставки: " + ex.Message;
+                AppendTemporaryDoorDebugLog(
+                    TemporaryDoorDebugPrefix + ": " + attemptName +
+                    ": ошибка вставки в host ID = " + (hostWall != null ? IDHelper.ElIdValue(hostWall.Id).ToString() : "<нет>") +
+                    ", точка = " + FormatPointMm(projectedPoint) +
+                    ", API-точка = " + FormatPointMm(apiInsertionPoint) +
+                    ", режим = " + creationMode +
+                    ", тип = '" + BuildDoorTypeDisplayName(symbolToPlace) + "': " + ex.Message);
                 return false;
             }
 
             if (createdDoor == null)
             {
-                diagnostic = attemptName + ": Revit не создал экземпляр.";
+                diagnostic = attemptName + ": Revit не создал экземпляр. Режим = " + creationMode +
+                    ", точка = " + FormatPointMm(projectedPoint) +
+                    ", API-точка = " + FormatPointMm(apiInsertionPoint) + ".";
+                AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": " + diagnostic);
                 return false;
             }
+
+            AppendTemporaryDoorDebugLog(
+                TemporaryDoorDebugPrefix + ": " + attemptName + ": создана до Regenerate. Режим = " + creationMode +
+                ", точка = " + FormatPointMm(projectedPoint) +
+                ", API-точка = " + FormatPointMm(apiInsertionPoint) +
+                ". " + BuildDoorInstanceDebugText(createdDoor, apiInsertionPoint, hostWall));
 
             TryRegenerateDoorDocument(doc);
 
@@ -645,9 +965,15 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             diagnostic =
                 attemptName +
+                ", режим = " + creationMode +
                 ", ref = " + FormatVector2D(referenceDirection) +
+                ", точка = " + FormatPointMm(projectedPoint) +
+                ", API-точка = " + FormatPointMm(apiInsertionPoint) +
                 ": " + FormatDoorRoomTriplet(createdDoor) +
-                " (" + roomSideDiagnostic + ").";
+                " (" + roomSideDiagnostic + "). " +
+                BuildDoorInstanceDebugText(createdDoor, apiInsertionPoint, hostWall);
+
+            AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": " + diagnostic);
 
             return true;
         }
@@ -700,6 +1026,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             double z0;
             double z1;
             GetWallVerticalExtents(hostWall, baseLevel, wallHeight, out z0, out z1);
+            double wallBaseOffset = GetWallBaseOffsetForLevel(hostWall, baseLevel, z0);
+            AppendTemporaryDoorDebugLog(
+                TemporaryDoorDebugPrefix + ": fallback обычной двери: старт. Точка = " + FormatPointMm(projectedPoint) +
+                ", wallBaseOffset для короткой стены = " + FormatLengthMm(wallBaseOffset) +
+                ". " + BuildWallDebugText(hostWall, baseLevel));
 
             Opening slotOpening = null;
             List<string> attempts = new List<string>();
@@ -711,12 +1042,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             catch (Exception ex)
             {
                 diagnostic = "fallback слот в основной стене: " + ex.Message;
+                AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": " + diagnostic);
                 return false;
             }
 
             if (slotOpening == null)
             {
                 diagnostic = "fallback слот в основной стене: Revit не создал проём.";
+                AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": " + diagnostic);
                 return false;
             }
 
@@ -737,7 +1070,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 try
                 {
-                    Line auxiliaryAxis = BuildDoorAuxiliaryHostWallAxis(projectedPoint, direction.Item2, auxiliaryWallLength);
+                    Line auxiliaryAxis = BuildDoorAuxiliaryHostWallAxis(WithZ(projectedPoint, 0.0), direction.Item2, auxiliaryWallLength);
                     if (auxiliaryAxis == null)
                     {
                         attempts.Add(direction.Item1 + ": не удалось построить ось.");
@@ -745,13 +1078,19 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     auxiliaryWall = Wall.Create(doc, auxiliaryAxis, auxiliaryWallType.Id, baseLevel.Id, wallHeight, 0, false, false);
-                    ApplyWallPresetParameters(auxiliaryWall, baseLevel, null, 0, wallHeight);
+                    ApplyWallPresetParameters(auxiliaryWall, baseLevel, null, wallBaseOffset, wallHeight);
                     doc.Regenerate();
                     TryJoinGeometry(doc, hostWall, auxiliaryWall);
+                    AppendTemporaryDoorDebugLog(
+                        TemporaryDoorDebugPrefix + ": fallback обычной двери: создана короткая стена ID = " +
+                        IDHelper.ElIdValue(auxiliaryWall.Id) + ". " + BuildWallDebugText(auxiliaryWall, baseLevel));
                 }
                 catch (Exception ex)
                 {
                     attempts.Add(direction.Item1 + ": короткая стена не создана (" + ex.Message + ").");
+                    AppendTemporaryDoorDebugLog(
+                        TemporaryDoorDebugPrefix + ": fallback обычной двери: короткая стена не создана, " +
+                        direction.Item1 + ": " + ex.Message);
 
                     if (auxiliaryWall != null)
                         TryDeleteElement(doc, auxiliaryWall.Id, null);
@@ -767,6 +1106,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     symbolToPlace,
                     auxiliaryWall,
                     projectedPoint,
+                    baseLevel,
                     expectedRoom,
                     out candidateDoor,
                     out match,
@@ -790,6 +1130,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         "fallback короткая стена-хост сработал: слот ID = " + IDHelper.ElIdValue(slotOpening.Id) +
                         ", стена ID = " + IDHelper.ElIdValue(auxiliaryWall.Id) +
                         ". Попытки: " + string.Join("; ", attempts.ToArray());
+                    AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": " + diagnostic);
 
                     return true;
                 }
@@ -863,6 +1204,16 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private static void GetWallVerticalExtents(Wall wall, Level baseLevel, double wallHeight, out double z0, out double z1)
         {
             z0 = baseLevel != null ? baseLevel.Elevation : 0;
+            try
+            {
+                Parameter pBaseOffset = wall != null ? wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET) : null;
+                if (pBaseOffset != null && pBaseOffset.StorageType == StorageType.Double)
+                    z0 += pBaseOffset.AsDouble();
+            }
+            catch
+            {
+            }
+
             z1 = z0 + wallHeight;
 
             try
@@ -877,6 +1228,77 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             catch
             {
             }
+        }
+
+        private static XYZ AlignHostedFamilyInsertionPointToHostWallBase(XYZ point, Wall hostWall, Level baseLevel)
+        {
+            if (point == null || hostWall == null)
+                return point;
+
+            double wallHeight = GetWallHeightInternal(hostWall);
+            if (wallHeight <= IDHelper.ConvertMmToInternal(500))
+                wallHeight = IDHelper.ConvertMmToInternal(3000);
+
+            double z0;
+            double z1;
+            GetWallVerticalExtents(hostWall, baseLevel, wallHeight, out z0, out z1);
+
+            return WithZ(point, z0);
+        }
+
+        private static bool ShouldCreateHostedFamilyWithLevelHostOverload(Wall hostWall, Level baseLevel)
+        {
+            if (hostWall == null || baseLevel == null)
+                return false;
+
+            double wallHeight = GetWallHeightInternal(hostWall);
+            if (wallHeight <= IDHelper.ConvertMmToInternal(500))
+                wallHeight = IDHelper.ConvertMmToInternal(3000);
+
+            double z0;
+            double z1;
+            GetWallVerticalExtents(hostWall, baseLevel, wallHeight, out z0, out z1);
+
+            double tolerance = IDHelper.ConvertMmToInternal(1);
+            return Math.Abs(baseLevel.Elevation) > tolerance ||
+                   Math.Abs(z0) > tolerance ||
+                   Math.Abs(z0 - baseLevel.Elevation) > tolerance;
+        }
+
+        private static XYZ GetDoorHostLevelInsertionPoint(XYZ point, Wall hostWall, Level baseLevel)
+        {
+            if (point == null)
+                return null;
+
+            if (baseLevel == null || hostWall == null)
+                return point;
+
+            double wallHeight = GetWallHeightInternal(hostWall);
+            if (wallHeight <= IDHelper.ConvertMmToInternal(500))
+                wallHeight = IDHelper.ConvertMmToInternal(3000);
+
+            double z0;
+            double z1;
+            GetWallVerticalExtents(hostWall, baseLevel, wallHeight, out z0, out z1);
+
+            return WithZ(point, z0);
+        }
+
+        private static double GetWallBaseOffsetForLevel(Wall wall, Level baseLevel, double wallBaseZ)
+        {
+            try
+            {
+                Parameter p = wall != null ? wall.get_Parameter(BuiltInParameter.WALL_BASE_OFFSET) : null;
+                if (p != null && p.StorageType == StorageType.Double)
+                    return p.AsDouble();
+            }
+            catch
+            {
+            }
+
+            return baseLevel != null
+                ? wallBaseZ - baseLevel.Elevation
+                : 0.0;
         }
 
         private static DoorRoomSideMatch GetDoorRoomSideMatch(FamilyInstance createdDoor, Room expectedRoom,
@@ -1036,6 +1458,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return false;
             }
 
+            XYZ sourceProjectedPoint = projectedPoint;
+            projectedPoint = AlignHostedFamilyInsertionPointToHostWallBase(projectedPoint, hostWall, baseLevel);
+            AddDoorTemporaryDiagnostic(
+                state,
+                debugMessages,
+                preparedDoor,
+                BuildDoorPlacementDebugMessage(
+                    "Входная дверь: host найден",
+                    preparedDoor,
+                    preparedDoor.DoorSymbol,
+                    hostWall,
+                    sourceProjectedPoint,
+                    projectedPoint,
+                    baseLevel,
+                    hostFromExistingWall,
+                    distanceToWallAxis,
+                    null));
+
             FamilyInstance apartmentFi = doc.GetElement(preparedDoor.ApartmentId) as FamilyInstance;
             XYZ interiorDirection;
             XYZ outwardDirection;
@@ -1130,6 +1570,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             preparedDoor.DoorSymbol = entranceDoorSymbol;
             preparedDoor.SelectedDoorTypeName = BuildDoorTypeDisplayName(entranceDoorSymbol);
+            AddDoorTemporaryDiagnostic(
+                state,
+                debugMessages,
+                preparedDoor,
+                "Входная дверь: точка создания = " + FormatPointMm(entranceInsertionPoint) +
+                ", точка host = " + FormatPointMm(projectedPoint) +
+                ", сторона создания = " + entranceInsertionSideSource +
+                ", referenceDirection = " + (useEntranceReferenceDirection ? FormatVector2D(entranceReferenceDirection) : "<стандартная>") +
+                ", внутрь квартиры = " + FormatVector2D(interiorDirection) +
+                ", наружу квартиры = " + FormatVector2D(outwardDirection) +
+                ", сторона определена = " + exteriorSideSource + ".");
 
             AddApartmentDiagnostic(
                 null,
@@ -1200,6 +1651,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     "Ошибка вставки входной двери ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) +
                     " в стену ID = " + IDHelper.ElIdValue(hostWall.Id) +
                     ", тип '" + BuildDoorTypeDisplayName(entranceDoorSymbol) + "': " + ex.Message);
+                AddDoorTemporaryDiagnostic(
+                    state,
+                    debugMessages,
+                    preparedDoor,
+                    "Входная дверь: исключение при вставке: " + ex.Message);
 
                 return false;
             }
@@ -1215,9 +1671,20 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     "Входная дверь ID = " + FormatElementIdForDiagnostic(preparedDoor.Door2DId) + " не поставлена: не найден подходящий вариант с направлением наружу" +
                     " в стене ID = " + IDHelper.ElIdValue(hostWall.Id) +
                     ", тип '" + BuildDoorTypeDisplayName(entranceDoorSymbol) + "'.");
+                AddDoorTemporaryDiagnostic(
+                    state,
+                    debugMessages,
+                    preparedDoor,
+                    "Входная дверь: не поставлена. Диагностика: " + entrancePlacementFailureDiagnostic);
 
                 return false;
             }
+
+            AddDoorTemporaryDiagnostic(
+                state,
+                debugMessages,
+                preparedDoor,
+                "Входная дверь: создана. " + BuildDoorInstanceDebugText(createdDoor, projectedPoint, hostWall));
 
             if (createdDoor.Symbol != null)
             {
@@ -1238,6 +1705,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     AddPreparedDoorDiagnostics(state, debugMessages, preparedDoor);
                     AddApartmentDiagnostics(state, debugMessages, entranceDiagnostics);
                     AddApartmentDiagnostic(state, debugMessages, entranceValidationDiagnostic);
+                    AddDoorTemporaryDiagnostic(
+                        state,
+                        debugMessages,
+                        preparedDoor,
+                        "Входная дверь: удалена после валидации. " + entranceValidationDiagnostic);
                     return false;
                 }
             }
@@ -1470,7 +1942,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             FamilyInstance createdDoor = null;
-            if (useReferenceDirection)
+            bool useLevelHostOverload = ShouldCreateHostedFamilyWithLevelHostOverload(hostWall, baseLevel);
+            if (useReferenceDirection && !useLevelHostOverload)
             {
                 createdDoor = TryCreateDoorWithReferenceDirection(doc, insertionPoint, baseSymbol, referenceDirection, hostWall, baseLevel);
                 if (createdDoor == null)
@@ -1482,6 +1955,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         ": вставка с referenceDirection = " + FormatVector2D(referenceDirection) +
                         " не создалась, пробую стандартную вставку.");
                 }
+            }
+            else if (useReferenceDirection && useLevelHostOverload)
+            {
+                AddApartmentDiagnostic(
+                    state,
+                    debugMessages,
+                    "Входная дверь ID = " + FormatElementIdForDiagnostic(preparedDoor != null ? preparedDoor.Door2DId : ElementId.InvalidElementId) +
+                    ": referenceDirection-overload пропущен, потому что host-стена не на нулевой отметке; используется host+level вставка.");
             }
 
             if (createdDoor == null)
@@ -1613,7 +2094,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             double hostWallLength = Math.Max(doorWidth + IDHelper.ConvertMmToInternal(150), IDHelper.ConvertMmToInternal(1050));
             double openingWidth = hostWallLength;
 
-            Line auxiliaryAxis = BuildEntranceAuxiliaryHostWallAxis(projectedPoint, existingHostWall, outwardDirection, hostWallLength);
+            Line auxiliaryAxis = BuildEntranceAuxiliaryHostWallAxis(WithZ(projectedPoint, 0.0), existingHostWall, outwardDirection, hostWallLength);
             if (auxiliaryAxis == null)
             {
                 if (attempts != null)
@@ -1624,6 +2105,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             double wallHeight = GetWallHeightInternal(existingHostWall);
             if (wallHeight <= IDHelper.ConvertMmToInternal(500))
                 wallHeight = IDHelper.ConvertMmToInternal(3000);
+            double z0;
+            double z1;
+            GetWallVerticalExtents(existingHostWall, baseLevel, wallHeight, out z0, out z1);
+            double wallBaseOffset = GetWallBaseOffsetForLevel(existingHostWall, baseLevel, z0);
+            AppendTemporaryDoorDebugLog(
+                TemporaryDoorDebugPrefix + ": fallback входной двери: старт. Точка = " + FormatPointMm(projectedPoint) +
+                ", wallBaseOffset для короткой стены = " + FormatLengthMm(wallBaseOffset) +
+                ". " + BuildWallDebugText(existingHostWall, baseLevel));
 
             Opening opening = null;
             Wall auxiliaryWall = null;
@@ -1636,6 +2125,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 if (attempts != null)
                     attempts.Add("fallback проём в существующей стене: " + ex.Message);
+                AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": fallback входной двери: проём в существующей стене: " + ex.Message);
                 opening = null;
             }
 
@@ -1643,20 +2133,25 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 if (attempts != null)
                     attempts.Add("fallback проём в существующей стене: Revit не создал проём");
+                AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": fallback входной двери: Revit не создал проём в существующей стене.");
                 return null;
             }
 
             try
             {
                 auxiliaryWall = Wall.Create(doc, auxiliaryAxis, auxiliaryWallType.Id, baseLevel.Id, wallHeight, 0, false, false);
-                ApplyWallPresetParameters(auxiliaryWall, baseLevel, null, 0, wallHeight);
+                ApplyWallPresetParameters(auxiliaryWall, baseLevel, null, wallBaseOffset, wallHeight);
                 doc.Regenerate();
                 TryJoinGeometry(doc, existingHostWall, auxiliaryWall);
+                AppendTemporaryDoorDebugLog(
+                    TemporaryDoorDebugPrefix + ": fallback входной двери: создана короткая стена ID = " +
+                    IDHelper.ElIdValue(auxiliaryWall.Id) + ". " + BuildWallDebugText(auxiliaryWall, baseLevel));
             }
             catch (Exception ex)
             {
                 if (attempts != null)
                     attempts.Add("fallback короткая стена-хост: не создана (" + ex.Message + ")");
+                AppendTemporaryDoorDebugLog(TemporaryDoorDebugPrefix + ": fallback входной двери: короткая стена не создана: " + ex.Message);
 
                 if (opening != null)
                     TryDeleteElement(doc, opening.Id, null);
@@ -1699,6 +2194,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 string validationDiagnostic;
                 if (IsEntranceDoorPlacementAcceptable(candidateDoor, auxiliaryWall, outwardDirection, preparedDoor, out validationDiagnostic))
                 {
+                    AppendTemporaryDoorDebugLog(
+                        TemporaryDoorDebugPrefix + ": fallback входной двери: создана подходящая дверь. " +
+                        BuildDoorInstanceDebugText(candidateDoor, projectedPoint, auxiliaryWall));
+
                     if (createdElementIds != null)
                     {
                         if (opening != null)
@@ -1828,8 +2327,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (doorHeight <= IDHelper.ConvertMmToInternal(500))
                 doorHeight = IDHelper.ConvertMmToInternal(2200);
 
-            double z0 = baseLevel.Elevation;
+            double wallHeight = GetWallHeightInternal(existingHostWall);
+            if (wallHeight <= IDHelper.ConvertMmToInternal(500))
+                wallHeight = doorHeight + IDHelper.ConvertMmToInternal(300);
+
+            double z0;
+            double wallTopZ;
+            GetWallVerticalExtents(existingHostWall, baseLevel, wallHeight, out z0, out wallTopZ);
             double z1 = z0 + doorHeight + IDHelper.ConvertMmToInternal(150);
+            if (wallTopZ > z0 + IDHelper.ConvertMmToInternal(300))
+                z1 = Math.Min(z1, wallTopZ);
+
             XYZ half = wallDir * (openingWidth / 2.0);
 
             XYZ p0 = new XYZ(projectedPoint.X - half.X, projectedPoint.Y - half.Y, z0);
@@ -2052,10 +2560,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (doc == null || projectedPoint == null || symbolToPlace == null || hostWall == null || baseLevel == null)
                 return null;
 
+            XYZ insertionPoint = GetDoorHostLevelInsertionPoint(projectedPoint, hostWall, baseLevel);
+            if (insertionPoint == null)
+                return null;
+
             try
             {
                 return doc.Create.NewFamilyInstance(
-                    projectedPoint,
+                    insertionPoint,
                     symbolToPlace,
                     hostWall,
                     baseLevel,
@@ -2610,7 +3122,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
-        private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, List<string> debugMessages, ApartmentProcessState state = null)
+        private PreparedApartmentDoors PrepareDoorsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, double placementPointZ,
+            List<string> debugMessages, ApartmentProcessState state = null)
         {
             PreparedApartmentDoors result = new PreparedApartmentDoors();
             result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
@@ -2650,7 +3163,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     continue;
                 }
 
-                XYZ insertPointInProject = doorTransform.Origin;
+                XYZ insertPointInProject = WithZ(doorTransform.Origin, placementPointZ);
                 XYZ sourceHandDirection = GetFamilyInstanceHandDirection2D(doorFi, doorTransform);
                 XYZ sourceFacingDirection = GetFamilyInstanceFacingDirection2D(doorFi, doorTransform);
 
@@ -2781,6 +3294,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             XYZ expectedRoomPoint = matchedRoom != null
                 ? GetRoomCenterPoint(matchedRoom)
                 : GetApartmentInteriorReferencePoint(apartmentFi, doc);
+            expectedRoomPoint = WithZ(expectedRoomPoint, insertPointInProject.Z);
 
             XYZ sourceRoomCalculationSideDirection = GetDoorRoomCalculationSideDirection(sourceDoorFi, insertPointInProject);
 

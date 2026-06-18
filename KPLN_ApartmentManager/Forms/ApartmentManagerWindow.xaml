@@ -309,6 +309,12 @@
         </Grid>
 
         <Border Grid.Column="2" BorderBrush="Black" BorderThickness="2">
+            <Border.Resources>
+                <Style TargetType="{x:Type ComboBox}">
+                    <EventSetter Event="PreviewMouseWheel" Handler="PresetComboBox_PreviewMouseWheel"/>
+                </Style>
+            </Border.Resources>
+
             <DockPanel LastChildFill="True">
                 <Border DockPanel.Dock="Top" Background="Black" Padding="12,9">
                     <TextBlock Text="ПРЕДНАСТРОЙКИ 3D"
@@ -421,11 +427,11 @@
                                                VerticalAlignment="Center"/>
 
                                     <TextBox Grid.Column="2"
-                                             Text="{Binding PresetsVm.BaseOffsetText, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="24"
-                                             Padding="3"
-                                             PreviewTextInput="DigitsOnly_PreviewTextInput"
-                                             DataObject.Pasting="DigitsOnly_Pasting"/>
+                                              Text="{Binding PresetsVm.BaseOffsetText, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="24"
+                                              Padding="3"
+                                              PreviewTextInput="SignedDecimal_PreviewTextInput"
+                                              DataObject.Pasting="SignedDecimal_Pasting"/>
                                 </Grid>
 
                                 <Grid Grid.Row="6">
@@ -442,11 +448,11 @@
                                                VerticalAlignment="Center"/>
 
                                     <TextBox Grid.Column="2"
-                                             Text="{Binding PresetsVm.WallHeightText, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="24"
-                                             Padding="3"
-                                             PreviewTextInput="DigitsOnly_PreviewTextInput"
-                                             DataObject.Pasting="DigitsOnly_Pasting"/>
+                                              Text="{Binding PresetsVm.WallHeightText, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="24"
+                                              Padding="3"
+                                              PreviewTextInput="SignedDecimal_PreviewTextInput"
+                                              DataObject.Pasting="SignedDecimal_Pasting"/>
                                 </Grid>
 
                                 <Grid Grid.Row="8"

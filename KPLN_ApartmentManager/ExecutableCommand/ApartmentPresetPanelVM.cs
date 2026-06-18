@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -446,7 +447,7 @@ namespace KPLN_ApartmentManager.Forms
                 if (_isDataStale)
                     return false;
 
-                if (ParseInt(WallHeightText) <= 0)
+                if (ParseDouble(WallHeightText) <= 0)
                     return false;
 
                 if (HasWindowMarkers)
@@ -577,8 +578,8 @@ namespace KPLN_ApartmentManager.Forms
                     : preserved.SelectedPlanModelSignature;
                 preserved.LowerConstraint = LowerConstraintText;
                 preserved.UpperConstraint = UpperConstraintText;
-                preserved.BaseOffset = ParseInt(BaseOffsetText);
-                preserved.WallHeight = ParseInt(WallHeightText, 3000);
+                preserved.BaseOffset = ParseDouble(BaseOffsetText);
+                preserved.WallHeight = ParseDouble(WallHeightText, 3000);
                 preserved.WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : preserved.WindowType;
                 preserved.WindowSillHeight = ParseInt(WindowSillHeightText, 900);
                 SetPresetShaftWallType(preserved, !string.IsNullOrWhiteSpace(SelectedShaftWallType) ? SelectedShaftWallType : GetPresetShaftWallType(preserved));
@@ -614,8 +615,8 @@ namespace KPLN_ApartmentManager.Forms
                 SelectedPlanModelSignature = SelectedPlan != null ? SelectedPlan.ModelSignature : "",
                 LowerConstraint = LowerConstraintText,
                 UpperConstraint = UpperConstraintText,
-                BaseOffset = ParseInt(BaseOffsetText),
-                WallHeight = ParseInt(WallHeightText, 3000),
+                BaseOffset = ParseDouble(BaseOffsetText),
+                WallHeight = ParseDouble(WallHeightText, 3000),
                 WallTypeByThickness = wallTypeByThickness,
                 WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : "Не выбрано",
                 WindowSillHeight = ParseInt(WindowSillHeightText, 900),
@@ -999,6 +1000,23 @@ namespace KPLN_ApartmentManager.Forms
         {
             int value;
             return int.TryParse(text, out value) ? value : defaultValue;
+        }
+
+        private static double ParseDouble(string text, double defaultValue = 0)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return defaultValue;
+
+            double value;
+            string trimmed = text.Trim();
+
+            if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+                return value;
+
+            if (double.TryParse(trimmed.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                return value;
+
+            return defaultValue;
         }
 
         private void NotifyDataChanged()

@@ -2637,6 +2637,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             double connectTol = IDHelper.ConvertMmToInternal(150);
             double intersectionTol = IDHelper.ConvertMmToInternal(10);
+            double placementPointZ = 0.0;
 
             List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, targetPlan.GenLevel.Id);
 
@@ -2715,9 +2716,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
                     apartmentAxisLines = RemoveSegmentsOverlappingExistingWalls(apartmentAxisLines, existingWalls, apartmentWallThicknessInternal);
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                    apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
 
                     List<FamilyRoomSeparatorMarker> roomSeparatorMarkers = CollectRoomSeparatorMarkersFromApartmentInstance(doc, apartmentFi);
                     List<Line> roomSeparatorLines = BuildRoomSeparatorLinesFromMarkers(roomSeparatorMarkers);
+                    roomSeparatorLines = WithZ(roomSeparatorLines, placementPointZ);
                     state.FoundRoomSeparatorsCount = roomSeparatorLines.Count;
 
                     if (roomSeparatorLines.Count > 0)
@@ -2768,6 +2771,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 shaftReferenceAxisLines,
                                 out skippedShaftMarkers);
                             shaftAxisLines = MergeCollinearLines(shaftAxisLines);
+                            shaftAxisLines = WithZ(shaftAxisLines, placementPointZ);
 
                             if (skippedShaftMarkers > 0)
                             {
@@ -2821,8 +2825,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             }
 
                             loggiaAxisLines = MergeCollinearLines(loggiaAxisLines);
+                            loggiaAxisLines = WithZ(loggiaAxisLines, placementPointZ);
                         }
                     }
+
+                    apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
+                    shaftAxisLines = WithZ(shaftAxisLines, placementPointZ);
+                    loggiaAxisLines = WithZ(loggiaAxisLines, placementPointZ);
+                    roomSeparatorLines = WithZ(roomSeparatorLines, placementPointZ);
 
                     if (apartmentAxisLines.Count == 0 && shaftAxisLines.Count == 0 && roomSeparatorLines.Count == 0)
                     {
@@ -2849,10 +2859,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         state.HasPreparedWalls = true;
                     }
 
-                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
+                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, placementPointZ, debugMessages, state);
                     preparedDoorsByApartment.Add(preparedDoors);
 
-                    PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
+                    PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, placementPointZ, debugMessages, state);
                     preparedWindowsByApartment.Add(preparedWindows);
 
                     PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(
@@ -2938,7 +2948,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     apartmentStates);
             }
 
-            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, debugMessages, apartmentStates);
+            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, baseLevel, debugMessages, apartmentStates);
             roomAreaMismatches = FilterRoomAreaMismatchesForRoomSeparators(roomAreaMismatches, apartmentStates);
             RefreshRoomAreaMismatchFlags(apartmentStates, roomAreaMismatches);
 
@@ -3122,8 +3132,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
-        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, Level placementLevel,
+            List<string> debugMessages, Dictionary<long, ApartmentProcessState> apartmentStates)
         {
             if (doc == null || apartmentInstances == null || apartmentInstances.Count == 0)
                 return;
@@ -3157,7 +3167,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                         try
                         {
-                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, furnitureErrors, createdFurnitureIds);
+                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, placementLevel, furnitureErrors, createdFurnitureIds);
                         }
                         catch (Exception ex)
                         {

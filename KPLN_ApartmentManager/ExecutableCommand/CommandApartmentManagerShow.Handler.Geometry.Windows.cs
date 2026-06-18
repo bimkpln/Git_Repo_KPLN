@@ -116,6 +116,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     continue;
                 }
 
+                projectedPoint = AlignHostedFamilyInsertionPointToHostWallBase(projectedPoint, hostWall, baseLevel);
+
                 FamilySymbol symbolToPlace = preparedWindow.WindowSymbol;
 
                 try
@@ -199,7 +201,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (refDir == null)
                 refDir = GetWallAxisDirection2D(hostWall);
 
-            if (refDir != null)
+            bool useLevelHostOverload = ShouldCreateHostedFamilyWithLevelHostOverload(hostWall, baseLevel);
+            if (!useLevelHostOverload && refDir != null)
             {
                 try
                 {
@@ -215,6 +218,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     if (debugMessages != null)
                         debugMessages.Add("Вставка окна с referenceDirection не сработала, используется стандартная вставка: " + ex.Message);
                 }
+            }
+            else if (useLevelHostOverload && debugMessages != null)
+            {
+                debugMessages.Add(
+                    "Вставка окна: referenceDirection-overload пропущен, потому что host-стена не на нулевой отметке; используется host+level вставка. " +
+                    "Точка = " + FormatPointMm(projectedPoint) +
+                    ", уровень = " + FormatLevelDebugText(baseLevel) + ".");
             }
 
             return doc.Create.NewFamilyInstance(
@@ -362,7 +372,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return bestWall != null;
         }
 
-        private PreparedApartmentWindows PrepareWindowsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset,
+        private PreparedApartmentWindows PrepareWindowsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, double placementPointZ,
             List<string> debugMessages, ApartmentProcessState state = null)
         {
             PreparedApartmentWindows result = new PreparedApartmentWindows();
@@ -404,8 +414,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (marker == null || marker.LocalP0 == null || marker.LocalP1 == null)
                     continue;
 
-                XYZ p0 = marker.LocalP0;
-                XYZ p1 = marker.LocalP1;
+                XYZ p0 = WithZ(marker.LocalP0, placementPointZ);
+                XYZ p1 = WithZ(marker.LocalP1, placementPointZ);
 
                 if (p0 == null || p1 == null || Distance2D(p0, p1) < IDHelper.ConvertMmToInternal(10))
                     continue;

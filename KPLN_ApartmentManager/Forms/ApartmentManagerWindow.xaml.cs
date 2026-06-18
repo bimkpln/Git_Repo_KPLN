@@ -11,6 +11,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -46,8 +47,8 @@ namespace KPLN_ApartmentManager.Forms
         public string LowerConstraint { get; set; }
         public string UpperConstraint { get; set; }
 
-        public int BaseOffset { get; set; }
-        public int WallHeight { get; set; }
+        public double BaseOffset { get; set; }
+        public double WallHeight { get; set; }
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
 
@@ -268,6 +269,112 @@ namespace KPLN_ApartmentManager.Forms
             string text = e.DataObject.GetData(typeof(string)) as string;
             if (string.IsNullOrWhiteSpace(text) || text.Any(x => !char.IsDigit(x)))
                 e.CancelCommand();
+        }
+
+        private void SignedDecimal_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            if (textBox == null)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            e.Handled = !IsPotentialDecimalText(GetTextAfterInput(textBox, e.Text));
+        }
+
+        private void SignedDecimal_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.DataObject.GetDataPresent(typeof(string)))
+            {
+                e.CancelCommand();
+                return;
+            }
+
+            TextBox textBox = sender as TextBox;
+            string text = e.DataObject.GetData(typeof(string)) as string;
+            string nextText = textBox != null
+                ? GetTextAfterInput(textBox, text)
+                : text;
+
+            if (!IsPotentialDecimalText(nextText))
+                e.CancelCommand();
+        }
+
+        private void PresetComboBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            ComboBox comboBox = sender as ComboBox;
+            if (comboBox == null || comboBox.IsDropDownOpen)
+                return;
+
+            e.Handled = true;
+
+            UIElement parent = comboBox.Parent as UIElement;
+            if (parent == null)
+                return;
+
+            MouseWheelEventArgs args = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            {
+                RoutedEvent = UIElement.MouseWheelEvent,
+                Source = sender
+            };
+            parent.RaiseEvent(args);
+        }
+
+        private static string GetTextAfterInput(TextBox textBox, string input)
+        {
+            string text = textBox.Text ?? "";
+            input = input ?? "";
+
+            int selectionStart = textBox.SelectionStart;
+            if (selectionStart < 0)
+                selectionStart = 0;
+            if (selectionStart > text.Length)
+                selectionStart = text.Length;
+
+            int selectionLength = textBox.SelectionLength;
+            if (selectionLength < 0)
+                selectionLength = 0;
+            if (selectionStart + selectionLength > text.Length)
+                selectionLength = text.Length - selectionStart;
+
+            return text.Remove(selectionStart, selectionLength).Insert(selectionStart, input);
+        }
+
+        private static bool IsPotentialDecimalText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return true;
+
+            bool hasSeparator = false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                if (char.IsDigit(c))
+                    continue;
+
+                if (c == '-')
+                {
+                    if (i != 0)
+                        return false;
+                    continue;
+                }
+
+                if (c == '.' || c == ',')
+                {
+                    if (hasSeparator)
+                        return false;
+
+                    hasSeparator = true;
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
         }
     }
 
