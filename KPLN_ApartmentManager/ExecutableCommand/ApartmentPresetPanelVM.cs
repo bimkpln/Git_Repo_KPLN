@@ -265,6 +265,7 @@ namespace KPLN_ApartmentManager.Forms
         public ObservableCollection<PresetSelectionVm> WallAssignments { get; private set; }
         public ObservableCollection<PresetSelectionVm> DoorAssignments { get; private set; }
         public ObservableCollection<string> WorksetOptions { get; private set; }
+        public ObservableCollection<ApartmentGeneratedElementsGroupingModeOption> GroupingModeOptions { get; private set; }
         private ApartmentPlanPresetOption _selectedPlan;
 
         public ApartmentPlanPresetOption SelectedPlan
@@ -528,6 +529,22 @@ namespace KPLN_ApartmentManager.Forms
             }
         }
 
+        private ApartmentGeneratedElementsGroupingModeOption _selectedGroupingMode;
+
+        public ApartmentGeneratedElementsGroupingModeOption SelectedGroupingMode
+        {
+            get { return _selectedGroupingMode; }
+            set
+            {
+                if (!ReferenceEquals(_selectedGroupingMode, value))
+                {
+                    _selectedGroupingMode = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
         private string _statusText;
 
         public string StatusText
@@ -597,6 +614,24 @@ namespace KPLN_ApartmentManager.Forms
             WallAssignments = new ObservableCollection<PresetSelectionVm>();
             DoorAssignments = new ObservableCollection<PresetSelectionVm>();
             WorksetOptions = new ObservableCollection<string>();
+            GroupingModeOptions = new ObservableCollection<ApartmentGeneratedElementsGroupingModeOption>
+            {
+                new ApartmentGeneratedElementsGroupingModeOption
+                {
+                    Value = ApartmentGeneratedElementsGroupingMode.None,
+                    Title = "Не группировать"
+                },
+                new ApartmentGeneratedElementsGroupingModeOption
+                {
+                    Value = ApartmentGeneratedElementsGroupingMode.ByApartment,
+                    Title = "Группировать по квартирам"
+                },
+                new ApartmentGeneratedElementsGroupingModeOption
+                {
+                    Value = ApartmentGeneratedElementsGroupingMode.WholePlan,
+                    Title = "Группировать всё построенное на плане"
+                }
+            };
             WindowTypeOptions = new ObservableCollection<string>();
             ShaftWallTypeOptions = new ObservableCollection<string>();
             LoggiaWallTypeOptions = new ObservableCollection<string>();
@@ -624,6 +659,7 @@ namespace KPLN_ApartmentManager.Forms
                     Plans.Add(plan);
 
                 RefreshWorksetFields();
+                RefreshGroupingFields();
 
                 BaseOffsetText = (_currentData.BaseOffset).ToString();
                 WallHeightText = (_currentData.WallHeight > 0 ? _currentData.WallHeight : 3000).ToString();
@@ -697,6 +733,9 @@ namespace KPLN_ApartmentManager.Forms
                 preserved.FurnitureWorksetName = NormalizeWorksetSelection(SelectedFurnitureWorkset);
                 preserved.PlumbingWorksetName = NormalizeWorksetSelection(SelectedPlumbingWorkset);
                 preserved.WindowWorksetName = NormalizeWorksetSelection(SelectedWindowWorkset);
+                preserved.GeneratedElementsGroupingMode = SelectedGroupingMode != null
+                    ? SelectedGroupingMode.Value
+                    : ApartmentGeneratedElementsGroupingMode.None;
                 SetPresetShaftWallType(preserved, !string.IsNullOrWhiteSpace(SelectedShaftWallType) ? SelectedShaftWallType : GetPresetShaftWallType(preserved));
                 SetPresetLoggiaWallType(preserved, !string.IsNullOrWhiteSpace(SelectedLoggiaWallType) ? SelectedLoggiaWallType : GetPresetLoggiaWallType(preserved));
                 return preserved;
@@ -745,6 +784,9 @@ namespace KPLN_ApartmentManager.Forms
                 FurnitureWorksetName = NormalizeWorksetSelection(SelectedFurnitureWorkset),
                 PlumbingWorksetName = NormalizeWorksetSelection(SelectedPlumbingWorkset),
                 WindowWorksetName = NormalizeWorksetSelection(SelectedWindowWorkset),
+                GeneratedElementsGroupingMode = SelectedGroupingMode != null
+                    ? SelectedGroupingMode.Value
+                    : ApartmentGeneratedElementsGroupingMode.None,
                 FamilyPostProcessAction = _currentData != null
                     ? _currentData.FamilyPostProcessAction
                     : ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
@@ -884,6 +926,19 @@ namespace KPLN_ApartmentManager.Forms
             OnPropertyChanged(nameof(SelectedFurnitureWorkset));
             OnPropertyChanged(nameof(SelectedPlumbingWorkset));
             OnPropertyChanged(nameof(SelectedWindowWorkset));
+        }
+
+        private void RefreshGroupingFields()
+        {
+            ApartmentGeneratedElementsGroupingMode savedMode = _currentData != null
+                ? _currentData.GeneratedElementsGroupingMode
+                : ApartmentGeneratedElementsGroupingMode.None;
+
+            _selectedGroupingMode = GroupingModeOptions.FirstOrDefault(x => x.Value == savedMode) ??
+                                    GroupingModeOptions.FirstOrDefault(x => x.Value == ApartmentGeneratedElementsGroupingMode.None);
+
+            OnPropertyChanged(nameof(GroupingModeOptions));
+            OnPropertyChanged(nameof(SelectedGroupingMode));
         }
 
         private string ResolveSavedWorksetSelection(string savedWorksetName)
@@ -1292,6 +1347,9 @@ namespace KPLN_ApartmentManager.Forms
             result.FurnitureWorksetName = NormalizeWorksetSelection(result.FurnitureWorksetName);
             result.PlumbingWorksetName = NormalizeWorksetSelection(result.PlumbingWorksetName);
             result.WindowWorksetName = NormalizeWorksetSelection(result.WindowWorksetName);
+
+            if (!Enum.IsDefined(typeof(ApartmentGeneratedElementsGroupingMode), result.GeneratedElementsGroupingMode))
+                result.GeneratedElementsGroupingMode = ApartmentGeneratedElementsGroupingMode.None;
 
             return result;
         }

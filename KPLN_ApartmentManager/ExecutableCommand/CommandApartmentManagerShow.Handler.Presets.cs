@@ -2964,6 +2964,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, baseLevel, debugMessages, apartmentStates, worksetTargets);
+            ApplyGeneratedElementsGrouping(doc, targetPlan, effectivePreset.GeneratedElementsGroupingMode, apartmentStates, debugMessages);
             roomAreaMismatches = FilterRoomAreaMismatchesForRoomSeparators(roomAreaMismatches, apartmentStates);
             RefreshRoomAreaMismatchFlags(apartmentStates, roomAreaMismatches);
 

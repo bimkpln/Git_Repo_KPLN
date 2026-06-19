@@ -39,6 +39,19 @@ namespace KPLN_ApartmentManager.Forms
         public string Title { get; set; }
     }
 
+    public enum ApartmentGeneratedElementsGroupingMode
+    {
+        None,
+        ByApartment,
+        WholePlan
+    }
+
+    public class ApartmentGeneratedElementsGroupingModeOption
+    {
+        public ApartmentGeneratedElementsGroupingMode Value { get; set; }
+        public string Title { get; set; }
+    }
+
     public class ApartmentPresetData
     {
         public const string NoWorksetSelection = "Без рабочего набора";
@@ -70,6 +83,8 @@ namespace KPLN_ApartmentManager.Forms
         public string PlumbingWorksetName { get; set; }
         public string WindowWorksetName { get; set; }
 
+        public ApartmentGeneratedElementsGroupingMode GeneratedElementsGroupingMode { get; set; }
+
         public ApartmentFamilyPostProcessAction FamilyPostProcessAction { get; set; }
 
         public ApartmentPresetData Clone()
@@ -99,6 +114,7 @@ namespace KPLN_ApartmentManager.Forms
                 FurnitureWorksetName = FurnitureWorksetName,
                 PlumbingWorksetName = PlumbingWorksetName,
                 WindowWorksetName = WindowWorksetName,
+                GeneratedElementsGroupingMode = GeneratedElementsGroupingMode,
                 FamilyPostProcessAction = FamilyPostProcessAction
             };
         }
@@ -147,6 +163,7 @@ namespace KPLN_ApartmentManager.Forms
                     FurnitureWorksetName = ApartmentPresetData.NoWorksetSelection,
                     PlumbingWorksetName = ApartmentPresetData.NoWorksetSelection,
                     WindowWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    GeneratedElementsGroupingMode = ApartmentGeneratedElementsGroupingMode.None,
                     FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
                 };
 
