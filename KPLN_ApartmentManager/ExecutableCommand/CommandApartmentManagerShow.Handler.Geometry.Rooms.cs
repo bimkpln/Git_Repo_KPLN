@@ -13,7 +13,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private int PlaceRoomGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
             List<PreparedApartmentRooms> preparedRoomsByApartment,
             Level roomLevel, List<RoomAreaMismatchInfo> roomAreaMismatches,
-            Dictionary<long, ApartmentProcessState> apartmentStates, ViewPlan roomPlan, List<string> debugMessages)
+            Dictionary<long, ApartmentProcessState> apartmentStates, ViewPlan roomPlan, List<string> debugMessages,
+            ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || roomLevel == null)
                 return 0;
@@ -49,7 +50,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         roomLevel,
                         roomPlan,
                         state,
-                        debugMessages);
+                        debugMessages,
+                        worksetTargets);
                     if (createdRoomSeparators > 0)
                     {
                         state.CreatedRoomSeparatorsCount += createdRoomSeparators;
@@ -63,7 +65,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             apartmentRooms,
                             roomLevel,
                             roomAreaMismatches,
-                            createdRoomIds);
+                            createdRoomIds,
+                            worksetTargets);
                     }
 
                     foreach (ElementId createdRoomId in createdRoomIds)
@@ -90,7 +93,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         }
 
         private int PlaceRoomSeparatorsForApartment(Document doc, PreparedApartmentWalls apartmentWalls, List<Line> roomSeparatorLines,
-            Level roomLevel, ViewPlan roomPlan, ApartmentProcessState state, List<string> debugMessages)
+            Level roomLevel, ViewPlan roomPlan, ApartmentProcessState state, List<string> debugMessages,
+            ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || apartmentWalls == null || roomSeparatorLines == null ||
                 roomSeparatorLines.Count == 0 || roomLevel == null || roomPlan == null)
@@ -105,6 +109,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     XYZ.BasisZ,
                     new XYZ(0, 0, roomLevel.Elevation));
                 sketchPlane = SketchPlane.Create(doc, plane);
+                TryAssignElementToWorkset(sketchPlane, worksetTargets != null ? worksetTargets.RoomWorksetId : null);
             }
             catch (Exception ex)
             {
@@ -142,6 +147,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         if (modelCurve == null)
                             continue;
 
+                        TryAssignElementToWorkset(modelCurve, worksetTargets != null ? worksetTargets.RoomWorksetId : null);
                         createdCount++;
                         AddCreatedElementCandidate(state, modelCurve.Id);
                     }
@@ -500,7 +506,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         }
 
         private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel,
-            List<RoomAreaMismatchInfo> roomAreaMismatches, List<ElementId> createdRoomIds = null)
+            List<RoomAreaMismatchInfo> roomAreaMismatches, List<ElementId> createdRoomIds = null,
+            ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || apartmentRooms == null || roomLevel == null)
                 return 0;
@@ -531,6 +538,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     Room createdRoom = doc.Create.NewRoom(roomLevel, roomUv);
                     if (createdRoom == null)
                         continue;
+
+                    TryAssignElementToWorkset(createdRoom, worksetTargets != null ? worksetTargets.RoomWorksetId : null);
 
                     Parameter roomNameParam = createdRoom.get_Parameter(BuiltInParameter.ROOM_NAME);
                     if (roomNameParam != null && !roomNameParam.IsReadOnly && !string.IsNullOrWhiteSpace(preparedRoom.RoomName))

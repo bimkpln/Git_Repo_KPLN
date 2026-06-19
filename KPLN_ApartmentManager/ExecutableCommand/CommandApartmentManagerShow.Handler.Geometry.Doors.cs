@@ -13,7 +13,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private int PlaceDoorGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
             List<PreparedApartmentDoors> preparedDoorsByApartment, Dictionary<long, List<Wall>> doorHostWallsByApartment,
             List<ExistingWallLineInfo> existingWalls, Level baseLevel, List<string> debugMessages,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+            Dictionary<long, ApartmentProcessState> apartmentStates, ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || baseLevel == null)
                 return 0;
@@ -49,7 +49,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         baseLevel,
                         debugMessages,
                         state,
-                        createdDoorIds);
+                        createdDoorIds,
+                        worksetTargets);
 
                     foreach (ElementId createdDoorId in createdDoorIds)
                         AddCreatedElementCandidate(state, createdDoorId);
@@ -265,7 +266,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private int PlaceDoorsForApartment(Document doc, PreparedApartmentDoors apartmentDoors, List<Wall> createdWallsForApartment,
             List<ExistingWallLineInfo> existingWallsOnLevel, Level baseLevel, List<string> debugMessages, ApartmentProcessState state,
-            List<ElementId> createdDoorIds = null)
+            List<ElementId> createdDoorIds = null, ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || apartmentDoors == null || createdWallsForApartment == null || baseLevel == null)
                 return 0;
@@ -291,7 +292,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         baseLevel,
                         debugMessages,
                         state,
-                        createdDoorIds))
+                        createdDoorIds,
+                        worksetTargets))
                     {
                         installedCount++;
                     }
@@ -402,6 +404,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     baseLevel,
                     expectedRoom,
                     createdDoorIds,
+                    worksetTargets,
                     out createdDoor,
                     out attemptsDiagnostic))
                 {
@@ -420,6 +423,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 if (createdDoor != null)
                 {
+                    TryAssignElementToWorkset(createdDoor, worksetTargets != null ? worksetTargets.DoorWorksetId : null);
                     installedCount++;
 
                     if (createdDoorIds != null)
@@ -527,6 +531,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private static bool TryCreateDoorInExpectedRoom(Document doc, PreparedDoorPlacement preparedDoor, FamilySymbol symbolToPlace,
             Wall hostWall, XYZ projectedPoint, Level baseLevel, Room expectedRoom, List<ElementId> createdElementIds,
+            ApartmentWorksetTargets worksetTargets,
             out FamilyInstance createdDoor, out string diagnostic)
         {
             createdDoor = null;
@@ -592,6 +597,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 baseLevel,
                 expectedRoom,
                 createdElementIds,
+                worksetTargets,
                 out createdDoor,
                 out auxiliaryDiagnostic))
             {
@@ -660,7 +666,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private static bool TryCreateDoorWithAuxiliaryHostWallForRoomSide(Document doc, PreparedDoorPlacement preparedDoor,
             FamilySymbol symbolToPlace, Wall hostWall, XYZ projectedPoint, Level baseLevel, Room expectedRoom,
-            List<ElementId> createdElementIds, out FamilyInstance createdDoor, out string diagnostic)
+            List<ElementId> createdElementIds, ApartmentWorksetTargets worksetTargets, out FamilyInstance createdDoor, out string diagnostic)
         {
             createdDoor = null;
             diagnostic = "<нет данных>";
@@ -753,6 +759,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                     auxiliaryWall = Wall.Create(doc, auxiliaryAxis, auxiliaryWallType.Id, baseLevel.Id, wallHeight, 0, false, false);
                     ApplyWallPresetParameters(auxiliaryWall, baseLevel, null, wallBaseOffset, wallHeight);
+                    TryAssignElementToWorkset(auxiliaryWall, worksetTargets != null ? worksetTargets.WallWorksetId : null);
                     doc.Regenerate();
                     TryJoinGeometry(doc, hostWall, auxiliaryWall);
                 }
@@ -1089,7 +1096,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private bool PlaceEntranceDoorForApartment(Document doc, PreparedDoorPlacement preparedDoor, List<Wall> createdWallsForApartment,
             List<ExistingWallLineInfo> existingWallsOnLevel, Level baseLevel, List<string> debugMessages, ApartmentProcessState state,
-            List<ElementId> createdDoorIds = null)
+            List<ElementId> createdDoorIds = null, ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || preparedDoor == null || preparedDoor.DoorSymbol == null || preparedDoor.InsertPoint == null || baseLevel == null)
                 return false;
@@ -1260,6 +1267,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         useEntranceReferenceDirection,
                         createdWallsForApartment,
                         createdDoorIds,
+                        worksetTargets,
                         entranceDiagnostics,
                         out entrancePlacementFailureDiagnostic);
                 }
@@ -1335,6 +1343,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             if (state != null)
                 state.InstalledEntranceDoorsCount++;
+
+            TryAssignElementToWorkset(createdDoor, worksetTargets != null ? worksetTargets.DoorWorksetId : null);
 
             if (createdDoorIds != null)
                 createdDoorIds.Add(createdDoor.Id);
@@ -1605,7 +1615,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private FamilyInstance CreateMatchingEntranceDoorForExistingHost(Document doc, PreparedDoorPlacement preparedDoor, Wall hostWall, Level baseLevel,
             XYZ projectedPoint, XYZ outwardDirection, FamilySymbol sourceSymbol, FamilySymbol preferredSymbol, XYZ firstReferenceDirection,
             bool useFirstReferenceDirection, List<Wall> createdWallsForApartment, List<ElementId> createdElementIds,
-            List<string> diagnostics, out string failureDiagnostic)
+            ApartmentWorksetTargets worksetTargets, List<string> diagnostics, out string failureDiagnostic)
         {
             failureDiagnostic = null;
 
@@ -1670,6 +1680,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 createdWallsForApartment,
                 createdElementIds,
                 candidates,
+                worksetTargets,
                 attempts);
 
             if (auxiliaryDoor != null)
@@ -1686,7 +1697,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private FamilyInstance TryCreateEntranceDoorWithAuxiliaryHostWall(Document doc, PreparedDoorPlacement preparedDoor, Wall existingHostWall,
             Level baseLevel, XYZ projectedPoint, XYZ outwardDirection, List<Wall> createdWallsForApartment, List<ElementId> createdElementIds,
-            List<EntranceDoorCreationCandidate> candidates, List<string> attempts)
+            List<EntranceDoorCreationCandidate> candidates, ApartmentWorksetTargets worksetTargets, List<string> attempts)
         {
             if (doc == null || preparedDoor == null || existingHostWall == null || baseLevel == null || projectedPoint == null || candidates == null)
                 return null;
@@ -1746,6 +1757,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 auxiliaryWall = Wall.Create(doc, auxiliaryAxis, auxiliaryWallType.Id, baseLevel.Id, wallHeight, 0, false, false);
                 ApplyWallPresetParameters(auxiliaryWall, baseLevel, null, wallBaseOffset, wallHeight);
+                TryAssignElementToWorkset(auxiliaryWall, worksetTargets != null ? worksetTargets.WallWorksetId : null);
                 doc.Regenerate();
                 TryJoinGeometry(doc, existingHostWall, auxiliaryWall);
             }

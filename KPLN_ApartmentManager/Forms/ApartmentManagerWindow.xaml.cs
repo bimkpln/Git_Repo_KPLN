@@ -41,6 +41,8 @@ namespace KPLN_ApartmentManager.Forms
 
     public class ApartmentPresetData
     {
+        public const string NoWorksetSelection = "Без рабочего набора";
+
         public string SelectedPlanName { get; set; }
         public string SelectedPlanModelSignature { get; set; }
 
@@ -60,6 +62,13 @@ namespace KPLN_ApartmentManager.Forms
         public string RoomDoor { get; set; }
 
         public Dictionary<string, string> DoorsByRoomCategory { get; set; }
+
+        public string WallWorksetName { get; set; }
+        public string DoorWorksetName { get; set; }
+        public string RoomWorksetName { get; set; }
+        public string FurnitureWorksetName { get; set; }
+        public string PlumbingWorksetName { get; set; }
+        public string WindowWorksetName { get; set; }
 
         public ApartmentFamilyPostProcessAction FamilyPostProcessAction { get; set; }
 
@@ -84,6 +93,12 @@ namespace KPLN_ApartmentManager.Forms
                 DoorsByRoomCategory = DoorsByRoomCategory != null
                     ? new Dictionary<string, string>(DoorsByRoomCategory)
                     : new Dictionary<string, string>(),
+                WallWorksetName = WallWorksetName,
+                DoorWorksetName = DoorWorksetName,
+                RoomWorksetName = RoomWorksetName,
+                FurnitureWorksetName = FurnitureWorksetName,
+                PlumbingWorksetName = PlumbingWorksetName,
+                WindowWorksetName = WindowWorksetName,
                 FamilyPostProcessAction = FamilyPostProcessAction
             };
         }
@@ -126,6 +141,12 @@ namespace KPLN_ApartmentManager.Forms
                     BathroomDoor = "Не выбрано",
                     RoomDoor = "Не выбрано",
                     DoorsByRoomCategory = new Dictionary<string, string>(),
+                    WallWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    DoorWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    RoomWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    FurnitureWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    PlumbingWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    WindowWorksetName = ApartmentPresetData.NoWorksetSelection,
                     FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
                 };
 

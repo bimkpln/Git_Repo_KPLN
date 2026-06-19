@@ -13,7 +13,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private int PlaceWindowGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
             List<PreparedApartmentWindows> preparedWindowsByApartment, Dictionary<long, List<Wall>> doorHostWallsByApartment,
             List<ExistingWallLineInfo> existingWalls, Level baseLevel, List<string> debugMessages,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+            Dictionary<long, ApartmentProcessState> apartmentStates, ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || baseLevel == null)
                 return 0;
@@ -48,7 +48,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         baseLevel,
                         debugMessages,
                         state,
-                        createdWindowIds);
+                        createdWindowIds,
+                        worksetTargets);
 
                     foreach (ElementId createdWindowId in createdWindowIds)
                         AddCreatedElementCandidate(state, createdWindowId);
@@ -72,7 +73,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private int PlaceWindowsForApartment(Document doc, PreparedApartmentWindows apartmentWindows, List<Wall> createdWallsForApartment,
             List<ExistingWallLineInfo> existingWallsOnLevel, Level baseLevel, List<string> debugMessages, ApartmentProcessState state,
-            List<ElementId> createdWindowIds = null)
+            List<ElementId> createdWindowIds = null, ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || apartmentWindows == null || apartmentWindows.Windows == null || apartmentWindows.Windows.Count == 0 || baseLevel == null)
                 return 0;
@@ -172,6 +173,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         ", тип '" + BuildWindowTypeDisplayName(symbolToPlace) + "'.");
                     continue;
                 }
+
+                TryAssignElementToWorkset(createdWindow, worksetTargets != null ? worksetTargets.WindowWorksetId : null);
 
                 if (!TrySetWindowSillHeight(createdWindow, preparedWindow.SillHeightInternal))
                 {

@@ -522,7 +522,8 @@
                             </Grid>
                         </GroupBox>
 
-                        <GroupBox Header="Окна" Margin="0,0,0,10">
+                        <!-- Оконный модуль временно отключён. -->
+                        <GroupBox Header="Окна" Margin="0,0,0,10" Visibility="Collapsed">
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -593,6 +594,107 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </GroupBox>
+
+                        <GroupBox Header="Рабочие наборы" Margin="0,10,0,0">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Стены:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedWallWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Двери:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedDoorWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Помещения:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedRoomWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Мебель:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedFurnitureWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Сантехника:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedPlumbingWorkset}"/>
+                                </Grid>
+                            </Grid>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>

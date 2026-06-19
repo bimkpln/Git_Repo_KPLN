@@ -32,7 +32,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private CreatedApartmentWallGeometry CreateWallGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
             Level baseLevel, Level topLevel, double baseOffsetInternal, double wallHeightInternal, List<ExistingWallLineInfo> existingWalls,
-            double connectTol, Dictionary<long, ApartmentProcessState> apartmentStates)
+            double connectTol, Dictionary<long, ApartmentProcessState> apartmentStates, ApartmentWorksetTargets worksetTargets)
         {
             CreatedApartmentWallGeometry result = new CreatedApartmentWallGeometry();
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || baseLevel == null)
@@ -60,6 +60,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                         Wall wall = Wall.Create(doc, axis, apartmentWalls.WallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
                         ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
+                        TryAssignElementToWorkset(wall, worksetTargets != null ? worksetTargets.WallWorksetId : null);
                         createdWallsForApartment.Add(wall);
                         createdDoorHostWallsForApartment.Add(wall);
 
@@ -84,6 +85,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                             Wall wall = Wall.Create(doc, axis, apartmentWalls.ShaftWallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
                             ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
+                            TryAssignElementToWorkset(wall, worksetTargets != null ? worksetTargets.WallWorksetId : null);
                             createdWallsForApartment.Add(wall);
 
                             AddCreatedElementCandidate(state, wall.Id);
@@ -108,6 +110,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                             Wall wall = Wall.Create(doc, axis, apartmentWalls.LoggiaWallType.Id, baseLevel.Id, wallHeightInternal, 0, false, false);
                             ApplyWallPresetParameters(wall, baseLevel, topLevel, baseOffsetInternal, wallHeightInternal);
+                            TryAssignElementToWorkset(wall, worksetTargets != null ? worksetTargets.WallWorksetId : null);
                             createdWallsForApartment.Add(wall);
 
                             AddCreatedElementCandidate(state, wall.Id);
