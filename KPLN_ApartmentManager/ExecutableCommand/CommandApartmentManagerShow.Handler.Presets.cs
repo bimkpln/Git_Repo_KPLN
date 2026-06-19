@@ -15,7 +15,6 @@ namespace KPLN_ApartmentManager.ExecutableCommand
     {
         private const int ShaftWallTypeStorageKey = int.MinValue;
         private const int LoggiaWallTypeStorageKey = int.MinValue + 1;
-
         private void ExecuteRefreshApartmentPresets(Document doc, ApartmentPresetData currentPreset)
         {
             ViewPlan activeFloorPlan = doc.ActiveView as ViewPlan;
@@ -97,6 +96,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             option.LowerConstraintText = BuildLowerConstraintTextForPlan(doc, plan);
             option.UpperConstraintText = "Неприсоединённая";
+            option.ApartmentCount = GetPlacedApartmentInstancesForPlan(doc, plan).Count;
             option.ModelSignature = BuildApartmentPlanModelSignature(doc, plan);
             option.WallThicknesses = BuildWallThicknessesForPlan(doc, plan);
             option.WallTypeOptionsByThickness = BuildWallTypeOptionsByThicknessForPlan(doc, plan);

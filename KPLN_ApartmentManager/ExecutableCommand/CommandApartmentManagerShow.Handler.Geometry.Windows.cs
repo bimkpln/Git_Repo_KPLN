@@ -219,13 +219,6 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         debugMessages.Add("Вставка окна с referenceDirection не сработала, используется стандартная вставка: " + ex.Message);
                 }
             }
-            else if (useLevelHostOverload && debugMessages != null)
-            {
-                debugMessages.Add(
-                    "Вставка окна: referenceDirection-overload пропущен, потому что host-стена не на нулевой отметке; используется host+level вставка. " +
-                    "Точка = " + FormatPointMm(projectedPoint) +
-                    ", уровень = " + FormatLevelDebugText(baseLevel) + ".");
-            }
 
             return doc.Create.NewFamilyInstance(
                 projectedPoint,

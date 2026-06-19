@@ -46,6 +46,7 @@ namespace KPLN_ApartmentManager.Forms
 
         public string LowerConstraintText { get; set; }
         public string UpperConstraintText { get; set; }
+        public int ApartmentCount { get; set; }
 
         public List<int> WallThicknesses { get; set; }
         public Dictionary<int, List<string>> WallTypeOptionsByThickness { get; set; }
@@ -90,6 +91,7 @@ namespace KPLN_ApartmentManager.Forms
             result.ModelSignature = ModelSignature;
             result.LowerConstraintText = LowerConstraintText;
             result.UpperConstraintText = UpperConstraintText;
+            result.ApartmentCount = ApartmentCount;
             result.WallThicknesses = WallThicknesses != null ? new List<int>(WallThicknesses) : new List<int>();
             result.WallTypeOptionsByThickness = CloneDictionaryList(WallTypeOptionsByThickness);
             result.WindowTypeOptions = WindowTypeOptions != null ? new List<string>(WindowTypeOptions) : new List<string>();
@@ -696,6 +698,7 @@ namespace KPLN_ApartmentManager.Forms
             _selectedPlan.LoggiaWallTypeOptions = resolved.LoggiaWallTypeOptions ?? new List<string>();
             _selectedPlan.HasLoggiaWallMarkers = resolved.HasLoggiaWallMarkers;
             _selectedPlan.ModelSignature = resolved.ModelSignature;
+            _selectedPlan.ApartmentCount = resolved.ApartmentCount;
             _selectedPlan.RoomCategories = resolved.RoomCategories ?? new List<string>();
             _selectedPlan.DoorRequirements = resolved.DoorRequirements ?? new List<ApartmentDoorRequirementOption>();
             _selectedPlan.DoorTypeOptionsByRequirementKey = resolved.DoorTypeOptionsByRequirementKey ?? new Dictionary<string, List<string>>();

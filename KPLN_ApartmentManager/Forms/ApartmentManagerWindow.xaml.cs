@@ -382,6 +382,7 @@ namespace KPLN_ApartmentManager.Forms
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string RfaFolderPath = @"X:\BIM\3_Семейства\1_АР\000_Архитектурная концепция\000_Семейства квартир";
+        private const int Long3DConversionApartmentWarningThreshold = 10;
 
         public event Action<int> ItemPicked;
         public event Action ApartmentPresetDataRefreshRequested;
@@ -551,6 +552,24 @@ namespace KPLN_ApartmentManager.Forms
 
         private void OnConvertTo3D()
         {
+            int apartmentCount = PresetsVm != null && PresetsVm.SelectedPlan != null
+                ? PresetsVm.SelectedPlan.ApartmentCount
+                : 0;
+
+            if (apartmentCount > Long3DConversionApartmentWarningThreshold)
+            {
+                MessageBoxResult result = MessageBox.Show(
+                    "Будет обработано квартир: " + apartmentCount + "\n\n" +
+                    "Построение 3D для большого количества квартир может занять много времени. Продолжить?",
+                    "KPLN. Менеджер квартир",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
             ConvertTo3DRequested?.Invoke();
         }
 
