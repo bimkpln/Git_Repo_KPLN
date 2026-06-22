@@ -9,10 +9,8 @@ namespace KPLN_UserDataAgent.Services
         public string SyncId { get; set; }
         public string EventTime { get; set; }
         public string WindowsUser { get; set; }
-        public int SubDepartmentId { get; set; }
-        public int RevitVersion { get; set; }
-        public string DocumentTitle { get; set; }
-        public string DocumentPath { get; set; }
+        public string DepartmentKey { get; set; }
+        public long EventTransactionId { get; set; }
         public string EventName { get; set; }
         public string TransactionName { get; set; }
         public int AddedCount { get; set; }
@@ -22,7 +20,6 @@ namespace KPLN_UserDataAgent.Services
         public static UserEventRecord Create(
             string eventName,
             string transactionName,
-            DocumentSnapshot document,
             UserContextSnapshot userContext,
             int addedCount = 0,
             int modifiedCount = 0,
@@ -33,10 +30,7 @@ namespace KPLN_UserDataAgent.Services
                 SyncId = Guid.NewGuid().ToString("N"),
                 EventTime = DateTime.Now.ToString("yyyy.MM.dd. HH:mm:ss"),
                 WindowsUser = userContext.UserName ?? string.Empty,
-                SubDepartmentId = userContext.SubDepartmentId,
-                RevitVersion = ModuleData.RevitVersion,
-                DocumentTitle = document == null ? string.Empty : document.Title ?? string.Empty,
-                DocumentPath = document == null ? string.Empty : document.Path ?? string.Empty,
+                DepartmentKey = userContext.DepartmentKey ?? CentralDatabasePathBuilder.UnknownDepartmentKey,
                 EventName = eventName ?? string.Empty,
                 TransactionName = transactionName ?? string.Empty,
                 AddedCount = addedCount,
