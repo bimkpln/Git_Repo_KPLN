@@ -21,6 +21,37 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             int createdRoomsCount = 0;
 
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Разделители помещений"))
+            {
+                t.Start();
+                ApplyApartmentFailureHandling(t);
+
+                foreach (PreparedApartmentWalls apartmentWalls in preparedApartments)
+                {
+                    if (apartmentWalls == null)
+                        continue;
+
+                    ApartmentProcessState state = GetOrCreateApartmentState(apartmentStates, apartmentWalls.ApartmentId);
+
+                    int createdRoomSeparators = PlaceRoomSeparatorsForApartment(
+                        doc,
+                        apartmentWalls,
+                        apartmentWalls.RoomSeparatorLines,
+                        roomLevel,
+                        roomPlan,
+                        state,
+                        debugMessages,
+                        worksetTargets);
+                    if (createdRoomSeparators > 0)
+                    {
+                        state.CreatedRoomSeparatorsCount += createdRoomSeparators;
+                    }
+                }
+
+                doc.Regenerate();
+                t.Commit();
+            }
+
             using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Геометрия помещений"))
             {
                 t.Start();
@@ -43,21 +74,6 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     int mismatchesBefore = roomAreaMismatches != null ? roomAreaMismatches.Count : 0;
                     List<ElementId> createdRoomIds = new List<ElementId>();
 
-                    int createdRoomSeparators = PlaceRoomSeparatorsForApartment(
-                        doc,
-                        apartmentWalls,
-                        apartmentWalls.RoomSeparatorLines,
-                        roomLevel,
-                        roomPlan,
-                        state,
-                        debugMessages,
-                        worksetTargets);
-                    if (createdRoomSeparators > 0)
-                    {
-                        state.CreatedRoomSeparatorsCount += createdRoomSeparators;
-                        doc.Regenerate();
-                    }
-
                     if (apartmentRooms != null && apartmentRooms.Rooms != null && apartmentRooms.Rooms.Count > 0)
                     {
                         createdRoomsForApartment = PlaceRoomsForApartment(
@@ -66,6 +82,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             roomLevel,
                             roomAreaMismatches,
                             createdRoomIds,
+                            state,
+                            debugMessages,
                             worksetTargets);
                     }
 
@@ -166,7 +184,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         }
 
         private PreparedApartmentRooms PrepareRoomsForApartment(Document doc, FamilyInstance apartmentFi, List<Line> loggiaAxisLines,
-            List<Line> apartmentAxisLines, List<Line> shaftAxisLines, List<Line> roomSeparatorLines, View geometryView, List<string> debugMessages)
+            List<Line> roomPlacementReferenceAxisLines, List<Line> shaftAxisLines, List<Line> roomSeparatorLines,
+            PreparedApartmentDoors preparedDoors, View geometryView, List<string> debugMessages)
         {
             PreparedApartmentRooms result = new PreparedApartmentRooms();
             result.ApartmentId = apartmentFi != null ? apartmentFi.Id : ElementId.InvalidElementId;
@@ -227,8 +246,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     result.Rooms.Add(new PreparedRoomPlacement
                     {
                         ApartmentId = apartmentFi.Id,
+                        SourceRoom2DId = roomFi.Id,
                         RoomName = roomName.Trim(),
                         InsertPoint = insertPointInProject,
+                        BoundaryVertices = loopData.Vertices != null ? loopData.Vertices.ToList() : null,
                         ExpectedAreaInternal = expectedAreaInternal,
                         HasShaftInside = RoomContainsAnyLine(loopData.Vertices, shaftAxisLines)
                     });
@@ -242,7 +263,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 }
             }
 
-            AddSyntheticLoggiaRoomPlacements(result, apartmentFi, doc, loggiaAxisLines, apartmentAxisLines);
+            AddSyntheticLoggiaRoomPlacements(result, apartmentFi, doc, loggiaAxisLines, roomPlacementReferenceAxisLines, preparedDoors, debugMessages);
 
             return result;
         }
@@ -278,7 +299,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         }
 
         private static void AddSyntheticLoggiaRoomPlacements(PreparedApartmentRooms result, FamilyInstance apartmentFi, Document doc,
-            List<Line> loggiaAxisLines, List<Line> apartmentAxisLines)
+            List<Line> loggiaAxisLines, List<Line> roomPlacementReferenceAxisLines, PreparedApartmentDoors preparedDoors, List<string> debugMessages)
         {
             if (result == null || apartmentFi == null)
                 return;
@@ -301,6 +322,9 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (loggiaAxis == null || loggiaAxis.Length < IDHelper.ConvertMmToInternal(10))
                     continue;
 
+                if (TryAddLoggiaRoomBySplittingPreparedRoom(result, loggiaAxis, apartmentInteriorPoint, preparedDoors, debugMessages))
+                    continue;
+
                 XYZ p0 = loggiaAxis.GetEndPoint(0);
                 XYZ p1 = loggiaAxis.GetEndPoint(1);
                 XYZ dir = Normalize2D(p1 - p0);
@@ -313,7 +337,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     0.5 * (p0.Y + p1.Y),
                     0.5 * (p0.Z + p1.Z));
 
-                XYZ roomPoint = BuildLoggiaRoomPointBetweenWalls(loggiaAxis, apartmentAxisLines);
+                XYZ roomPoint = BuildLoggiaRoomPointBetweenWalls(loggiaAxis, roomPlacementReferenceAxisLines);
 
                 XYZ loggiaDir = normal;
                 if (apartmentInteriorPoint != null)
@@ -331,6 +355,21 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         mid.Z);
                 }
 
+                PreparedRoomPlacement containingRoom = FindPreparedRoomContainingPoint(roomPoint, result.Rooms);
+                if (containingRoom != null)
+                {
+                    if (debugMessages != null)
+                    {
+                        debugMessages.Add(
+                            "Для квартиры ID = " + IDHelper.ElIdValue(result.ApartmentId) +
+                            " точка помещения лоджии " + FormatPointMm(roomPoint) +
+                            " попала внутрь подготовленного помещения '" + containingRoom.RoomName +
+                            "'. Лоджия не создаётся, чтобы не разместить помещение не в той области.");
+                    }
+
+                    continue;
+                }
+
                 bool duplicate = result.Rooms.Any(x =>
                     x != null &&
                     x.InsertPoint != null &&
@@ -344,9 +383,416 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     ApartmentId = result.ApartmentId,
                     RoomName = "Лоджия",
                     InsertPoint = roomPoint,
+                    BoundaryVertices = null,
                     ExpectedAreaInternal = 0
                 });
             }
+        }
+
+        private static bool TryAddLoggiaRoomBySplittingPreparedRoom(PreparedApartmentRooms result, Line loggiaAxis,
+            XYZ apartmentInteriorPoint, PreparedApartmentDoors preparedDoors, List<string> debugMessages)
+        {
+            if (result == null || result.Rooms == null || result.Rooms.Count == 0 || loggiaAxis == null)
+                return false;
+
+            RoomLoggiaSplitResult bestSplit = null;
+            PreparedRoomPlacement bestRoom = null;
+            double bestScore = double.MinValue;
+
+            foreach (PreparedRoomPlacement room in result.Rooms)
+            {
+                if (room == null || IsLoggiaRoomName(room.RoomName) ||
+                    room.BoundaryVertices == null || room.BoundaryVertices.Count < 3)
+                {
+                    continue;
+                }
+
+                RoomLoggiaSplitResult split;
+                if (!TrySplitRoomByLoggiaAxis(room, loggiaAxis, apartmentInteriorPoint, preparedDoors, out split))
+                    continue;
+
+                double score = split.MainSideResolvedByDoor
+                    ? split.LoggiaAreaInternal + 1000000.0
+                    : split.LoggiaAreaInternal;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestSplit = split;
+                    bestRoom = room;
+                }
+            }
+
+            if (bestRoom == null || bestSplit == null)
+                return false;
+
+            bestRoom.BoundaryVertices = bestSplit.MainVertices;
+            bestRoom.InsertPoint = bestSplit.MainPoint;
+
+            result.Rooms.Add(new PreparedRoomPlacement
+            {
+                ApartmentId = result.ApartmentId,
+                RoomName = "Лоджия",
+                InsertPoint = bestSplit.LoggiaPoint,
+                BoundaryVertices = bestSplit.LoggiaVertices,
+                ExpectedAreaInternal = 0
+            });
+
+            return true;
+        }
+
+        private static bool TrySplitRoomByLoggiaAxis(PreparedRoomPlacement room, Line loggiaAxis, XYZ apartmentInteriorPoint,
+            PreparedApartmentDoors preparedDoors, out RoomLoggiaSplitResult result)
+        {
+            result = null;
+
+            if (room == null || room.BoundaryVertices == null || room.BoundaryVertices.Count < 3 || loggiaAxis == null)
+                return false;
+
+            XYZ axisP0 = loggiaAxis.GetEndPoint(0);
+            XYZ axisP1 = loggiaAxis.GetEndPoint(1);
+            XYZ axisDir = Normalize2D(axisP1 - axisP0);
+            if (axisDir == null)
+                return false;
+
+            double axisLength = Distance2D(axisP0, axisP1);
+            if (axisLength < IDHelper.ConvertMmToInternal(10))
+                return false;
+
+            double chordFrom;
+            double chordTo;
+            if (!TryGetPolygonLineChordInterval(room.BoundaryVertices, axisP0, axisDir, out chordFrom, out chordTo))
+                return false;
+
+            double overlapFrom = Math.Max(0, chordFrom);
+            double overlapTo = Math.Min(axisLength, chordTo);
+            double minOverlap = Math.Min(axisLength * 0.35, IDHelper.ConvertMmToInternal(500));
+            minOverlap = Math.Max(minOverlap, IDHelper.ConvertMmToInternal(100));
+            if (overlapTo - overlapFrom < minOverlap)
+                return false;
+
+            XYZ normal = new XYZ(-axisDir.Y, axisDir.X, 0);
+            double clipTol = IDHelper.ConvertMmToInternal(5);
+            List<XYZ> positive = ClipPolygonByLineHalfPlane(room.BoundaryVertices, axisP0, normal, true, clipTol);
+            List<XYZ> negative = ClipPolygonByLineHalfPlane(room.BoundaryVertices, axisP0, normal, false, clipTol);
+
+            double positiveArea = GetValidPolygonArea(positive);
+            double negativeArea = GetValidPolygonArea(negative);
+            double minArea = IDHelper.ConvertMmToInternal(300) * IDHelper.ConvertMmToInternal(300);
+
+            if (positiveArea < minArea || negativeArea < minArea)
+                return false;
+
+            List<XYZ> mainVertices;
+            List<XYZ> loggiaVertices;
+            double mainArea;
+            double loggiaArea;
+
+            double referenceSide = GetRoomMainSideByDoorPoints(room, preparedDoors, axisP0, normal, clipTol);
+            bool mainSideResolvedByDoor = Math.Abs(referenceSide) > clipTol;
+
+            if (Math.Abs(referenceSide) <= clipTol && room.InsertPoint != null)
+                referenceSide = Dot2D(room.InsertPoint - axisP0, normal);
+
+            if (Math.Abs(referenceSide) <= clipTol && apartmentInteriorPoint != null)
+                referenceSide = Dot2D(apartmentInteriorPoint - axisP0, normal);
+
+            if (Math.Abs(referenceSide) > clipTol)
+            {
+                bool mainIsPositive = referenceSide > 0;
+                mainVertices = mainIsPositive ? positive : negative;
+                loggiaVertices = mainIsPositive ? negative : positive;
+                mainArea = mainIsPositive ? positiveArea : negativeArea;
+                loggiaArea = mainIsPositive ? negativeArea : positiveArea;
+            }
+            else if (positiveArea >= negativeArea)
+            {
+                mainVertices = positive;
+                loggiaVertices = negative;
+                mainArea = positiveArea;
+                loggiaArea = negativeArea;
+            }
+            else
+            {
+                mainVertices = negative;
+                loggiaVertices = positive;
+                mainArea = negativeArea;
+                loggiaArea = positiveArea;
+            }
+
+            XYZ mainPoint = FindInteriorPointForRoomLoop(mainVertices);
+            XYZ loggiaPoint = FindInteriorPointForRoomLoop(loggiaVertices);
+            if (mainPoint == null || loggiaPoint == null)
+                return false;
+
+            result = new RoomLoggiaSplitResult
+            {
+                MainVertices = mainVertices,
+                LoggiaVertices = loggiaVertices,
+                MainPoint = mainPoint,
+                LoggiaPoint = loggiaPoint,
+                MainAreaInternal = mainArea,
+                LoggiaAreaInternal = loggiaArea,
+                MainSideResolvedByDoor = mainSideResolvedByDoor
+            };
+
+            return true;
+        }
+
+        private static double GetRoomMainSideByDoorPoints(PreparedRoomPlacement room, PreparedApartmentDoors preparedDoors,
+            XYZ linePoint, XYZ normal, double tolerance)
+        {
+            if (room == null || preparedDoors == null || preparedDoors.Doors == null ||
+                linePoint == null || normal == null)
+            {
+                return 0;
+            }
+
+            int positiveCount = 0;
+            int negativeCount = 0;
+
+            foreach (PreparedDoorPlacement door in preparedDoors.Doors)
+            {
+                if (door == null || door.InsertPoint == null || door.IsEntranceDoor)
+                    continue;
+
+                if (!DoorBelongsToPreparedRoom(door, room) && !DoorPointBelongsToPreparedRoomGeometry(door, room))
+                    continue;
+
+                double side = Dot2D(door.InsertPoint - linePoint, normal);
+                if (side > tolerance)
+                    positiveCount++;
+                else if (side < -tolerance)
+                    negativeCount++;
+            }
+
+            if (positiveCount == 0 && negativeCount == 0)
+                return 0;
+
+            if (positiveCount == negativeCount)
+                return 0;
+
+            if (positiveCount > negativeCount)
+                return 1;
+
+            return -1;
+        }
+
+        private static bool DoorBelongsToPreparedRoom(PreparedDoorPlacement door, PreparedRoomPlacement room)
+        {
+            if (door == null || room == null)
+                return false;
+
+            if (room.SourceRoom2DId != null && room.SourceRoom2DId != ElementId.InvalidElementId &&
+                door.RelatedRoom2D != null && door.RelatedRoom2D.Id != null &&
+                IDHelper.ElIdValue(door.RelatedRoom2D.Id) == IDHelper.ElIdValue(room.SourceRoom2DId))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(door.RoomCategory) &&
+                !string.Equals(door.RoomCategory, "-", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(room.RoomName) &&
+                string.Equals(door.RoomCategory.Trim(), room.RoomName.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool DoorPointBelongsToPreparedRoomGeometry(PreparedDoorPlacement door, PreparedRoomPlacement room)
+        {
+            if (door == null || door.InsertPoint == null || room == null ||
+                room.BoundaryVertices == null || room.BoundaryVertices.Count < 3)
+            {
+                return false;
+            }
+
+            double tolerance = IDHelper.ConvertMmToInternal(150);
+            return IsPointInsidePolygon2D(door.InsertPoint, room.BoundaryVertices, tolerance);
+        }
+
+        private static bool TryGetPolygonLineChordInterval(List<XYZ> vertices, XYZ linePoint, XYZ lineDir, out double from, out double to)
+        {
+            from = 0;
+            to = 0;
+
+            if (vertices == null || vertices.Count < 3 || linePoint == null || lineDir == null)
+                return false;
+
+            XYZ normal = new XYZ(-lineDir.Y, lineDir.X, 0);
+            double tol = IDHelper.ConvertMmToInternal(5);
+            List<double> parameters = new List<double>();
+
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                XYZ a = vertices[i];
+                XYZ b = vertices[(i + 1) % vertices.Count];
+                if (a == null || b == null)
+                    continue;
+
+                double da = Dot2D(a - linePoint, normal);
+                double db = Dot2D(b - linePoint, normal);
+
+                if (Math.Abs(da) <= tol)
+                    AddDistinctLineParameter(parameters, Dot2D(a - linePoint, lineDir), tol);
+
+                if (Math.Abs(db) <= tol)
+                    AddDistinctLineParameter(parameters, Dot2D(b - linePoint, lineDir), tol);
+
+                if ((da > tol && db < -tol) || (da < -tol && db > tol))
+                {
+                    double ratio = da / (da - db);
+                    XYZ intersection = new XYZ(
+                        a.X + (b.X - a.X) * ratio,
+                        a.Y + (b.Y - a.Y) * ratio,
+                        a.Z + (b.Z - a.Z) * ratio);
+
+                    AddDistinctLineParameter(parameters, Dot2D(intersection - linePoint, lineDir), tol);
+                }
+            }
+
+            if (parameters.Count < 2)
+                return false;
+
+            List<double> ordered = parameters.OrderBy(x => x).ToList();
+            from = ordered.First();
+            to = ordered.Last();
+
+            return to - from >= IDHelper.ConvertMmToInternal(100);
+        }
+
+        private static void AddDistinctLineParameter(List<double> parameters, double value, double tolerance)
+        {
+            if (parameters == null)
+                return;
+
+            foreach (double existing in parameters)
+            {
+                if (Math.Abs(existing - value) <= tolerance)
+                    return;
+            }
+
+            parameters.Add(value);
+        }
+
+        private static List<XYZ> ClipPolygonByLineHalfPlane(List<XYZ> vertices, XYZ linePoint, XYZ normal, bool keepPositive, double tolerance)
+        {
+            List<XYZ> result = new List<XYZ>();
+            if (vertices == null || vertices.Count < 3 || linePoint == null || normal == null)
+                return result;
+
+            XYZ previous = vertices[vertices.Count - 1];
+            double previousDistance = Dot2D(previous - linePoint, normal);
+            bool previousInside = keepPositive
+                ? previousDistance >= -tolerance
+                : previousDistance <= tolerance;
+
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                XYZ current = vertices[i];
+                if (current == null || previous == null)
+                {
+                    previous = current;
+                    continue;
+                }
+
+                double currentDistance = Dot2D(current - linePoint, normal);
+                bool currentInside = keepPositive
+                    ? currentDistance >= -tolerance
+                    : currentDistance <= tolerance;
+
+                if (previousInside != currentInside)
+                {
+                    XYZ intersection = IntersectSegmentWithLine(previous, current, linePoint, normal);
+                    AddDistinctPolygonVertex(result, intersection, tolerance);
+                }
+
+                if (currentInside)
+                    AddDistinctPolygonVertex(result, current, tolerance);
+
+                previous = current;
+                previousDistance = currentDistance;
+                previousInside = currentInside;
+            }
+
+            return NormalizePolygonVertices(result, tolerance);
+        }
+
+        private static XYZ IntersectSegmentWithLine(XYZ a, XYZ b, XYZ linePoint, XYZ normal)
+        {
+            double da = Dot2D(a - linePoint, normal);
+            double db = Dot2D(b - linePoint, normal);
+            double denom = da - db;
+            if (Math.Abs(denom) < 1e-12)
+                return a;
+
+            double ratio = da / denom;
+            if (ratio < 0)
+                ratio = 0;
+            else if (ratio > 1)
+                ratio = 1;
+
+            return new XYZ(
+                a.X + (b.X - a.X) * ratio,
+                a.Y + (b.Y - a.Y) * ratio,
+                a.Z + (b.Z - a.Z) * ratio);
+        }
+
+        private static void AddDistinctPolygonVertex(List<XYZ> vertices, XYZ point, double tolerance)
+        {
+            if (vertices == null || point == null)
+                return;
+
+            if (vertices.Count > 0 && Distance2D(vertices[vertices.Count - 1], point) <= tolerance)
+                return;
+
+            vertices.Add(point);
+        }
+
+        private static List<XYZ> NormalizePolygonVertices(List<XYZ> vertices, double tolerance)
+        {
+            List<XYZ> result = new List<XYZ>();
+            if (vertices == null)
+                return result;
+
+            foreach (XYZ vertex in vertices)
+                AddDistinctPolygonVertex(result, vertex, tolerance);
+
+            while (result.Count > 1 && Distance2D(result[0], result[result.Count - 1]) <= tolerance)
+                result.RemoveAt(result.Count - 1);
+
+            return result;
+        }
+
+        private static double GetValidPolygonArea(List<XYZ> vertices)
+        {
+            if (vertices == null || vertices.Count < 3)
+                return 0;
+
+            return Math.Abs(GetSignedAreaXY(vertices));
+        }
+
+        private static PreparedRoomPlacement FindPreparedRoomContainingPoint(XYZ point, List<PreparedRoomPlacement> rooms)
+        {
+            if (point == null || rooms == null || rooms.Count == 0)
+                return null;
+
+            double tolerance = IDHelper.ConvertMmToInternal(10);
+
+            foreach (PreparedRoomPlacement room in rooms)
+            {
+                if (room == null || IsLoggiaRoomName(room.RoomName) ||
+                    room.BoundaryVertices == null || room.BoundaryVertices.Count < 3)
+                {
+                    continue;
+                }
+
+                if (IsPointInsidePolygon2D(point, room.BoundaryVertices, tolerance))
+                    return room;
+            }
+
+            return null;
         }
 
         private static XYZ BuildLoggiaRoomPointBetweenWalls(Line loggiaAxis, List<Line> apartmentAxisLines)
@@ -462,10 +908,20 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                    normalized.IndexOf("loggia", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        private static bool HasRoomAtPoint(Document doc, Level level, XYZ point)
+        private static bool HasRoomAtPoint(Document doc, Level level, XYZ point, IEnumerable<ElementId> excludedRoomIds = null)
         {
             if (doc == null || level == null || point == null)
                 return false;
+
+            HashSet<long> excludedIds = new HashSet<long>();
+            if (excludedRoomIds != null)
+            {
+                foreach (ElementId id in excludedRoomIds)
+                {
+                    if (id != null && id != ElementId.InvalidElementId)
+                        excludedIds.Add(IDHelper.ElIdValue(id));
+                }
+            }
 
             List<Room> rooms = new FilteredElementCollector(doc)
                 .OfCategory(BuiltInCategory.OST_Rooms)
@@ -478,6 +934,9 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 try
                 {
+                    if (room.Id != null && excludedIds.Contains(IDHelper.ElIdValue(room.Id)))
+                        continue;
+
                     if (room.IsPointInRoom(point))
                         return true;
                 }
@@ -507,6 +966,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel,
             List<RoomAreaMismatchInfo> roomAreaMismatches, List<ElementId> createdRoomIds = null,
+            ApartmentProcessState state = null, List<string> debugMessages = null,
             ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || apartmentRooms == null || roomLevel == null)
@@ -530,14 +990,32 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         preparedRoom.InsertPoint.Y,
                         roomLevel.Elevation + IDHelper.ConvertMmToInternal(100));
 
-                    if (!apartmentRooms.HasRoomSeparators && HasRoomAtPoint(doc, roomLevel, roomPoint))
+                    IEnumerable<ElementId> ignoredRoomsForPointCheck = apartmentRooms.HasRoomSeparators
+                        ? createdRoomIds
+                        : null;
+
+                    if (HasRoomAtPoint(doc, roomLevel, roomPoint, ignoredRoomsForPointCheck))
+                    {
+                        AddApartmentDiagnostic(
+                            state,
+                            debugMessages,
+                            "Помещение '" + preparedRoom.RoomName + "' не создано: в точке " +
+                            FormatPointMm(roomPoint) + " уже есть помещение на уровне '" + roomLevel.Name + "'.");
                         continue;
+                    }
 
                     UV roomUv = new UV(preparedRoom.InsertPoint.X, preparedRoom.InsertPoint.Y);
 
                     Room createdRoom = doc.Create.NewRoom(roomLevel, roomUv);
                     if (createdRoom == null)
+                    {
+                        AddApartmentDiagnostic(
+                            state,
+                            debugMessages,
+                            "Revit не создал помещение '" + preparedRoom.RoomName +
+                            "' в точке " + FormatPointMm(roomPoint) + ".");
                         continue;
+                    }
 
                     TryAssignElementToWorkset(createdRoom, worksetTargets != null ? worksetTargets.RoomWorksetId : null);
 
@@ -546,6 +1024,41 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         roomNameParam.Set(preparedRoom.RoomName);
 
                     doc.Regenerate();
+
+                    if (createdRoom.Area <= 1e-9)
+                    {
+                        ElementId createdRoomId = createdRoom.Id;
+                        try
+                        {
+                            doc.Delete(createdRoomId);
+                        }
+                        catch
+                        {
+                        }
+
+                        if (preparedRoom.ExpectedAreaInternal > 0 && roomAreaMismatches != null)
+                        {
+                            roomAreaMismatches.Add(new RoomAreaMismatchInfo
+                            {
+                                ApartmentId = preparedRoom.ApartmentId,
+                                RoomName = preparedRoom.RoomName,
+                                ExpectedAreaInternal = preparedRoom.ExpectedAreaInternal,
+                                ActualAreaInternal = 0
+                            });
+                        }
+
+                        if (!apartmentRooms.HasRoomSeparators)
+                        {
+                            AddApartmentDiagnostic(
+                                state,
+                                debugMessages,
+                                "Помещение '" + preparedRoom.RoomName + "' в точке " +
+                                FormatPointMm(roomPoint) +
+                                " получило нулевую площадь и удалено. Проверьте замкнутость и Room Bounding стен вокруг точки.");
+                        }
+
+                        continue;
+                    }
 
                     if (preparedRoom.ExpectedAreaInternal > 0)
                     {
@@ -577,8 +1090,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     if (createdRoomIds != null)
                         createdRoomIds.Add(createdRoom.Id);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    AddApartmentDiagnostic(
+                        state,
+                        debugMessages,
+                        "Ошибка создания помещения '" + preparedRoom.RoomName + "' в точке " +
+                        FormatPointMm(preparedRoom.InsertPoint) + ": " + ex.Message);
                 }
             }
 
@@ -590,6 +1108,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             public CurveLoop Loop { get; set; }
             public List<XYZ> Vertices { get; set; }
             public double AreaAbs { get; set; }
+        }
+
+        private class RoomLoggiaSplitResult
+        {
+            public List<XYZ> MainVertices { get; set; }
+            public List<XYZ> LoggiaVertices { get; set; }
+            public XYZ MainPoint { get; set; }
+            public XYZ LoggiaPoint { get; set; }
+            public double MainAreaInternal { get; set; }
+            public double LoggiaAreaInternal { get; set; }
+            public bool MainSideResolvedByDoor { get; set; }
         }
 
         private class RoomBoundaryNode

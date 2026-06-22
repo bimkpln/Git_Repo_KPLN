@@ -147,7 +147,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         }
 
         private List<Line> BuildPreparedWallAxisLinesForSingleRoom(FamilyInstance roomFi, double apartmentWallThicknessInternal, List<ExistingWallLineInfo> existingWalls,
-            View geometryView, double connectTol, double intersectionTol, List<string> debugMessages, ref int skippedWallsForApartment)
+            View geometryView, double connectTol, double intersectionTol, List<Line> roomPlacementReferenceAxisLines, List<string> debugMessages, ref int skippedWallsForApartment)
         {
             if (roomFi == null)
                 return new List<Line>();
@@ -166,6 +166,16 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             List<Line> preparedAxisLines = SnapNewLinesToExistingWalls(wallAxisLines, existingWalls, connectTol);
             preparedAxisLines = MergeCollinearLines(preparedAxisLines);
+
+            if (roomPlacementReferenceAxisLines != null)
+            {
+                foreach (Line referenceAxis in preparedAxisLines)
+                {
+                    if (referenceAxis != null && referenceAxis.Length > 1e-6)
+                        roomPlacementReferenceAxisLines.Add(referenceAxis);
+                }
+            }
+
             preparedAxisLines = RemoveSegmentsOverlappingExistingWalls(preparedAxisLines, existingWalls, apartmentWallThicknessInternal);
             preparedAxisLines = MergeCollinearLines(preparedAxisLines);
 

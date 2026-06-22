@@ -2682,6 +2682,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     List<Line> apartmentAxisLines = new List<Line>();
+                    List<Line> roomPlacementReferenceAxisLines = new List<Line>();
 
                     foreach (FamilyInstance roomFi in roomInstances)
                     {
@@ -2696,6 +2697,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 targetPlan,
                                 connectTol,
                                 intersectionTol,
+                                roomPlacementReferenceAxisLines,
                                 debugMessages,
                                 ref skippedWallsForApartment);
 
@@ -2717,6 +2719,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                    roomPlacementReferenceAxisLines = MergeCollinearLines(roomPlacementReferenceAxisLines);
+                    roomPlacementReferenceAxisLines = WithZ(roomPlacementReferenceAxisLines, placementPointZ);
                     apartmentAxisLines = RemoveSegmentsOverlappingExistingWalls(apartmentAxisLines, existingWalls, apartmentWallThicknessInternal);
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
                     apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
@@ -2876,9 +2880,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         doc,
                         apartmentFi,
                         loggiaAxisLines,
-                        apartmentAxisLines,
+                        roomPlacementReferenceAxisLines,
                         shaftAxisLines,
                         roomSeparatorLines,
+                        preparedDoors,
                         targetPlan,
                         debugMessages);
                     preparedRoomsByApartment.Add(preparedRooms);
@@ -2999,6 +3004,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return roomAreaMismatches ?? new List<RoomAreaMismatchInfo>();
 
             double areaToleranceSquareMeters = 0.1;
+            double separatorCombinedAreaToleranceSquareMeters = 0.05;
             List<RoomAreaMismatchInfo> result = new List<RoomAreaMismatchInfo>();
             List<RoomAreaMismatchInfo> mismatchesWithoutApartment = new List<RoomAreaMismatchInfo>();
 
@@ -3014,7 +3020,20 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     state.FoundRoomSeparatorsCount > 0;
 
                 if (hasRoomSeparators)
-                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(mismatchesForApartment, areaToleranceSquareMeters);
+                {
+                    int combinedZeroAreaRoomsCount;
+                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(
+                        mismatchesForApartment,
+                        areaToleranceSquareMeters,
+                        out combinedZeroAreaRoomsCount);
+
+                    if (combinedZeroAreaRoomsCount > 0 && state != null)
+                        state.SkippedRoomsCount = Math.Max(0, state.SkippedRoomsCount - combinedZeroAreaRoomsCount);
+
+                    mismatchesForApartment = FilterBalancedRoomSeparatorAreaMismatches(
+                        mismatchesForApartment,
+                        separatorCombinedAreaToleranceSquareMeters);
+                }
 
                 result.AddRange(mismatchesForApartment);
             }
@@ -3024,8 +3043,42 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return result;
         }
 
-        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters)
+        private static List<RoomAreaMismatchInfo> FilterBalancedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double combinedAreaToleranceSquareMeters)
         {
+            if (mismatches == null || mismatches.Count < 2)
+                return mismatches ?? new List<RoomAreaMismatchInfo>();
+
+            double totalDelta = 0;
+            bool hasPositiveDelta = false;
+            bool hasNegativeDelta = false;
+
+            foreach (RoomAreaMismatchInfo mismatch in mismatches)
+            {
+                if (mismatch == null)
+                    continue;
+
+                double expectedArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatch.ExpectedAreaInternal);
+                double actualArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatch.ActualAreaInternal);
+                double delta = actualArea - expectedArea;
+
+                totalDelta += delta;
+                if (delta > combinedAreaToleranceSquareMeters)
+                    hasPositiveDelta = true;
+                if (delta < -combinedAreaToleranceSquareMeters)
+                    hasNegativeDelta = true;
+            }
+
+            if (hasPositiveDelta && hasNegativeDelta && Math.Abs(totalDelta) <= combinedAreaToleranceSquareMeters)
+                return new List<RoomAreaMismatchInfo>();
+
+            return mismatches;
+        }
+
+        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters,
+            out int combinedZeroAreaRoomsCount)
+        {
+            combinedZeroAreaRoomsCount = 0;
+
             if (mismatches == null || mismatches.Count < 2)
                 return mismatches ?? new List<RoomAreaMismatchInfo>();
 
@@ -3067,7 +3120,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 ignoredMismatches.Add(combinedMismatch);
                 foreach (RoomAreaMismatchInfo matchingPart in matchingParts)
+                {
                     ignoredMismatches.Add(matchingPart);
+                    combinedZeroAreaRoomsCount++;
+                }
             }
 
             if (ignoredMismatches.Count == 0)

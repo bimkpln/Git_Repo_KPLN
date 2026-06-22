@@ -372,8 +372,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private class PreparedRoomPlacement
         {
             public ElementId ApartmentId { get; set; }
+            public ElementId SourceRoom2DId { get; set; }
             public string RoomName { get; set; }
             public XYZ InsertPoint { get; set; }
+            public List<XYZ> BoundaryVertices { get; set; }
             public double ExpectedAreaInternal { get; set; }
             public bool HasShaftInside { get; set; }
         }
