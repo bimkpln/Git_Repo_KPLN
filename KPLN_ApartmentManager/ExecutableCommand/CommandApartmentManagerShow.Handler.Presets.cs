@@ -137,7 +137,44 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 apartments.Select(x =>
                     IDHelper.ElIdValue(x.Id) +
                     ":loggia=" +
-                    (IsLoggiaEnabled(x) ? "1" : "0")));
+                    BuildLoggiaParameterSignature(x)));
+        }
+
+        private static string BuildLoggiaParameterSignature(FamilyInstance apartmentInstance)
+        {
+            if (apartmentInstance == null)
+                return "0";
+
+            List<string> parts = new List<string>();
+
+            bool baseValue;
+            if (TryGetYesNoParamFromElement(apartmentInstance, out baseValue, "Лоджия", "Loggia"))
+                parts.Add("Лоджия=" + (baseValue ? "1" : "0"));
+
+            try
+            {
+                foreach (Parameter parameter in apartmentInstance.Parameters)
+                {
+                    if (parameter == null || parameter.Definition == null)
+                        continue;
+
+                    string parameterName = parameter.Definition.Name;
+                    if (!IsSpecificLoggiaParameterName(parameterName))
+                        continue;
+
+                    bool value;
+                    if (TryGetYesNoParameterValue(parameter, out value))
+                        parts.Add(parameterName.Trim() + "=" + (value ? "1" : "0"));
+                }
+            }
+            catch
+            {
+            }
+
+            if (parts.Count == 0)
+                return "0";
+
+            return string.Join(",", parts.OrderBy(x => x));
         }
 
         private string BuildLowerConstraintTextForPlan(Document doc, ViewPlan plan)
@@ -925,19 +962,16 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (ownerDoc == null || apartmentInstance == null)
                 return loggias;
 
-            if (!IsLoggiaEnabled(apartmentInstance))
-                return loggias;
-
             HashSet<long> visitedInstances = new HashSet<long>();
-            CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, apartmentInstance, loggias, visitedInstances, 0);
+            CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, apartmentInstance, apartmentInstance, loggias, visitedInstances, 0);
 
             return DeduplicateLoggiaWallMarkers(loggias);
         }
 
-        private static void CollectPlacedLoggiaWallMarkersRecursive(Document ownerDoc, FamilyInstance instance,
+        private static void CollectPlacedLoggiaWallMarkersRecursive(Document ownerDoc, FamilyInstance apartmentInstance, FamilyInstance instance,
             List<FamilyLoggiaWallMarker> loggias, HashSet<long> visitedInstanceIds, int depth)
         {
-            if (ownerDoc == null || instance == null || loggias == null || visitedInstanceIds == null)
+            if (ownerDoc == null || apartmentInstance == null || instance == null || loggias == null || visitedInstanceIds == null)
                 return;
 
             if (depth > 12)
@@ -949,7 +983,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             visitedInstanceIds.Add(id);
 
-            AddLoggiaHelperLinesFromPlacedInstance(ownerDoc, instance, loggias);
+            AddLoggiaHelperLinesFromPlacedInstance(ownerDoc, apartmentInstance, instance, loggias);
 
             ICollection<ElementId> subIds = null;
             try
@@ -970,19 +1004,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (subFi == null)
                     continue;
 
-                CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, subFi, loggias, visitedInstanceIds, depth + 1);
+                CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, apartmentInstance, subFi, loggias, visitedInstanceIds, depth + 1);
             }
         }
 
-        private static void AddLoggiaHelperLinesFromPlacedInstance(Document doc, FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias)
+        private static void AddLoggiaHelperLinesFromPlacedInstance(Document doc, FamilyInstance apartmentInstance, FamilyInstance instance,
+            List<FamilyLoggiaWallMarker> loggias)
         {
-            if (doc == null || instance == null || loggias == null)
+            if (doc == null || apartmentInstance == null || instance == null || loggias == null)
                 return;
 
-            if (IsLoggiaWallHelperInstance(instance))
-                AddLongestLoggiaWallMarkerFromInstanceGeometry(doc, instance, loggias);
-            else
-                AddStyledLoggiaWallMarkersFromInstanceGeometry(doc, instance, loggias);
+            bool hasStyledLoggiaCandidate;
+            AddStyledLoggiaWallMarkersFromInstanceGeometry(doc, apartmentInstance, instance, loggias, out hasStyledLoggiaCandidate);
+            if (hasStyledLoggiaCandidate)
+                return;
+
+            string instanceLoggiaName = GetHelperInstanceMatchedName(instance, IsLoggiaWallHelperName);
+            if (!string.IsNullOrWhiteSpace(instanceLoggiaName))
+                AddLongestLoggiaWallMarkerFromInstanceGeometry(doc, apartmentInstance, instance, instanceLoggiaName, loggias);
         }
 
         private static void CollectPlacedInstanceHelperLinesRecursive(Document ownerDoc, FamilyInstance instance,
@@ -1136,8 +1175,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
-        private static void AddLongestLoggiaWallMarkerFromInstanceGeometry(Document doc, FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias)
+        private static void AddLongestLoggiaWallMarkerFromInstanceGeometry(Document doc, FamilyInstance apartmentInstance,
+            FamilyInstance instance, string loggiaName, List<FamilyLoggiaWallMarker> loggias)
         {
+            if (!IsLoggiaEnabled(apartmentInstance, loggiaName))
+                return;
+
             HelperLineCandidate best = GetBestHelperLineCandidate(doc, instance, IsLoggiaWallHelperName, true);
             if (best == null)
                 return;
@@ -1149,16 +1192,28 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             });
         }
 
-        private static void AddStyledLoggiaWallMarkersFromInstanceGeometry(Document doc, FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias)
+        private static int AddStyledLoggiaWallMarkersFromInstanceGeometry(Document doc, FamilyInstance apartmentInstance,
+            FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias, out bool hasStyledLoggiaCandidate)
         {
+            int addedCount = 0;
+            hasStyledLoggiaCandidate = false;
+
             foreach (HelperLineCandidate line in CollectHelperLineCandidates(doc, instance, IsLoggiaWallHelperName, false))
             {
+                hasStyledLoggiaCandidate = true;
+
+                if (line == null || !IsLoggiaEnabled(apartmentInstance, line.MatchedName))
+                    continue;
+
                 loggias.Add(new FamilyLoggiaWallMarker
                 {
                     ProjectP0 = line.P0,
                     ProjectP1 = line.P1
                 });
+                addedCount++;
             }
+
+            return addedCount;
         }
 
         private static HelperLineCandidate GetBestHelperLineCandidate(Document doc, FamilyInstance instance, Func<string, bool> styleNamePredicate,
@@ -1249,7 +1304,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (curve == null || !curve.IsBound)
                     continue;
 
-                bool styleMatched = GeometryObjectMatchesName(doc, obj, styleNamePredicate);
+                string matchedName = GetGeometryObjectMatchedName(doc, obj, styleNamePredicate);
+                bool styleMatched = !string.IsNullOrWhiteSpace(matchedName);
                 if (!allowAnyStyle && !styleMatched)
                     continue;
 
@@ -1273,15 +1329,21 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 {
                     P0 = p0,
                     P1 = p1,
-                    StyleMatched = styleMatched
+                    StyleMatched = styleMatched,
+                    MatchedName = matchedName
                 });
             }
         }
 
         private static bool GeometryObjectMatchesName(Document doc, GeometryObject obj, Func<string, bool> namePredicate)
         {
+            return !string.IsNullOrWhiteSpace(GetGeometryObjectMatchedName(doc, obj, namePredicate));
+        }
+
+        private static string GetGeometryObjectMatchedName(Document doc, GeometryObject obj, Func<string, bool> namePredicate)
+        {
             if (doc == null || obj == null || namePredicate == null)
-                return false;
+                return null;
 
             ElementId graphicsStyleId = ElementId.InvalidElementId;
             try
@@ -1294,17 +1356,19 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             if (graphicsStyleId == ElementId.InvalidElementId)
-                return false;
+                return null;
 
             GraphicsStyle graphicsStyle = doc.GetElement(graphicsStyleId) as GraphicsStyle;
             if (graphicsStyle == null)
-                return false;
+                return null;
 
             if (namePredicate(graphicsStyle.Name))
-                return true;
+                return graphicsStyle.Name;
 
             Category category = graphicsStyle.GraphicsStyleCategory;
-            return category != null && namePredicate(category.Name);
+            return category != null && namePredicate(category.Name)
+                ? category.Name
+                : null;
         }
 
         private static bool IsWindowHelperInstance(FamilyInstance instance)
@@ -1333,10 +1397,34 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return TryGetYesNoParamFromElement(apartmentInstance, out value, "Лоджия", "Loggia") && value;
         }
 
+        private static bool IsLoggiaEnabled(FamilyInstance apartmentInstance, string loggiaName)
+        {
+            if (apartmentInstance == null)
+                return false;
+
+            string markerName = GetLoggiaWallHelperMarkerName(loggiaName);
+            if (string.IsNullOrWhiteSpace(markerName))
+                return IsLoggiaEnabled(apartmentInstance);
+
+            bool value;
+            if (TryGetYesNoParamFromElement(apartmentInstance, out value, markerName))
+                return value;
+
+            if (IsBaseLoggiaWallHelperName(markerName))
+                return IsLoggiaEnabled(apartmentInstance);
+
+            return false;
+        }
+
         private static bool HelperInstanceMatchesName(FamilyInstance instance, Func<string, bool> namePredicate)
         {
+            return !string.IsNullOrWhiteSpace(GetHelperInstanceMatchedName(instance, namePredicate));
+        }
+
+        private static string GetHelperInstanceMatchedName(FamilyInstance instance, Func<string, bool> namePredicate)
+        {
             if (instance == null || namePredicate == null)
-                return false;
+                return null;
 
             List<string> values = new List<string>();
 
@@ -1354,7 +1442,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (instance.Category != null)
                 values.Add(instance.Category.Name);
 
-            return values.Any(x => namePredicate(x));
+            return values.FirstOrDefault(x => namePredicate(x));
         }
 
         private static bool TryGetYesNoParamFromElement(Element element, out bool value, params string[] paramNames)
@@ -2061,16 +2149,60 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private static bool IsLoggiaWallHelperName(string value)
         {
+            return !string.IsNullOrWhiteSpace(GetLoggiaWallHelperMarkerName(value));
+        }
+
+        private static bool IsBaseLoggiaWallHelperName(string value)
+        {
             if (string.IsNullOrWhiteSpace(value))
                 return false;
 
-            string normalized = value
+            string normalized = NormalizeHelperName(value);
+            return string.Equals(normalized, "лоджия", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "loggia", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSpecificLoggiaParameterName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string normalized = NormalizeHelperName(value);
+            return normalized.StartsWith("лоджия_", StringComparison.OrdinalIgnoreCase) ||
+                   normalized.StartsWith("loggia_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetLoggiaWallHelperMarkerName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            string trimmed = value.Trim();
+            string normalized = NormalizeHelperName(trimmed);
+
+            if (IsSpecificLoggiaParameterName(trimmed))
+            {
+                return trimmed;
+            }
+
+            if (IsBaseLoggiaWallHelperName(trimmed))
+                return trimmed;
+
+            if (normalized.IndexOf("лоджия", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                normalized.IndexOf("loggia", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "Лоджия";
+            }
+
+            return null;
+        }
+
+        private static string NormalizeHelperName(string value)
+        {
+            return (value ?? string.Empty)
                 .Replace('ё', 'е')
                 .Replace('Ё', 'Е')
                 .Trim();
-
-            return normalized.IndexOf("лоджия", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   normalized.IndexOf("loggia", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool TryGetDoorWidthMmFrom2DTypeName(string typeName, out int widthMm)
@@ -2429,7 +2561,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     !string.Equals(savedSignature, currentSignature, StringComparison.Ordinal))
                 {
                     isPresetDataStale = true;
-                    otherProblems.Add("Данные плана устарели: изменился состав 2D-семейств квартир или параметр 'Лоджия'. Нажмите 'Обновить данные'.");
+                    otherProblems.Add("Данные плана устарели: изменился состав 2D-семейств квартир или параметры лоджий. Нажмите 'Обновить данные'.");
                 }
 
                 List<int> requiredThicknesses = BuildWallThicknessesForPlan(doc, targetPlan);
