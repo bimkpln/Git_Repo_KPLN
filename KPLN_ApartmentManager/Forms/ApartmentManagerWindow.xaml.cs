@@ -11,6 +11,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -38,16 +39,31 @@ namespace KPLN_ApartmentManager.Forms
         public string Title { get; set; }
     }
 
+    public enum ApartmentGeneratedElementsGroupingMode
+    {
+        None,
+        ByApartment,
+        WholePlan
+    }
+
+    public class ApartmentGeneratedElementsGroupingModeOption
+    {
+        public ApartmentGeneratedElementsGroupingMode Value { get; set; }
+        public string Title { get; set; }
+    }
+
     public class ApartmentPresetData
     {
+        public const string NoWorksetSelection = "Без рабочего набора";
+
         public string SelectedPlanName { get; set; }
         public string SelectedPlanModelSignature { get; set; }
 
         public string LowerConstraint { get; set; }
         public string UpperConstraint { get; set; }
 
-        public int BaseOffset { get; set; }
-        public int WallHeight { get; set; }
+        public double BaseOffset { get; set; }
+        public double WallHeight { get; set; }
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
 
@@ -59,6 +75,15 @@ namespace KPLN_ApartmentManager.Forms
         public string RoomDoor { get; set; }
 
         public Dictionary<string, string> DoorsByRoomCategory { get; set; }
+
+        public string WallWorksetName { get; set; }
+        public string DoorWorksetName { get; set; }
+        public string RoomWorksetName { get; set; }
+        public string FurnitureWorksetName { get; set; }
+        public string PlumbingWorksetName { get; set; }
+        public string WindowWorksetName { get; set; }
+
+        public ApartmentGeneratedElementsGroupingMode GeneratedElementsGroupingMode { get; set; }
 
         public ApartmentFamilyPostProcessAction FamilyPostProcessAction { get; set; }
 
@@ -83,6 +108,13 @@ namespace KPLN_ApartmentManager.Forms
                 DoorsByRoomCategory = DoorsByRoomCategory != null
                     ? new Dictionary<string, string>(DoorsByRoomCategory)
                     : new Dictionary<string, string>(),
+                WallWorksetName = WallWorksetName,
+                DoorWorksetName = DoorWorksetName,
+                RoomWorksetName = RoomWorksetName,
+                FurnitureWorksetName = FurnitureWorksetName,
+                PlumbingWorksetName = PlumbingWorksetName,
+                WindowWorksetName = WindowWorksetName,
+                GeneratedElementsGroupingMode = GeneratedElementsGroupingMode,
                 FamilyPostProcessAction = FamilyPostProcessAction
             };
         }
@@ -125,6 +157,13 @@ namespace KPLN_ApartmentManager.Forms
                     BathroomDoor = "Не выбрано",
                     RoomDoor = "Не выбрано",
                     DoorsByRoomCategory = new Dictionary<string, string>(),
+                    WallWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    DoorWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    RoomWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    FurnitureWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    PlumbingWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    WindowWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    GeneratedElementsGroupingMode = ApartmentGeneratedElementsGroupingMode.None,
                     FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
                 };
 
@@ -269,12 +308,119 @@ namespace KPLN_ApartmentManager.Forms
             if (string.IsNullOrWhiteSpace(text) || text.Any(x => !char.IsDigit(x)))
                 e.CancelCommand();
         }
+
+        private void SignedDecimal_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            if (textBox == null)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            e.Handled = !IsPotentialDecimalText(GetTextAfterInput(textBox, e.Text));
+        }
+
+        private void SignedDecimal_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.DataObject.GetDataPresent(typeof(string)))
+            {
+                e.CancelCommand();
+                return;
+            }
+
+            TextBox textBox = sender as TextBox;
+            string text = e.DataObject.GetData(typeof(string)) as string;
+            string nextText = textBox != null
+                ? GetTextAfterInput(textBox, text)
+                : text;
+
+            if (!IsPotentialDecimalText(nextText))
+                e.CancelCommand();
+        }
+
+        private void PresetComboBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            ComboBox comboBox = sender as ComboBox;
+            if (comboBox == null || comboBox.IsDropDownOpen)
+                return;
+
+            e.Handled = true;
+
+            UIElement parent = comboBox.Parent as UIElement;
+            if (parent == null)
+                return;
+
+            MouseWheelEventArgs args = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            {
+                RoutedEvent = UIElement.MouseWheelEvent,
+                Source = sender
+            };
+            parent.RaiseEvent(args);
+        }
+
+        private static string GetTextAfterInput(TextBox textBox, string input)
+        {
+            string text = textBox.Text ?? "";
+            input = input ?? "";
+
+            int selectionStart = textBox.SelectionStart;
+            if (selectionStart < 0)
+                selectionStart = 0;
+            if (selectionStart > text.Length)
+                selectionStart = text.Length;
+
+            int selectionLength = textBox.SelectionLength;
+            if (selectionLength < 0)
+                selectionLength = 0;
+            if (selectionStart + selectionLength > text.Length)
+                selectionLength = text.Length - selectionStart;
+
+            return text.Remove(selectionStart, selectionLength).Insert(selectionStart, input);
+        }
+
+        private static bool IsPotentialDecimalText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return true;
+
+            bool hasSeparator = false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                if (char.IsDigit(c))
+                    continue;
+
+                if (c == '-')
+                {
+                    if (i != 0)
+                        return false;
+                    continue;
+                }
+
+                if (c == '.' || c == ',')
+                {
+                    if (hasSeparator)
+                        return false;
+
+                    hasSeparator = true;
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
     }
 
     internal class ApartmentManagerVm : INotifyPropertyChanged
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string RfaFolderPath = @"X:\BIM\3_Семейства\1_АР\000_Архитектурная концепция\000_Семейства квартир";
+        private const int Long3DConversionApartmentWarningThreshold = 10;
 
         public event Action<int> ItemPicked;
         public event Action ApartmentPresetDataRefreshRequested;
@@ -444,6 +590,24 @@ namespace KPLN_ApartmentManager.Forms
 
         private void OnConvertTo3D()
         {
+            int apartmentCount = PresetsVm != null && PresetsVm.SelectedPlan != null
+                ? PresetsVm.SelectedPlan.ApartmentCount
+                : 0;
+
+            if (apartmentCount > Long3DConversionApartmentWarningThreshold)
+            {
+                MessageBoxResult result = MessageBox.Show(
+                    "Будет обработано квартир: " + apartmentCount + "\n\n" +
+                    "Построение 3D для большого количества квартир может занять много времени. Продолжить?",
+                    "KPLN. Менеджер квартир",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
             ConvertTo3DRequested?.Invoke();
         }
 

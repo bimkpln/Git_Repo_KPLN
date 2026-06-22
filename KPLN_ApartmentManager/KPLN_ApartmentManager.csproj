@@ -231,7 +231,9 @@
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.Rooms.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.Walls.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Geometry.Windows.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Grouping.cs" />
     <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Presets.cs" />
+    <Compile Include="ExecutableCommand\CommandApartmentManagerShow.Handler.Worksets.cs" />
     <Compile Include="Forms\ApartmentExecutionReportWindow.xaml.cs">
       <DependentUpon>ApartmentExecutionReportWindow.xaml</DependentUpon>
     </Compile>

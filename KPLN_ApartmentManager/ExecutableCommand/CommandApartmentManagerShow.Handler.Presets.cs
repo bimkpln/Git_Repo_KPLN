@@ -15,7 +15,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
     {
         private const int ShaftWallTypeStorageKey = int.MinValue;
         private const int LoggiaWallTypeStorageKey = int.MinValue + 1;
-
+        private const bool EnableWindow3DModule = false;
         private void ExecuteRefreshApartmentPresets(Document doc, ApartmentPresetData currentPreset)
         {
             ViewPlan activeFloorPlan = doc.ActiveView as ViewPlan;
@@ -42,6 +42,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         {
             ApartmentPresetPanelContext context = new ApartmentPresetPanelContext();
             context.ActivePlanName = activeFloorPlan != null ? activeFloorPlan.Name : "";
+            context.WorksetOptions = BuildUserWorksetOptions(doc);
 
             List<ViewPlan> plans = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewPlan))
@@ -97,6 +98,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             option.LowerConstraintText = BuildLowerConstraintTextForPlan(doc, plan);
             option.UpperConstraintText = "Неприсоединённая";
+            option.ApartmentCount = GetPlacedApartmentInstancesForPlan(doc, plan).Count;
             option.ModelSignature = BuildApartmentPlanModelSignature(doc, plan);
             option.WallThicknesses = BuildWallThicknessesForPlan(doc, plan);
             option.WallTypeOptionsByThickness = BuildWallTypeOptionsByThicknessForPlan(doc, plan);
@@ -2460,7 +2462,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 List<ApartmentDoorRequirementOption> doorRequirements = BuildDoorRequirementsForPlan(doc, targetPlan);
 
-                bool hasWindowMarkers = HasWindowMarkersForPlan(doc, targetPlan);
+                bool hasWindowMarkers = EnableWindow3DModule && HasWindowMarkersForPlan(doc, targetPlan);
                 if (hasWindowMarkers)
                 {
                     if (effectivePreset.WindowSillHeight <= 0)
@@ -2637,6 +2639,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             double connectTol = IDHelper.ConvertMmToInternal(150);
             double intersectionTol = IDHelper.ConvertMmToInternal(10);
+            double placementPointZ = 0.0;
+            ApartmentWorksetTargets worksetTargets = ResolveApartmentWorksetTargets(doc, effectivePreset);
 
             List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, targetPlan.GenLevel.Id);
 
@@ -2678,6 +2682,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     List<Line> apartmentAxisLines = new List<Line>();
+                    List<Line> roomPlacementReferenceAxisLines = new List<Line>();
 
                     foreach (FamilyInstance roomFi in roomInstances)
                     {
@@ -2692,6 +2697,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 targetPlan,
                                 connectTol,
                                 intersectionTol,
+                                roomPlacementReferenceAxisLines,
                                 debugMessages,
                                 ref skippedWallsForApartment);
 
@@ -2713,11 +2719,15 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                    roomPlacementReferenceAxisLines = MergeCollinearLines(roomPlacementReferenceAxisLines);
+                    roomPlacementReferenceAxisLines = WithZ(roomPlacementReferenceAxisLines, placementPointZ);
                     apartmentAxisLines = RemoveSegmentsOverlappingExistingWalls(apartmentAxisLines, existingWalls, apartmentWallThicknessInternal);
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                    apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
 
                     List<FamilyRoomSeparatorMarker> roomSeparatorMarkers = CollectRoomSeparatorMarkersFromApartmentInstance(doc, apartmentFi);
                     List<Line> roomSeparatorLines = BuildRoomSeparatorLinesFromMarkers(roomSeparatorMarkers);
+                    roomSeparatorLines = WithZ(roomSeparatorLines, placementPointZ);
                     state.FoundRoomSeparatorsCount = roomSeparatorLines.Count;
 
                     if (roomSeparatorLines.Count > 0)
@@ -2768,6 +2778,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 shaftReferenceAxisLines,
                                 out skippedShaftMarkers);
                             shaftAxisLines = MergeCollinearLines(shaftAxisLines);
+                            shaftAxisLines = WithZ(shaftAxisLines, placementPointZ);
 
                             if (skippedShaftMarkers > 0)
                             {
@@ -2821,8 +2832,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             }
 
                             loggiaAxisLines = MergeCollinearLines(loggiaAxisLines);
+                            loggiaAxisLines = WithZ(loggiaAxisLines, placementPointZ);
                         }
                     }
+
+                    apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
+                    shaftAxisLines = WithZ(shaftAxisLines, placementPointZ);
+                    loggiaAxisLines = WithZ(loggiaAxisLines, placementPointZ);
+                    roomSeparatorLines = WithZ(roomSeparatorLines, placementPointZ);
 
                     if (apartmentAxisLines.Count == 0 && shaftAxisLines.Count == 0 && roomSeparatorLines.Count == 0)
                     {
@@ -2849,19 +2866,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         state.HasPreparedWalls = true;
                     }
 
-                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
+                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, placementPointZ, debugMessages, state);
                     preparedDoorsByApartment.Add(preparedDoors);
 
-                    PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
-                    preparedWindowsByApartment.Add(preparedWindows);
+                    if (EnableWindow3DModule)
+                    {
+                        PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, placementPointZ, debugMessages, state);
+                        preparedWindowsByApartment.Add(preparedWindows);
+                    }
+                    // Оконный модуль временно отключён. Чтобы вернуть, включить EnableWindow3DModule.
 
                     PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(
                         doc,
                         apartmentFi,
                         loggiaAxisLines,
-                        apartmentAxisLines,
+                        roomPlacementReferenceAxisLines,
                         shaftAxisLines,
                         roomSeparatorLines,
+                        preparedDoors,
                         targetPlan,
                         debugMessages);
                     preparedRoomsByApartment.Add(preparedRooms);
@@ -2905,7 +2927,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     wallHeightInternal,
                     existingWalls,
                     connectTol,
-                    apartmentStates);
+                    apartmentStates,
+                    worksetTargets);
 
                 createdRoomsCount = PlaceRoomGeometryInTransaction(
                     doc,
@@ -2915,7 +2938,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     roomAreaMismatches,
                     apartmentStates,
                     targetPlan,
-                    debugMessages);
+                    debugMessages,
+                    worksetTargets);
 
                 installedDoorsCount = PlaceDoorGeometryInTransaction(
                     doc,
@@ -2925,20 +2949,27 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     existingWalls,
                     baseLevel,
                     debugMessages,
-                    apartmentStates);
+                    apartmentStates,
+                    worksetTargets);
 
-                installedWindowsCount = PlaceWindowGeometryInTransaction(
-                    doc,
-                    preparedApartments,
-                    preparedWindowsByApartment,
-                    createdWallGeometry.DoorHostWallsByApartment,
-                    existingWalls,
-                    baseLevel,
-                    debugMessages,
-                    apartmentStates);
+                if (EnableWindow3DModule)
+                {
+                    installedWindowsCount = PlaceWindowGeometryInTransaction(
+                        doc,
+                        preparedApartments,
+                        preparedWindowsByApartment,
+                        createdWallGeometry.DoorHostWallsByApartment,
+                        existingWalls,
+                        baseLevel,
+                        debugMessages,
+                        apartmentStates,
+                        worksetTargets);
+                }
+                // Оконный модуль временно отключён. Чтобы вернуть, включить EnableWindow3DModule.
             }
 
-            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, debugMessages, apartmentStates);
+            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, baseLevel, debugMessages, apartmentStates, worksetTargets);
+            ApplyGeneratedElementsGrouping(doc, targetPlan, effectivePreset.GeneratedElementsGroupingMode, apartmentStates, debugMessages);
             roomAreaMismatches = FilterRoomAreaMismatchesForRoomSeparators(roomAreaMismatches, apartmentStates);
             RefreshRoomAreaMismatchFlags(apartmentStates, roomAreaMismatches);
 
@@ -2973,6 +3004,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return roomAreaMismatches ?? new List<RoomAreaMismatchInfo>();
 
             double areaToleranceSquareMeters = 0.1;
+            double separatorCombinedAreaToleranceSquareMeters = 0.05;
             List<RoomAreaMismatchInfo> result = new List<RoomAreaMismatchInfo>();
             List<RoomAreaMismatchInfo> mismatchesWithoutApartment = new List<RoomAreaMismatchInfo>();
 
@@ -2988,7 +3020,20 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     state.FoundRoomSeparatorsCount > 0;
 
                 if (hasRoomSeparators)
-                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(mismatchesForApartment, areaToleranceSquareMeters);
+                {
+                    int combinedZeroAreaRoomsCount;
+                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(
+                        mismatchesForApartment,
+                        areaToleranceSquareMeters,
+                        out combinedZeroAreaRoomsCount);
+
+                    if (combinedZeroAreaRoomsCount > 0 && state != null)
+                        state.SkippedRoomsCount = Math.Max(0, state.SkippedRoomsCount - combinedZeroAreaRoomsCount);
+
+                    mismatchesForApartment = FilterBalancedRoomSeparatorAreaMismatches(
+                        mismatchesForApartment,
+                        separatorCombinedAreaToleranceSquareMeters);
+                }
 
                 result.AddRange(mismatchesForApartment);
             }
@@ -2998,8 +3043,42 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return result;
         }
 
-        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters)
+        private static List<RoomAreaMismatchInfo> FilterBalancedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double combinedAreaToleranceSquareMeters)
         {
+            if (mismatches == null || mismatches.Count < 2)
+                return mismatches ?? new List<RoomAreaMismatchInfo>();
+
+            double totalDelta = 0;
+            bool hasPositiveDelta = false;
+            bool hasNegativeDelta = false;
+
+            foreach (RoomAreaMismatchInfo mismatch in mismatches)
+            {
+                if (mismatch == null)
+                    continue;
+
+                double expectedArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatch.ExpectedAreaInternal);
+                double actualArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatch.ActualAreaInternal);
+                double delta = actualArea - expectedArea;
+
+                totalDelta += delta;
+                if (delta > combinedAreaToleranceSquareMeters)
+                    hasPositiveDelta = true;
+                if (delta < -combinedAreaToleranceSquareMeters)
+                    hasNegativeDelta = true;
+            }
+
+            if (hasPositiveDelta && hasNegativeDelta && Math.Abs(totalDelta) <= combinedAreaToleranceSquareMeters)
+                return new List<RoomAreaMismatchInfo>();
+
+            return mismatches;
+        }
+
+        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters,
+            out int combinedZeroAreaRoomsCount)
+        {
+            combinedZeroAreaRoomsCount = 0;
+
             if (mismatches == null || mismatches.Count < 2)
                 return mismatches ?? new List<RoomAreaMismatchInfo>();
 
@@ -3041,7 +3120,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 ignoredMismatches.Add(combinedMismatch);
                 foreach (RoomAreaMismatchInfo matchingPart in matchingParts)
+                {
                     ignoredMismatches.Add(matchingPart);
+                    combinedZeroAreaRoomsCount++;
+                }
             }
 
             if (ignoredMismatches.Count == 0)
@@ -3122,8 +3204,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
-        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, Level placementLevel,
+            List<string> debugMessages, Dictionary<long, ApartmentProcessState> apartmentStates, ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || apartmentInstances == null || apartmentInstances.Count == 0)
                 return;
@@ -3157,7 +3239,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                         try
                         {
-                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, furnitureErrors, createdFurnitureIds);
+                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, placementLevel, furnitureErrors, createdFurnitureIds, worksetTargets);
                         }
                         catch (Exception ex)
                         {
@@ -3241,10 +3323,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     Text = "Входных дверей: " + installedEntranceDoorsCount + " из " + foundEntranceDoorsCount
                 });
 
-                summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                if (EnableWindow3DModule)
                 {
-                    Text = "Создано окон: " + installedWindowsCount + " из " + totalWindowsPlanned
-                });
+                    summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                    {
+                        Text = "Создано окон: " + installedWindowsCount + " из " + totalWindowsPlanned
+                    });
+                }
 
                 items.Insert(0, summaryItem);
 

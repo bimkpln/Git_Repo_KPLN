@@ -27,6 +27,21 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                    bic == BuiltInCategory.OST_PlumbingFixtures;
         }
 
+        private static bool IsPlumbingCategory(Category category)
+        {
+            if (category == null)
+                return false;
+
+            try
+            {
+                return (BuiltInCategory)IDHelper.ElIdInt(category.Id) == BuiltInCategory.OST_PlumbingFixtures;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static List<FamilyInstance> FindFurnitureAndPlumbingSubComponentsRecursive(Document doc, FamilyInstance rootInstance)
         {
             List<FamilyInstance> result = new List<FamilyInstance>();
@@ -110,7 +125,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return Math.Atan2(basisX.Y, basisX.X);
         }
 
-        private void CopyFurnitureAndPlumbingFromApartmentUnderlay(Document doc, FamilyInstance apartmentFi, List<string> debugMessages, List<ElementId> createdElementIds = null)
+        private void CopyFurnitureAndPlumbingFromApartmentUnderlay(Document doc, FamilyInstance apartmentFi, Level placementLevel,
+            List<string> debugMessages, List<ElementId> createdElementIds = null, ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || apartmentFi == null)
                 return;
@@ -148,17 +164,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         continue;
                     }
 
-                    XYZ insertPoint = tr.Origin;
-                    if (insertPoint == null)
-                        continue;
-
-                    Level level = ResolvePlacementLevelForNestedInstance(doc, nestedFi, apartmentFi);
+                    Level level = placementLevel ?? ResolvePlacementLevelForNestedInstance(doc, nestedFi, apartmentFi);
                     if (level == null)
                     {
                         if (debugMessages != null)
                             debugMessages.Add("Не найден уровень для вложенного элемента ID = " + IDHelper.ElIdValue(nestedFi.Id) + ". " + BuildFurnitureDebugElementLabel(nestedFi));
                         continue;
                     }
+
+                    XYZ insertPoint = WithZ(tr.Origin, 0.0);
+                    if (insertPoint == null)
+                        continue;
 
                     FamilyPlacementType placementType = symbol.Family.FamilyPlacementType;
                     FamilyInstance created = null;
@@ -197,6 +213,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 ", placementType = " + placementType + ".");
                         continue;
                     }
+
+                    int? targetWorksetId = worksetTargets != null && IsPlumbingCategory(nestedFi.Category)
+                        ? worksetTargets.PlumbingWorksetId
+                        : worksetTargets != null
+                            ? worksetTargets.FurnitureWorksetId
+                            : null;
+
+                    TryAssignElementToWorkset(created, targetWorksetId);
 
                     if (createdElementIds != null)
                         createdElementIds.Add(created.Id);

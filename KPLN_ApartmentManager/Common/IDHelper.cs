@@ -32,7 +32,7 @@ namespace KPLN_ApartmentManager.Common
             ParameterFilterRuleFactory.CreateContainsRule(parameterId, value, false);
 #endif
 
-        internal static double ConvertMmToInternal(int valueMm)
+        internal static double ConvertMmToInternal(double valueMm)
         {
 #if Revit2024 || Revit2023 || Debug2024 || Debug2023
             return UnitUtils.ConvertToInternalUnits(valueMm, UnitTypeId.Millimeters);

@@ -372,8 +372,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private class PreparedRoomPlacement
         {
             public ElementId ApartmentId { get; set; }
+            public ElementId SourceRoom2DId { get; set; }
             public string RoomName { get; set; }
             public XYZ InsertPoint { get; set; }
+            public List<XYZ> BoundaryVertices { get; set; }
             public double ExpectedAreaInternal { get; set; }
             public bool HasShaftInside { get; set; }
         }
@@ -1052,20 +1054,71 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 case FamilyPlacementType.OneLevelBased:
                 case FamilyPlacementType.OneLevelBasedHosted:
-                    if (floorPlan.GenLevel == null)
-                        throw new Exception("У активного плана не определён уровень.");
-
-                    return doc.Create.NewFamilyInstance(point, symbol, floorPlan.GenLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
                 case FamilyPlacementType.WorkPlaneBased:
                     if (floorPlan.GenLevel == null)
                         throw new Exception("У активного плана не определён уровень.");
 
-                    return doc.Create.NewFamilyInstance(point, symbol, floorPlan.GenLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    XYZ levelPoint = new XYZ(point.X, point.Y, 0.0);
+                    FamilyInstance placed = doc.Create.NewFamilyInstance(levelPoint, symbol, floorPlan.GenLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    ResetFamilyInstanceVerticalOffsets(placed);
+                    return placed;
 
                 default:
                     throw new NotSupportedException("Тип размещения семейства не поддерживается: " + placementType);
             }
+        }
+
+        private static void ResetFamilyInstanceVerticalOffsets(FamilyInstance instance)
+        {
+            if (instance == null)
+                return;
+
+            TrySetDoubleParameter(instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM), 0.0);
+            TrySetDoubleParameter(instance.get_Parameter(BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM), 0.0);
+
+            TrySetDoubleParameterByName(instance, 0.0,
+                "Отметка от уровня",
+                "Elevation from Level",
+                "Offset from Level");
+
+            TrySetDoubleParameterByName(instance, 0.0,
+                "Смещение от главной модели",
+                "Offset from Host",
+                "Offset from Main Model");
+        }
+
+        private static bool TrySetDoubleParameter(Parameter parameter, double value)
+        {
+            if (parameter == null || parameter.IsReadOnly || parameter.StorageType != StorageType.Double)
+                return false;
+
+            parameter.Set(value);
+            return true;
+        }
+
+        private static bool TrySetDoubleParameterByName(Element element, double value, params string[] parameterNames)
+        {
+            if (element == null || parameterNames == null || parameterNames.Length == 0)
+                return false;
+
+            bool changed = false;
+
+            foreach (Parameter parameter in element.Parameters)
+            {
+                if (parameter == null || parameter.Definition == null)
+                    continue;
+
+                string parameterName = parameter.Definition.Name;
+                if (string.IsNullOrWhiteSpace(parameterName))
+                    continue;
+
+                if (!parameterNames.Any(name => string.Equals(name, parameterName, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                changed |= TrySetDoubleParameter(parameter, value);
+            }
+
+            return changed;
         }
 
         private static void AppendComment(Element e, string textToAppend)

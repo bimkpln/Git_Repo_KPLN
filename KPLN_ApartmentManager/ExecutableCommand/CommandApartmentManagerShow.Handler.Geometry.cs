@@ -33,6 +33,39 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
+        private static XYZ WithZ(XYZ point, double z)
+        {
+            return point != null
+                ? new XYZ(point.X, point.Y, z)
+                : null;
+        }
+
+        private static Line WithZ(Line line, double z)
+        {
+            if (line == null)
+                return null;
+
+            return Line.CreateBound(
+                WithZ(line.GetEndPoint(0), z),
+                WithZ(line.GetEndPoint(1), z));
+        }
+
+        private static List<Line> WithZ(IEnumerable<Line> lines, double z)
+        {
+            List<Line> result = new List<Line>();
+            if (lines == null)
+                return result;
+
+            foreach (Line line in lines)
+            {
+                Line normalized = WithZ(line, z);
+                if (normalized != null && normalized.Length > 1e-6)
+                    result.Add(normalized);
+            }
+
+            return result;
+        }
+
         private static bool CanFlipHand(FamilyInstance fi)
         {
             if (fi == null)
