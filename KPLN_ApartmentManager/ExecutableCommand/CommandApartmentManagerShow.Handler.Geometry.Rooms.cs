@@ -14,7 +14,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             List<PreparedApartmentRooms> preparedRoomsByApartment,
             Level roomLevel, List<RoomAreaMismatchInfo> roomAreaMismatches,
             Dictionary<long, ApartmentProcessState> apartmentStates, ViewPlan roomPlan, List<string> debugMessages,
-            ApartmentWorksetTargets worksetTargets)
+            ApartmentWorksetTargets worksetTargets, double areaMismatchToleranceSquareMeters)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || roomLevel == null)
                 return 0;
@@ -84,7 +84,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             createdRoomIds,
                             state,
                             debugMessages,
-                            worksetTargets);
+                            worksetTargets,
+                            areaMismatchToleranceSquareMeters);
                     }
 
                     foreach (ElementId createdRoomId in createdRoomIds)
@@ -1025,7 +1026,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel,
             List<RoomAreaMismatchInfo> roomAreaMismatches, List<ElementId> createdRoomIds = null,
             ApartmentProcessState state = null, List<string> debugMessages = null,
-            ApartmentWorksetTargets worksetTargets = null)
+            ApartmentWorksetTargets worksetTargets = null, double areaMismatchToleranceSquareMeters = 0.1)
         {
             if (doc == null || apartmentRooms == null || roomLevel == null)
                 return 0;
@@ -1034,7 +1035,9 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return 0;
 
             int createdCount = 0;
-            double areaToleranceSquareMeters = 0.1;
+            double areaToleranceSquareMeters = areaMismatchToleranceSquareMeters > 0
+                ? areaMismatchToleranceSquareMeters
+                : 0.1;
             List<CreatedRoomPlacementInfo> roomsPendingSeparatorAreaCheck = apartmentRooms.HasRoomSeparators
                 ? new List<CreatedRoomPlacementInfo>()
                 : null;

@@ -64,6 +64,7 @@ namespace KPLN_ApartmentManager.Forms
 
         public double BaseOffset { get; set; }
         public double WallHeight { get; set; }
+        public double AreaMismatchTolerance { get; set; }
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
 
@@ -97,6 +98,7 @@ namespace KPLN_ApartmentManager.Forms
                 UpperConstraint = UpperConstraint,
                 BaseOffset = BaseOffset,
                 WallHeight = WallHeight,
+                AreaMismatchTolerance = AreaMismatchTolerance,
                 WallTypeByThickness = WallTypeByThickness != null
                     ? new Dictionary<int, string>(WallTypeByThickness)
                     : new Dictionary<int, string>(),
@@ -150,6 +152,7 @@ namespace KPLN_ApartmentManager.Forms
                     UpperConstraint = "Неприсоединённая",
                     BaseOffset = 0,
                     WallHeight = 3000,
+                    AreaMismatchTolerance = 0.5,
                     WallTypeByThickness = new Dictionary<int, string>(),
                     WindowType = "Не выбрано",
                     WindowSillHeight = 900,

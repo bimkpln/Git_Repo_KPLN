@@ -348,6 +348,22 @@ namespace KPLN_ApartmentManager.Forms
             }
         }
 
+        private string _areaMismatchToleranceText;
+
+        public string AreaMismatchToleranceText
+        {
+            get { return _areaMismatchToleranceText; }
+            set
+            {
+                if (_areaMismatchToleranceText != value)
+                {
+                    _areaMismatchToleranceText = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
         public ObservableCollection<string> WindowTypeOptions { get; private set; }
 
         private string _selectedWindowType;
@@ -663,6 +679,7 @@ namespace KPLN_ApartmentManager.Forms
 
                 BaseOffsetText = (_currentData.BaseOffset).ToString();
                 WallHeightText = (_currentData.WallHeight > 0 ? _currentData.WallHeight : 3000).ToString();
+                AreaMismatchToleranceText = (_currentData.AreaMismatchTolerance > 0 ? _currentData.AreaMismatchTolerance : 0.5).ToString();
                 WindowSillHeightText = (_currentData.WindowSillHeight > 0 ? _currentData.WindowSillHeight : 900).ToString();
 
                 ApartmentPlanPresetOption selected = ResolveInitialPlan();
@@ -725,6 +742,7 @@ namespace KPLN_ApartmentManager.Forms
                 preserved.UpperConstraint = UpperConstraintText;
                 preserved.BaseOffset = ParseDouble(BaseOffsetText);
                 preserved.WallHeight = ParseDouble(WallHeightText, 3000);
+                preserved.AreaMismatchTolerance = ParsePositiveDouble(AreaMismatchToleranceText, 0.5);
                 preserved.WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : preserved.WindowType;
                 preserved.WindowSillHeight = ParseInt(WindowSillHeightText, 900);
                 preserved.WallWorksetName = NormalizeWorksetSelection(SelectedWallWorkset);
@@ -771,6 +789,7 @@ namespace KPLN_ApartmentManager.Forms
                 UpperConstraint = UpperConstraintText,
                 BaseOffset = ParseDouble(BaseOffsetText),
                 WallHeight = ParseDouble(WallHeightText, 3000),
+                AreaMismatchTolerance = ParsePositiveDouble(AreaMismatchToleranceText, 0.5),
                 WallTypeByThickness = wallTypeByThickness,
                 WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : "Не выбрано",
                 WindowSillHeight = ParseInt(WindowSillHeightText, 900),
@@ -1241,6 +1260,12 @@ namespace KPLN_ApartmentManager.Forms
             return defaultValue;
         }
 
+        private static double ParsePositiveDouble(string text, double defaultValue)
+        {
+            double value = ParseDouble(text, defaultValue);
+            return value > 0 ? value : defaultValue;
+        }
+
         private static string NormalizeWorksetSelection(string value)
         {
             return string.IsNullOrWhiteSpace(value)
@@ -1319,6 +1344,9 @@ namespace KPLN_ApartmentManager.Forms
 
             if (result.WallHeight <= 0)
                 result.WallHeight = 3000;
+
+            if (result.AreaMismatchTolerance <= 0)
+                result.AreaMismatchTolerance = 0.5;
 
             if (string.IsNullOrWhiteSpace(result.WindowType))
                 result.WindowType = "Не выбрано";

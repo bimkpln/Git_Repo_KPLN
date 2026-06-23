@@ -2532,6 +2532,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 UpperConstraint = "Неприсоединённая",
                 BaseOffset = 0,
                 WallHeight = 3000,
+                AreaMismatchTolerance = 0.5,
                 WallTypeByThickness = new Dictionary<int, string>(),
                 WindowType = "Не выбрано",
                 WindowSillHeight = 900,
@@ -2723,6 +2724,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 UpperConstraint = "Неприсоединённая",
                 BaseOffset = 0,
                 WallHeight = 3000,
+                AreaMismatchTolerance = 0.5,
                 WallTypeByThickness = new Dictionary<int, string>(),
                 WindowType = "Не выбрано",
                 WindowSillHeight = 900,
@@ -2772,6 +2774,9 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             double connectTol = IDHelper.ConvertMmToInternal(150);
             double intersectionTol = IDHelper.ConvertMmToInternal(10);
             double placementPointZ = 0.0;
+            double areaMismatchToleranceSquareMeters = effectivePreset.AreaMismatchTolerance > 0
+                ? effectivePreset.AreaMismatchTolerance
+                : 0.5;
             ApartmentWorksetTargets worksetTargets = ResolveApartmentWorksetTargets(doc, effectivePreset);
 
             List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, targetPlan.GenLevel.Id);
@@ -3071,7 +3076,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     apartmentStates,
                     targetPlan,
                     debugMessages,
-                    worksetTargets);
+                    worksetTargets,
+                    areaMismatchToleranceSquareMeters);
 
                 installedDoorsCount = PlaceDoorGeometryInTransaction(
                     doc,
