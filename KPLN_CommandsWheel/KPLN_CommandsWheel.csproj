@@ -201,6 +201,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="ExternalCommands\WheelSettings.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -212,7 +213,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Common\" />
     <Folder Include="Forms\" />
   </ItemGroup>
   <ItemGroup>
