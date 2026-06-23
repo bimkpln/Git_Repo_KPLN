@@ -26,19 +26,37 @@ namespace KPLN_CommandsWheel
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
 
+
+
             AddPushButtonDataInPanel(
-                "Настройка",
-                "Настройка",
-                "Настройка штурвала команд",
+                "KPLNCommandsWheelRun",
+                "Штурвал",
+                "Открыть штурвал команд",
                 string.Format(
-                    "Настройка штурвала команд.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Открыть штурвал команд. Эту команду можно назначить на горячую клавишу в Revit.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
                 ),
-                typeof(ExternalCommands.WheelSettings).FullName,
+                typeof(ExternalCommands.CommandsWheel).FullName,
                 wheelsCommandsPanel,
                 "KPLN_CommandsWheel.Imagens.commandsWheels.png",
+                "http://moodle.stinproject.local"
+            );
+
+            AddPushButtonDataInPanel(
+                "KPLNCommandsWheelSearch",
+                "Команды",
+                "Поиск команд и настройки штурвала",
+                string.Format(
+                    "Поиск команд на ленте Revit, избранное, последние команды, добавление в штурвал и настройки БД.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExternalCommands.CommandSearch).FullName,
+                wheelsCommandsPanel,
+                "KPLN_CommandsWheel.Imagens.settingsWheels.png",
                 "http://moodle.stinproject.local"
             );
 

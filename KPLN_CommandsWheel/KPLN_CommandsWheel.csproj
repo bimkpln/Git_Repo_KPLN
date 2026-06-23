@@ -47,10 +47,10 @@
     <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2023\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
+    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2024\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
@@ -72,6 +72,7 @@
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="UIFramework">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
       <Private>False</Private>
@@ -202,7 +203,12 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\IDHelper.cs" />
-    <Compile Include="ExternalCommands\WheelSettings.cs" />
+    <Compile Include="ExternalCommands\CommandSearch.cs" />
+    <Compile Include="ExternalCommands\CommandsWheel.cs" />
+    <Compile Include="Forms\CommandSearchWindow.cs" />
+    <Compile Include="Forms\CommandsWheelWindow.cs" />
+    <Compile Include="Models\RevitCommandInfo.cs" />
+    <Compile Include="Models\UserSettings.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -211,9 +217,15 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Services\IconSourceLoader.cs" />
+    <Compile Include="Services\JsonSerialization.cs" />
+    <Compile Include="Services\RevitCommandExecutor.cs" />
+    <Compile Include="Services\RibbonCommandCollector.cs" />
+    <Compile Include="Services\UserSettingsService.cs" />
+    <Compile Include="Services\WindowOwnerHelper.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Forms\" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -224,6 +236,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Imagens\commandsWheels.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\settingsWheels.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
