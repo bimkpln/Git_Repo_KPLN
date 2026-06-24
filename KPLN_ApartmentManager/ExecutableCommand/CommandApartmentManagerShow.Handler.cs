@@ -302,6 +302,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             public XYZ P0 { get; set; }
             public XYZ P1 { get; set; }
             public bool StyleMatched { get; set; }
+            public string MatchedName { get; set; }
         }
 
         private class DoorTypeMirrorEnsureResult
@@ -377,6 +378,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             public XYZ InsertPoint { get; set; }
             public List<XYZ> BoundaryVertices { get; set; }
             public double ExpectedAreaInternal { get; set; }
+            public double AreaMismatchToleranceSquareMeters { get; set; }
             public bool HasShaftInside { get; set; }
         }
 

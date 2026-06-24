@@ -14,7 +14,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             List<PreparedApartmentRooms> preparedRoomsByApartment,
             Level roomLevel, List<RoomAreaMismatchInfo> roomAreaMismatches,
             Dictionary<long, ApartmentProcessState> apartmentStates, ViewPlan roomPlan, List<string> debugMessages,
-            ApartmentWorksetTargets worksetTargets)
+            ApartmentWorksetTargets worksetTargets, double areaMismatchToleranceSquareMeters)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || roomLevel == null)
                 return 0;
@@ -84,7 +84,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             createdRoomIds,
                             state,
                             debugMessages,
-                            worksetTargets);
+                            worksetTargets,
+                            areaMismatchToleranceSquareMeters);
                     }
 
                     foreach (ElementId createdRoomId in createdRoomIds)
@@ -425,6 +426,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (bestRoom == null || bestSplit == null)
                 return false;
 
+            double loggiaExpectedAreaInternal = 0;
+            if (bestRoom.ExpectedAreaInternal > 0)
+            {
+                double splitAreaInternal = bestSplit.MainAreaInternal + bestSplit.LoggiaAreaInternal;
+                if (splitAreaInternal > 1e-9 && bestSplit.MainAreaInternal > 1e-9 && bestSplit.LoggiaAreaInternal > 1e-9)
+                {
+                    double sourceExpectedAreaInternal = bestRoom.ExpectedAreaInternal;
+                    double mainExpectedAreaInternal = sourceExpectedAreaInternal * bestSplit.MainAreaInternal / splitAreaInternal;
+
+                    bestRoom.ExpectedAreaInternal = mainExpectedAreaInternal;
+                    loggiaExpectedAreaInternal = Math.Max(0, sourceExpectedAreaInternal - mainExpectedAreaInternal);
+                }
+            }
+
+            bestRoom.AreaMismatchToleranceSquareMeters = Math.Max(
+                bestRoom.AreaMismatchToleranceSquareMeters,
+                GetLoggiaSplitAreaToleranceSquareMeters(bestRoom.ExpectedAreaInternal));
+
             bestRoom.BoundaryVertices = bestSplit.MainVertices;
             bestRoom.InsertPoint = bestSplit.MainPoint;
 
@@ -434,10 +453,20 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 RoomName = "Лоджия",
                 InsertPoint = bestSplit.LoggiaPoint,
                 BoundaryVertices = bestSplit.LoggiaVertices,
-                ExpectedAreaInternal = 0
+                ExpectedAreaInternal = loggiaExpectedAreaInternal,
+                AreaMismatchToleranceSquareMeters = GetLoggiaSplitAreaToleranceSquareMeters(loggiaExpectedAreaInternal)
             });
 
             return true;
+        }
+
+        private static double GetLoggiaSplitAreaToleranceSquareMeters(double expectedAreaInternal)
+        {
+            if (expectedAreaInternal <= 0)
+                return 0.3;
+
+            double expectedAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(expectedAreaInternal);
+            return Math.Max(0.3, expectedAreaSquareMeters * 0.02);
         }
 
         private static bool TrySplitRoomByLoggiaAxis(PreparedRoomPlacement room, Line loggiaAxis, XYZ apartmentInteriorPoint,
@@ -964,10 +993,40 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return true;
         }
 
+        private static void AddRoomAreaMismatchIfNeeded(PreparedRoomPlacement preparedRoom, double actualAreaInternal,
+            List<RoomAreaMismatchInfo> roomAreaMismatches, double areaToleranceSquareMeters)
+        {
+            if (preparedRoom == null || preparedRoom.ExpectedAreaInternal <= 0 || roomAreaMismatches == null)
+                return;
+
+            double expectedAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(preparedRoom.ExpectedAreaInternal);
+            double actualAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(actualAreaInternal);
+            double effectiveAreaToleranceSquareMeters = Math.Max(
+                areaToleranceSquareMeters,
+                preparedRoom.AreaMismatchToleranceSquareMeters);
+
+            if (!ShouldReportRoomAreaMismatch(
+                preparedRoom,
+                expectedAreaSquareMeters,
+                actualAreaSquareMeters,
+                effectiveAreaToleranceSquareMeters))
+            {
+                return;
+            }
+
+            roomAreaMismatches.Add(new RoomAreaMismatchInfo
+            {
+                ApartmentId = preparedRoom.ApartmentId,
+                RoomName = preparedRoom.RoomName,
+                ExpectedAreaInternal = preparedRoom.ExpectedAreaInternal,
+                ActualAreaInternal = actualAreaInternal
+            });
+        }
+
         private int PlaceRoomsForApartment(Document doc, PreparedApartmentRooms apartmentRooms, Level roomLevel,
             List<RoomAreaMismatchInfo> roomAreaMismatches, List<ElementId> createdRoomIds = null,
             ApartmentProcessState state = null, List<string> debugMessages = null,
-            ApartmentWorksetTargets worksetTargets = null)
+            ApartmentWorksetTargets worksetTargets = null, double areaMismatchToleranceSquareMeters = 0.1)
         {
             if (doc == null || apartmentRooms == null || roomLevel == null)
                 return 0;
@@ -976,7 +1035,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return 0;
 
             int createdCount = 0;
-            double areaToleranceSquareMeters = 0.1;
+            double areaToleranceSquareMeters = areaMismatchToleranceSquareMeters > 0
+                ? areaMismatchToleranceSquareMeters
+                : 0.1;
+            List<CreatedRoomPlacementInfo> roomsPendingSeparatorAreaCheck = apartmentRooms.HasRoomSeparators
+                ? new List<CreatedRoomPlacementInfo>()
+                : null;
 
             foreach (PreparedRoomPlacement preparedRoom in apartmentRooms.Rooms)
             {
@@ -1025,6 +1089,22 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                     doc.Regenerate();
 
+                    if (apartmentRooms.HasRoomSeparators)
+                    {
+                        createdCount++;
+
+                        if (createdRoomIds != null)
+                            createdRoomIds.Add(createdRoom.Id);
+
+                        roomsPendingSeparatorAreaCheck.Add(new CreatedRoomPlacementInfo
+                        {
+                            RoomId = createdRoom.Id,
+                            PreparedRoom = preparedRoom
+                        });
+
+                        continue;
+                    }
+
                     if (createdRoom.Area <= 1e-9)
                     {
                         ElementId createdRoomId = createdRoom.Id;
@@ -1036,54 +1116,27 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         {
                         }
 
-                        if (preparedRoom.ExpectedAreaInternal > 0 && roomAreaMismatches != null)
-                        {
-                            roomAreaMismatches.Add(new RoomAreaMismatchInfo
-                            {
-                                ApartmentId = preparedRoom.ApartmentId,
-                                RoomName = preparedRoom.RoomName,
-                                ExpectedAreaInternal = preparedRoom.ExpectedAreaInternal,
-                                ActualAreaInternal = 0
-                            });
-                        }
+                        AddRoomAreaMismatchIfNeeded(
+                            preparedRoom,
+                            0,
+                            roomAreaMismatches,
+                            areaToleranceSquareMeters);
 
-                        if (!apartmentRooms.HasRoomSeparators)
-                        {
-                            AddApartmentDiagnostic(
-                                state,
-                                debugMessages,
-                                "Помещение '" + preparedRoom.RoomName + "' в точке " +
-                                FormatPointMm(roomPoint) +
-                                " получило нулевую площадь и удалено. Проверьте замкнутость и Room Bounding стен вокруг точки.");
-                        }
+                        AddApartmentDiagnostic(
+                            state,
+                            debugMessages,
+                            "Помещение '" + preparedRoom.RoomName + "' в точке " +
+                            FormatPointMm(roomPoint) +
+                            " получило нулевую площадь и удалено. Проверьте замкнутость и Room Bounding стен вокруг точки.");
 
                         continue;
                     }
 
-                    if (preparedRoom.ExpectedAreaInternal > 0)
-                    {
-                        double actualAreaInternal = createdRoom.Area;
-                        double expectedAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(preparedRoom.ExpectedAreaInternal);
-                        double actualAreaSquareMeters = IDHelper.ConvertInternalAreaToSquareMeters(actualAreaInternal);
-
-                        if (ShouldReportRoomAreaMismatch(
-                            preparedRoom,
-                            expectedAreaSquareMeters,
-                            actualAreaSquareMeters,
-                            areaToleranceSquareMeters))
-                        {
-                            if (roomAreaMismatches != null)
-                            {
-                                roomAreaMismatches.Add(new RoomAreaMismatchInfo
-                                {
-                                    ApartmentId = preparedRoom.ApartmentId,
-                                    RoomName = preparedRoom.RoomName,
-                                    ExpectedAreaInternal = preparedRoom.ExpectedAreaInternal,
-                                    ActualAreaInternal = actualAreaInternal
-                                });
-                            }
-                        }
-                    }
+                    AddRoomAreaMismatchIfNeeded(
+                        preparedRoom,
+                        createdRoom.Area,
+                        roomAreaMismatches,
+                        areaToleranceSquareMeters);
 
                     createdCount++;
 
@@ -1100,7 +1153,80 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 }
             }
 
+            if (roomsPendingSeparatorAreaCheck != null && roomsPendingSeparatorAreaCheck.Count > 0)
+            {
+                doc.Regenerate();
+
+                foreach (CreatedRoomPlacementInfo createdRoomInfo in roomsPendingSeparatorAreaCheck)
+                {
+                    if (createdRoomInfo == null || createdRoomInfo.RoomId == null ||
+                        createdRoomInfo.RoomId == ElementId.InvalidElementId)
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        Room createdRoom = doc.GetElement(createdRoomInfo.RoomId) as Room;
+                        if (createdRoom == null)
+                            continue;
+
+                        if (createdRoom.Area <= 1e-9)
+                        {
+                            try
+                            {
+                                doc.Delete(createdRoomInfo.RoomId);
+                            }
+                            catch
+                            {
+                            }
+
+                            if (createdRoomIds != null)
+                            {
+                                createdRoomIds.RemoveAll(x =>
+                                    x != null &&
+                                    IDHelper.ElIdValue(x) == IDHelper.ElIdValue(createdRoomInfo.RoomId));
+                            }
+
+                            createdCount = Math.Max(0, createdCount - 1);
+
+                            AddRoomAreaMismatchIfNeeded(
+                                createdRoomInfo.PreparedRoom,
+                                0,
+                                roomAreaMismatches,
+                                areaToleranceSquareMeters);
+
+                            continue;
+                        }
+
+                        AddRoomAreaMismatchIfNeeded(
+                            createdRoomInfo.PreparedRoom,
+                            createdRoom.Area,
+                            roomAreaMismatches,
+                            areaToleranceSquareMeters);
+                    }
+                    catch (Exception ex)
+                    {
+                        string roomName = createdRoomInfo.PreparedRoom != null
+                            ? createdRoomInfo.PreparedRoom.RoomName
+                            : "Помещение";
+
+                        AddApartmentDiagnostic(
+                            state,
+                            debugMessages,
+                            "Ошибка проверки помещения '" + roomName +
+                            "' после создания разделителей: " + ex.Message);
+                    }
+                }
+            }
+
             return createdCount;
+        }
+
+        private class CreatedRoomPlacementInfo
+        {
+            public ElementId RoomId { get; set; }
+            public PreparedRoomPlacement PreparedRoom { get; set; }
         }
 
         private class RoomBoundaryLoopData
