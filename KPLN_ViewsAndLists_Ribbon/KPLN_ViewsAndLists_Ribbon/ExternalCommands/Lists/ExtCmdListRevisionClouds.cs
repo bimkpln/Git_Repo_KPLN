@@ -24,8 +24,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiapp = commandData.Application;
-            Document doc = uiapp.ActiveUIDocument.Document;
+            Document doc = commandData.Application.ActiveUIDocument.Document;
 
             List<ViewSheet> sheets = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewSheet))
@@ -59,35 +58,25 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 
                 foreach (ViewSheet sheet in sheets)
                 {
-                    List<ElementId> revisionIds = sheet.GetAllRevisionIds().ToList();
+                    List<Revision> revisionsOnSheet = GetRevisionsOnSheet(sheet);
 
-                    if (revisionIds.Count == 0)
-                        continue;
-
-                    Parameter statusParam = sheet.LookupParameter(StatusParameterName);
-                    Parameter targetParam = sheet.LookupParameter(NoteParameterName);
-
-                    int code = statusParam.AsInteger();
-                    string fieldValue = GetRevisionStatusString(code);
-
-                    if (!string.IsNullOrWhiteSpace(fieldValue))
+                    if (revisionsOnSheet.Count > 0)
                     {
-                        targetParam.Set(fieldValue);
-                    }
-                    else
-                    {
-                        targetParam.Set(GetRevisionListString(revisionIds.Count));
-                    }
-                }
+                        Parameter statusParam = sheet.LookupParameter(StatusParameterName);
+                        Parameter noteParam = sheet.LookupParameter(NoteParameterName);
 
-                foreach (ViewSheet sheet in sheets)
-                {
-                    string[] cloudsCounts = GetCloudsCountOnSheet(sheet);
+                        int statusCode = statusParam.AsInteger();
+                        string noteValue = GetRevisionNoteValue(revisionsOnSheet, statusCode);
+
+                        noteParam.Set(noteValue);
+                    }
 
                     foreach (string parameterName in CloudCountParameterNames)
                     {
                         sheet.LookupParameter(parameterName).Set("");
                     }
+
+                    string[] cloudsCounts = GetCloudsCountsForStampRows(sheet);
 
                     for (int i = 0; i < cloudsCounts.Length && i < CloudCountParameterNames.Length; i++)
                     {
@@ -141,10 +130,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 
             if (parameter.StorageType != expectedStorageType)
             {
-                problems.Add(
-                    "- \"" + parameterName + "\" имеет неправильный тип. Ожидается: "
-                    + GetStorageTypeName(expectedStorageType)
-                    + ".");
+                problems.Add("- \"" + parameterName + "\" имеет неправильный тип.");
             }
 
             if (mustBeWritable && parameter.IsReadOnly)
@@ -155,7 +141,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 
         private static bool IsParameterBoundToSheets(Document doc, string parameterName)
         {
-            Category sheetsCategory = Category.GetCategory(doc, BuiltInCategory.OST_Sheets);
+            Category sheetsCategory = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Sheets);
 
             if (sheetsCategory == null)
                 return false;
@@ -189,104 +175,131 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             return false;
         }
 
-        private static string GetStorageTypeName(StorageType storageType)
-        {
-            if (storageType == StorageType.String)
-                return "текстовый параметр";
-
-            if (storageType == StorageType.Integer)
-                return "целочисленный параметр";
-
-            if (storageType == StorageType.Double)
-                return "числовой параметр";
-
-            if (storageType == StorageType.ElementId)
-                return "ElementId";
-
-            return storageType.ToString();
-        }
-
-        private static string GetRevisionListString(int revisionCount)
-        {
-            List<string> result = new List<string>();
-
-            for (int i = 0; i < revisionCount; i++)
-            {
-                result.Add("Изм. " + (i + 1));
-            }
-
-            return string.Join(", ", result);
-        }
-
-        private string GetRevisionStatusString(int code)
-        {
-            List<string> result = new List<string>();
-            string codeStr = code.ToString().PadLeft(4, '0');
-
-            for (int i = 0; i < codeStr.Length && i < 4; i++)
-            {
-                char c = codeStr[i];
-                string label = null;
-
-                if (c == '2')
-                    label = "Зам.";
-                else if (c == '3')
-                    label = "Нов.";
-
-                if (label != null)
-                {
-                    int revNum = i + 1;
-                    result.Add("Изм. " + revNum + "(" + label + ")");
-                }
-            }
-
-            return string.Join(", ", result);
-        }
-
-        private string[] GetCloudsCountOnSheet(ViewSheet sheet)
+        private static List<Revision> GetRevisionsOnSheet(ViewSheet sheet)
         {
             Document doc = sheet.Document;
 
-            List<RevisionCloud> clouds = new FilteredElementCollector(doc)
-                .OfClass(typeof(RevisionCloud))
-                .Cast<RevisionCloud>()
-                .Where(cloud => cloud.OwnerViewId == sheet.Id)
-                .ToList();
-
-            List<Revision> allRevisionsOnSheet = sheet.GetAllRevisionIds()
+            return sheet.GetAllRevisionIds()
                 .Select(id => doc.GetElement(id))
                 .OfType<Revision>()
-                .OrderBy(revision => revision.IssuedTo)
+                .OrderBy(revision => revision.SequenceNumber)
+                .ToList();
+        }
+
+        private static string GetRevisionNoteValue(List<Revision> revisionsOnSheet, int statusCode)
+        {
+            List<string> result = new List<string>();
+            string codeString = Math.Abs(statusCode).ToString().PadLeft(4, '0');
+
+            int skipCount = Math.Max(0, revisionsOnSheet.Count - 4);
+
+            List<Revision> revisionsForStamp = revisionsOnSheet
+                .Skip(skipCount)
                 .ToList();
 
-            int revisionsCount = allRevisionsOnSheet.Count;
-            List<Revision> lastRevisionsOnSheet;
-
-            if (revisionsCount > 4)
+            for (int i = 0; i < revisionsForStamp.Count; i++)
             {
-                lastRevisionsOnSheet = allRevisionsOnSheet.GetRange(revisionsCount - 4, 4);
-            }
-            else
-            {
-                lastRevisionsOnSheet = allRevisionsOnSheet;
-            }
+                Revision revision = revisionsForStamp[i];
+                int revisionNumber = revision.SequenceNumber;
 
-            string[] cloudsCounts = new string[lastRevisionsOnSheet.Count];
+                string statusLabel = GetStatusLabelByRow(codeString, i);
 
-            for (int i = 0; i < lastRevisionsOnSheet.Count; i++)
-            {
-                Revision revision = lastRevisionsOnSheet[i];
-
-                int curRevCloudsCount = clouds
-                    .Where(cloud => cloud.RevisionId == revision.Id)
-                    .Count();
-
-                cloudsCounts[i] = curRevCloudsCount == 0
-                    ? "-"
-                    : curRevCloudsCount.ToString();
+                if (string.IsNullOrWhiteSpace(statusLabel))
+                    result.Add("Изм. " + revisionNumber);
+                else
+                    result.Add("Изм. " + revisionNumber + "(" + statusLabel + ")");
             }
 
-            return cloudsCounts;
+            return string.Join(", ", result);
+        }
+
+        private static string GetStatusLabelByRow(string codeString, int rowIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= codeString.Length)
+                return null;
+
+            char code = codeString[rowIndex];
+
+            if (code == '2')
+                return "Зам.";
+
+            if (code == '3')
+                return "Нов.";
+
+            return null;
+        }
+
+
+        private static string[] GetCloudsCountsForStampRows(ViewSheet sheet)
+        {
+            List<Revision> revisionsOnSheet = GetRevisionsOnSheet(sheet);
+            List<RevisionCloud> cloudsOnSheet = GetRevisionCloudsOnSheet(sheet);
+
+            int skipCount = Math.Max(0, revisionsOnSheet.Count - CloudCountParameterNames.Length);
+
+            List<Revision> revisionsForStamp = revisionsOnSheet
+                .Skip(skipCount)
+                .ToList();
+
+            List<string> result = new List<string>();
+
+            foreach (Revision revision in revisionsForStamp)
+            {
+                int cloudsCount = cloudsOnSheet
+                    .Count(cloud => cloud.RevisionId == revision.Id);
+
+                result.Add(cloudsCount == 0 ? "-" : cloudsCount.ToString());
+            }
+
+            return result.ToArray();
+        }
+
+        private static List<RevisionCloud> GetRevisionCloudsOnSheet(ViewSheet sheet)
+        {
+            Document doc = sheet.Document;
+            HashSet<ElementId> viewIds = GetViewIdsOnSheet(sheet);
+            Dictionary<ElementId, RevisionCloud> cloudsById = new Dictionary<ElementId, RevisionCloud>();
+
+            foreach (ElementId viewId in viewIds)
+            {
+                try
+                {
+                    List<RevisionCloud> clouds = new FilteredElementCollector(doc, viewId)
+                        .OfClass(typeof(RevisionCloud))
+                        .Cast<RevisionCloud>()
+                        .ToList();
+
+                    foreach (RevisionCloud cloud in clouds)
+                    {
+                        if (!cloudsById.ContainsKey(cloud.Id))
+                            cloudsById.Add(cloud.Id, cloud);
+                    }
+                }
+                catch
+                {
+                    // Некоторые типы видов Revit не поддерживают FilteredElementCollector по viewId.
+                }
+            }
+
+            return cloudsById.Values.ToList();
+        }
+
+        private static HashSet<ElementId> GetViewIdsOnSheet(ViewSheet sheet)
+        {
+            Document doc = sheet.Document;
+            HashSet<ElementId> viewIds = new HashSet<ElementId>();
+
+            viewIds.Add(sheet.Id);
+
+            foreach (ElementId viewportId in sheet.GetAllViewports())
+            {
+                Viewport viewport = doc.GetElement(viewportId) as Viewport;
+
+                if (viewport != null && viewport.ViewId != ElementId.InvalidElementId)
+                    viewIds.Add(viewport.ViewId);
+            }
+
+            return viewIds;
         }
     }
 }
