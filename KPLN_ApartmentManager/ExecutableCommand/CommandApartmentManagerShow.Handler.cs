@@ -334,6 +334,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             public XYZ SourceFacingDirection { get; set; }
             public XYZ SourceRoomCalculationSideDirection { get; set; }
             public bool IsEntranceDoor { get; set; }
+            public bool UseEntranceDoorPlacement { get; set; }
             public List<string> Diagnostics { get; set; }
         }
 
@@ -652,13 +653,25 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return null;
         }
 
-        private static bool HasEntranceDoorComment(Element e)
+        private static bool IsEntranceDoor2DMarker(FamilyInstance fi)
         {
-            if (e == null)
+            if (fi == null || fi.Symbol == null)
                 return false;
 
-            List<string> instanceValues = GetCommentParameterValues(e, BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
-            return instanceValues.Any(IsEntranceDoorComment);
+            return IsEntranceDoor2DTypeName(fi.Symbol.Name);
+        }
+
+        private static bool IsEntranceDoor2DTypeName(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+                return false;
+
+            string normalized = typeName
+                .Replace('ё', 'е')
+                .Replace('Ё', 'Е')
+                .Trim();
+
+            return normalized.EndsWith("_Входная", StringComparison.OrdinalIgnoreCase);
         }
 
         private static List<string> GetCommentParameterValues(Element e, BuiltInParameter builtInParameter)

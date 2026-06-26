@@ -282,7 +282,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (preparedDoor == null || preparedDoor.DoorSymbol == null || preparedDoor.InsertPoint == null)
                     continue;
 
-                if (preparedDoor.IsEntranceDoor)
+                if (preparedDoor.UseEntranceDoorPlacement)
                 {
                     if (PlaceEntranceDoorForApartment(
                         doc,
@@ -425,6 +425,9 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 {
                     TryAssignElementToWorkset(createdDoor, worksetTargets != null ? worksetTargets.DoorWorksetId : null);
                     installedCount++;
+
+                    if (preparedDoor.IsEntranceDoor && state != null)
+                        state.InstalledEntranceDoorsCount++;
 
                     if (createdDoorIds != null)
                         createdDoorIds.Add(createdDoor.Id);
@@ -2749,7 +2752,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 string typeName = doorFi.Symbol != null ? doorFi.Symbol.Name ?? "" : "";
                 string commentValue = GetCommentsValue(doorFi);
-                bool isEntranceDoor = HasEntranceDoorComment(doorFi);
+                bool isEntranceDoor = IsEntranceDoor2DMarker(doorFi);
 
                 if (isEntranceDoor && state != null)
                     state.FoundEntranceDoorsCount++;
@@ -2933,6 +2936,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 SourceFacingDirection = sourceFacingDirection,
                 SourceRoomCalculationSideDirection = sourceRoomCalculationSideDirection,
                 IsEntranceDoor = isEntranceDoor,
+                UseEntranceDoorPlacement = false,
                 Diagnostics = entranceDiagnostics
             });
 
@@ -3299,7 +3303,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (subFi.Category != null)
                     categoryName = subFi.Category.Name ?? "";
 
-                if (Is2DDoorMarker(familyName, typeName, categoryName, HasEntranceDoorComment(subFi)))
+                if (Is2DDoorMarker(familyName, typeName, categoryName, IsEntranceDoor2DMarker(subFi)))
                 {
                     result.Add(subFi);
                     continue;
