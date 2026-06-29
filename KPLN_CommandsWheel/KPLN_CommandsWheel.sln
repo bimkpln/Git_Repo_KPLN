@@ -9,18 +9,24 @@ Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug2020|x64 = Debug2020|x64
 		Debug2023|x64 = Debug2023|x64
+		Debug2024|x64 = Debug2024|x64
 		Revit2020|x64 = Revit2020|x64
 		Revit2023|x64 = Revit2023|x64
+		Revit2024|x64 = Revit2024|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Debug2020|x64.ActiveCfg = Debug2020|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Debug2020|x64.Build.0 = Debug2020|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Debug2023|x64.ActiveCfg = Debug2023|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Debug2023|x64.Build.0 = Debug2023|x64
+		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Debug2024|x64.ActiveCfg = Debug2024|x64
+		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Debug2024|x64.Build.0 = Debug2024|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Revit2020|x64.ActiveCfg = Revit2020|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Revit2020|x64.Build.0 = Revit2020|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Revit2023|x64.ActiveCfg = Revit2023|x64
 		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Revit2023|x64.Build.0 = Revit2023|x64
+		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Revit2024|x64.ActiveCfg = Revit2024|x64
+		{8FFC5FC5-DD54-487C-87D3-B12A6E527139}.Revit2024|x64.Build.0 = Revit2024|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

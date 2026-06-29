@@ -44,13 +44,22 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_CommandsWheel\Debug\2020\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_CommandsWheel\Debug\2023\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
-    <OutputPath>..\..\..\..\..\..\KPLN_Debug\KPLN_Tools\Debug\2024\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_CommandsWheel\Debug\2024\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\CommandsWheel\2020\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\CommandsWheel\2023\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\CommandsWheel\2024\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AdWindows">
