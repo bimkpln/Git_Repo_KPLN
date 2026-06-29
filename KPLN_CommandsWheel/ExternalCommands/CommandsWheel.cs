@@ -14,7 +14,7 @@ namespace KPLN_CommandsWheel.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandsWheel : IExternalCommand
     {
-        internal const string PluginName = "Штурвал команд";
+        internal const string PluginName = "Комадна: Штурвал команд";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

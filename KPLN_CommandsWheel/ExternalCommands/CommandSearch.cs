@@ -12,7 +12,7 @@ namespace KPLN_CommandsWheel.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandSearch : IExternalCommand
     {
-        internal const string PluginName = "Окно команд";
+        internal const string PluginName = "Комадна: Окно команд";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
