@@ -741,7 +741,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                     string typeName = doorFi.Symbol != null ? doorFi.Symbol.Name ?? "" : "";
                     string commentValue = GetCommentsValue(doorFi);
-                    bool isEntranceDoor = HasEntranceDoorComment(doorFi);
+                    bool isEntranceDoor = IsEntranceDoor2DMarker(doorFi);
 
                     int widthMm;
                     if (!TryGetDoorWidthMmFrom2DMarker(doorFi, typeName, out widthMm) || widthMm <= 0)
@@ -833,7 +833,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return hasDoor && hasEntrance;
         }
 
-        private static bool Is2DDoorMarker(string familyName, string typeName, string categoryName, bool hasEntranceComment = false)
+        private static bool Is2DDoorMarker(string familyName, string typeName, string categoryName, bool isEntranceDoor = false)
         {
             bool isGenericModel =
                 string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
@@ -844,7 +844,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             return ContainsDoorMarkerText(familyName) ||
                    ContainsDoorMarkerText(typeName) ||
-                   hasEntranceComment;
+                   isEntranceDoor;
         }
 
         private static bool ContainsDoorMarkerText(string value)
