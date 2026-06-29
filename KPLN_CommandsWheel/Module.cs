@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -12,10 +11,7 @@ namespace KPLN_CommandsWheel
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-        public Result Close()
-        {
-            return Result.Succeeded;
-        }
+        public Result Close() => Result.Succeeded;
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
