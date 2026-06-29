@@ -34,9 +34,9 @@ namespace KPLN_CommandsWheel.Forms
             _executor = executor;
 
             Title = "KPLN. Штурвал команд. Команды";
-            Width = 620;
+            Width = 680;
             Height = 740;
-            MinWidth = 520;
+            MinWidth = 600;
             MinHeight = 560;
             Background = Brushes.White;
 
@@ -48,6 +48,14 @@ namespace KPLN_CommandsWheel.Forms
             {
                 _searchBox.Focus();
                 Keyboard.Focus(_searchBox);
+            };
+            PreviewKeyDown += delegate (object sender, KeyEventArgs args)
+            {
+                if (args.Key == Key.Escape)
+                {
+                    args.Handled = true;
+                    Close();
+                }
             };
 
             Rebuild();
@@ -184,6 +192,8 @@ namespace KPLN_CommandsWheel.Forms
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             UIElement icon = CreateIcon(command, 26);
             Grid.SetColumn(icon, 0);
@@ -221,7 +231,7 @@ namespace KPLN_CommandsWheel.Forms
             Button wheelButton = CreateActionButton("\u2638", IsInWheel(command) ? "Убрать из штурвала" : "Добавить в штурвал");
             wheelButton.Foreground = IsInWheel(command)
                 ? new SolidColorBrush(Color.FromRgb(26, 110, 170))
-                : new SolidColorBrush(Color.FromRgb(90, 90, 90));
+                : new SolidColorBrush(Color.FromRgb(190, 190, 190));
             wheelButton.Click += delegate (object sender, RoutedEventArgs args)
             {
                 args.Handled = true;
@@ -229,6 +239,28 @@ namespace KPLN_CommandsWheel.Forms
             };
             Grid.SetColumn(wheelButton, 3);
             row.Children.Add(wheelButton);
+
+            Button moveUpButton = CreateActionButton("\u2191", "Выше в штурвале");
+            moveUpButton.IsEnabled = CanMoveWheelCommand(command, -1);
+            moveUpButton.Foreground = new SolidColorBrush(Color.FromRgb(72, 72, 72));
+            moveUpButton.Click += delegate (object sender, RoutedEventArgs args)
+            {
+                args.Handled = true;
+                MoveWheelCommand(command, -1);
+            };
+            Grid.SetColumn(moveUpButton, 4);
+            row.Children.Add(moveUpButton);
+
+            Button moveDownButton = CreateActionButton("\u2193", "Ниже в штурвале");
+            moveDownButton.IsEnabled = CanMoveWheelCommand(command, 1);
+            moveDownButton.Foreground = new SolidColorBrush(Color.FromRgb(72, 72, 72));
+            moveDownButton.Click += delegate (object sender, RoutedEventArgs args)
+            {
+                args.Handled = true;
+                MoveWheelCommand(command, 1);
+            };
+            Grid.SetColumn(moveDownButton, 5);
+            row.Children.Add(moveDownButton);
 
             rowBorder.Child = row;
             rowBorder.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
@@ -330,6 +362,45 @@ namespace KPLN_CommandsWheel.Forms
 
             UserSettingsService.Save(_settings);
             Rebuild();
+        }
+
+        private bool CanMoveWheelCommand(RevitCommandInfo command, int direction)
+        {
+            int index = GetWheelCommandIndex(command);
+            if (index < 0)
+            {
+                return false;
+            }
+
+            int targetIndex = index + direction;
+            return targetIndex >= 0 && targetIndex < _settings.WheelCommandIds.Count;
+        }
+
+        private void MoveWheelCommand(RevitCommandInfo command, int direction)
+        {
+            int index = GetWheelCommandIndex(command);
+            int targetIndex = index + direction;
+            if (index < 0 || targetIndex < 0 || targetIndex >= _settings.WheelCommandIds.Count)
+            {
+                return;
+            }
+
+            string currentId = _settings.WheelCommandIds[index];
+            _settings.WheelCommandIds[index] = _settings.WheelCommandIds[targetIndex];
+            _settings.WheelCommandIds[targetIndex] = currentId;
+
+            UserSettingsService.Save(_settings);
+            Rebuild();
+        }
+
+        private int GetWheelCommandIndex(RevitCommandInfo command)
+        {
+            if (command == null || string.IsNullOrWhiteSpace(command.Id))
+            {
+                return -1;
+            }
+
+            return _settings.WheelCommandIds.FindIndex(id => string.Equals(id, command.Id, StringComparison.OrdinalIgnoreCase));
         }
 
         private void Run(RevitCommandInfo command)
