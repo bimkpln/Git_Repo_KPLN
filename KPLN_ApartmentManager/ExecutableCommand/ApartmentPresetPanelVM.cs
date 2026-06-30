@@ -14,6 +14,7 @@ namespace KPLN_ApartmentManager.Forms
         public List<string> WorksetOptions { get; set; }
 
         public string ActivePlanName { get; set; }
+        public string ActiveWorksetName { get; set; }
 
         public bool IsDataStale { get; set; }
 
@@ -29,6 +30,7 @@ namespace KPLN_ApartmentManager.Forms
         {
             ApartmentPresetPanelContext result = new ApartmentPresetPanelContext();
             result.ActivePlanName = ActivePlanName;
+            result.ActiveWorksetName = ActiveWorksetName;
             result.IsDataStale = IsDataStale;
 
             result.WorksetOptions = WorksetOptions != null
@@ -916,7 +918,7 @@ namespace KPLN_ApartmentManager.Forms
         private void RefreshWorksetFields()
         {
             WorksetOptions.Clear();
-            WorksetOptions.Add(ApartmentPresetData.NoWorksetSelection);
+            WorksetOptions.Add(GetDefaultWorksetSelectionLabel());
 
             List<string> options = _context != null && _context.WorksetOptions != null
                 ? _context.WorksetOptions
@@ -962,13 +964,37 @@ namespace KPLN_ApartmentManager.Forms
 
         private string ResolveSavedWorksetSelection(string savedWorksetName)
         {
+            string defaultSelection = WorksetOptions.FirstOrDefault() ?? ApartmentPresetData.NoWorksetSelection;
+
+            if (IsDefaultWorksetSelection(savedWorksetName))
+                return defaultSelection;
+
             if (!string.IsNullOrWhiteSpace(savedWorksetName) &&
                 WorksetOptions.Any(x => string.Equals(x, savedWorksetName, StringComparison.OrdinalIgnoreCase)))
             {
                 return WorksetOptions.First(x => string.Equals(x, savedWorksetName, StringComparison.OrdinalIgnoreCase));
             }
 
-            return ApartmentPresetData.NoWorksetSelection;
+            return defaultSelection;
+        }
+
+        private string GetDefaultWorksetSelectionLabel()
+        {
+            string activeWorksetName = _context != null ? _context.ActiveWorksetName : null;
+            return !string.IsNullOrWhiteSpace(activeWorksetName)
+                ? ApartmentPresetData.NoWorksetSelection + ": " + activeWorksetName.Trim()
+                : ApartmentPresetData.NoWorksetSelection;
+        }
+
+        private static bool IsDefaultWorksetSelection(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return true;
+
+            string trimmed = value.Trim();
+            return string.Equals(trimmed, ApartmentPresetData.NoWorksetSelection, StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith(ApartmentPresetData.NoWorksetSelection + ":", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, "Без рабочего набора", StringComparison.OrdinalIgnoreCase);
         }
 
         private void RefreshWindowFields()
@@ -1268,9 +1294,9 @@ namespace KPLN_ApartmentManager.Forms
 
         private static string NormalizeWorksetSelection(string value)
         {
-            return string.IsNullOrWhiteSpace(value)
+            return IsDefaultWorksetSelection(value)
                 ? ApartmentPresetData.NoWorksetSelection
-                : value;
+                : value.Trim();
         }
 
         private void NotifyDataChanged()

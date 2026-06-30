@@ -46,6 +46,38 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 .ToList();
         }
 
+        private static string GetActiveUserWorksetName(Document doc)
+        {
+            if (doc == null)
+                return null;
+
+            try
+            {
+                if (!doc.IsWorkshared)
+                    return null;
+
+                WorksetTable worksetTable = doc.GetWorksetTable();
+                if (worksetTable == null)
+                    return null;
+
+                WorksetId activeWorksetId = worksetTable.GetActiveWorksetId();
+                if (activeWorksetId == null || activeWorksetId.IntegerValue < 0)
+                    return null;
+
+                Workset activeWorkset = new FilteredWorksetCollector(doc)
+                    .OfKind(WorksetKind.UserWorkset)
+                    .FirstOrDefault(x => x != null && x.Id.IntegerValue == activeWorksetId.IntegerValue);
+
+                return activeWorkset != null
+                    ? activeWorkset.Name
+                    : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static ApartmentWorksetTargets ResolveApartmentWorksetTargets(Document doc, ApartmentPresetData preset)
         {
             return new ApartmentWorksetTargets
@@ -61,8 +93,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private static int? ResolveUserWorksetId(Document doc, string worksetName)
         {
-            if (doc == null || string.IsNullOrWhiteSpace(worksetName) ||
-                string.Equals(worksetName, ApartmentPresetData.NoWorksetSelection, StringComparison.OrdinalIgnoreCase))
+            if (doc == null || IsDefaultWorksetSelection(worksetName))
             {
                 return null;
             }
@@ -84,6 +115,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 return null;
             }
+        }
+
+        private static bool IsDefaultWorksetSelection(string worksetName)
+        {
+            if (string.IsNullOrWhiteSpace(worksetName))
+                return true;
+
+            string trimmed = worksetName.Trim();
+            return string.Equals(trimmed, ApartmentPresetData.NoWorksetSelection, StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith(ApartmentPresetData.NoWorksetSelection + ":", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, "Без рабочего набора", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool TryAssignElementToWorkset(Element element, int? worksetId)

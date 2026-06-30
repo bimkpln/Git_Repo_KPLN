@@ -302,6 +302,11 @@
 
                     <Button Style="{StaticResource BottomActionButtonStyle}"
                             Margin="0 15 10 0"
+                            Content="Обновить семейства"
+                            Command="{Binding UpdateApartmentFamiliesCommand}"/>
+
+                    <Button Style="{StaticResource BottomActionButtonStyle}"
+                            Margin="0 15 10 0"
                             Content="Обновить марки"
                             Command="{Binding UpdateApartmentMarksCommand}"/>
                 </StackPanel>
