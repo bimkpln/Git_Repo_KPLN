@@ -89,27 +89,27 @@ namespace KPLN_UserDataAgent
         /// Задержка первой фоновой попытки отправить локальную очередь в общую БД после запуска Revit.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncStartDelaySeconds = 60;
+        public const int SyncStartDelaySeconds = 15;
 
         /// <summary>
         /// Интервал регулярных фоновых попыток отправить локальную очередь в общую БД.
         /// Если общая БД или сетевой диск недоступны, следующая попытка будет через этот интервал.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncIntervalSeconds = 300;
+        public const int SyncIntervalSeconds = 120;
 
         /// <summary>
         /// Задержка ускоренной попытки синхронизации после записи нового события в локальную БД.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncAfterWriteDelaySeconds = 60;
+        public const int SyncAfterWriteDelaySeconds = 15;
 
         /// <summary>
         /// Случайная добавка к задержкам синхронизации, чтобы пользователи не били в общую БД одновременно.
         /// Фактическая задержка = базовая задержка + случайное число от 0 до этого значения.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncRandomJitterSeconds = 120;
+        public const int SyncRandomJitterSeconds = 30;
 
         /// <summary>
         /// Максимальное количество локальных событий, отправляемых в общую БД за одну попытку синхронизации.
