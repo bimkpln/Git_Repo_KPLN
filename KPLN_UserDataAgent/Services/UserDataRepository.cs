@@ -10,8 +10,12 @@ namespace KPLN_UserDataAgent.Services
     internal sealed class UserDataRepository
     {
         private readonly object _localLock = new object();
+        private readonly object _centralSchemaLock = new object();
+        private readonly HashSet<string> _ensuredCentralDatabasePaths =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly string _localDatabasePath;
         private readonly string _centralDatabasePath;
+        private bool _isLocalSchemaInitialized;
         private int _syncRotationGuard;
 
         public UserDataRepository(string localDatabasePath, string centralDatabasePath)
@@ -39,23 +43,18 @@ namespace KPLN_UserDataAgent.Services
                 if (Interlocked.CompareExchange(ref _syncRotationGuard, 0, 0) == 0)
                     RotateLocalDatabaseIfNeeded();
 
+                if (_isLocalSchemaInitialized && File.Exists(_localDatabasePath))
+                    return;
+
                 using (SQLiteConnection connection = CreateConnection(_localDatabasePath, ModuleData.LocalBusyTimeoutMs))
                 {
                     connection.Open();
                     ExecuteNonQuery(connection, null, "PRAGMA journal_mode=WAL;");
                     ExecuteNonQuery(connection, null, "PRAGMA busy_timeout=" + ModuleData.LocalBusyTimeoutMs + ";");
                     EnsureLocalSchema(connection, null);
+                    _isLocalSchemaInitialized = true;
                 }
             }
-        }
-
-        public void InsertDocumentOpened(DocumentSnapshot document)
-        {
-            InsertEvent(UserEventRecord.Create(
-                "DocumentOpened",
-                string.Empty,
-                document,
-                UserContextSnapshot.Current()));
         }
 
         public void InsertEvent(UserEventRecord userEvent)
@@ -109,42 +108,107 @@ namespace KPLN_UserDataAgent.Services
                 if (!pending.HasRows)
                 {
                     CleanupSyncedArchives();
+                    TryPruneCentralDatabases();
                     return 0;
                 }
 
-                EnsureDirectory(_centralDatabasePath);
+                RefreshUnknownDepartmentKeys(pending);
 
-                using (SQLiteConnection centralConnection = CreateConnection(_centralDatabasePath, ModuleData.CentralBusyTimeoutMs))
+                int syncedCount = 0;
+                Exception syncException = null;
+
+                try
                 {
-                    centralConnection.Open();
-                    ExecuteNonQuery(centralConnection, null, "PRAGMA busy_timeout=" + ModuleData.CentralBusyTimeoutMs + ";");
-                    EnsureCentralSchema(centralConnection, null);
+                    SyncUserEventsToCentral(pending.UserEvents);
+                    MarkEventsSynced(pending.UserEvents);
+                    syncedCount += pending.UserEvents.Length;
+                }
+                catch (Exception exception)
+                {
+                    syncException = exception;
+                }
 
-                    using (SQLiteTransaction transaction = centralConnection.BeginTransaction())
+                try
+                {
+                    SyncErrorsToCentral(pending.Errors);
+                    MarkErrorsSynced(pending.Errors);
+                    syncedCount += pending.Errors.Length;
+                }
+                catch (Exception exception)
+                {
+                    if (syncException == null)
+                        syncException = exception;
+                }
+
+                CleanupSyncedArchives();
+                TryPruneCentralDatabases();
+
+                if (syncException != null)
+                    throw syncException;
+
+                return syncedCount;
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _syncRotationGuard);
+            }
+        }
+
+        private void SyncUserEventsToCentral(UserEventRecord[] userEvents)
+        {
+            if (userEvents == null || userEvents.Length == 0)
+                return;
+
+            foreach (IGrouping<string, UserEventRecord> group in userEvents.GroupBy(GetCentralEventDatabasePath))
+            {
+                EnsureDirectory(group.Key);
+                bool databaseExistedBeforeOpen = File.Exists(group.Key);
+
+                using (SQLiteConnection connection = CreateConnection(group.Key, ModuleData.CentralBusyTimeoutMs))
+                {
+                    connection.Open();
+                    ExecuteNonQuery(connection, null, "PRAGMA busy_timeout=" + ModuleData.CentralBusyTimeoutMs + ";");
+                    EnsureCentralSchema(connection, null, group.Key, databaseExistedBeforeOpen);
+
+                    using (SQLiteTransaction transaction = connection.BeginTransaction())
                     {
-                        foreach (UserEventRecord userEvent in pending.UserEvents)
+                        foreach (UserEventRecord userEvent in group)
                         {
-                            UpsertEventTransaction(centralConnection, transaction, userEvent.EventName, userEvent.TransactionName);
-                            InsertCentralUserEvent(centralConnection, transaction, userEvent);
-                        }
-
-                        foreach (AgentErrorRecord error in pending.Errors)
-                        {
-                            InsertCentralAgentError(centralConnection, transaction, error);
+                            InsertCentralUserEvent(connection, transaction, userEvent);
                         }
 
                         transaction.Commit();
                     }
                 }
-
-                MarkEventsSynced(pending.UserEvents);
-                MarkErrorsSynced(pending.Errors);
-                CleanupSyncedArchives();
-                return pending.UserEvents.Length + pending.Errors.Length;
             }
-            finally
+        }
+
+        private void SyncErrorsToCentral(AgentErrorRecord[] errors)
+        {
+            if (errors == null || errors.Length == 0)
+                return;
+
+            foreach (IGrouping<string, AgentErrorRecord> group in errors.GroupBy(GetCentralErrorDatabasePath))
             {
-                Interlocked.Decrement(ref _syncRotationGuard);
+                EnsureDirectory(group.Key);
+                bool databaseExistedBeforeOpen = File.Exists(group.Key);
+
+                using (SQLiteConnection connection = CreateConnection(group.Key, ModuleData.CentralBusyTimeoutMs))
+                {
+                    connection.Open();
+                    ExecuteNonQuery(connection, null, "PRAGMA busy_timeout=" + ModuleData.CentralBusyTimeoutMs + ";");
+                    EnsureCentralSchema(connection, null, group.Key, databaseExistedBeforeOpen);
+
+                    using (SQLiteTransaction transaction = connection.BeginTransaction())
+                    {
+                        foreach (AgentErrorRecord error in group)
+                        {
+                            InsertCentralAgentError(connection, transaction, error);
+                        }
+
+                        transaction.Commit();
+                    }
+                }
             }
         }
 
@@ -182,12 +246,13 @@ namespace KPLN_UserDataAgent.Services
                 connection.Open();
                 EnsureLocalSchema(connection, null);
                 command.CommandText =
-                    "SELECT Id, SyncId, EventTime, WindowsUser, SubDepartmentId, RevitVersion, " +
-                    "DocumentTitle, DocumentPath, EventName, TransactionName, " +
-                    "AddedCount, ModifiedCount, DeletedCount " +
-                    "FROM UserEvents " +
-                    "WHERE IsSynced=0 " +
-                    "ORDER BY Id " +
+                    "SELECT ue.Id, ue.SyncId, ue.EventTime, ue.WindowsUser, ue.DepartmentKey, ue.EventTransactionId, " +
+                    "et.EventName, et.TransactionName, " +
+                    "ue.AddedCount, ue.ModifiedCount, ue.DeletedCount " +
+                    "FROM UserEvents ue " +
+                    "LEFT JOIN EventTransactions et ON et.Id=ue.EventTransactionId " +
+                    "WHERE ue.IsSynced=0 " +
+                    "ORDER BY ue.Id " +
                     "LIMIT @Limit;";
                 command.Parameters.AddWithValue("@Limit", batchSize);
 
@@ -202,10 +267,8 @@ namespace KPLN_UserDataAgent.Services
                             SyncId = Convert.ToString(reader["SyncId"]),
                             EventTime = Convert.ToString(reader["EventTime"]),
                             WindowsUser = Convert.ToString(reader["WindowsUser"]),
-                            SubDepartmentId = Convert.ToInt32(reader["SubDepartmentId"]),
-                            RevitVersion = Convert.ToInt32(reader["RevitVersion"]),
-                            DocumentTitle = Convert.ToString(reader["DocumentTitle"]),
-                            DocumentPath = Convert.ToString(reader["DocumentPath"]),
+                            DepartmentKey = Convert.ToString(reader["DepartmentKey"]),
+                            EventTransactionId = Convert.ToInt64(reader["EventTransactionId"]),
                             EventName = Convert.ToString(reader["EventName"]),
                             TransactionName = Convert.ToString(reader["TransactionName"]),
                             AddedCount = ReadInt(reader, "AddedCount"),
@@ -228,8 +291,7 @@ namespace KPLN_UserDataAgent.Services
                 connection.Open();
                 EnsureLocalSchema(connection, null);
                 command.CommandText =
-                    "SELECT Id, SyncId, ErrorTime, WindowsUser, SubDepartmentId, RevitVersion, " +
-                    "Source, ErrorType, ErrorMessage, ErrorStackTrace " +
+                    "SELECT Id, SyncId, ErrorTime, WindowsUser, DepartmentKey, Source, ErrorType, ErrorMessage, ErrorStackTrace " +
                     "FROM AgentErrors " +
                     "WHERE IsSynced=0 " +
                     "ORDER BY Id " +
@@ -247,8 +309,7 @@ namespace KPLN_UserDataAgent.Services
                             SyncId = Convert.ToString(reader["SyncId"]),
                             ErrorTime = Convert.ToString(reader["ErrorTime"]),
                             WindowsUser = Convert.ToString(reader["WindowsUser"]),
-                            SubDepartmentId = Convert.ToInt32(reader["SubDepartmentId"]),
-                            RevitVersion = Convert.ToInt32(reader["RevitVersion"]),
+                            DepartmentKey = Convert.ToString(reader["DepartmentKey"]),
                             Source = Convert.ToString(reader["Source"]),
                             ErrorType = Convert.ToString(reader["ErrorType"]),
                             ErrorMessage = Convert.ToString(reader["ErrorMessage"]),
@@ -259,6 +320,175 @@ namespace KPLN_UserDataAgent.Services
             }
 
             return result;
+        }
+
+        private void RefreshUnknownDepartmentKeys(PendingSyncBatch pending)
+        {
+            List<UserEventRecord> updatedEvents = new List<UserEventRecord>();
+            List<AgentErrorRecord> updatedErrors = new List<AgentErrorRecord>();
+            bool forceReferenceRefresh = true;
+
+            foreach (UserEventRecord userEvent in pending.UserEvents)
+            {
+                bool wasUnknownDepartment = IsUnknownDepartmentKey(userEvent.DepartmentKey);
+                string resolvedDepartmentKey;
+                if (TryResolveUnknownDepartmentKey(
+                    userEvent.WindowsUser,
+                    userEvent.DepartmentKey,
+                    wasUnknownDepartment && forceReferenceRefresh,
+                    out resolvedDepartmentKey))
+                {
+                    userEvent.DepartmentKey = resolvedDepartmentKey;
+                    updatedEvents.Add(userEvent);
+                }
+
+                if (wasUnknownDepartment)
+                    forceReferenceRefresh = false;
+            }
+
+            foreach (AgentErrorRecord error in pending.Errors)
+            {
+                bool wasUnknownDepartment = IsUnknownDepartmentKey(error.DepartmentKey);
+                string resolvedDepartmentKey;
+                if (TryResolveUnknownDepartmentKey(
+                    error.WindowsUser,
+                    error.DepartmentKey,
+                    wasUnknownDepartment && forceReferenceRefresh,
+                    out resolvedDepartmentKey))
+                {
+                    error.DepartmentKey = resolvedDepartmentKey;
+                    updatedErrors.Add(error);
+                }
+
+                if (wasUnknownDepartment)
+                    forceReferenceRefresh = false;
+            }
+
+            TryUpdateLocalEventDepartmentKeys(updatedEvents.ToArray());
+            TryUpdateLocalErrorDepartmentKeys(updatedErrors.ToArray());
+        }
+
+        private static bool TryResolveUnknownDepartmentKey(
+            string windowsUser,
+            string currentDepartmentKey,
+            bool forceReferenceRefresh,
+            out string resolvedDepartmentKey)
+        {
+            resolvedDepartmentKey = currentDepartmentKey;
+            if (!IsUnknownDepartmentKey(currentDepartmentKey))
+                return false;
+
+            string departmentKey = ReferenceDepartmentLookupService.ResolveDepartmentKey(
+                windowsUser,
+                ModuleData.ReferenceDatabasePath,
+                forceReferenceRefresh);
+            if (IsUnknownDepartmentKey(departmentKey))
+                return false;
+
+            resolvedDepartmentKey = CentralDatabasePathBuilder.NormalizeDepartmentKey(departmentKey);
+            return true;
+        }
+
+        private static bool IsUnknownDepartmentKey(string departmentKey)
+        {
+            return string.Equals(
+                CentralDatabasePathBuilder.NormalizeDepartmentKey(departmentKey),
+                CentralDatabasePathBuilder.UnknownDepartmentKey,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void TryUpdateLocalEventDepartmentKeys(UserEventRecord[] userEvents)
+        {
+            if (userEvents == null || userEvents.Length == 0)
+                return;
+
+            try
+            {
+                lock (_localLock)
+                {
+                    foreach (IGrouping<string, UserEventRecord> group in userEvents.GroupBy(e => e.LocalDatabasePath))
+                    {
+                        using (SQLiteConnection connection = CreateConnection(group.Key, ModuleData.LocalBusyTimeoutMs))
+                        {
+                            connection.Open();
+                            using (SQLiteTransaction transaction = connection.BeginTransaction())
+                            {
+                                foreach (UserEventRecord userEvent in group)
+                                {
+                                    using (SQLiteCommand command = connection.CreateCommand())
+                                    {
+                                        command.Transaction = transaction;
+                                        command.CommandText =
+                                            "UPDATE UserEvents " +
+                                            "SET DepartmentKey=@DepartmentKey " +
+                                            "WHERE Id=@Id AND DepartmentKey=@UnknownDepartmentKey;";
+                                        command.Parameters.AddWithValue(
+                                            "@DepartmentKey",
+                                            CentralDatabasePathBuilder.NormalizeDepartmentKey(userEvent.DepartmentKey));
+                                        command.Parameters.AddWithValue("@Id", userEvent.LocalId);
+                                        command.Parameters.AddWithValue(
+                                            "@UnknownDepartmentKey",
+                                            CentralDatabasePathBuilder.UnknownDepartmentKey);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+
+                                transaction.Commit();
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private void TryUpdateLocalErrorDepartmentKeys(AgentErrorRecord[] errors)
+        {
+            if (errors == null || errors.Length == 0)
+                return;
+
+            try
+            {
+                lock (_localLock)
+                {
+                    foreach (IGrouping<string, AgentErrorRecord> group in errors.GroupBy(e => e.LocalDatabasePath))
+                    {
+                        using (SQLiteConnection connection = CreateConnection(group.Key, ModuleData.LocalBusyTimeoutMs))
+                        {
+                            connection.Open();
+                            using (SQLiteTransaction transaction = connection.BeginTransaction())
+                            {
+                                foreach (AgentErrorRecord error in group)
+                                {
+                                    using (SQLiteCommand command = connection.CreateCommand())
+                                    {
+                                        command.Transaction = transaction;
+                                        command.CommandText =
+                                            "UPDATE AgentErrors " +
+                                            "SET DepartmentKey=@DepartmentKey " +
+                                            "WHERE Id=@Id AND DepartmentKey=@UnknownDepartmentKey;";
+                                        command.Parameters.AddWithValue(
+                                            "@DepartmentKey",
+                                            CentralDatabasePathBuilder.NormalizeDepartmentKey(error.DepartmentKey));
+                                        command.Parameters.AddWithValue("@Id", error.LocalId);
+                                        command.Parameters.AddWithValue(
+                                            "@UnknownDepartmentKey",
+                                            CentralDatabasePathBuilder.UnknownDepartmentKey);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+
+                                transaction.Commit();
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
         }
 
         private void MarkEventsSynced(UserEventRecord[] userEvents)
@@ -335,73 +565,83 @@ namespace KPLN_UserDataAgent.Services
 
         private static void EnsureLocalSchema(SQLiteConnection connection, SQLiteTransaction transaction)
         {
+            EnsureEventTransactionsSchema(connection, transaction);
             EnsureUserEventsSchema(connection, transaction, true);
             EnsureAgentErrorsSchema(connection, transaction, true);
-            DropLocalEventTransactionTables(connection, transaction);
         }
 
-        private static void EnsureCentralSchema(SQLiteConnection connection, SQLiteTransaction transaction)
+        private void EnsureCentralSchema(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            string databasePath,
+            bool databaseExistedBeforeOpen)
         {
+            if (databaseExistedBeforeOpen && IsCentralSchemaEnsured(databasePath))
+                return;
+
+            CreateCentralSchema(connection, transaction);
+            MarkCentralSchemaEnsured(databasePath);
+        }
+
+        private bool IsCentralSchemaEnsured(string databasePath)
+        {
+            lock (_centralSchemaLock)
+            {
+                return _ensuredCentralDatabasePaths.Contains(NormalizeDatabasePath(databasePath));
+            }
+        }
+
+        private void MarkCentralSchemaEnsured(string databasePath)
+        {
+            lock (_centralSchemaLock)
+            {
+                _ensuredCentralDatabasePaths.Add(NormalizeDatabasePath(databasePath));
+            }
+        }
+
+        private static string NormalizeDatabasePath(string databasePath)
+        {
+            try
+            {
+                return Path.GetFullPath(databasePath ?? string.Empty);
+            }
+            catch
+            {
+                return databasePath ?? string.Empty;
+            }
+        }
+
+        private static void CreateCentralSchema(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            EnsureEventTransactionsSchema(connection, transaction);
             EnsureUserEventsSchema(connection, transaction, false);
-            EnsureEventTransactionSchema(connection, transaction);
             EnsureAgentErrorsSchema(connection, transaction, false);
         }
 
         private static void EnsureUserEventsSchema(SQLiteConnection connection, SQLiteTransaction transaction, bool isLocal)
         {
-            ExecuteNonQuery(
-                connection,
-                transaction,
-                "CREATE TABLE IF NOT EXISTS UserEvents (" +
-                "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "SyncId TEXT NOT NULL UNIQUE, " +
-                "EventTime TEXT NOT NULL, " +
-                "WindowsUser TEXT NOT NULL, " +
-                "SubDepartmentId INTEGER NOT NULL, " +
-                "RevitVersion INTEGER NOT NULL, " +
-                "DocumentTitle TEXT NOT NULL, " +
-                "DocumentPath TEXT NOT NULL, " +
-                "EventName TEXT NOT NULL, " +
-                "TransactionName TEXT NOT NULL, " +
-                "AddedCount INTEGER NOT NULL DEFAULT 0, " +
-                "ModifiedCount INTEGER NOT NULL DEFAULT 0, " +
-                "DeletedCount INTEGER NOT NULL DEFAULT 0" +
-                (isLocal
-                    ? ", IsSynced INTEGER NOT NULL DEFAULT 0, SyncedAt TEXT NOT NULL DEFAULT ''"
-                    : string.Empty) +
-                ");");
-
-            string[] columns = GetTableColumns(connection, transaction, "UserEvents");
-            bool hasRang = columns.Contains("Rang", StringComparer.OrdinalIgnoreCase);
-            bool hasAddedCount = columns.Contains("AddedCount", StringComparer.OrdinalIgnoreCase);
-            bool hasModifiedCount = columns.Contains("ModifiedCount", StringComparer.OrdinalIgnoreCase);
-            bool hasDeletedCount = columns.Contains("DeletedCount", StringComparer.OrdinalIgnoreCase);
-            bool hasIsSynced = columns.Contains("IsSynced", StringComparer.OrdinalIgnoreCase);
-            bool hasSyncedAt = columns.Contains("SyncedAt", StringComparer.OrdinalIgnoreCase);
-
-            if (!hasAddedCount)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE UserEvents ADD COLUMN AddedCount INTEGER NOT NULL DEFAULT 0;");
-
-            if (!hasModifiedCount)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE UserEvents ADD COLUMN ModifiedCount INTEGER NOT NULL DEFAULT 0;");
-
-            if (!hasDeletedCount)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE UserEvents ADD COLUMN DeletedCount INTEGER NOT NULL DEFAULT 0;");
-
-            if (isLocal && !hasIsSynced)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE UserEvents ADD COLUMN IsSynced INTEGER NOT NULL DEFAULT 0;");
-
-            if (isLocal && !hasSyncedAt)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE UserEvents ADD COLUMN SyncedAt TEXT NOT NULL DEFAULT '';");
-
-            if (hasRang || (!isLocal && (hasIsSynced || hasSyncedAt)))
-                RecreateUserEventsTable(connection, transaction, isLocal);
+            CreateUserEventsTable(connection, transaction, isLocal);
+            if (isLocal)
+            {
+                EnsureColumn(
+                    connection,
+                    transaction,
+                    "UserEvents",
+                    "DepartmentKey",
+                    "TEXT NOT NULL DEFAULT '" + CentralDatabasePathBuilder.UnknownDepartmentKey + "'");
+            }
 
             ExecuteNonQuery(
                 connection,
                 transaction,
                 "CREATE INDEX IF NOT EXISTS IX_UserEvents_Time " +
                 "ON UserEvents(EventTime);");
+
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                "CREATE INDEX IF NOT EXISTS IX_UserEvents_EventTransaction " +
+                "ON UserEvents(EventTransactionId);");
 
             if (isLocal)
             {
@@ -413,61 +653,41 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
-        private static void RecreateUserEventsTable(SQLiteConnection connection, SQLiteTransaction transaction, bool isLocal)
+        private static void CreateUserEventsTable(SQLiteConnection connection, SQLiteTransaction transaction, bool isLocal)
         {
-            string backupName = "UserEvents_Legacy_" + DateTime.Now.ToString("yyyyMMddHHmmss");
-            ExecuteNonQuery(connection, transaction, "DROP INDEX IF EXISTS IX_UserEvents_Time;");
-            ExecuteNonQuery(connection, transaction, "DROP INDEX IF EXISTS IX_UserEvents_Sync;");
-            ExecuteNonQuery(connection, transaction, "ALTER TABLE UserEvents RENAME TO " + backupName + ";");
-            EnsureUserEventsSchema(connection, transaction, isLocal);
-
-            string targetColumns =
-                "SyncId, EventTime, WindowsUser, SubDepartmentId, RevitVersion, " +
-                "DocumentTitle, DocumentPath, EventName, TransactionName, AddedCount, ModifiedCount, DeletedCount" +
-                (isLocal ? ", IsSynced, SyncedAt" : string.Empty);
-
-            string sourceColumns =
-                "SyncId, EventTime, WindowsUser, SubDepartmentId, RevitVersion, " +
-                "DocumentTitle, DocumentPath, EventName, TransactionName, AddedCount, ModifiedCount, DeletedCount" +
-                (isLocal ? ", IsSynced, SyncedAt" : string.Empty);
+            string localColumns = isLocal
+                ? ", DepartmentKey TEXT NOT NULL DEFAULT '" + CentralDatabasePathBuilder.UnknownDepartmentKey + "'" +
+                  ", IsSynced INTEGER NOT NULL DEFAULT 0, SyncedAt TEXT NOT NULL DEFAULT ''"
+                : string.Empty;
 
             ExecuteNonQuery(
                 connection,
                 transaction,
-                "INSERT OR IGNORE INTO UserEvents (" + targetColumns + ") " +
-                "SELECT " + sourceColumns + " FROM " + backupName + ";");
+                "CREATE TABLE IF NOT EXISTS UserEvents (" +
+                "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "SyncId TEXT NOT NULL UNIQUE, " +
+                "EventTime TEXT NOT NULL, " +
+                "WindowsUser TEXT NOT NULL, " +
+                "EventTransactionId INTEGER NOT NULL, " +
+                "AddedCount INTEGER NOT NULL DEFAULT 0, " +
+                "ModifiedCount INTEGER NOT NULL DEFAULT 0, " +
+                "DeletedCount INTEGER NOT NULL DEFAULT 0" +
+                localColumns +
+                ");");
         }
 
         private static void EnsureAgentErrorsSchema(SQLiteConnection connection, SQLiteTransaction transaction, bool isLocal)
         {
-            ExecuteNonQuery(
-                connection,
-                transaction,
-                "CREATE TABLE IF NOT EXISTS AgentErrors (" +
-                "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "SyncId TEXT NOT NULL UNIQUE, " +
-                "ErrorTime TEXT NOT NULL, " +
-                "WindowsUser TEXT NOT NULL, " +
-                "SubDepartmentId INTEGER NOT NULL, " +
-                "RevitVersion INTEGER NOT NULL, " +
-                "Source TEXT NOT NULL, " +
-                "ErrorType TEXT NOT NULL, " +
-                "ErrorMessage TEXT NOT NULL, " +
-                "ErrorStackTrace TEXT NOT NULL" +
-                (isLocal
-                    ? ", IsSynced INTEGER NOT NULL DEFAULT 0, SyncedAt TEXT NOT NULL DEFAULT ''"
-                    : string.Empty) +
-                ");");
-
-            string[] columns = GetTableColumns(connection, transaction, "AgentErrors");
-            bool hasIsSynced = columns.Contains("IsSynced", StringComparer.OrdinalIgnoreCase);
-            bool hasSyncedAt = columns.Contains("SyncedAt", StringComparer.OrdinalIgnoreCase);
-
-            if (isLocal && !hasIsSynced)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE AgentErrors ADD COLUMN IsSynced INTEGER NOT NULL DEFAULT 0;");
-
-            if (isLocal && !hasSyncedAt)
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE AgentErrors ADD COLUMN SyncedAt TEXT NOT NULL DEFAULT '';");
+            CreateAgentErrorsTable(connection, transaction, isLocal);
+            if (isLocal)
+            {
+                EnsureColumn(
+                    connection,
+                    transaction,
+                    "AgentErrors",
+                    "DepartmentKey",
+                    "TEXT NOT NULL DEFAULT '" + CentralDatabasePathBuilder.UnknownDepartmentKey + "'");
+            }
 
             ExecuteNonQuery(
                 connection,
@@ -485,58 +705,98 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
-        private static void EnsureEventTransactionSchema(SQLiteConnection connection, SQLiteTransaction transaction)
+        private static void CreateAgentErrorsTable(SQLiteConnection connection, SQLiteTransaction transaction, bool isLocal)
         {
+            string localColumns = isLocal
+                ? ", DepartmentKey TEXT NOT NULL DEFAULT '" + CentralDatabasePathBuilder.UnknownDepartmentKey + "'" +
+                  ", IsSynced INTEGER NOT NULL DEFAULT 0, SyncedAt TEXT NOT NULL DEFAULT ''"
+                : string.Empty;
+
             ExecuteNonQuery(
                 connection,
                 transaction,
-                "CREATE TABLE IF NOT EXISTS EventTransactionRanks (" +
+                "CREATE TABLE IF NOT EXISTS AgentErrors (" +
                 "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "EventName TEXT NOT NULL, " +
-                "TransactionName TEXT NOT NULL, " +
-                "Rang INTEGER NULL, " +
-                "UNIQUE(EventName, TransactionName)" +
+                "SyncId TEXT NOT NULL UNIQUE, " +
+                "ErrorTime TEXT NOT NULL, " +
+                "WindowsUser TEXT NOT NULL, " +
+                "Source TEXT NOT NULL, " +
+                "ErrorType TEXT NOT NULL, " +
+                "ErrorMessage TEXT NOT NULL, " +
+                "ErrorStackTrace TEXT NOT NULL" +
+                localColumns +
                 ");");
-
-            if (IsColumnNotNull(connection, transaction, "EventTransactionRanks", "Rang"))
-            {
-                string backupName = "EventTransactionRanks_Legacy_" + DateTime.Now.ToString("yyyyMMddHHmmss");
-                ExecuteNonQuery(connection, transaction, "ALTER TABLE EventTransactionRanks RENAME TO " + backupName + ";");
-                EnsureEventTransactionSchema(connection, transaction);
-                ExecuteNonQuery(
-                    connection,
-                    transaction,
-                    "INSERT OR IGNORE INTO EventTransactionRanks (EventName, TransactionName, Rang) " +
-                    "SELECT EventName, TransactionName, NULL FROM " + backupName + ";");
-            }
         }
 
-        private static void DropLocalEventTransactionTables(SQLiteConnection connection, SQLiteTransaction transaction)
+        private static void EnsureColumn(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            string tableName,
+            string columnName,
+            string columnDefinition)
         {
-            List<string> tableNames = new List<string>();
+            if (ColumnExists(connection, transaction, tableName, columnName))
+                return;
+
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                "ALTER TABLE " + QuoteIdentifier(tableName) +
+                " ADD COLUMN " + QuoteIdentifier(columnName) + " " + columnDefinition + ";");
+        }
+
+        private static bool ColumnExists(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            string tableName,
+            string columnName)
+        {
             using (SQLiteCommand command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
-                command.CommandText =
-                    "SELECT name FROM sqlite_master " +
-                    "WHERE type='table' AND name LIKE 'EventTransactionRanks%';";
-
+                command.CommandText = "PRAGMA table_info(" + QuoteIdentifier(tableName) + ");";
                 using (SQLiteDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        tableNames.Add(Convert.ToString(reader["name"]));
+                        if (string.Equals(Convert.ToString(reader["name"]), columnName, StringComparison.OrdinalIgnoreCase))
+                            return true;
                     }
                 }
             }
 
-            foreach (string tableName in tableNames)
-            {
-                ExecuteNonQuery(
-                    connection,
-                    transaction,
-                    "DROP TABLE IF EXISTS " + QuoteIdentifier(tableName) + ";");
-            }
+            return false;
+        }
+
+        private static void EnsureEventTransactionsSchema(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            ExecuteNonQuery(
+                connection,
+                transaction,
+                "CREATE TABLE IF NOT EXISTS EventTransactions (" +
+                "Id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "EventName TEXT NOT NULL, " +
+                "TransactionName TEXT NOT NULL, " +
+                "UNIQUE(EventName, TransactionName)" +
+                ");");
+        }
+
+        private string GetCentralEventDatabasePath(UserEventRecord userEvent)
+        {
+            return GetCentralDatabasePath(userEvent.EventTime, userEvent.DepartmentKey);
+        }
+
+        private string GetCentralErrorDatabasePath(AgentErrorRecord error)
+        {
+            return GetCentralDatabasePath(error.ErrorTime, error.DepartmentKey);
+        }
+
+        private string GetCentralDatabasePath(string recordTime, string departmentKey)
+        {
+            if (CentralDatabasePathBuilder.IsDatabaseFilePath(_centralDatabasePath))
+                return _centralDatabasePath;
+
+            return CentralDatabasePathBuilder.GetDatabasePath(_centralDatabasePath, departmentKey, recordTime);
         }
 
         private void RotateLocalDatabaseIfNeeded()
@@ -554,6 +814,7 @@ namespace KPLN_UserDataAgent.Services
 
             DeleteDatabaseSidecars(_localDatabasePath);
             File.Move(_localDatabasePath, CreateArchiveDatabasePath());
+            _isLocalSchemaInitialized = false;
         }
 
         private void CheckpointDatabase(string databasePath)
@@ -625,6 +886,112 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
+        private void TryPruneCentralDatabases()
+        {
+            try
+            {
+                PruneCentralDatabases();
+            }
+            catch
+            {
+            }
+        }
+
+        private void PruneCentralDatabases()
+        {
+            if (string.IsNullOrWhiteSpace(_centralDatabasePath)
+                || CentralDatabasePathBuilder.IsDatabaseFilePath(_centralDatabasePath)
+                || !Directory.Exists(_centralDatabasePath))
+                return;
+
+            int retentionMonths = ModuleData.CentralDatabaseRetentionMonths;
+            if (retentionMonths <= 0)
+                return;
+
+            DateTime currentMonth = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            DateTime cutoffMonth = currentMonth.AddMonths(-(retentionMonths - 1));
+            string centralRoot = Path.GetFullPath(_centralDatabasePath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+            foreach (string departmentDirectoryPath in Directory.GetDirectories(centralRoot))
+            {
+                string fullDepartmentDirectoryPath = Path.GetFullPath(departmentDirectoryPath)
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                if (!IsDirectChildPath(centralRoot, fullDepartmentDirectoryPath))
+                    continue;
+
+                string departmentKey = Path.GetFileName(fullDepartmentDirectoryPath);
+                foreach (string monthDirectoryPath in Directory.GetDirectories(fullDepartmentDirectoryPath))
+                {
+                    PruneDepartmentMonthDirectory(
+                        fullDepartmentDirectoryPath,
+                        departmentKey,
+                        monthDirectoryPath,
+                        cutoffMonth);
+                }
+
+                TryDeleteDirectoryIfEmpty(fullDepartmentDirectoryPath);
+            }
+        }
+
+        private static void PruneDepartmentMonthDirectory(
+            string departmentDirectoryPath,
+            string departmentKey,
+            string monthDirectoryPath,
+            DateTime cutoffMonth)
+        {
+            string monthDirectoryName = Path.GetFileName(monthDirectoryPath);
+            DateTime month;
+            if (!CentralDatabasePathBuilder.TryParseMonthDirectoryName(monthDirectoryName, out month))
+                return;
+
+            if (month >= cutoffMonth)
+                return;
+
+            string fullMonthDirectoryPath = Path.GetFullPath(monthDirectoryPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (!IsDirectChildPath(departmentDirectoryPath, fullMonthDirectoryPath))
+                return;
+
+            try
+            {
+                string databasePath = Path.Combine(
+                    fullMonthDirectoryPath,
+                    "KPLN_UserDataAgent_" + departmentKey + "_" + monthDirectoryName + ".db");
+                DeleteDatabaseFiles(databasePath);
+                TryDeleteDirectoryIfEmpty(fullMonthDirectoryPath);
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool IsDirectChildPath(string parentPath, string childPath)
+        {
+            DirectoryInfo parent = new DirectoryInfo(parentPath);
+            DirectoryInfo child = new DirectoryInfo(childPath);
+            return child.Parent != null
+                && string.Equals(
+                    parent.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    child.Parent.FullName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void TryDeleteDirectoryIfEmpty(string directoryPath)
+        {
+            try
+            {
+                if (Directory.Exists(directoryPath)
+                    && !Directory.EnumerateFileSystemEntries(directoryPath).Any())
+                {
+                    Directory.Delete(directoryPath, false);
+                }
+            }
+            catch
+            {
+            }
+        }
+
         private bool HasPendingRows(string databasePath)
         {
             using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
@@ -681,26 +1048,6 @@ namespace KPLN_UserDataAgent.Services
             return "\"" + (identifier ?? string.Empty).Replace("\"", "\"\"") + "\"";
         }
 
-        private static string[] GetTableColumns(SQLiteConnection connection, SQLiteTransaction transaction, string tableName)
-        {
-            List<string> columns = new List<string>();
-            using (SQLiteCommand command = connection.CreateCommand())
-            {
-                command.Transaction = transaction;
-                command.CommandText = "PRAGMA table_info(" + tableName + ");";
-
-                using (SQLiteDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        columns.Add(Convert.ToString(reader["name"]));
-                    }
-                }
-            }
-
-            return columns.ToArray();
-        }
-
         private static int ReadInt(SQLiteDataReader reader, string columnName)
         {
             try
@@ -714,46 +1061,39 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
-        private static bool IsColumnNotNull(
+        private static long UpsertEventTransaction(
             SQLiteConnection connection,
             SQLiteTransaction transaction,
             string tableName,
-            string columnName)
-        {
-            using (SQLiteCommand command = connection.CreateCommand())
-            {
-                command.Transaction = transaction;
-                command.CommandText = "PRAGMA table_info(" + tableName + ");";
-
-                using (SQLiteDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        string currentColumnName = Convert.ToString(reader["name"]);
-                        if (string.Equals(currentColumnName, columnName, StringComparison.OrdinalIgnoreCase))
-                            return Convert.ToInt32(reader["notnull"]) != 0;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        private static void UpsertEventTransaction(
-            SQLiteConnection connection,
-            SQLiteTransaction transaction,
             string eventName,
             string transactionName)
         {
+            string safeEventName = eventName ?? string.Empty;
+            string safeTransactionName = transactionName ?? string.Empty;
+            string quotedTableName = QuoteIdentifier(tableName);
+
             using (SQLiteCommand command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
                 command.CommandText =
-                    "INSERT OR IGNORE INTO EventTransactionRanks (EventName, TransactionName, Rang) " +
-                    "VALUES (@EventName, @TransactionName, NULL);";
-                command.Parameters.AddWithValue("@EventName", eventName ?? string.Empty);
-                command.Parameters.AddWithValue("@TransactionName", transactionName ?? string.Empty);
+                    "INSERT OR IGNORE INTO " + quotedTableName + " (EventName, TransactionName) " +
+                    "VALUES (@EventName, @TransactionName);";
+                command.Parameters.AddWithValue("@EventName", safeEventName);
+                command.Parameters.AddWithValue("@TransactionName", safeTransactionName);
                 command.ExecuteNonQuery();
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText =
+                    "SELECT Id FROM " + quotedTableName + " " +
+                    "WHERE EventName=@EventName AND TransactionName=@TransactionName " +
+                    "LIMIT 1;";
+                command.Parameters.AddWithValue("@EventName", safeEventName);
+                command.Parameters.AddWithValue("@TransactionName", safeTransactionName);
+                object result = command.ExecuteScalar();
+                return result == null || result == DBNull.Value ? 0L : Convert.ToInt64(result);
             }
         }
 
@@ -762,16 +1102,23 @@ namespace KPLN_UserDataAgent.Services
             SQLiteTransaction transaction,
             UserEventRecord userEvent)
         {
+            userEvent.EventTransactionId = UpsertEventTransaction(
+                connection,
+                transaction,
+                "EventTransactions",
+                userEvent.EventName,
+                userEvent.TransactionName);
+
             using (SQLiteCommand command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
                 command.CommandText =
                     "INSERT OR IGNORE INTO UserEvents (" +
-                    "SyncId, EventTime, WindowsUser, SubDepartmentId, RevitVersion, DocumentTitle, DocumentPath, " +
-                    "EventName, TransactionName, AddedCount, ModifiedCount, DeletedCount, IsSynced, SyncedAt" +
+                    "SyncId, EventTime, WindowsUser, EventTransactionId, " +
+                    "AddedCount, ModifiedCount, DeletedCount, DepartmentKey, IsSynced, SyncedAt" +
                     ") VALUES (" +
-                    "@SyncId, @EventTime, @WindowsUser, @SubDepartmentId, @RevitVersion, @DocumentTitle, @DocumentPath, " +
-                    "@EventName, @TransactionName, @AddedCount, @ModifiedCount, @DeletedCount, 0, ''" +
+                    "@SyncId, @EventTime, @WindowsUser, @EventTransactionId, " +
+                    "@AddedCount, @ModifiedCount, @DeletedCount, @DepartmentKey, 0, ''" +
                     ");";
                 AddUserEventParameters(command, userEvent);
                 command.ExecuteNonQuery();
@@ -783,16 +1130,23 @@ namespace KPLN_UserDataAgent.Services
             SQLiteTransaction transaction,
             UserEventRecord userEvent)
         {
+            userEvent.EventTransactionId = UpsertEventTransaction(
+                connection,
+                transaction,
+                "EventTransactions",
+                userEvent.EventName,
+                userEvent.TransactionName);
+
             using (SQLiteCommand command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
                 command.CommandText =
                     "INSERT OR IGNORE INTO UserEvents (" +
-                    "SyncId, EventTime, WindowsUser, SubDepartmentId, RevitVersion, DocumentTitle, DocumentPath, " +
-                    "EventName, TransactionName, AddedCount, ModifiedCount, DeletedCount" +
+                    "SyncId, EventTime, WindowsUser, EventTransactionId, " +
+                    "AddedCount, ModifiedCount, DeletedCount" +
                     ") VALUES (" +
-                    "@SyncId, @EventTime, @WindowsUser, @SubDepartmentId, @RevitVersion, @DocumentTitle, @DocumentPath, " +
-                    "@EventName, @TransactionName, @AddedCount, @ModifiedCount, @DeletedCount" +
+                    "@SyncId, @EventTime, @WindowsUser, @EventTransactionId, " +
+                    "@AddedCount, @ModifiedCount, @DeletedCount" +
                     ");";
                 AddUserEventParameters(command, userEvent);
                 command.ExecuteNonQuery();
@@ -809,11 +1163,11 @@ namespace KPLN_UserDataAgent.Services
                 command.Transaction = transaction;
                 command.CommandText =
                     "INSERT OR IGNORE INTO AgentErrors (" +
-                    "SyncId, ErrorTime, WindowsUser, SubDepartmentId, RevitVersion, Source, " +
-                    "ErrorType, ErrorMessage, ErrorStackTrace, IsSynced, SyncedAt" +
+                    "SyncId, ErrorTime, WindowsUser, Source, " +
+                    "ErrorType, ErrorMessage, ErrorStackTrace, DepartmentKey, IsSynced, SyncedAt" +
                     ") VALUES (" +
-                    "@SyncId, @ErrorTime, @WindowsUser, @SubDepartmentId, @RevitVersion, @Source, " +
-                    "@ErrorType, @ErrorMessage, @ErrorStackTrace, 0, ''" +
+                    "@SyncId, @ErrorTime, @WindowsUser, @Source, " +
+                    "@ErrorType, @ErrorMessage, @ErrorStackTrace, @DepartmentKey, 0, ''" +
                     ");";
                 AddAgentErrorParameters(command, error);
                 command.ExecuteNonQuery();
@@ -830,10 +1184,10 @@ namespace KPLN_UserDataAgent.Services
                 command.Transaction = transaction;
                 command.CommandText =
                     "INSERT OR IGNORE INTO AgentErrors (" +
-                    "SyncId, ErrorTime, WindowsUser, SubDepartmentId, RevitVersion, Source, " +
+                    "SyncId, ErrorTime, WindowsUser, Source, " +
                     "ErrorType, ErrorMessage, ErrorStackTrace" +
                     ") VALUES (" +
-                    "@SyncId, @ErrorTime, @WindowsUser, @SubDepartmentId, @RevitVersion, @Source, " +
+                    "@SyncId, @ErrorTime, @WindowsUser, @Source, " +
                     "@ErrorType, @ErrorMessage, @ErrorStackTrace" +
                     ");";
                 AddAgentErrorParameters(command, error);
@@ -846,12 +1200,8 @@ namespace KPLN_UserDataAgent.Services
             command.Parameters.AddWithValue("@SyncId", userEvent.SyncId);
             command.Parameters.AddWithValue("@EventTime", userEvent.EventTime);
             command.Parameters.AddWithValue("@WindowsUser", userEvent.WindowsUser ?? string.Empty);
-            command.Parameters.AddWithValue("@SubDepartmentId", userEvent.SubDepartmentId);
-            command.Parameters.AddWithValue("@RevitVersion", userEvent.RevitVersion);
-            command.Parameters.AddWithValue("@DocumentTitle", userEvent.DocumentTitle ?? string.Empty);
-            command.Parameters.AddWithValue("@DocumentPath", userEvent.DocumentPath ?? string.Empty);
-            command.Parameters.AddWithValue("@EventName", userEvent.EventName ?? string.Empty);
-            command.Parameters.AddWithValue("@TransactionName", userEvent.TransactionName ?? string.Empty);
+            AddDepartmentKeyParameterIfNeeded(command, userEvent.DepartmentKey);
+            command.Parameters.AddWithValue("@EventTransactionId", userEvent.EventTransactionId);
             command.Parameters.AddWithValue("@AddedCount", userEvent.AddedCount);
             command.Parameters.AddWithValue("@ModifiedCount", userEvent.ModifiedCount);
             command.Parameters.AddWithValue("@DeletedCount", userEvent.DeletedCount);
@@ -862,12 +1212,17 @@ namespace KPLN_UserDataAgent.Services
             command.Parameters.AddWithValue("@SyncId", error.SyncId);
             command.Parameters.AddWithValue("@ErrorTime", error.ErrorTime);
             command.Parameters.AddWithValue("@WindowsUser", error.WindowsUser ?? string.Empty);
-            command.Parameters.AddWithValue("@SubDepartmentId", error.SubDepartmentId);
-            command.Parameters.AddWithValue("@RevitVersion", error.RevitVersion);
+            AddDepartmentKeyParameterIfNeeded(command, error.DepartmentKey);
             command.Parameters.AddWithValue("@Source", error.Source ?? string.Empty);
             command.Parameters.AddWithValue("@ErrorType", error.ErrorType ?? string.Empty);
             command.Parameters.AddWithValue("@ErrorMessage", error.ErrorMessage ?? string.Empty);
             command.Parameters.AddWithValue("@ErrorStackTrace", error.ErrorStackTrace ?? string.Empty);
+        }
+
+        private static void AddDepartmentKeyParameterIfNeeded(SQLiteCommand command, string departmentKey)
+        {
+            if (command.CommandText.IndexOf("@DepartmentKey", StringComparison.OrdinalIgnoreCase) >= 0)
+                command.Parameters.AddWithValue("@DepartmentKey", CentralDatabasePathBuilder.NormalizeDepartmentKey(departmentKey));
         }
 
         private static SQLiteConnection CreateConnection(string databasePath, int busyTimeoutMs)

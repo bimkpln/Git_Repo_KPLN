@@ -147,6 +147,28 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
+        private class ApartmentFamilyReloadOptions : IFamilyLoadOptions
+        {
+            public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
+            {
+                overwriteParameterValues = true;
+                return true;
+            }
+
+            public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
+            {
+                source = FamilySource.Family;
+                overwriteParameterValues = true;
+                return true;
+            }
+        }
+
+        private class ApartmentFamilyReloadCandidate
+        {
+            public string FamilyPath { get; set; }
+            public string FamilyName { get; set; }
+        }
+
         private class ExistingWallLineInfo
         {
             public ElementId WallId { get; set; }
@@ -302,6 +324,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             public XYZ P0 { get; set; }
             public XYZ P1 { get; set; }
             public bool StyleMatched { get; set; }
+            public string MatchedName { get; set; }
         }
 
         private class DoorTypeMirrorEnsureResult
@@ -333,6 +356,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             public XYZ SourceFacingDirection { get; set; }
             public XYZ SourceRoomCalculationSideDirection { get; set; }
             public bool IsEntranceDoor { get; set; }
+            public bool UseEntranceDoorPlacement { get; set; }
             public List<string> Diagnostics { get; set; }
         }
 
@@ -372,9 +396,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private class PreparedRoomPlacement
         {
             public ElementId ApartmentId { get; set; }
+            public ElementId SourceRoom2DId { get; set; }
             public string RoomName { get; set; }
             public XYZ InsertPoint { get; set; }
+            public List<XYZ> BoundaryVertices { get; set; }
             public double ExpectedAreaInternal { get; set; }
+            public double AreaMismatchToleranceSquareMeters { get; set; }
             public bool HasShaftInside { get; set; }
         }
 
@@ -405,6 +432,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             PlaceApartment,
             ConvertTo3D,
             RefreshApartmentPresets,
+            UpdateApartmentFamilies,
             UpdateApartmentMarks
         }
 
@@ -448,6 +476,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                     case RequestType.RefreshApartmentPresets:
                         ExecuteRefreshApartmentPresets(doc, _requestedPresetData);
+                        break;
+
+                    case RequestType.UpdateApartmentFamilies:
+                        ExecuteUpdateApartmentFamilies(doc);
                         break;
 
                     case RequestType.UpdateApartmentMarks:
@@ -499,6 +531,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             _requestedPresetData = null;
         }
 
+        public void PrepareUpdateApartmentFamilies()
+        {
+            _requestType = RequestType.UpdateApartmentFamilies;
+            _requestedApartmentId = 0;
+            _requestedPresetData = null;
+        }
+
         private void MarkApartmentPresetDataStaleInWindow()
         {
             if (_window == null || _window.Dispatcher == null)
@@ -538,6 +577,37 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 return result.ToString().Trim();
             }
+        }
+
+        private static List<string> GetApartmentFamilyPathsFromDb()
+        {
+            List<string> result = new List<string>();
+
+            if (!File.Exists(DbPath))
+                throw new FileNotFoundException("Не найдена база данных", DbPath);
+
+            using (SQLiteConnection con = OpenConnection(DbPath, true))
+            using (SQLiteCommand cmd = con.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT DISTINCT FPATH FROM Main " +
+                    "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
+
+                using (SQLiteDataReader r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        string path = r.IsDBNull(0) ? null : r.GetString(0);
+                        if (!string.IsNullOrWhiteSpace(path))
+                            result.Add(path.Trim());
+                    }
+                }
+            }
+
+            return result
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
@@ -648,13 +718,25 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return null;
         }
 
-        private static bool HasEntranceDoorComment(Element e)
+        private static bool IsEntranceDoor2DMarker(FamilyInstance fi)
         {
-            if (e == null)
+            if (fi == null || fi.Symbol == null)
                 return false;
 
-            List<string> instanceValues = GetCommentParameterValues(e, BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS);
-            return instanceValues.Any(IsEntranceDoorComment);
+            return IsEntranceDoor2DTypeName(fi.Symbol.Name);
+        }
+
+        private static bool IsEntranceDoor2DTypeName(string typeName)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+                return false;
+
+            string normalized = typeName
+                .Replace('ё', 'е')
+                .Replace('Ё', 'Е')
+                .Trim();
+
+            return normalized.EndsWith("_Входная", StringComparison.OrdinalIgnoreCase);
         }
 
         private static List<string> GetCommentParameterValues(Element e, BuiltInParameter builtInParameter)
@@ -871,6 +953,148 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             TaskDialog.Show("KPLN. Менеджер квартир", message);
         }
 
+        private void ExecuteUpdateApartmentFamilies(Document doc)
+        {
+            if (doc == null)
+                return;
+
+            List<string> familyPaths;
+            try
+            {
+                familyPaths = GetApartmentFamilyPathsFromDb();
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось прочитать пути семейств из БД:\n" + ex.Message);
+                return;
+            }
+
+            if (familyPaths.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "В БД не найдено путей к семействам квартир.");
+                return;
+            }
+
+            HashSet<string> loadedFamilyNames = new HashSet<string>(
+                new FilteredElementCollector(doc)
+                    .OfClass(typeof(Family))
+                    .Cast<Family>()
+                    .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Name))
+                    .Select(x => x.Name.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+
+            List<ApartmentFamilyReloadCandidate> candidates = new List<ApartmentFamilyReloadCandidate>();
+            List<string> missingFiles = new List<string>();
+
+            foreach (string familyPath in familyPaths)
+            {
+                if (string.IsNullOrWhiteSpace(familyPath))
+                    continue;
+
+                if (!File.Exists(familyPath))
+                {
+                    missingFiles.Add(familyPath);
+                    continue;
+                }
+
+                string fileFamilyName = Path.GetFileNameWithoutExtension(familyPath);
+                string familyName = fileFamilyName;
+                bool isLoaded = !string.IsNullOrWhiteSpace(fileFamilyName) && loadedFamilyNames.Contains(fileFamilyName);
+
+                if (!isLoaded)
+                {
+                    string realFamilyName = GetFamilyNameFromFile(doc, familyPath);
+                    if (!string.IsNullOrWhiteSpace(realFamilyName) && loadedFamilyNames.Contains(realFamilyName))
+                    {
+                        familyName = realFamilyName.Trim();
+                        isLoaded = true;
+                    }
+                }
+
+                if (!isLoaded)
+                    continue;
+
+                candidates.Add(new ApartmentFamilyReloadCandidate
+                {
+                    FamilyPath = familyPath,
+                    FamilyName = familyName
+                });
+            }
+
+            candidates = candidates
+                .GroupBy(x => x.FamilyPath, StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.First())
+                .OrderBy(x => x.FamilyName)
+                .ToList();
+
+            if (candidates.Count == 0)
+            {
+                string message = "В проекте не найдено загруженных 2D-семейств квартир из БД.";
+                if (missingFiles.Count > 0)
+                    message += "\n\nНе найдено файлов в БД: " + missingFiles.Count;
+
+                TaskDialog.Show("KPLN. Менеджер квартир", message);
+                return;
+            }
+
+            int updatedCount = 0;
+            int failedCount = 0;
+            List<string> errors = new List<string>();
+
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Обновление 2D-семейств квартир"))
+            {
+                t.Start();
+
+                foreach (ApartmentFamilyReloadCandidate candidate in candidates)
+                {
+                    if (candidate == null || string.IsNullOrWhiteSpace(candidate.FamilyPath))
+                        continue;
+
+                    try
+                    {
+                        Family loadedFamily;
+                        bool loaded = doc.LoadFamily(candidate.FamilyPath, new ApartmentFamilyReloadOptions(), out loadedFamily);
+                        if (loaded || loadedFamily != null)
+                        {
+                            updatedCount++;
+                        }
+                        else
+                        {
+                            failedCount++;
+                            errors.Add(candidate.FamilyName + ": Revit не перезагрузил семейство.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failedCount++;
+                        errors.Add(candidate.FamilyName + ": " + ex.Message);
+                    }
+                }
+
+                t.Commit();
+            }
+
+            MarkApartmentPresetDataStaleInWindow();
+
+            string resultMessage =
+                "Найдено в проекте: " + candidates.Count +
+                "\nОбновлено: " + updatedCount +
+                "\nНе обновлено: " + failedCount;
+
+            if (missingFiles.Count > 0)
+                resultMessage += "\nНе найдено файлов из БД: " + missingFiles.Count;
+
+            if (errors.Count > 0)
+            {
+                List<string> shortErrors = errors.Take(15).ToList();
+                resultMessage += "\n\nОшибки:\n- " + string.Join("\n- ", shortErrors);
+                if (errors.Count > shortErrors.Count)
+                    resultMessage += "\n- ...";
+            }
+
+            TaskDialog.Show("KPLN. Менеджер квартир", resultMessage);
+        }
+
         private bool ExecutePlaceApartment(UIDocument uidoc, Document doc, int id)
         {
             ViewPlan floorPlan = doc.ActiveView as ViewPlan;
@@ -1052,20 +1276,71 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 case FamilyPlacementType.OneLevelBased:
                 case FamilyPlacementType.OneLevelBasedHosted:
-                    if (floorPlan.GenLevel == null)
-                        throw new Exception("У активного плана не определён уровень.");
-
-                    return doc.Create.NewFamilyInstance(point, symbol, floorPlan.GenLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
                 case FamilyPlacementType.WorkPlaneBased:
                     if (floorPlan.GenLevel == null)
                         throw new Exception("У активного плана не определён уровень.");
 
-                    return doc.Create.NewFamilyInstance(point, symbol, floorPlan.GenLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    XYZ levelPoint = new XYZ(point.X, point.Y, 0.0);
+                    FamilyInstance placed = doc.Create.NewFamilyInstance(levelPoint, symbol, floorPlan.GenLevel, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+                    ResetFamilyInstanceVerticalOffsets(placed);
+                    return placed;
 
                 default:
                     throw new NotSupportedException("Тип размещения семейства не поддерживается: " + placementType);
             }
+        }
+
+        private static void ResetFamilyInstanceVerticalOffsets(FamilyInstance instance)
+        {
+            if (instance == null)
+                return;
+
+            TrySetDoubleParameter(instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM), 0.0);
+            TrySetDoubleParameter(instance.get_Parameter(BuiltInParameter.INSTANCE_FREE_HOST_OFFSET_PARAM), 0.0);
+
+            TrySetDoubleParameterByName(instance, 0.0,
+                "Отметка от уровня",
+                "Elevation from Level",
+                "Offset from Level");
+
+            TrySetDoubleParameterByName(instance, 0.0,
+                "Смещение от главной модели",
+                "Offset from Host",
+                "Offset from Main Model");
+        }
+
+        private static bool TrySetDoubleParameter(Parameter parameter, double value)
+        {
+            if (parameter == null || parameter.IsReadOnly || parameter.StorageType != StorageType.Double)
+                return false;
+
+            parameter.Set(value);
+            return true;
+        }
+
+        private static bool TrySetDoubleParameterByName(Element element, double value, params string[] parameterNames)
+        {
+            if (element == null || parameterNames == null || parameterNames.Length == 0)
+                return false;
+
+            bool changed = false;
+
+            foreach (Parameter parameter in element.Parameters)
+            {
+                if (parameter == null || parameter.Definition == null)
+                    continue;
+
+                string parameterName = parameter.Definition.Name;
+                if (string.IsNullOrWhiteSpace(parameterName))
+                    continue;
+
+                if (!parameterNames.Any(name => string.Equals(name, parameterName, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                changed |= TrySetDoubleParameter(parameter, value);
+            }
+
+            return changed;
         }
 
         private static void AppendComment(Element e, string textToAppend)

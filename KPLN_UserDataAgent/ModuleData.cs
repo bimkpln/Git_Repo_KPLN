@@ -25,20 +25,34 @@ namespace KPLN_UserDataAgent
         public static string ModuleName = Assembly.GetExecutingAssembly().GetName().Name;
 
         /// <summary>
-        /// Версия Revit, в которой запускается плагин.
-        /// </summary>
-        public static int RevitVersion { get; set; }
-
-        /// <summary>
         /// Ссылка на основное окно Revit.
         /// </summary>
         public static IntPtr RevitMainWindowHandle { get; set; }
 
         /// <summary>
-        /// Путь к общей SQLite-базе.
+        /// Корневая папка общей статистики.
         /// </summary>
-        public const string CentralDatabasePath = @"Z:\Отдел BIM\Туленинов Роман\СТАТИСТИКА\KPLN_UserDataAgent.db";
-        public const string DatabasePath = CentralDatabasePath;
+        public const string StatisticsDirectory = @"Z:\Отдел BIM\Туленинов Роман\СТАТИСТИКА";
+
+        /// <summary>
+        /// Корневая папка центральных SQLite-баз агента.
+        /// Внутри создаются файлы по отделу и месяцу с UserEvents, EventTransactions и AgentErrors.
+        /// </summary>
+        public static string CentralDatabasePath
+        {
+            get { return Path.Combine(StatisticsDirectory, "UserEvents"); }
+        }
+
+        public static string DatabasePath
+        {
+            get { return CentralDatabasePath; }
+        }
+
+        /// <summary>
+        /// Справочная SQLite-база пользователей KPLN Loader.
+        /// Используется для определения отдела пользователя при выборе центральной БД.
+        /// </summary>
+        public const string ReferenceDatabasePath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
 
         /// <summary>
         /// Локальная SQLite-база-очередь на диске пользователя.
@@ -56,42 +70,64 @@ namespace KPLN_UserDataAgent
         }
 
         /// <summary>
+        /// Локальный кэш последнего успешно прочитанного соответствия пользователей и отделов.
+        /// Если справочная БД временно недоступна, агент использует этот кэш.
+        /// </summary>
+        public static string LocalDepartmentLookupCachePath
+        {
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "KPLN",
+                    "UserDataAgent",
+                    "KPLN_UserDataAgent_DepartmentLookup.cache");
+            }
+        }
+
+        /// <summary>
         /// Задержка первой фоновой попытки отправить локальную очередь в общую БД после запуска Revit.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncStartDelaySeconds = 60;
+        public const int SyncStartDelaySeconds = 15;
 
         /// <summary>
         /// Интервал регулярных фоновых попыток отправить локальную очередь в общую БД.
         /// Если общая БД или сетевой диск недоступны, следующая попытка будет через этот интервал.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncIntervalSeconds = 300;
+        public const int SyncIntervalSeconds = 80;
 
         /// <summary>
         /// Задержка ускоренной попытки синхронизации после записи нового события в локальную БД.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncAfterWriteDelaySeconds = 60;
+        public const int SyncAfterWriteDelaySeconds = 15;
 
         /// <summary>
         /// Случайная добавка к задержкам синхронизации, чтобы пользователи не били в общую БД одновременно.
         /// Фактическая задержка = базовая задержка + случайное число от 0 до этого значения.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncRandomJitterSeconds = 120;
+        public const int SyncRandomJitterSeconds = 30;
 
         /// <summary>
         /// Максимальное количество локальных событий, отправляемых в общую БД за одну попытку синхронизации.
         /// Единица измерения: штуки записей.
         /// </summary>
-        public const int SyncBatchSize = 200;
+        public const int SyncBatchSize = 500;
+
+        /// <summary>
+        /// Количество последних месяцев, которые хранятся в центральных базах агента.
+        /// Текущий месяц входит в этот лимит.
+        /// </summary>
+        public const int CentralDatabaseRetentionMonths = 0;
 
         /// <summary>
         /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.
         /// Единица измерения: миллисекунды.
         /// </summary>
-        public const int LocalBusyTimeoutMs = 1000;
+        public const int LocalBusyTimeoutMs = 10000;
 
         /// <summary>
         /// Таймаут ожидания блокировки общей SQLite-базы на сетевом диске.

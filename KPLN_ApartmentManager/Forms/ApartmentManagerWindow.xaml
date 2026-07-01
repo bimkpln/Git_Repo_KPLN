@@ -302,6 +302,11 @@
 
                     <Button Style="{StaticResource BottomActionButtonStyle}"
                             Margin="0 15 10 0"
+                            Content="Обновить семейства"
+                            Command="{Binding UpdateApartmentFamiliesCommand}"/>
+
+                    <Button Style="{StaticResource BottomActionButtonStyle}"
+                            Margin="0 15 10 0"
                             Content="Обновить марки"
                             Command="{Binding UpdateApartmentMarksCommand}"/>
                 </StackPanel>
@@ -309,6 +314,12 @@
         </Grid>
 
         <Border Grid.Column="2" BorderBrush="Black" BorderThickness="2">
+            <Border.Resources>
+                <Style TargetType="{x:Type ComboBox}">
+                    <EventSetter Event="PreviewMouseWheel" Handler="PresetComboBox_PreviewMouseWheel"/>
+                </Style>
+            </Border.Resources>
+
             <DockPanel LastChildFill="True">
                 <Border DockPanel.Dock="Top" Background="Black" Padding="12,9">
                     <TextBlock Text="ПРЕДНАСТРОЙКИ 3D"
@@ -334,6 +345,17 @@
                               ItemsSource="{Binding FamilyPostProcessActions}"
                               SelectedItem="{Binding SelectedFamilyPostProcessAction}"
                               DisplayMemberPath="Title"/>
+
+                    <TextBlock Text="Допустимая погрешность площади, м²:"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Margin="0,10,0,4"/>
+
+                    <TextBox Height="24"
+                             Padding="3"
+                             Text="{Binding PresetsVm.AreaMismatchToleranceText, UpdateSourceTrigger=PropertyChanged}"
+                             PreviewTextInput="SignedDecimal_PreviewTextInput"
+                             DataObject.Pasting="SignedDecimal_Pasting"/>
 
                     <TextBlock Text="{Binding PresetsVm.StatusText}"
                                TextWrapping="Wrap"
@@ -421,11 +443,11 @@
                                                VerticalAlignment="Center"/>
 
                                     <TextBox Grid.Column="2"
-                                             Text="{Binding PresetsVm.BaseOffsetText, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="24"
-                                             Padding="3"
-                                             PreviewTextInput="DigitsOnly_PreviewTextInput"
-                                             DataObject.Pasting="DigitsOnly_Pasting"/>
+                                              Text="{Binding PresetsVm.BaseOffsetText, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="24"
+                                              Padding="3"
+                                              PreviewTextInput="SignedDecimal_PreviewTextInput"
+                                              DataObject.Pasting="SignedDecimal_Pasting"/>
                                 </Grid>
 
                                 <Grid Grid.Row="6">
@@ -442,11 +464,11 @@
                                                VerticalAlignment="Center"/>
 
                                     <TextBox Grid.Column="2"
-                                             Text="{Binding PresetsVm.WallHeightText, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="24"
-                                             Padding="3"
-                                             PreviewTextInput="DigitsOnly_PreviewTextInput"
-                                             DataObject.Pasting="DigitsOnly_Pasting"/>
+                                              Text="{Binding PresetsVm.WallHeightText, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="24"
+                                              Padding="3"
+                                              PreviewTextInput="SignedDecimal_PreviewTextInput"
+                                              DataObject.Pasting="SignedDecimal_Pasting"/>
                                 </Grid>
 
                                 <Grid Grid.Row="8"
@@ -516,7 +538,8 @@
                             </Grid>
                         </GroupBox>
 
-                        <GroupBox Header="Окна" Margin="0,0,0,10">
+                        <!-- Оконный модуль временно отключён. -->
+                        <GroupBox Header="Окна" Margin="0,0,0,10" Visibility="Collapsed">
                             <Grid Margin="10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -587,6 +610,127 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                        </GroupBox>
+
+                        <GroupBox Header="Рабочие наборы" Margin="0,10,0,0">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Стены:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedWallWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Двери:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedDoorWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Помещения:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedRoomWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Мебель:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedFurnitureWorkset}"/>
+                                </Grid>
+
+                                <Grid Grid.Row="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0"
+                                               Text="Сантехника:"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
+
+                                    <ComboBox Grid.Column="2"
+                                              ItemsSource="{Binding PresetsVm.WorksetOptions}"
+                                              SelectedItem="{Binding PresetsVm.SelectedPlumbingWorkset}"/>
+                                </Grid>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox Header="Группировка" Margin="0,10,0,0">
+                            <Grid Margin="10">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="4"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0"
+                                           Text="Построенные элементы:"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"/>
+
+                                <ComboBox Grid.Row="2"
+                                          ItemsSource="{Binding PresetsVm.GroupingModeOptions}"
+                                          SelectedItem="{Binding PresetsVm.SelectedGroupingMode}"
+                                          DisplayMemberPath="Title"/>
+                            </Grid>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>

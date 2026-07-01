@@ -13,7 +13,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         private int PlaceWindowGeometryInTransaction(Document doc, List<PreparedApartmentWalls> preparedApartments,
             List<PreparedApartmentWindows> preparedWindowsByApartment, Dictionary<long, List<Wall>> doorHostWallsByApartment,
             List<ExistingWallLineInfo> existingWalls, Level baseLevel, List<string> debugMessages,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+            Dictionary<long, ApartmentProcessState> apartmentStates, ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || preparedApartments == null || preparedApartments.Count == 0 || baseLevel == null)
                 return 0;
@@ -48,7 +48,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         baseLevel,
                         debugMessages,
                         state,
-                        createdWindowIds);
+                        createdWindowIds,
+                        worksetTargets);
 
                     foreach (ElementId createdWindowId in createdWindowIds)
                         AddCreatedElementCandidate(state, createdWindowId);
@@ -72,7 +73,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private int PlaceWindowsForApartment(Document doc, PreparedApartmentWindows apartmentWindows, List<Wall> createdWallsForApartment,
             List<ExistingWallLineInfo> existingWallsOnLevel, Level baseLevel, List<string> debugMessages, ApartmentProcessState state,
-            List<ElementId> createdWindowIds = null)
+            List<ElementId> createdWindowIds = null, ApartmentWorksetTargets worksetTargets = null)
         {
             if (doc == null || apartmentWindows == null || apartmentWindows.Windows == null || apartmentWindows.Windows.Count == 0 || baseLevel == null)
                 return 0;
@@ -115,6 +116,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         ". Ближайшая существующая: " + BuildNearestWallDiagnostic(preparedWindow.InsertPoint, GetExistingWallsFromLineInfo(doc, existingWallsOnLevel), true, maxDistanceToWallAxis));
                     continue;
                 }
+
+                projectedPoint = AlignHostedFamilyInsertionPointToHostWallBase(projectedPoint, hostWall, baseLevel);
 
                 FamilySymbol symbolToPlace = preparedWindow.WindowSymbol;
 
@@ -171,6 +174,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     continue;
                 }
 
+                TryAssignElementToWorkset(createdWindow, worksetTargets != null ? worksetTargets.WindowWorksetId : null);
+
                 if (!TrySetWindowSillHeight(createdWindow, preparedWindow.SillHeightInternal))
                 {
                     AddApartmentDiagnostic(
@@ -199,7 +204,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (refDir == null)
                 refDir = GetWallAxisDirection2D(hostWall);
 
-            if (refDir != null)
+            bool useLevelHostOverload = ShouldCreateHostedFamilyWithLevelHostOverload(hostWall, baseLevel);
+            if (!useLevelHostOverload && refDir != null)
             {
                 try
                 {
@@ -362,7 +368,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return bestWall != null;
         }
 
-        private PreparedApartmentWindows PrepareWindowsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset,
+        private PreparedApartmentWindows PrepareWindowsForApartment(Document doc, FamilyInstance apartmentFi, ApartmentPresetData preset, double placementPointZ,
             List<string> debugMessages, ApartmentProcessState state = null)
         {
             PreparedApartmentWindows result = new PreparedApartmentWindows();
@@ -404,8 +410,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (marker == null || marker.LocalP0 == null || marker.LocalP1 == null)
                     continue;
 
-                XYZ p0 = marker.LocalP0;
-                XYZ p1 = marker.LocalP1;
+                XYZ p0 = WithZ(marker.LocalP0, placementPointZ);
+                XYZ p1 = WithZ(marker.LocalP1, placementPointZ);
 
                 if (p0 == null || p1 == null || Distance2D(p0, p1) < IDHelper.ConvertMmToInternal(10))
                     continue;

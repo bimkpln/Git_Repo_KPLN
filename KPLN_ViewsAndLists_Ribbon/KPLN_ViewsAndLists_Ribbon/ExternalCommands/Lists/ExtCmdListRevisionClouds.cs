@@ -1,9 +1,9 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using System.Linq;
+using System;
 using System.Collections.Generic;
-using System.Windows;
+using System.Linq;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 {
@@ -11,173 +11,295 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
     [Regeneration(RegenerationOption.Manual)]
     internal class ExtCmdListRevisionClouds : IExternalCommand
     {
+        private const string StatusParameterName = "Ш.ШифрСтатусЛиста";
+        private const string NoteParameterName = "Ш.ПримечаниеЛиста";
+
+        private static readonly string[] CloudCountParameterNames =
+        {
+            "Ш.КолвоУч1Текст",
+            "Ш.КолвоУч2Текст",
+            "Ш.КолвоУч3Текст",
+            "Ш.КолвоУч4Текст"
+        };
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiapp = commandData.Application;
-            Document doc = uiapp.ActiveUIDocument.Document;
+            Document doc = commandData.Application.ActiveUIDocument.Document;
 
-            View activeView = doc.ActiveView;
-
-            FilteredElementCollector collector = new FilteredElementCollector(doc);
-            IEnumerable<ViewSheet> sheets = collector
+            List<ViewSheet> sheets = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewSheet))
                 .Cast<ViewSheet>()
-                .Where(sheet => !sheet.IsTemplate);
+                .Where(sheet => !sheet.IsTemplate)
+                .ToList();
 
-            if (!sheets.Any())
+            if (sheets.Count == 0)
             {
-                MessageBox.Show($"В проекте нет ни одного листа", "KPLN. Внимание");
-                return Result.Failed;
+                TaskDialog.Show("KPLN. Внимание", "В проекте нет ни одного листа.");
+                return Result.Cancelled;
+            }
+
+            List<string> parameterProblems = GetRequiredParameterProblems(doc, sheets[0]);
+
+            if (parameterProblems.Count > 0)
+            {
+                string text =
+                    "Команда не запущена, потому что для категории \"Листы\" не настроены необходимые параметры:"
+                    + Environment.NewLine
+                    + Environment.NewLine
+                    + string.Join(Environment.NewLine, parameterProblems);
+
+                TaskDialog.Show("KPLN. Внимание", text);
+                return Result.Cancelled;
             }
 
             using (Transaction trans = new Transaction(doc, "KPLN. Обновление ИЗМов"))
             {
                 trans.Start();
 
-                // Заполнение "Ш.ПримечаниеЛиста"
                 foreach (ViewSheet sheet in sheets)
                 {
-                    List<ElementId> revisionIds = sheet.GetAllRevisionIds().ToList();
-                    if (revisionIds.Count > 0)
+                    List<Revision> revisionsOnSheet = GetRevisionsOnSheet(sheet);
+
+                    if (revisionsOnSheet.Count > 0)
                     {
-                        Parameter statusParam = sheet.LookupParameter("Ш.ШифрСтатусЛиста");
+                        Parameter statusParam = sheet.LookupParameter(StatusParameterName);
+                        Parameter noteParam = sheet.LookupParameter(NoteParameterName);
 
-                        if (statusParam != null)
-                        {
-                            int code = statusParam.AsInteger();
-                            string fieldValue = GetRevisionStatusString(code);
+                        int statusCode = statusParam.AsInteger();
+                        string noteValue = GetRevisionNoteValue(revisionsOnSheet, statusCode);
 
-                            Parameter targetParam = sheet.LookupParameter("Ш.ПримечаниеЛиста");
-                            if (targetParam != null && targetParam.StorageType == StorageType.String)
-                            {
-                                targetParam.Set(fieldValue);
-                            }
-
-                            if (string.IsNullOrWhiteSpace(fieldValue))
-                            {
-                                string result = "";
-
-                                for (int i = 0; i < revisionIds.Count; i++)
-                                {
-                                    result += $"Изм. {i + 1}";
-                                    if (i < revisionIds.Count - 1)
-                                        result += ", ";
-                                }
-
-                                if (!string.IsNullOrWhiteSpace(result))
-                                {
-                                    targetParam.Set(result);
-                                }
-                            }
-                        }
+                        noteParam.Set(noteValue);
                     }
-                }
 
-                // Заполнение "Кол.уч."
-                foreach (ViewSheet sheet in sheets)
-                {
-                    string[] cloudsCounts = GetCloudsCountOnSheet(sheet);
-
-                    sheet.LookupParameter("Ш.КолвоУч1Текст").Set("");
-                    sheet.LookupParameter("Ш.КолвоУч2Текст").Set("");
-                    sheet.LookupParameter("Ш.КолвоУч3Текст").Set("");
-                    sheet.LookupParameter("Ш.КолвоУч4Текст").Set("");
-
-                    for (int i = 0; i < cloudsCounts.Length; i++)
+                    foreach (string parameterName in CloudCountParameterNames)
                     {
-                        string val = cloudsCounts[i];
-                        string paramName = "Ш.КолвоУч" + (i + 1).ToString() + "Текст";
-                        sheet.LookupParameter(paramName).Set(val);
-                    }                                                                    
+                        sheet.LookupParameter(parameterName).Set("");
+                    }
+
+                    string[] cloudsCounts = GetCloudsCountsForStampRows(sheet);
+
+                    for (int i = 0; i < cloudsCounts.Length && i < CloudCountParameterNames.Length; i++)
+                    {
+                        sheet.LookupParameter(CloudCountParameterNames[i]).Set(cloudsCounts[i]);
+                    }
                 }
 
                 trans.Commit();
             }
-            
-            MessageBox.Show($"Данные об ИЗМах обновлены", "KPLN. Информация");
+
+            TaskDialog.Show("KPLN. Информация", "Данные об ИЗМах обновлены.");
             return Result.Succeeded;
         }
 
-
-        // Получение содержимого "Ш.ШифрСтатусЛиста"
-        private string GetRevisionStatusString(int code)
+        private static List<string> GetRequiredParameterProblems(Document doc, ViewSheet sampleSheet)
         {
-            var result = new List<string>();
-            string codeStr = code.ToString().PadLeft(4, '0');
+            List<string> problems = new List<string>();
 
-            for (int i = 0; i < codeStr.Length && i < 4; i++)
+            CheckRequiredParameter(doc, sampleSheet, StatusParameterName, StorageType.Integer, false, problems);
+            CheckRequiredParameter(doc, sampleSheet, NoteParameterName, StorageType.String, true, problems);
+
+            foreach (string parameterName in CloudCountParameterNames)
             {
-                char c = codeStr[i];
-                string label = null;
+                CheckRequiredParameter(doc, sampleSheet, parameterName, StorageType.String, true, problems);
+            }
 
-                if (c == '2') label = "Зам.";
-                else if (c == '3') label = "Нов.";
+            return problems;
+        }
 
-                if (label != null)
+        private static void CheckRequiredParameter(
+            Document doc,
+            ViewSheet sampleSheet,
+            string parameterName,
+            StorageType expectedStorageType,
+            bool mustBeWritable,
+            List<string> problems)
+        {
+            if (!IsParameterBoundToSheets(doc, parameterName))
+            {
+                problems.Add("- \"" + parameterName + "\" не добавлен к категории \"Листы\".");
+                return;
+            }
+
+            Parameter parameter = sampleSheet.LookupParameter(parameterName);
+
+            if (parameter == null)
+            {
+                problems.Add("- \"" + parameterName + "\" добавлен в проект, но не найден на объекте листа.");
+                return;
+            }
+
+            if (parameter.StorageType != expectedStorageType)
+            {
+                problems.Add("- \"" + parameterName + "\" имеет неправильный тип.");
+            }
+
+            if (mustBeWritable && parameter.IsReadOnly)
+            {
+                problems.Add("- \"" + parameterName + "\" доступен только для чтения.");
+            }
+        }
+
+        private static bool IsParameterBoundToSheets(Document doc, string parameterName)
+        {
+            Category sheetsCategory = doc.Settings.Categories.get_Item(BuiltInCategory.OST_Sheets);
+
+            if (sheetsCategory == null)
+                return false;
+
+            DefinitionBindingMapIterator iterator = doc.ParameterBindings.ForwardIterator();
+            iterator.Reset();
+
+            while (iterator.MoveNext())
+            {
+                Definition definition = iterator.Key;
+
+                if (definition == null || definition.Name != parameterName)
+                    continue;
+
+                ElementBinding binding = iterator.Current as ElementBinding;
+
+                if (binding == null)
+                    continue;
+
+                CategorySetIterator categoryIterator = binding.Categories.ForwardIterator();
+
+                while (categoryIterator.MoveNext())
                 {
-                    int revNum = i + 1;
-                    result.Add($"Изм. {revNum}({label})");
+                    Category category = categoryIterator.Current as Category;
+
+                    if (category != null && category.Id.Equals(sheetsCategory.Id))
+                        return true;
                 }
+            }
+
+            return false;
+        }
+
+        private static List<Revision> GetRevisionsOnSheet(ViewSheet sheet)
+        {
+            Document doc = sheet.Document;
+
+            return sheet.GetAllRevisionIds()
+                .Select(id => doc.GetElement(id))
+                .OfType<Revision>()
+                .OrderBy(revision => revision.SequenceNumber)
+                .ToList();
+        }
+
+        private static string GetRevisionNoteValue(List<Revision> revisionsOnSheet, int statusCode)
+        {
+            List<string> result = new List<string>();
+            string codeString = Math.Abs(statusCode).ToString().PadLeft(4, '0');
+
+            int skipCount = Math.Max(0, revisionsOnSheet.Count - 4);
+
+            List<Revision> revisionsForStamp = revisionsOnSheet
+                .Skip(skipCount)
+                .ToList();
+
+            for (int i = 0; i < revisionsForStamp.Count; i++)
+            {
+                Revision revision = revisionsForStamp[i];
+                int revisionNumber = revision.SequenceNumber;
+
+                string statusLabel = GetStatusLabelByRow(codeString, i);
+
+                if (string.IsNullOrWhiteSpace(statusLabel))
+                    result.Add("Изм. " + revisionNumber);
+                else
+                    result.Add("Изм. " + revisionNumber + "(" + statusLabel + ")");
             }
 
             return string.Join(", ", result);
         }
 
-        // Считаем "облачка"
-        private string[] GetCloudsCountOnSheet(ViewSheet sheet)
+        private static string GetStatusLabelByRow(string codeString, int rowIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= codeString.Length)
+                return null;
+
+            char code = codeString[rowIndex];
+
+            if (code == '2')
+                return "Зам.";
+
+            if (code == '3')
+                return "Нов.";
+
+            return null;
+        }
+
+
+        private static string[] GetCloudsCountsForStampRows(ViewSheet sheet)
+        {
+            List<Revision> revisionsOnSheet = GetRevisionsOnSheet(sheet);
+            List<RevisionCloud> cloudsOnSheet = GetRevisionCloudsOnSheet(sheet);
+
+            int skipCount = Math.Max(0, revisionsOnSheet.Count - CloudCountParameterNames.Length);
+
+            List<Revision> revisionsForStamp = revisionsOnSheet
+                .Skip(skipCount)
+                .ToList();
+
+            List<string> result = new List<string>();
+
+            foreach (Revision revision in revisionsForStamp)
+            {
+                int cloudsCount = cloudsOnSheet
+                    .Count(cloud => cloud.RevisionId == revision.Id);
+
+                result.Add(cloudsCount == 0 ? "-" : cloudsCount.ToString());
+            }
+
+            return result.ToArray();
+        }
+
+        private static List<RevisionCloud> GetRevisionCloudsOnSheet(ViewSheet sheet)
         {
             Document doc = sheet.Document;
-            List<RevisionCloud> clouds = new FilteredElementCollector(doc)
-                .OfClass(typeof(RevisionCloud))
-                .Cast<RevisionCloud>()
-                .Where(i => i.OwnerViewId == sheet.Id)
-                .ToList();
+            HashSet<ElementId> viewIds = GetViewIdsOnSheet(sheet);
+            Dictionary<ElementId, RevisionCloud> cloudsById = new Dictionary<ElementId, RevisionCloud>();
 
-            List<Revision> allRevisionsOnSheet = sheet.GetAllRevisionIds()
-                .Select(id => doc.GetElement(id))
-                .OfType<Revision>()
-                .OrderBy(r => r.IssuedTo) 
-                .ToList();
-
-            var allRevisionsGrouped = allRevisionsOnSheet
-                .GroupBy(r => r.IssuedTo)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            Dictionary<string, List<Revision>> revsBase = new Dictionary<string, List<Revision>>();
-            foreach (Revision rev in allRevisionsOnSheet)
+            foreach (ElementId viewId in viewIds)
             {
-                string utvDlya = rev.IssuedTo;
-                if (!revsBase.ContainsKey(utvDlya))
-                    revsBase[utvDlya] = new List<Revision>();
-                revsBase[utvDlya].Add(rev);
+                try
+                {
+                    List<RevisionCloud> clouds = new FilteredElementCollector(doc, viewId)
+                        .OfClass(typeof(RevisionCloud))
+                        .Cast<RevisionCloud>()
+                        .ToList();
+
+                    foreach (RevisionCloud cloud in clouds)
+                    {
+                        if (!cloudsById.ContainsKey(cloud.Id))
+                            cloudsById.Add(cloud.Id, cloud);
+                    }
+                }
+                catch
+                {
+                    // Некоторые типы видов Revit не поддерживают FilteredElementCollector по viewId.
+                }
             }
 
-            int revisionsCount = allRevisionsOnSheet.Count;
-            List<Revision> lastRevisionsOnSheet = new List<Revision>();
+            return cloudsById.Values.ToList();
+        }
 
-            if (revisionsCount > 4)
+        private static HashSet<ElementId> GetViewIdsOnSheet(ViewSheet sheet)
+        {
+            Document doc = sheet.Document;
+            HashSet<ElementId> viewIds = new HashSet<ElementId>();
+
+            viewIds.Add(sheet.Id);
+
+            foreach (ElementId viewportId in sheet.GetAllViewports())
             {
-                lastRevisionsOnSheet = allRevisionsOnSheet.GetRange(revisionsCount - 4, 4);
-            }
-            else
-            {
-                lastRevisionsOnSheet = allRevisionsOnSheet;
+                Viewport viewport = doc.GetElement(viewportId) as Viewport;
+
+                if (viewport != null && viewport.ViewId != ElementId.InvalidElementId)
+                    viewIds.Add(viewport.ViewId);
             }
 
-            int revsCount = lastRevisionsOnSheet.Count;
-            string[] cloudsCounts = new string[revsCount];
-
-            for (int i = 0; i < revsCount; i++)
-            {
-                Revision rev = lastRevisionsOnSheet[i];
-                int curRevCloudsCount = clouds.Where(c => c.RevisionId == rev.Id).ToList().Count;
-                string val = "";
-                if (curRevCloudsCount == 0) val = "-";
-                else val = curRevCloudsCount.ToString();
-
-                cloudsCounts[i] = val;
-            }
-            return cloudsCounts;
+            return viewIds;
         }
     }
-}     
+}

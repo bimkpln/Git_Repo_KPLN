@@ -15,7 +15,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
     {
         private const int ShaftWallTypeStorageKey = int.MinValue;
         private const int LoggiaWallTypeStorageKey = int.MinValue + 1;
-
+        private const bool EnableWindow3DModule = false;
         private void ExecuteRefreshApartmentPresets(Document doc, ApartmentPresetData currentPreset)
         {
             ViewPlan activeFloorPlan = doc.ActiveView as ViewPlan;
@@ -42,6 +42,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         {
             ApartmentPresetPanelContext context = new ApartmentPresetPanelContext();
             context.ActivePlanName = activeFloorPlan != null ? activeFloorPlan.Name : "";
+            context.ActiveWorksetName = GetActiveUserWorksetName(doc);
+            context.WorksetOptions = BuildUserWorksetOptions(doc);
 
             List<ViewPlan> plans = new FilteredElementCollector(doc)
                 .OfClass(typeof(ViewPlan))
@@ -97,6 +99,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             option.LowerConstraintText = BuildLowerConstraintTextForPlan(doc, plan);
             option.UpperConstraintText = "Неприсоединённая";
+            option.ApartmentCount = GetPlacedApartmentInstancesForPlan(doc, plan).Count;
             option.ModelSignature = BuildApartmentPlanModelSignature(doc, plan);
             option.WallThicknesses = BuildWallThicknessesForPlan(doc, plan);
             option.WallTypeOptionsByThickness = BuildWallTypeOptionsByThicknessForPlan(doc, plan);
@@ -135,7 +138,44 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 apartments.Select(x =>
                     IDHelper.ElIdValue(x.Id) +
                     ":loggia=" +
-                    (IsLoggiaEnabled(x) ? "1" : "0")));
+                    BuildLoggiaParameterSignature(x)));
+        }
+
+        private static string BuildLoggiaParameterSignature(FamilyInstance apartmentInstance)
+        {
+            if (apartmentInstance == null)
+                return "0";
+
+            List<string> parts = new List<string>();
+
+            bool baseValue;
+            if (TryGetYesNoParamFromElement(apartmentInstance, out baseValue, "Лоджия", "Loggia"))
+                parts.Add("Лоджия=" + (baseValue ? "1" : "0"));
+
+            try
+            {
+                foreach (Parameter parameter in apartmentInstance.Parameters)
+                {
+                    if (parameter == null || parameter.Definition == null)
+                        continue;
+
+                    string parameterName = parameter.Definition.Name;
+                    if (!IsSpecificLoggiaParameterName(parameterName))
+                        continue;
+
+                    bool value;
+                    if (TryGetYesNoParameterValue(parameter, out value))
+                        parts.Add(parameterName.Trim() + "=" + (value ? "1" : "0"));
+                }
+            }
+            catch
+            {
+            }
+
+            if (parts.Count == 0)
+                return "0";
+
+            return string.Join(",", parts.OrderBy(x => x));
         }
 
         private string BuildLowerConstraintTextForPlan(Document doc, ViewPlan plan)
@@ -702,7 +742,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                     string typeName = doorFi.Symbol != null ? doorFi.Symbol.Name ?? "" : "";
                     string commentValue = GetCommentsValue(doorFi);
-                    bool isEntranceDoor = HasEntranceDoorComment(doorFi);
+                    bool isEntranceDoor = IsEntranceDoor2DMarker(doorFi);
 
                     int widthMm;
                     if (!TryGetDoorWidthMmFrom2DMarker(doorFi, typeName, out widthMm) || widthMm <= 0)
@@ -794,7 +834,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return hasDoor && hasEntrance;
         }
 
-        private static bool Is2DDoorMarker(string familyName, string typeName, string categoryName, bool hasEntranceComment = false)
+        private static bool Is2DDoorMarker(string familyName, string typeName, string categoryName, bool isEntranceDoor = false)
         {
             bool isGenericModel =
                 string.Equals(categoryName, "Обобщенные модели", StringComparison.OrdinalIgnoreCase) ||
@@ -805,7 +845,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             return ContainsDoorMarkerText(familyName) ||
                    ContainsDoorMarkerText(typeName) ||
-                   hasEntranceComment;
+                   isEntranceDoor;
         }
 
         private static bool ContainsDoorMarkerText(string value)
@@ -923,19 +963,16 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (ownerDoc == null || apartmentInstance == null)
                 return loggias;
 
-            if (!IsLoggiaEnabled(apartmentInstance))
-                return loggias;
-
             HashSet<long> visitedInstances = new HashSet<long>();
-            CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, apartmentInstance, loggias, visitedInstances, 0);
+            CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, apartmentInstance, apartmentInstance, loggias, visitedInstances, 0);
 
             return DeduplicateLoggiaWallMarkers(loggias);
         }
 
-        private static void CollectPlacedLoggiaWallMarkersRecursive(Document ownerDoc, FamilyInstance instance,
+        private static void CollectPlacedLoggiaWallMarkersRecursive(Document ownerDoc, FamilyInstance apartmentInstance, FamilyInstance instance,
             List<FamilyLoggiaWallMarker> loggias, HashSet<long> visitedInstanceIds, int depth)
         {
-            if (ownerDoc == null || instance == null || loggias == null || visitedInstanceIds == null)
+            if (ownerDoc == null || apartmentInstance == null || instance == null || loggias == null || visitedInstanceIds == null)
                 return;
 
             if (depth > 12)
@@ -947,7 +984,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             visitedInstanceIds.Add(id);
 
-            AddLoggiaHelperLinesFromPlacedInstance(ownerDoc, instance, loggias);
+            AddLoggiaHelperLinesFromPlacedInstance(ownerDoc, apartmentInstance, instance, loggias);
 
             ICollection<ElementId> subIds = null;
             try
@@ -968,19 +1005,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (subFi == null)
                     continue;
 
-                CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, subFi, loggias, visitedInstanceIds, depth + 1);
+                CollectPlacedLoggiaWallMarkersRecursive(ownerDoc, apartmentInstance, subFi, loggias, visitedInstanceIds, depth + 1);
             }
         }
 
-        private static void AddLoggiaHelperLinesFromPlacedInstance(Document doc, FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias)
+        private static void AddLoggiaHelperLinesFromPlacedInstance(Document doc, FamilyInstance apartmentInstance, FamilyInstance instance,
+            List<FamilyLoggiaWallMarker> loggias)
         {
-            if (doc == null || instance == null || loggias == null)
+            if (doc == null || apartmentInstance == null || instance == null || loggias == null)
                 return;
 
-            if (IsLoggiaWallHelperInstance(instance))
-                AddLongestLoggiaWallMarkerFromInstanceGeometry(doc, instance, loggias);
-            else
-                AddStyledLoggiaWallMarkersFromInstanceGeometry(doc, instance, loggias);
+            bool hasStyledLoggiaCandidate;
+            AddStyledLoggiaWallMarkersFromInstanceGeometry(doc, apartmentInstance, instance, loggias, out hasStyledLoggiaCandidate);
+            if (hasStyledLoggiaCandidate)
+                return;
+
+            string instanceLoggiaName = GetHelperInstanceMatchedName(instance, IsLoggiaWallHelperName);
+            if (!string.IsNullOrWhiteSpace(instanceLoggiaName))
+                AddLongestLoggiaWallMarkerFromInstanceGeometry(doc, apartmentInstance, instance, instanceLoggiaName, loggias);
         }
 
         private static void CollectPlacedInstanceHelperLinesRecursive(Document ownerDoc, FamilyInstance instance,
@@ -1134,8 +1176,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
-        private static void AddLongestLoggiaWallMarkerFromInstanceGeometry(Document doc, FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias)
+        private static void AddLongestLoggiaWallMarkerFromInstanceGeometry(Document doc, FamilyInstance apartmentInstance,
+            FamilyInstance instance, string loggiaName, List<FamilyLoggiaWallMarker> loggias)
         {
+            if (!IsLoggiaEnabled(apartmentInstance, loggiaName))
+                return;
+
             HelperLineCandidate best = GetBestHelperLineCandidate(doc, instance, IsLoggiaWallHelperName, true);
             if (best == null)
                 return;
@@ -1147,16 +1193,28 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             });
         }
 
-        private static void AddStyledLoggiaWallMarkersFromInstanceGeometry(Document doc, FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias)
+        private static int AddStyledLoggiaWallMarkersFromInstanceGeometry(Document doc, FamilyInstance apartmentInstance,
+            FamilyInstance instance, List<FamilyLoggiaWallMarker> loggias, out bool hasStyledLoggiaCandidate)
         {
+            int addedCount = 0;
+            hasStyledLoggiaCandidate = false;
+
             foreach (HelperLineCandidate line in CollectHelperLineCandidates(doc, instance, IsLoggiaWallHelperName, false))
             {
+                hasStyledLoggiaCandidate = true;
+
+                if (line == null || !IsLoggiaEnabled(apartmentInstance, line.MatchedName))
+                    continue;
+
                 loggias.Add(new FamilyLoggiaWallMarker
                 {
                     ProjectP0 = line.P0,
                     ProjectP1 = line.P1
                 });
+                addedCount++;
             }
+
+            return addedCount;
         }
 
         private static HelperLineCandidate GetBestHelperLineCandidate(Document doc, FamilyInstance instance, Func<string, bool> styleNamePredicate,
@@ -1247,7 +1305,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 if (curve == null || !curve.IsBound)
                     continue;
 
-                bool styleMatched = GeometryObjectMatchesName(doc, obj, styleNamePredicate);
+                string matchedName = GetGeometryObjectMatchedName(doc, obj, styleNamePredicate);
+                bool styleMatched = !string.IsNullOrWhiteSpace(matchedName);
                 if (!allowAnyStyle && !styleMatched)
                     continue;
 
@@ -1271,15 +1330,21 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 {
                     P0 = p0,
                     P1 = p1,
-                    StyleMatched = styleMatched
+                    StyleMatched = styleMatched,
+                    MatchedName = matchedName
                 });
             }
         }
 
         private static bool GeometryObjectMatchesName(Document doc, GeometryObject obj, Func<string, bool> namePredicate)
         {
+            return !string.IsNullOrWhiteSpace(GetGeometryObjectMatchedName(doc, obj, namePredicate));
+        }
+
+        private static string GetGeometryObjectMatchedName(Document doc, GeometryObject obj, Func<string, bool> namePredicate)
+        {
             if (doc == null || obj == null || namePredicate == null)
-                return false;
+                return null;
 
             ElementId graphicsStyleId = ElementId.InvalidElementId;
             try
@@ -1292,17 +1357,19 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             if (graphicsStyleId == ElementId.InvalidElementId)
-                return false;
+                return null;
 
             GraphicsStyle graphicsStyle = doc.GetElement(graphicsStyleId) as GraphicsStyle;
             if (graphicsStyle == null)
-                return false;
+                return null;
 
             if (namePredicate(graphicsStyle.Name))
-                return true;
+                return graphicsStyle.Name;
 
             Category category = graphicsStyle.GraphicsStyleCategory;
-            return category != null && namePredicate(category.Name);
+            return category != null && namePredicate(category.Name)
+                ? category.Name
+                : null;
         }
 
         private static bool IsWindowHelperInstance(FamilyInstance instance)
@@ -1331,10 +1398,34 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return TryGetYesNoParamFromElement(apartmentInstance, out value, "Лоджия", "Loggia") && value;
         }
 
+        private static bool IsLoggiaEnabled(FamilyInstance apartmentInstance, string loggiaName)
+        {
+            if (apartmentInstance == null)
+                return false;
+
+            string markerName = GetLoggiaWallHelperMarkerName(loggiaName);
+            if (string.IsNullOrWhiteSpace(markerName))
+                return IsLoggiaEnabled(apartmentInstance);
+
+            bool value;
+            if (TryGetYesNoParamFromElement(apartmentInstance, out value, markerName))
+                return value;
+
+            if (IsBaseLoggiaWallHelperName(markerName))
+                return IsLoggiaEnabled(apartmentInstance);
+
+            return false;
+        }
+
         private static bool HelperInstanceMatchesName(FamilyInstance instance, Func<string, bool> namePredicate)
         {
+            return !string.IsNullOrWhiteSpace(GetHelperInstanceMatchedName(instance, namePredicate));
+        }
+
+        private static string GetHelperInstanceMatchedName(FamilyInstance instance, Func<string, bool> namePredicate)
+        {
             if (instance == null || namePredicate == null)
-                return false;
+                return null;
 
             List<string> values = new List<string>();
 
@@ -1352,7 +1443,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (instance.Category != null)
                 values.Add(instance.Category.Name);
 
-            return values.Any(x => namePredicate(x));
+            return values.FirstOrDefault(x => namePredicate(x));
         }
 
         private static bool TryGetYesNoParamFromElement(Element element, out bool value, params string[] paramNames)
@@ -2059,16 +2150,60 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private static bool IsLoggiaWallHelperName(string value)
         {
+            return !string.IsNullOrWhiteSpace(GetLoggiaWallHelperMarkerName(value));
+        }
+
+        private static bool IsBaseLoggiaWallHelperName(string value)
+        {
             if (string.IsNullOrWhiteSpace(value))
                 return false;
 
-            string normalized = value
+            string normalized = NormalizeHelperName(value);
+            return string.Equals(normalized, "лоджия", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(normalized, "loggia", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSpecificLoggiaParameterName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            string normalized = NormalizeHelperName(value);
+            return normalized.StartsWith("лоджия_", StringComparison.OrdinalIgnoreCase) ||
+                   normalized.StartsWith("loggia_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetLoggiaWallHelperMarkerName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            string trimmed = value.Trim();
+            string normalized = NormalizeHelperName(trimmed);
+
+            if (IsSpecificLoggiaParameterName(trimmed))
+            {
+                return trimmed;
+            }
+
+            if (IsBaseLoggiaWallHelperName(trimmed))
+                return trimmed;
+
+            if (normalized.IndexOf("лоджия", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                normalized.IndexOf("loggia", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "Лоджия";
+            }
+
+            return null;
+        }
+
+        private static string NormalizeHelperName(string value)
+        {
+            return (value ?? string.Empty)
                 .Replace('ё', 'е')
                 .Replace('Ё', 'Е')
                 .Trim();
-
-            return normalized.IndexOf("лоджия", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   normalized.IndexOf("loggia", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool TryGetDoorWidthMmFrom2DTypeName(string typeName, out int widthMm)
@@ -2398,6 +2533,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 UpperConstraint = "Неприсоединённая",
                 BaseOffset = 0,
                 WallHeight = 3000,
+                AreaMismatchTolerance = 0.5,
                 WallTypeByThickness = new Dictionary<int, string>(),
                 WindowType = "Не выбрано",
                 WindowSillHeight = 900,
@@ -2427,7 +2563,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     !string.Equals(savedSignature, currentSignature, StringComparison.Ordinal))
                 {
                     isPresetDataStale = true;
-                    otherProblems.Add("Данные плана устарели: изменился состав 2D-семейств квартир или параметр 'Лоджия'. Нажмите 'Обновить данные'.");
+                    otherProblems.Add("Данные плана устарели: изменился состав 2D-семейств квартир или параметры лоджий. Нажмите 'Обновить данные'.");
                 }
 
                 List<int> requiredThicknesses = BuildWallThicknessesForPlan(doc, targetPlan);
@@ -2460,7 +2596,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 List<ApartmentDoorRequirementOption> doorRequirements = BuildDoorRequirementsForPlan(doc, targetPlan);
 
-                bool hasWindowMarkers = HasWindowMarkersForPlan(doc, targetPlan);
+                bool hasWindowMarkers = EnableWindow3DModule && HasWindowMarkersForPlan(doc, targetPlan);
                 if (hasWindowMarkers)
                 {
                     if (effectivePreset.WindowSillHeight <= 0)
@@ -2589,6 +2725,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 UpperConstraint = "Неприсоединённая",
                 BaseOffset = 0,
                 WallHeight = 3000,
+                AreaMismatchTolerance = 0.5,
                 WallTypeByThickness = new Dictionary<int, string>(),
                 WindowType = "Не выбрано",
                 WindowSillHeight = 900,
@@ -2637,6 +2774,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             double connectTol = IDHelper.ConvertMmToInternal(150);
             double intersectionTol = IDHelper.ConvertMmToInternal(10);
+            double placementPointZ = 0.0;
+            double areaMismatchToleranceSquareMeters = effectivePreset.AreaMismatchTolerance > 0
+                ? effectivePreset.AreaMismatchTolerance
+                : 0.5;
+            ApartmentWorksetTargets worksetTargets = ResolveApartmentWorksetTargets(doc, effectivePreset);
 
             List<ExistingWallLineInfo> existingWalls = GetExistingWallLinesOnLevel(doc, targetPlan.GenLevel.Id);
 
@@ -2678,6 +2820,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     List<Line> apartmentAxisLines = new List<Line>();
+                    List<Line> roomPlacementReferenceAxisLines = new List<Line>();
 
                     foreach (FamilyInstance roomFi in roomInstances)
                     {
@@ -2692,6 +2835,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 targetPlan,
                                 connectTol,
                                 intersectionTol,
+                                roomPlacementReferenceAxisLines,
                                 debugMessages,
                                 ref skippedWallsForApartment);
 
@@ -2713,11 +2857,15 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     }
 
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                    roomPlacementReferenceAxisLines = MergeCollinearLines(roomPlacementReferenceAxisLines);
+                    roomPlacementReferenceAxisLines = WithZ(roomPlacementReferenceAxisLines, placementPointZ);
                     apartmentAxisLines = RemoveSegmentsOverlappingExistingWalls(apartmentAxisLines, existingWalls, apartmentWallThicknessInternal);
                     apartmentAxisLines = MergeCollinearLines(apartmentAxisLines);
+                    apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
 
                     List<FamilyRoomSeparatorMarker> roomSeparatorMarkers = CollectRoomSeparatorMarkersFromApartmentInstance(doc, apartmentFi);
                     List<Line> roomSeparatorLines = BuildRoomSeparatorLinesFromMarkers(roomSeparatorMarkers);
+                    roomSeparatorLines = WithZ(roomSeparatorLines, placementPointZ);
                     state.FoundRoomSeparatorsCount = roomSeparatorLines.Count;
 
                     if (roomSeparatorLines.Count > 0)
@@ -2768,6 +2916,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                                 shaftReferenceAxisLines,
                                 out skippedShaftMarkers);
                             shaftAxisLines = MergeCollinearLines(shaftAxisLines);
+                            shaftAxisLines = WithZ(shaftAxisLines, placementPointZ);
 
                             if (skippedShaftMarkers > 0)
                             {
@@ -2821,8 +2970,14 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                             }
 
                             loggiaAxisLines = MergeCollinearLines(loggiaAxisLines);
+                            loggiaAxisLines = WithZ(loggiaAxisLines, placementPointZ);
                         }
                     }
+
+                    apartmentAxisLines = WithZ(apartmentAxisLines, placementPointZ);
+                    shaftAxisLines = WithZ(shaftAxisLines, placementPointZ);
+                    loggiaAxisLines = WithZ(loggiaAxisLines, placementPointZ);
+                    roomSeparatorLines = WithZ(roomSeparatorLines, placementPointZ);
 
                     if (apartmentAxisLines.Count == 0 && shaftAxisLines.Count == 0 && roomSeparatorLines.Count == 0)
                     {
@@ -2849,19 +3004,24 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         state.HasPreparedWalls = true;
                     }
 
-                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
+                    PreparedApartmentDoors preparedDoors = PrepareDoorsForApartment(doc, apartmentFi, effectivePreset, placementPointZ, debugMessages, state);
                     preparedDoorsByApartment.Add(preparedDoors);
 
-                    PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, debugMessages, state);
-                    preparedWindowsByApartment.Add(preparedWindows);
+                    if (EnableWindow3DModule)
+                    {
+                        PreparedApartmentWindows preparedWindows = PrepareWindowsForApartment(doc, apartmentFi, effectivePreset, placementPointZ, debugMessages, state);
+                        preparedWindowsByApartment.Add(preparedWindows);
+                    }
+                    // Оконный модуль временно отключён. Чтобы вернуть, включить EnableWindow3DModule.
 
                     PreparedApartmentRooms preparedRooms = PrepareRoomsForApartment(
                         doc,
                         apartmentFi,
                         loggiaAxisLines,
-                        apartmentAxisLines,
+                        roomPlacementReferenceAxisLines,
                         shaftAxisLines,
                         roomSeparatorLines,
+                        preparedDoors,
                         targetPlan,
                         debugMessages);
                     preparedRoomsByApartment.Add(preparedRooms);
@@ -2905,7 +3065,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     wallHeightInternal,
                     existingWalls,
                     connectTol,
-                    apartmentStates);
+                    apartmentStates,
+                    worksetTargets);
 
                 createdRoomsCount = PlaceRoomGeometryInTransaction(
                     doc,
@@ -2915,7 +3076,9 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     roomAreaMismatches,
                     apartmentStates,
                     targetPlan,
-                    debugMessages);
+                    debugMessages,
+                    worksetTargets,
+                    areaMismatchToleranceSquareMeters);
 
                 installedDoorsCount = PlaceDoorGeometryInTransaction(
                     doc,
@@ -2925,20 +3088,27 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     existingWalls,
                     baseLevel,
                     debugMessages,
-                    apartmentStates);
+                    apartmentStates,
+                    worksetTargets);
 
-                installedWindowsCount = PlaceWindowGeometryInTransaction(
-                    doc,
-                    preparedApartments,
-                    preparedWindowsByApartment,
-                    createdWallGeometry.DoorHostWallsByApartment,
-                    existingWalls,
-                    baseLevel,
-                    debugMessages,
-                    apartmentStates);
+                if (EnableWindow3DModule)
+                {
+                    installedWindowsCount = PlaceWindowGeometryInTransaction(
+                        doc,
+                        preparedApartments,
+                        preparedWindowsByApartment,
+                        createdWallGeometry.DoorHostWallsByApartment,
+                        existingWalls,
+                        baseLevel,
+                        debugMessages,
+                        apartmentStates,
+                        worksetTargets);
+                }
+                // Оконный модуль временно отключён. Чтобы вернуть, включить EnableWindow3DModule.
             }
 
-            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, debugMessages, apartmentStates);
+            ApplyApartmentPostProcessAction(doc, apartmentInstances, effectivePreset.FamilyPostProcessAction, baseLevel, debugMessages, apartmentStates, worksetTargets);
+            ApplyGeneratedElementsGrouping(doc, targetPlan, effectivePreset.GeneratedElementsGroupingMode, apartmentStates, debugMessages);
             roomAreaMismatches = FilterRoomAreaMismatchesForRoomSeparators(roomAreaMismatches, apartmentStates);
             RefreshRoomAreaMismatchFlags(apartmentStates, roomAreaMismatches);
 
@@ -2973,6 +3143,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 return roomAreaMismatches ?? new List<RoomAreaMismatchInfo>();
 
             double areaToleranceSquareMeters = 0.1;
+            double separatorCombinedAreaToleranceSquareMeters = 0.05;
             List<RoomAreaMismatchInfo> result = new List<RoomAreaMismatchInfo>();
             List<RoomAreaMismatchInfo> mismatchesWithoutApartment = new List<RoomAreaMismatchInfo>();
 
@@ -2988,7 +3159,20 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     state.FoundRoomSeparatorsCount > 0;
 
                 if (hasRoomSeparators)
-                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(mismatchesForApartment, areaToleranceSquareMeters);
+                {
+                    int combinedZeroAreaRoomsCount;
+                    mismatchesForApartment = FilterCombinedRoomSeparatorAreaMismatches(
+                        mismatchesForApartment,
+                        areaToleranceSquareMeters,
+                        out combinedZeroAreaRoomsCount);
+
+                    if (combinedZeroAreaRoomsCount > 0 && state != null)
+                        state.SkippedRoomsCount = Math.Max(0, state.SkippedRoomsCount - combinedZeroAreaRoomsCount);
+
+                    mismatchesForApartment = FilterBalancedRoomSeparatorAreaMismatches(
+                        mismatchesForApartment,
+                        separatorCombinedAreaToleranceSquareMeters);
+                }
 
                 result.AddRange(mismatchesForApartment);
             }
@@ -2998,8 +3182,42 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return result;
         }
 
-        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters)
+        private static List<RoomAreaMismatchInfo> FilterBalancedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double combinedAreaToleranceSquareMeters)
         {
+            if (mismatches == null || mismatches.Count < 2)
+                return mismatches ?? new List<RoomAreaMismatchInfo>();
+
+            double totalDelta = 0;
+            bool hasPositiveDelta = false;
+            bool hasNegativeDelta = false;
+
+            foreach (RoomAreaMismatchInfo mismatch in mismatches)
+            {
+                if (mismatch == null)
+                    continue;
+
+                double expectedArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatch.ExpectedAreaInternal);
+                double actualArea = IDHelper.ConvertInternalAreaToSquareMeters(mismatch.ActualAreaInternal);
+                double delta = actualArea - expectedArea;
+
+                totalDelta += delta;
+                if (delta > combinedAreaToleranceSquareMeters)
+                    hasPositiveDelta = true;
+                if (delta < -combinedAreaToleranceSquareMeters)
+                    hasNegativeDelta = true;
+            }
+
+            if (hasPositiveDelta && hasNegativeDelta && Math.Abs(totalDelta) <= combinedAreaToleranceSquareMeters)
+                return new List<RoomAreaMismatchInfo>();
+
+            return mismatches;
+        }
+
+        private static List<RoomAreaMismatchInfo> FilterCombinedRoomSeparatorAreaMismatches(List<RoomAreaMismatchInfo> mismatches, double areaToleranceSquareMeters,
+            out int combinedZeroAreaRoomsCount)
+        {
+            combinedZeroAreaRoomsCount = 0;
+
             if (mismatches == null || mismatches.Count < 2)
                 return mismatches ?? new List<RoomAreaMismatchInfo>();
 
@@ -3041,7 +3259,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 ignoredMismatches.Add(combinedMismatch);
                 foreach (RoomAreaMismatchInfo matchingPart in matchingParts)
+                {
                     ignoredMismatches.Add(matchingPart);
+                    combinedZeroAreaRoomsCount++;
+                }
             }
 
             if (ignoredMismatches.Count == 0)
@@ -3122,8 +3343,8 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
-        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, List<string> debugMessages,
-            Dictionary<long, ApartmentProcessState> apartmentStates)
+        private void ApplyApartmentPostProcessAction(Document doc, List<FamilyInstance> apartmentInstances, ApartmentFamilyPostProcessAction action, Level placementLevel,
+            List<string> debugMessages, Dictionary<long, ApartmentProcessState> apartmentStates, ApartmentWorksetTargets worksetTargets)
         {
             if (doc == null || apartmentInstances == null || apartmentInstances.Count == 0)
                 return;
@@ -3157,7 +3378,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                         try
                         {
-                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, furnitureErrors, createdFurnitureIds);
+                            CopyFurnitureAndPlumbingFromApartmentUnderlay(doc, apartmentFi, placementLevel, furnitureErrors, createdFurnitureIds, worksetTargets);
                         }
                         catch (Exception ex)
                         {
@@ -3241,10 +3462,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     Text = "Входных дверей: " + installedEntranceDoorsCount + " из " + foundEntranceDoorsCount
                 });
 
-                summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                if (EnableWindow3DModule)
                 {
-                    Text = "Создано окон: " + installedWindowsCount + " из " + totalWindowsPlanned
-                });
+                    summaryItem.Lines.Add(new ApartmentExecutionReportLine
+                    {
+                        Text = "Создано окон: " + installedWindowsCount + " из " + totalWindowsPlanned
+                    });
+                }
 
                 items.Insert(0, summaryItem);
 
