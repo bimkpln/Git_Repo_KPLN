@@ -41,7 +41,7 @@ namespace KPLN_CommandsWheel
                 typeof(ExternalCommands.CommandsWheel).FullName,
                 wheelsCommandsPanel,
                 "KPLN_CommandsWheel.Imagens.commandsWheels.png",
-                "http://moodle.stinproject.local"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
             AddPushButtonDataInPanel(
@@ -57,7 +57,7 @@ namespace KPLN_CommandsWheel
                 typeof(ExternalCommands.CommandSearch).FullName,
                 wheelsCommandsPanel,
                 "KPLN_CommandsWheel.Imagens.settingsWheels.png",
-                "http://moodle.stinproject.local"
+                "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
             return Result.Succeeded;
