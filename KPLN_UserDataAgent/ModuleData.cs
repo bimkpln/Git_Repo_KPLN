@@ -127,7 +127,7 @@ namespace KPLN_UserDataAgent
         /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.
         /// Единица измерения: миллисекунды.
         /// </summary>
-        public const int LocalBusyTimeoutMs = 1000;
+        public const int LocalBusyTimeoutMs = 10000;
 
         /// <summary>
         /// Таймаут ожидания блокировки общей SQLite-базы на сетевом диске.
