@@ -23,6 +23,7 @@ namespace KPLN_ApartmentManager.Forms
         void RequestPlaceApartment(int apartmentId);
         void RequestConvertTo3D(ApartmentPresetData presetData);
         void RequestRefreshApartmentPresets(ApartmentPresetData presetData);
+        void RequestUpdateApartmentFamilies();
         void RequestUpdateApartmentMarks();
     }
 
@@ -54,7 +55,7 @@ namespace KPLN_ApartmentManager.Forms
 
     public class ApartmentPresetData
     {
-        public const string NoWorksetSelection = "Без рабочего набора";
+        public const string NoWorksetSelection = "Активный рабочий набор";
 
         public string SelectedPlanName { get; set; }
         public string SelectedPlanModelSignature { get; set; }
@@ -177,6 +178,7 @@ namespace KPLN_ApartmentManager.Forms
             _vm.ApartmentPresetDataRefreshRequested += Vm_ApartmentPresetDataRefreshRequested;
             _vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
             _vm.FamilyPostProcessActionChanged += Vm_FamilyPostProcessActionChanged;
+            _vm.ApartmentFamiliesUpdateRequested += Vm_ApartmentFamiliesUpdateRequested;
             _vm.ApartmentMarksUpdateRequested += Vm_ApartmentMarksUpdateRequested;
             _vm.ApartmentPresetDataChanged += Vm_ApartmentPresetDataChanged;
 
@@ -256,6 +258,15 @@ namespace KPLN_ApartmentManager.Forms
 
             WindowState = WindowState.Minimized;
             _externalController.RequestUpdateApartmentMarks();
+        }
+
+        private void Vm_ApartmentFamiliesUpdateRequested()
+        {
+            if (_externalController == null)
+                return;
+
+            WindowState = WindowState.Minimized;
+            _externalController.RequestUpdateApartmentFamilies();
         }
 
         private void Vm_RequestClose()
@@ -434,6 +445,7 @@ namespace KPLN_ApartmentManager.Forms
         public event Action<int> ItemPicked;
         public event Action ApartmentPresetDataRefreshRequested;
         public event Action ConvertTo3DRequested;
+        public event Action ApartmentFamiliesUpdateRequested;
         public event Action ApartmentMarksUpdateRequested;
         public event Action<ApartmentPresetData> ApartmentPresetDataChanged;
         public event Action<ApartmentFamilyPostProcessAction> FamilyPostProcessActionChanged;
@@ -492,6 +504,7 @@ namespace KPLN_ApartmentManager.Forms
         public ICommand OpenApartmentPresetsCommand { get; private set; }
         public ICommand RefreshApartmentPresetsCommand { get; private set; }
         public ICommand ConvertTo3DCommand { get; private set; }
+        public ICommand UpdateApartmentFamiliesCommand { get; private set; }
         public ICommand UpdateApartmentMarksCommand { get; private set; }
         public ICommand CloseCommand { get; private set; }
         public ICommand UpdateDbCommand { get; private set; }
@@ -530,6 +543,7 @@ namespace KPLN_ApartmentManager.Forms
             OpenApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
             RefreshApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
             ConvertTo3DCommand = new RelayCommand(OnConvertTo3D, CanConvertTo3D);
+            UpdateApartmentFamiliesCommand = new RelayCommand(OnUpdateApartmentFamilies);
             UpdateApartmentMarksCommand = new RelayCommand(OnUpdateApartmentMarks);
             UpdateDbCommand = new RelayCommand<Window>(OnUpdateDb);
 
@@ -596,6 +610,11 @@ namespace KPLN_ApartmentManager.Forms
         private void OnUpdateApartmentMarks()
         {
             ApartmentMarksUpdateRequested?.Invoke();
+        }
+
+        private void OnUpdateApartmentFamilies()
+        {
+            ApartmentFamiliesUpdateRequested?.Invoke();
         }
 
         private void OnConvertTo3D()

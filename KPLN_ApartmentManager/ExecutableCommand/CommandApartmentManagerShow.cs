@@ -234,6 +234,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             _externalEvent.Raise();
         }
 
+        public void RequestUpdateApartmentFamilies()
+        {
+            _handler.PrepareUpdateApartmentFamilies();
+            _externalEvent.Raise();
+        }
+
         public void RequestUpdateApartmentMarks()
         {
             _handler.PrepareUpdateApartmentMarks();

@@ -147,6 +147,28 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
         }
 
+        private class ApartmentFamilyReloadOptions : IFamilyLoadOptions
+        {
+            public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
+            {
+                overwriteParameterValues = true;
+                return true;
+            }
+
+            public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
+            {
+                source = FamilySource.Family;
+                overwriteParameterValues = true;
+                return true;
+            }
+        }
+
+        private class ApartmentFamilyReloadCandidate
+        {
+            public string FamilyPath { get; set; }
+            public string FamilyName { get; set; }
+        }
+
         private class ExistingWallLineInfo
         {
             public ElementId WallId { get; set; }
@@ -410,6 +432,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             PlaceApartment,
             ConvertTo3D,
             RefreshApartmentPresets,
+            UpdateApartmentFamilies,
             UpdateApartmentMarks
         }
 
@@ -453,6 +476,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                     case RequestType.RefreshApartmentPresets:
                         ExecuteRefreshApartmentPresets(doc, _requestedPresetData);
+                        break;
+
+                    case RequestType.UpdateApartmentFamilies:
+                        ExecuteUpdateApartmentFamilies(doc);
                         break;
 
                     case RequestType.UpdateApartmentMarks:
@@ -504,6 +531,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             _requestedPresetData = null;
         }
 
+        public void PrepareUpdateApartmentFamilies()
+        {
+            _requestType = RequestType.UpdateApartmentFamilies;
+            _requestedApartmentId = 0;
+            _requestedPresetData = null;
+        }
+
         private void MarkApartmentPresetDataStaleInWindow()
         {
             if (_window == null || _window.Dispatcher == null)
@@ -543,6 +577,37 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 return result.ToString().Trim();
             }
+        }
+
+        private static List<string> GetApartmentFamilyPathsFromDb()
+        {
+            List<string> result = new List<string>();
+
+            if (!File.Exists(DbPath))
+                throw new FileNotFoundException("Не найдена база данных", DbPath);
+
+            using (SQLiteConnection con = OpenConnection(DbPath, true))
+            using (SQLiteCommand cmd = con.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT DISTINCT FPATH FROM Main " +
+                    "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
+
+                using (SQLiteDataReader r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        string path = r.IsDBNull(0) ? null : r.GetString(0);
+                        if (!string.IsNullOrWhiteSpace(path))
+                            result.Add(path.Trim());
+                    }
+                }
+            }
+
+            return result
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
@@ -886,6 +951,148 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             TaskDialog.Show("KPLN. Менеджер квартир", message);
+        }
+
+        private void ExecuteUpdateApartmentFamilies(Document doc)
+        {
+            if (doc == null)
+                return;
+
+            List<string> familyPaths;
+            try
+            {
+                familyPaths = GetApartmentFamilyPathsFromDb();
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "Не удалось прочитать пути семейств из БД:\n" + ex.Message);
+                return;
+            }
+
+            if (familyPaths.Count == 0)
+            {
+                TaskDialog.Show("KPLN. Менеджер квартир", "В БД не найдено путей к семействам квартир.");
+                return;
+            }
+
+            HashSet<string> loadedFamilyNames = new HashSet<string>(
+                new FilteredElementCollector(doc)
+                    .OfClass(typeof(Family))
+                    .Cast<Family>()
+                    .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Name))
+                    .Select(x => x.Name.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+
+            List<ApartmentFamilyReloadCandidate> candidates = new List<ApartmentFamilyReloadCandidate>();
+            List<string> missingFiles = new List<string>();
+
+            foreach (string familyPath in familyPaths)
+            {
+                if (string.IsNullOrWhiteSpace(familyPath))
+                    continue;
+
+                if (!File.Exists(familyPath))
+                {
+                    missingFiles.Add(familyPath);
+                    continue;
+                }
+
+                string fileFamilyName = Path.GetFileNameWithoutExtension(familyPath);
+                string familyName = fileFamilyName;
+                bool isLoaded = !string.IsNullOrWhiteSpace(fileFamilyName) && loadedFamilyNames.Contains(fileFamilyName);
+
+                if (!isLoaded)
+                {
+                    string realFamilyName = GetFamilyNameFromFile(doc, familyPath);
+                    if (!string.IsNullOrWhiteSpace(realFamilyName) && loadedFamilyNames.Contains(realFamilyName))
+                    {
+                        familyName = realFamilyName.Trim();
+                        isLoaded = true;
+                    }
+                }
+
+                if (!isLoaded)
+                    continue;
+
+                candidates.Add(new ApartmentFamilyReloadCandidate
+                {
+                    FamilyPath = familyPath,
+                    FamilyName = familyName
+                });
+            }
+
+            candidates = candidates
+                .GroupBy(x => x.FamilyPath, StringComparer.OrdinalIgnoreCase)
+                .Select(x => x.First())
+                .OrderBy(x => x.FamilyName)
+                .ToList();
+
+            if (candidates.Count == 0)
+            {
+                string message = "В проекте не найдено загруженных 2D-семейств квартир из БД.";
+                if (missingFiles.Count > 0)
+                    message += "\n\nНе найдено файлов в БД: " + missingFiles.Count;
+
+                TaskDialog.Show("KPLN. Менеджер квартир", message);
+                return;
+            }
+
+            int updatedCount = 0;
+            int failedCount = 0;
+            List<string> errors = new List<string>();
+
+            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Обновление 2D-семейств квартир"))
+            {
+                t.Start();
+
+                foreach (ApartmentFamilyReloadCandidate candidate in candidates)
+                {
+                    if (candidate == null || string.IsNullOrWhiteSpace(candidate.FamilyPath))
+                        continue;
+
+                    try
+                    {
+                        Family loadedFamily;
+                        bool loaded = doc.LoadFamily(candidate.FamilyPath, new ApartmentFamilyReloadOptions(), out loadedFamily);
+                        if (loaded || loadedFamily != null)
+                        {
+                            updatedCount++;
+                        }
+                        else
+                        {
+                            failedCount++;
+                            errors.Add(candidate.FamilyName + ": Revit не перезагрузил семейство.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failedCount++;
+                        errors.Add(candidate.FamilyName + ": " + ex.Message);
+                    }
+                }
+
+                t.Commit();
+            }
+
+            MarkApartmentPresetDataStaleInWindow();
+
+            string resultMessage =
+                "Найдено в проекте: " + candidates.Count +
+                "\nОбновлено: " + updatedCount +
+                "\nНе обновлено: " + failedCount;
+
+            if (missingFiles.Count > 0)
+                resultMessage += "\nНе найдено файлов из БД: " + missingFiles.Count;
+
+            if (errors.Count > 0)
+            {
+                List<string> shortErrors = errors.Take(15).ToList();
+                resultMessage += "\n\nОшибки:\n- " + string.Join("\n- ", shortErrors);
+                if (errors.Count > shortErrors.Count)
+                    resultMessage += "\n- ...";
+            }
+
+            TaskDialog.Show("KPLN. Менеджер квартир", resultMessage);
         }
 
         private bool ExecutePlaceApartment(UIDocument uidoc, Document doc, int id)

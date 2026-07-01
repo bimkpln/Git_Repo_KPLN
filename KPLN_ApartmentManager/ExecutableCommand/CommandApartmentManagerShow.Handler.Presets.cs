@@ -42,6 +42,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         {
             ApartmentPresetPanelContext context = new ApartmentPresetPanelContext();
             context.ActivePlanName = activeFloorPlan != null ? activeFloorPlan.Name : "";
+            context.ActiveWorksetName = GetActiveUserWorksetName(doc);
             context.WorksetOptions = BuildUserWorksetOptions(doc);
 
             List<ViewPlan> plans = new FilteredElementCollector(doc)
