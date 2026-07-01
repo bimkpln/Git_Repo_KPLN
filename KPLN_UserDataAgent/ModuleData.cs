@@ -96,7 +96,7 @@ namespace KPLN_UserDataAgent
         /// Если общая БД или сетевой диск недоступны, следующая попытка будет через этот интервал.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncIntervalSeconds = 120;
+        public const int SyncIntervalSeconds = 80;
 
         /// <summary>
         /// Задержка ускоренной попытки синхронизации после записи нового события в локальную БД.
@@ -115,13 +115,13 @@ namespace KPLN_UserDataAgent
         /// Максимальное количество локальных событий, отправляемых в общую БД за одну попытку синхронизации.
         /// Единица измерения: штуки записей.
         /// </summary>
-        public const int SyncBatchSize = 200;
+        public const int SyncBatchSize = 500;
 
         /// <summary>
         /// Количество последних месяцев, которые хранятся в центральных базах агента.
         /// Текущий месяц входит в этот лимит.
         /// </summary>
-        public const int CentralDatabaseRetentionMonths = 4;
+        public const int CentralDatabaseRetentionMonths = 0;
 
         /// <summary>
         /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.
