@@ -26,8 +26,6 @@ namespace KPLN_CommandsWheel
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
 
-
-
             AddPushButtonDataInPanel(
                 "KPLNCommandsWheelRun",
                 "Штурвал",
