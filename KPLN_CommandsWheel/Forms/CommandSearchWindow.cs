@@ -518,7 +518,6 @@ namespace KPLN_CommandsWheel.Forms
         private int GetCommandIndex(RevitCommandInfo command, List<string> ids)
         {
             if (command == null || ids == null || string.IsNullOrWhiteSpace(command.Id))
-            {
                 return -1;
 
             return ids.FindIndex(id => string.Equals(id, command.Id, StringComparison.OrdinalIgnoreCase));
