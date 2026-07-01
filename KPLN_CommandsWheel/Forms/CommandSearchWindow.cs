@@ -19,6 +19,13 @@ namespace KPLN_CommandsWheel.Forms
         private readonly TextBox _searchBox;
         private readonly StackPanel _contentPanel;
 
+        private enum CommandListKind
+        {
+            None,
+            Wheel,
+            Favorites
+        }
+
         internal CommandSearchWindow(IEnumerable<RevitCommandInfo> commands, UserSettings settings, RevitCommandExecutor executor)
         {
             _commands = commands
@@ -49,6 +56,7 @@ namespace KPLN_CommandsWheel.Forms
                 _searchBox.Focus();
                 Keyboard.Focus(_searchBox);
             };
+
             PreviewKeyDown += delegate (object sender, KeyEventArgs args)
             {
                 if (args.Key == Key.Escape)
@@ -74,6 +82,7 @@ namespace KPLN_CommandsWheel.Forms
                 Content = _contentPanel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
+
             Grid.SetRow(scrollViewer, 1);
             root.Children.Add(scrollViewer);
 
@@ -89,6 +98,7 @@ namespace KPLN_CommandsWheel.Forms
                 Margin = new Thickness(0, 0, 0, 10),
                 VerticalContentAlignment = VerticalAlignment.Center
             };
+
             textBox.TextChanged += delegate { Rebuild(); };
 
             return textBox;
@@ -97,29 +107,66 @@ namespace KPLN_CommandsWheel.Forms
         private void Rebuild()
         {
             _contentPanel.Children.Clear();
+
             string query = (_searchBox.Text ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(query))
             {
-                RenderSection("Штурвал", CommandsByIds(_settings.WheelCommandIds), "Добавьте команды кнопкой " + "\u2638" + " в строке команды.");
-                RenderSection("Избранное", CommandsByIds(_settings.FavoriteCommandIds), "Добавьте команды сердечком.");
-                RenderSection("Последние", CommandsByIds(_settings.RecentCommandIds), null);
-                RenderSection("Все команды", _commands, null);
+                RenderSection(
+                    "Штурвал",
+                    CommandsByIds(_settings.WheelCommandIds),
+                    "Добавьте команды зелёным плюсом в строке команды.",
+                    CommandListKind.Wheel);
+
+                RenderSection(
+                    "Избранное",
+                    CommandsByIds(_settings.FavoriteCommandIds),
+                    "Добавьте команды сердечком.",
+                    CommandListKind.Favorites);
+
+                RenderSection(
+                    "Последние",
+                    CommandsByIds(_settings.RecentCommandIds),
+                    null,
+                    CommandListKind.None);
+
+                RenderSection(
+                    "Все команды",
+                    _commands,
+                    null,
+                    CommandListKind.None);
+
                 return;
             }
 
             List<RevitCommandInfo> found = Filter(query).ToList();
-            RenderSection(string.Format("Найдено: {0}", found.Count), found, "Ничего не найдено.");
+
+            RenderSection(
+                string.Format("Найдено: {0}", found.Count),
+                found,
+                "Ничего не найдено.",
+                CommandListKind.None);
         }
 
         private IEnumerable<RevitCommandInfo> Filter(string query)
         {
             string[] tokens = query.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
             return _commands
-                .Where(command => tokens.All(token => (command.SearchText ?? string.Empty).IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0))
+                .Where(command => tokens.All(token => IsCommandNameMatch(command, token)))
                 .OrderByDescending(IsFavorite)
                 .ThenByDescending(IsInWheel)
                 .ThenBy(command => command.Name);
+        }
+
+        private bool IsCommandNameMatch(RevitCommandInfo command, string token)
+        {
+            if (command == null || string.IsNullOrWhiteSpace(token))
+            {
+                return false;
+            }
+
+            return (command.Name ?? string.Empty).IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private IEnumerable<RevitCommandInfo> CommandsByIds(IEnumerable<string> ids)
@@ -132,6 +179,7 @@ namespace KPLN_CommandsWheel.Forms
             foreach (string id in ids)
             {
                 RevitCommandInfo command;
+
                 if (!string.IsNullOrWhiteSpace(id) && _commandsById.TryGetValue(id, out command))
                 {
                     yield return command;
@@ -139,9 +187,10 @@ namespace KPLN_CommandsWheel.Forms
             }
         }
 
-        private void RenderSection(string title, IEnumerable<RevitCommandInfo> commands, string emptyText)
+        private void RenderSection(string title, IEnumerable<RevitCommandInfo> commands, string emptyText, CommandListKind listKind)
         {
             List<RevitCommandInfo> list = commands.ToList();
+
             if (list.Count == 0 && string.IsNullOrWhiteSpace(emptyText))
             {
                 return;
@@ -155,6 +204,7 @@ namespace KPLN_CommandsWheel.Forms
                 Foreground = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
                 Margin = new Thickness(2, 12, 0, 6)
             };
+
             _contentPanel.Children.Add(header);
 
             if (list.Count == 0)
@@ -165,16 +215,22 @@ namespace KPLN_CommandsWheel.Forms
                     Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
                     Margin = new Thickness(2, 0, 0, 8)
                 });
+
                 return;
             }
 
             foreach (RevitCommandInfo command in list)
             {
-                _contentPanel.Children.Add(CreateCommandRow(command));
+                _contentPanel.Children.Add(CreateCommandRow(command, listKind));
             }
         }
 
-        private UIElement CreateCommandRow(RevitCommandInfo command)
+
+
+
+
+
+        private UIElement CreateCommandRow(RevitCommandInfo command, CommandListKind listKind)
         {
             Border rowBorder = new Border
             {
@@ -183,11 +239,11 @@ namespace KPLN_CommandsWheel.Forms
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(6),
                 Margin = new Thickness(0, 0, 0, 6),
-                Padding = new Thickness(8),
-                Cursor = Cursors.Hand
+                Padding = new Thickness(8)
             };
 
             Grid row = new Grid();
+
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -195,11 +251,28 @@ namespace KPLN_CommandsWheel.Forms
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
+            // Левая зона запуска команды.
+            // Теперь команда запускается только при клике по иконке/названию,
+            // а не по всей строке до кнопок справа.
+            Grid runArea = new Grid
+            {
+                Background = Brushes.Transparent,
+                Cursor = Cursors.Hand
+            };
+
+            runArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+            runArea.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            Grid.SetColumn(runArea, 0);
+            Grid.SetColumnSpan(runArea, 2);
+            row.Children.Add(runArea);
+
             UIElement icon = CreateIcon(command, 26);
             Grid.SetColumn(icon, 0);
-            row.Children.Add(icon);
+            runArea.Children.Add(icon);
 
             StackPanel textPanel = new StackPanel { Margin = new Thickness(8, 0, 8, 0) };
+
             textPanel.Children.Add(new TextBlock
             {
                 Text = command.Name,
@@ -208,6 +281,7 @@ namespace KPLN_CommandsWheel.Forms
                 Foreground = Brushes.Black,
                 TextWrapping = TextWrapping.Wrap
             });
+
             textPanel.Children.Add(new TextBlock
             {
                 Text = string.Format("{0} / {1}", command.TabName, command.PanelName),
@@ -215,8 +289,15 @@ namespace KPLN_CommandsWheel.Forms
                 Foreground = new SolidColorBrush(Color.FromRgb(110, 110, 110)),
                 TextWrapping = TextWrapping.Wrap
             });
+
             Grid.SetColumn(textPanel, 1);
-            row.Children.Add(textPanel);
+            runArea.Children.Add(textPanel);
+
+            runArea.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
+            {
+                args.Handled = true;
+                Run(command);
+            };
 
             Button favoriteButton = CreateActionButton(IsFavorite(command) ? "\u2665" : "\u2661", "Избранное");
             favoriteButton.Foreground = new SolidColorBrush(Color.FromRgb(190, 45, 70));
@@ -225,53 +306,73 @@ namespace KPLN_CommandsWheel.Forms
                 args.Handled = true;
                 ToggleFavorite(command);
             };
+
             Grid.SetColumn(favoriteButton, 2);
             row.Children.Add(favoriteButton);
 
-            Button wheelButton = CreateActionButton("\u2638", IsInWheel(command) ? "Убрать из штурвала" : "Добавить в штурвал");
-            wheelButton.Foreground = IsInWheel(command)
-                ? new SolidColorBrush(Color.FromRgb(26, 110, 170))
-                : new SolidColorBrush(Color.FromRgb(190, 190, 190));
+            bool isInWheel = IsInWheel(command);
+
+            Button wheelButton = CreateActionButton(
+                isInWheel ? "\u2212" : "+",
+                isInWheel ? "Убрать из штурвала" : "Добавить в штурвал");
+
+            wheelButton.FontSize = 18;
+            wheelButton.FontWeight = FontWeights.Bold;
+
+            // Нижний внутренний отступ поднимает плюс/минус чуть выше внутри кнопки.
+            wheelButton.Padding = new Thickness(0, 0, 0, 4);
+
+            wheelButton.Foreground = isInWheel
+                ? new SolidColorBrush(Color.FromRgb(190, 45, 45))
+                : new SolidColorBrush(Color.FromRgb(35, 150, 75));
+
             wheelButton.Click += delegate (object sender, RoutedEventArgs args)
             {
                 args.Handled = true;
                 ToggleWheel(command);
             };
+
             Grid.SetColumn(wheelButton, 3);
             row.Children.Add(wheelButton);
 
-            Button moveUpButton = CreateActionButton("\u2191", "Выше в штурвале");
-            moveUpButton.IsEnabled = CanMoveWheelCommand(command, -1);
-            moveUpButton.Foreground = new SolidColorBrush(Color.FromRgb(72, 72, 72));
-            moveUpButton.Click += delegate (object sender, RoutedEventArgs args)
+            if (listKind != CommandListKind.None)
             {
-                args.Handled = true;
-                MoveWheelCommand(command, -1);
-            };
-            Grid.SetColumn(moveUpButton, 4);
-            row.Children.Add(moveUpButton);
-
-            Button moveDownButton = CreateActionButton("\u2193", "Ниже в штурвале");
-            moveDownButton.IsEnabled = CanMoveWheelCommand(command, 1);
-            moveDownButton.Foreground = new SolidColorBrush(Color.FromRgb(72, 72, 72));
-            moveDownButton.Click += delegate (object sender, RoutedEventArgs args)
-            {
-                args.Handled = true;
-                MoveWheelCommand(command, 1);
-            };
-            Grid.SetColumn(moveDownButton, 5);
-            row.Children.Add(moveDownButton);
-
-            rowBorder.Child = row;
-            rowBorder.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
-            {
-                if (FindParent<Button>(args.OriginalSource as DependencyObject) != null)
+                if (CanMoveCommand(command, listKind, -1))
                 {
-                    return;
+                    Button moveUpButton = CreateActionButton(
+                        "\u2191",
+                        listKind == CommandListKind.Wheel ? "Выше в штурвале" : "Выше в избранном");
+
+                    moveUpButton.Foreground = new SolidColorBrush(Color.FromRgb(72, 72, 72));
+                    moveUpButton.Click += delegate (object sender, RoutedEventArgs args)
+                    {
+                        args.Handled = true;
+                        MoveCommand(command, listKind, -1);
+                    };
+
+                    Grid.SetColumn(moveUpButton, 4);
+                    row.Children.Add(moveUpButton);
                 }
 
-                Run(command);
-            };
+                if (CanMoveCommand(command, listKind, 1))
+                {
+                    Button moveDownButton = CreateActionButton(
+                        "\u2193",
+                        listKind == CommandListKind.Wheel ? "Ниже в штурвале" : "Ниже в избранном");
+
+                    moveDownButton.Foreground = new SolidColorBrush(Color.FromRgb(72, 72, 72));
+                    moveDownButton.Click += delegate (object sender, RoutedEventArgs args)
+                    {
+                        args.Handled = true;
+                        MoveCommand(command, listKind, 1);
+                    };
+
+                    Grid.SetColumn(moveDownButton, 5);
+                    row.Children.Add(moveDownButton);
+                }
+            }
+
+            rowBorder.Child = row;
 
             return rowBorder;
         }
@@ -279,6 +380,7 @@ namespace KPLN_CommandsWheel.Forms
         private UIElement CreateIcon(RevitCommandInfo command, double size)
         {
             ImageSource source = IconSourceLoader.Load(command);
+
             if (source != null)
             {
                 return new Image
@@ -292,7 +394,10 @@ namespace KPLN_CommandsWheel.Forms
                 };
             }
 
-            string letter = string.IsNullOrWhiteSpace(command.Name) ? "?" : command.Name.Substring(0, 1).ToUpperInvariant();
+            string letter = string.IsNullOrWhiteSpace(command.Name)
+                ? "?"
+                : command.Name.Substring(0, 1).ToUpperInvariant();
+
             return new Border
             {
                 Width = size + 2,
@@ -353,7 +458,13 @@ namespace KPLN_CommandsWheel.Forms
             {
                 if (_settings.WheelCommandIds.Count >= 8)
                 {
-                    MessageBox.Show(this, "В штурвал можно добавить не больше 8 команд.", "Штурвал", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(
+                        this,
+                        "В штурвал можно добавить не больше 8 команд.",
+                        "Штурвал",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+
                     return;
                 }
 
@@ -364,43 +475,75 @@ namespace KPLN_CommandsWheel.Forms
             Rebuild();
         }
 
-        private bool CanMoveWheelCommand(RevitCommandInfo command, int direction)
+        private bool CanMoveCommand(RevitCommandInfo command, CommandListKind listKind, int direction)
         {
-            int index = GetWheelCommandIndex(command);
+            List<string> ids = GetCommandIdList(listKind);
+
+            if (ids == null)
+            {
+                return false;
+            }
+
+            int index = GetCommandIndex(command, ids);
+
             if (index < 0)
             {
                 return false;
             }
 
             int targetIndex = index + direction;
-            return targetIndex >= 0 && targetIndex < _settings.WheelCommandIds.Count;
+
+            return targetIndex >= 0 && targetIndex < ids.Count;
         }
 
-        private void MoveWheelCommand(RevitCommandInfo command, int direction)
+        private void MoveCommand(RevitCommandInfo command, CommandListKind listKind, int direction)
         {
-            int index = GetWheelCommandIndex(command);
-            int targetIndex = index + direction;
-            if (index < 0 || targetIndex < 0 || targetIndex >= _settings.WheelCommandIds.Count)
+            List<string> ids = GetCommandIdList(listKind);
+
+            if (ids == null)
             {
                 return;
             }
 
-            string currentId = _settings.WheelCommandIds[index];
-            _settings.WheelCommandIds[index] = _settings.WheelCommandIds[targetIndex];
-            _settings.WheelCommandIds[targetIndex] = currentId;
+            int index = GetCommandIndex(command, ids);
+            int targetIndex = index + direction;
+
+            if (index < 0 || targetIndex < 0 || targetIndex >= ids.Count)
+            {
+                return;
+            }
+
+            string currentId = ids[index];
+            ids[index] = ids[targetIndex];
+            ids[targetIndex] = currentId;
 
             UserSettingsService.Save(_settings);
             Rebuild();
         }
 
-        private int GetWheelCommandIndex(RevitCommandInfo command)
+        private int GetCommandIndex(RevitCommandInfo command, List<string> ids)
         {
-            if (command == null || string.IsNullOrWhiteSpace(command.Id))
+            if (command == null || ids == null || string.IsNullOrWhiteSpace(command.Id))
             {
                 return -1;
             }
 
-            return _settings.WheelCommandIds.FindIndex(id => string.Equals(id, command.Id, StringComparison.OrdinalIgnoreCase));
+            return ids.FindIndex(id => string.Equals(id, command.Id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private List<string> GetCommandIdList(CommandListKind listKind)
+        {
+            switch (listKind)
+            {
+                case CommandListKind.Wheel:
+                    return _settings.WheelCommandIds;
+
+                case CommandListKind.Favorites:
+                    return _settings.FavoriteCommandIds;
+
+                default:
+                    return null;
+            }
         }
 
         private void Run(RevitCommandInfo command)
@@ -426,9 +569,11 @@ namespace KPLN_CommandsWheel.Forms
         private static T FindParent<T>(DependencyObject source) where T : DependencyObject
         {
             DependencyObject current = source;
+
             while (current != null)
             {
                 T typed = current as T;
+
                 if (typed != null)
                 {
                     return typed;
