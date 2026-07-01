@@ -20,7 +20,17 @@ namespace KPLN_UserDataAgent
 
         public Result Close()
         {
-            _syncService?.Dispose();
+            Action close = () =>
+            {
+                _syncService?.SyncNow("Закрытие Revit");
+                _syncService?.Dispose();
+            };
+
+            if (_errorGuard == null)
+                close();
+            else
+                _errorGuard.Run("Module.Close", close);
+
             return Result.Succeeded;
         }
 

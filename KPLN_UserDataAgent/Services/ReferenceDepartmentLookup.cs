@@ -278,11 +278,21 @@ namespace KPLN_UserDataAgent.Services
 
         public static string ResolveDepartmentKey(string windowsUser, string referenceDatabasePath)
         {
-            EnsureLoaded(referenceDatabasePath);
+            return ResolveDepartmentKey(windowsUser, referenceDatabasePath, false);
+        }
+
+        public static string ResolveDepartmentKey(string windowsUser, string referenceDatabasePath, bool forceRefresh)
+        {
+            EnsureLoaded(referenceDatabasePath, forceRefresh);
             return _lookup.ResolveDepartmentKey(windowsUser);
         }
 
         private static void EnsureLoaded(string referenceDatabasePath)
+        {
+            EnsureLoaded(referenceDatabasePath, false);
+        }
+
+        private static void EnsureLoaded(string referenceDatabasePath, bool forceRefresh)
         {
             string path = referenceDatabasePath ?? string.Empty;
             DateTime now = DateTime.UtcNow;
@@ -291,7 +301,7 @@ namespace KPLN_UserDataAgent.Services
             {
                 int refreshSeconds = _lookup.UserCount > 0 ? SuccessfulRefreshSeconds : FailedRetrySeconds;
                 bool samePath = string.Equals(_loadedPath, path, StringComparison.OrdinalIgnoreCase);
-                if (samePath && (now - _lastLoadAttemptUtc).TotalSeconds < refreshSeconds)
+                if (!forceRefresh && samePath && (now - _lastLoadAttemptUtc).TotalSeconds < refreshSeconds)
                     return;
 
                 ReferenceDepartmentLookup loadedLookup = ReferenceDepartmentLookup.Load(path);

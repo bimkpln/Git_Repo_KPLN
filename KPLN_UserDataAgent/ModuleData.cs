@@ -89,45 +89,45 @@ namespace KPLN_UserDataAgent
         /// Задержка первой фоновой попытки отправить локальную очередь в общую БД после запуска Revit.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncStartDelaySeconds = 60;
+        public const int SyncStartDelaySeconds = 15;
 
         /// <summary>
         /// Интервал регулярных фоновых попыток отправить локальную очередь в общую БД.
         /// Если общая БД или сетевой диск недоступны, следующая попытка будет через этот интервал.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncIntervalSeconds = 300;
+        public const int SyncIntervalSeconds = 80;
 
         /// <summary>
         /// Задержка ускоренной попытки синхронизации после записи нового события в локальную БД.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncAfterWriteDelaySeconds = 60;
+        public const int SyncAfterWriteDelaySeconds = 15;
 
         /// <summary>
         /// Случайная добавка к задержкам синхронизации, чтобы пользователи не били в общую БД одновременно.
         /// Фактическая задержка = базовая задержка + случайное число от 0 до этого значения.
         /// Единица измерения: секунды.
         /// </summary>
-        public const int SyncRandomJitterSeconds = 120;
+        public const int SyncRandomJitterSeconds = 30;
 
         /// <summary>
         /// Максимальное количество локальных событий, отправляемых в общую БД за одну попытку синхронизации.
         /// Единица измерения: штуки записей.
         /// </summary>
-        public const int SyncBatchSize = 200;
+        public const int SyncBatchSize = 500;
 
         /// <summary>
         /// Количество последних месяцев, которые хранятся в центральных базах агента.
         /// Текущий месяц входит в этот лимит.
         /// </summary>
-        public const int CentralDatabaseRetentionMonths = 4;
+        public const int CentralDatabaseRetentionMonths = 0;
 
         /// <summary>
         /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.
         /// Единица измерения: миллисекунды.
         /// </summary>
-        public const int LocalBusyTimeoutMs = 1000;
+        public const int LocalBusyTimeoutMs = 10000;
 
         /// <summary>
         /// Таймаут ожидания блокировки общей SQLite-базы на сетевом диске.

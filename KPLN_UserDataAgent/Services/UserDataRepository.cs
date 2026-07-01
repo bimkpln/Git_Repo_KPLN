@@ -112,6 +112,8 @@ namespace KPLN_UserDataAgent.Services
                     return 0;
                 }
 
+                RefreshUnknownDepartmentKeys(pending);
+
                 int syncedCount = 0;
                 Exception syncException = null;
 
@@ -318,6 +320,175 @@ namespace KPLN_UserDataAgent.Services
             }
 
             return result;
+        }
+
+        private void RefreshUnknownDepartmentKeys(PendingSyncBatch pending)
+        {
+            List<UserEventRecord> updatedEvents = new List<UserEventRecord>();
+            List<AgentErrorRecord> updatedErrors = new List<AgentErrorRecord>();
+            bool forceReferenceRefresh = true;
+
+            foreach (UserEventRecord userEvent in pending.UserEvents)
+            {
+                bool wasUnknownDepartment = IsUnknownDepartmentKey(userEvent.DepartmentKey);
+                string resolvedDepartmentKey;
+                if (TryResolveUnknownDepartmentKey(
+                    userEvent.WindowsUser,
+                    userEvent.DepartmentKey,
+                    wasUnknownDepartment && forceReferenceRefresh,
+                    out resolvedDepartmentKey))
+                {
+                    userEvent.DepartmentKey = resolvedDepartmentKey;
+                    updatedEvents.Add(userEvent);
+                }
+
+                if (wasUnknownDepartment)
+                    forceReferenceRefresh = false;
+            }
+
+            foreach (AgentErrorRecord error in pending.Errors)
+            {
+                bool wasUnknownDepartment = IsUnknownDepartmentKey(error.DepartmentKey);
+                string resolvedDepartmentKey;
+                if (TryResolveUnknownDepartmentKey(
+                    error.WindowsUser,
+                    error.DepartmentKey,
+                    wasUnknownDepartment && forceReferenceRefresh,
+                    out resolvedDepartmentKey))
+                {
+                    error.DepartmentKey = resolvedDepartmentKey;
+                    updatedErrors.Add(error);
+                }
+
+                if (wasUnknownDepartment)
+                    forceReferenceRefresh = false;
+            }
+
+            TryUpdateLocalEventDepartmentKeys(updatedEvents.ToArray());
+            TryUpdateLocalErrorDepartmentKeys(updatedErrors.ToArray());
+        }
+
+        private static bool TryResolveUnknownDepartmentKey(
+            string windowsUser,
+            string currentDepartmentKey,
+            bool forceReferenceRefresh,
+            out string resolvedDepartmentKey)
+        {
+            resolvedDepartmentKey = currentDepartmentKey;
+            if (!IsUnknownDepartmentKey(currentDepartmentKey))
+                return false;
+
+            string departmentKey = ReferenceDepartmentLookupService.ResolveDepartmentKey(
+                windowsUser,
+                ModuleData.ReferenceDatabasePath,
+                forceReferenceRefresh);
+            if (IsUnknownDepartmentKey(departmentKey))
+                return false;
+
+            resolvedDepartmentKey = CentralDatabasePathBuilder.NormalizeDepartmentKey(departmentKey);
+            return true;
+        }
+
+        private static bool IsUnknownDepartmentKey(string departmentKey)
+        {
+            return string.Equals(
+                CentralDatabasePathBuilder.NormalizeDepartmentKey(departmentKey),
+                CentralDatabasePathBuilder.UnknownDepartmentKey,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void TryUpdateLocalEventDepartmentKeys(UserEventRecord[] userEvents)
+        {
+            if (userEvents == null || userEvents.Length == 0)
+                return;
+
+            try
+            {
+                lock (_localLock)
+                {
+                    foreach (IGrouping<string, UserEventRecord> group in userEvents.GroupBy(e => e.LocalDatabasePath))
+                    {
+                        using (SQLiteConnection connection = CreateConnection(group.Key, ModuleData.LocalBusyTimeoutMs))
+                        {
+                            connection.Open();
+                            using (SQLiteTransaction transaction = connection.BeginTransaction())
+                            {
+                                foreach (UserEventRecord userEvent in group)
+                                {
+                                    using (SQLiteCommand command = connection.CreateCommand())
+                                    {
+                                        command.Transaction = transaction;
+                                        command.CommandText =
+                                            "UPDATE UserEvents " +
+                                            "SET DepartmentKey=@DepartmentKey " +
+                                            "WHERE Id=@Id AND DepartmentKey=@UnknownDepartmentKey;";
+                                        command.Parameters.AddWithValue(
+                                            "@DepartmentKey",
+                                            CentralDatabasePathBuilder.NormalizeDepartmentKey(userEvent.DepartmentKey));
+                                        command.Parameters.AddWithValue("@Id", userEvent.LocalId);
+                                        command.Parameters.AddWithValue(
+                                            "@UnknownDepartmentKey",
+                                            CentralDatabasePathBuilder.UnknownDepartmentKey);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+
+                                transaction.Commit();
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        private void TryUpdateLocalErrorDepartmentKeys(AgentErrorRecord[] errors)
+        {
+            if (errors == null || errors.Length == 0)
+                return;
+
+            try
+            {
+                lock (_localLock)
+                {
+                    foreach (IGrouping<string, AgentErrorRecord> group in errors.GroupBy(e => e.LocalDatabasePath))
+                    {
+                        using (SQLiteConnection connection = CreateConnection(group.Key, ModuleData.LocalBusyTimeoutMs))
+                        {
+                            connection.Open();
+                            using (SQLiteTransaction transaction = connection.BeginTransaction())
+                            {
+                                foreach (AgentErrorRecord error in group)
+                                {
+                                    using (SQLiteCommand command = connection.CreateCommand())
+                                    {
+                                        command.Transaction = transaction;
+                                        command.CommandText =
+                                            "UPDATE AgentErrors " +
+                                            "SET DepartmentKey=@DepartmentKey " +
+                                            "WHERE Id=@Id AND DepartmentKey=@UnknownDepartmentKey;";
+                                        command.Parameters.AddWithValue(
+                                            "@DepartmentKey",
+                                            CentralDatabasePathBuilder.NormalizeDepartmentKey(error.DepartmentKey));
+                                        command.Parameters.AddWithValue("@Id", error.LocalId);
+                                        command.Parameters.AddWithValue(
+                                            "@UnknownDepartmentKey",
+                                            CentralDatabasePathBuilder.UnknownDepartmentKey);
+                                        command.ExecuteNonQuery();
+                                    }
+                                }
+
+                                transaction.Commit();
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
         }
 
         private void MarkEventsSynced(UserEventRecord[] userEvents)
