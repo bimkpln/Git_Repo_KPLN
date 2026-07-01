@@ -212,6 +212,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\IDHelper.cs" />
+    <Compile Include="Common\WindowPositionHelper.cs" />
     <Compile Include="ExternalCommands\CommandSearch.cs" />
     <Compile Include="ExternalCommands\CommandsWheel.cs" />
     <Compile Include="Forms\CommandSearchWindow.cs" />

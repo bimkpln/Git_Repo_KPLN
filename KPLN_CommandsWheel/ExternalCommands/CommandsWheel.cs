@@ -45,6 +45,7 @@ namespace KPLN_CommandsWheel.ExternalCommands
             RevitCommandExecutor executor = new RevitCommandExecutor();
             CommandsWheelWindow window = new CommandsWheelWindow(wheelCommands, executor);
             WindowOwnerHelper.Apply(window);
+            WindowPositionHelper.ShowNearCursor(window, 16, 16);
             window.Show();
 
             return Result.Succeeded;
