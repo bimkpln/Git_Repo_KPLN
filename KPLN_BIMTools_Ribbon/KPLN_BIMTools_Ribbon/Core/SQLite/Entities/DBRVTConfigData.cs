@@ -24,10 +24,7 @@
         public int MaxBackup
         {
             get => _maxBackup;
-            set
-            {
-                SetField(ref _maxBackup, value);
-            }
+            set => SetField(ref _maxBackup, value);
         }
 
         /// <summary>
@@ -36,10 +33,7 @@
         public string NameChangeFind
         {
             get => _nameChangeFind;
-            set
-            {
-                SetField(ref _nameChangeFind, value);
-            }
+            set => SetField(ref _nameChangeFind, value);
         }
 
         /// <summary>
@@ -48,10 +42,7 @@
         public string NameChangeSet
         {
             get => _nameChangeSet;
-            set
-            {
-                SetField(ref _nameChangeSet, value);
-            }
+            set => SetField(ref _nameChangeSet, value);
         }
         #endregion
 

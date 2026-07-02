@@ -37,7 +37,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
             string input = (sender as TextBox).Text;
             if (!double.TryParse(input, out double _))
             {
-                UserDialog userDialog = new UserDialog("Ошибка", "Для количества резервных копий можно вводить только числа! Если не исправишь - будет значение по умолчанию = 10");
+                UserDialog userDialog = new UserDialog(
+                    "Ошибка", 
+                    "Для количества резервных копий можно вводить только числа! Если не исправишь - будет значение по умолчанию = 10");
+                
                 userDialog.ShowDialog();
                 CurrentDBRSConfigData.MaxBackup = 10;
             }

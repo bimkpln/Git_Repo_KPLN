@@ -66,6 +66,22 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                         $"{nameof(DBRVTConfigData.NameChangeSet)} TEXT, " +
                         $"{nameof(DBRVTConfigData.MaxBackup)} INTEGER)");
                     break;
+                case RevitDocExchangeEnum.IFC:
+                    ExecuteNonQuery(
+                    $"CREATE TABLE {_dbTableName} " +
+                        $"({nameof(DBIFCConfigData.Id)} INTEGER PRIMARY KEY, " +
+                        $"{nameof(DBIFCConfigData.Name)} TEXT, " +
+                        $"{nameof(DBIFCConfigData.PathFrom)} TEXT, " +
+                        $"{nameof(DBIFCConfigData.PathTo)} TEXT, " +
+                        $"{nameof(DBIFCConfigData.FileVersion)} INTEGER, " +
+                        $"{nameof(DBIFCConfigData.SpaceBoundaryLevel)} INTEGER, " +
+                        $"{nameof(DBIFCConfigData.WallAndColumnSplitting)} INTEGER, " +
+                        $"{nameof(DBIFCConfigData.ExportBaseQuantities)} INTEGER, " +
+                        $"{nameof(DBIFCConfigData.ExportLinks)} INTEGER, " +
+                        $"{nameof(DBIFCConfigData.ViewName)} TEXT, " +
+                        $"{nameof(DBIFCConfigData.WorksetToCloseNamesStartWith)} TEXT, " +
+                        $"{nameof(DBIFCConfigData.IfcDocPostfix)} TEXT)");
+                    break;
             }
         }
 
@@ -150,6 +166,39 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                    rsConfigs);
             }
         }
+
+        /// <summary>
+        /// Создать конфиги IFC
+        /// </summary>
+        public void PostConfigItems_ByIFCConfigs(IEnumerable<DBIFCConfigData> ifcConfigs)
+        {
+            ExecuteNonQuery(
+                $"INSERT INTO {_dbTableName} " +
+                    $"({nameof(DBIFCConfigData.Name)}, " +
+                    $"{nameof(DBIFCConfigData.PathFrom)}, " +
+                    $"{nameof(DBIFCConfigData.PathTo)}, " +
+                    $"{nameof(DBIFCConfigData.FileVersion)}, " +
+                    $"{nameof(DBIFCConfigData.SpaceBoundaryLevel)}, " +
+                    $"{nameof(DBIFCConfigData.WallAndColumnSplitting)}, " +
+                    $"{nameof(DBIFCConfigData.ExportBaseQuantities)}, " +
+                    $"{nameof(DBIFCConfigData.ExportLinks)}, " +
+                    $"{nameof(DBIFCConfigData.ViewName)}, " +
+                    $"{nameof(DBIFCConfigData.WorksetToCloseNamesStartWith)}, " +
+                    $"{nameof(DBIFCConfigData.IfcDocPostfix)}) " +
+                $"VALUES " +
+                    $"(@{nameof(DBIFCConfigData.Name)}, " +
+                    $"@{nameof(DBIFCConfigData.PathFrom)}, " +
+                    $"@{nameof(DBIFCConfigData.PathTo)}, " +
+                    $"@{nameof(DBIFCConfigData.FileVersion)}, " +
+                    $"@{nameof(DBIFCConfigData.SpaceBoundaryLevel)}, " +
+                    $"@{nameof(DBIFCConfigData.WallAndColumnSplitting)}, " +
+                    $"@{nameof(DBIFCConfigData.ExportBaseQuantities)}, " +
+                    $"@{nameof(DBIFCConfigData.ExportLinks)}, " +
+                    $"@{nameof(DBIFCConfigData.ViewName)}, " +
+                    $"@{nameof(DBIFCConfigData.WorksetToCloseNamesStartWith)}, " +
+                    $"@{nameof(DBIFCConfigData.IfcDocPostfix)});",
+                ifcConfigs);
+        }
         #endregion
 
         #region Read
@@ -164,6 +213,8 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                     return ExecuteQuery<DBNWConfigData>($"SELECT * FROM {_dbTableName};");
                 case RevitDocExchangeEnum.Revit:
                     return ExecuteQuery<DBRVTConfigData>($"SELECT * FROM {_dbTableName};");
+                case RevitDocExchangeEnum.IFC:
+                    return ExecuteQuery<DBIFCConfigData>($"SELECT * FROM {_dbTableName};");
             }
 
             return null;

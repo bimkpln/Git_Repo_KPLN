@@ -54,14 +54,19 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         private protected override string ExchangeFile(Application app, ModelPath modelPathFrom, DBConfigEntity configEntity, string rsn = "")
         {
             //Апкастинг в настройку для экспорта в RS
-            if (configEntity is DBRVTConfigData rsConfigData)
-            {
-                // Подготовка к открытию
-                SetOpenOptions(WorksetConfigurationOption.CloseAllWorksets);
-                SetSaveAsOptions(rsConfigData);
+            if (!(configEntity is DBRVTConfigData rsConfigData))
+                throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRVTConfigData)}");
 
-                Document doc = null;
-                // Открываем документ по указанному пути
+
+            // Подготовка к открытию
+            SetOpenOptions(WorksetConfigurationOption.CloseAllWorksets);
+            SetSaveAsOptions(rsConfigData);
+
+            
+            // Открываем документ по указанному пути
+            Document doc = null;
+            try
+            {
                 try
                 {
                     // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
@@ -97,12 +102,31 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                 doc.SaveAs(newMutableModelPath, _saveAsOptions);
                 CurrentDocName = doc.Title;
                 WorksharingUtils.RelinquishOwnership(doc, new RelinquishOptions(true), new TransactWithCentralOptions());
-                doc.Close(false);
 
                 return mutablePath;
             }
-            else
-                throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBRVTConfigData)}");
+            catch (Exception ex)
+            {
+                Module.CurrentLogger.Error(
+                    $"Не выгрузить RVT ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). " +
+                    $"Ошибка: {ex.Message}");
+
+                return null;
+            }
+            finally
+            {
+                if (doc != null && doc.IsValidObject)
+                {
+                    try
+                    {
+                        doc.Close(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Module.CurrentLogger.Error($"Не удалось закрыть документ после RVT-обмена. Ошибка: {ex.Message}");
+                    }
+                }
+            }
         }
 
         /// <summary>

@@ -27,8 +27,9 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         {
             ElementEntity[] plugins = new ElementEntity[]
             {
-                new ElementEntity(RevitDocExchangeEnum.Revit.ToString(), "Плагин \"RVT: Обмен\""),
                 new ElementEntity(RevitDocExchangeEnum.Navisworks.ToString(), "Плагин \"NWC: Обмен\""),
+                new ElementEntity(RevitDocExchangeEnum.Revit.ToString(), "Плагин \"RVT: Обмен\""),
+                new ElementEntity(RevitDocExchangeEnum.IFC.ToString(), "Плагин \"IFC: Экспорт\""),
             };
             ElementSinglePick elementSinglePick = new ElementSinglePick(null, plugins);
             if (!(bool)elementSinglePick.ShowDialog())

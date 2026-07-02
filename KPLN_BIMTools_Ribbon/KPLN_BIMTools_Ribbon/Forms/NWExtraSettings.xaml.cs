@@ -39,7 +39,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
             string input = (sender as TextBox).Text;
             if (!double.TryParse(input, out double _))
             {
-                UserDialog userDialog = new UserDialog("Ошибка", "Для коэффициента фасетизации можно вводить только числа! Если не исправишь - будет значение по умолчанию = 1");
+                UserDialog userDialog = new UserDialog(
+                    "Ошибка", 
+                    "Для коэффициента фасетизации можно вводить только числа! Если не исправишь - будет значение по умолчанию = 1");
+                
                 userDialog.ShowDialog();
                 CurrentDBNWConfigData.FacetingFactor = 1.0;
             }

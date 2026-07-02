@@ -75,7 +75,7 @@ namespace KPLN_BIMTools_Ribbon
             AddPushButtonDataInPullDown(
                 CommandAutoExchangeConfig.PluginName,
                 CommandAutoExchangeConfig.PluginName,
-                "Конфигурация автозапуска обмена Revit-моделями (плагины по обмену RVT и NW файлов)",
+                "Конфигурация автозапуска обмена Revit-моделями (плагины по обмену RVT и NWC файлов)",
                 string.Format(
                     "Пакетная выгрзка моделей.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
@@ -122,6 +122,23 @@ namespace KPLN_BIMTools_Ribbon
                 typeof(CommandNWExport).FullName,
                 uploadPullDown,
                 "nwExport",
+                "http://moodle/mod/book/view.php?id=502&chapterid=1300",
+                true
+            );
+
+            AddPushButtonDataInPullDown(
+                CommandIFCExport.PluginName,
+                CommandIFCExport.PluginName,
+                "Экспорт моделей в IFC",
+                string.Format(
+                    "Пакетный (по предварительным настройкам) экспорт моделей в IFC.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandIFCExport).FullName,
+                uploadPullDown,
+                "ifcExport",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1300",
                 true
             );

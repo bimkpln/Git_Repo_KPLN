@@ -7,6 +7,7 @@ using KPLN_BIMTools_Ribbon.Core.SQLite.Entities;
 using KPLN_Library_DBWorker.Core;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
@@ -50,42 +51,42 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
         private protected override string ExchangeFile(Application app, ModelPath modelPathFrom, DBConfigEntity configEntity, string rsn = "")
         {
             //Апкастинг в настройку для экспорта в NW
-            if (configEntity is DBNWConfigData nwConfigData)
+            if (!(configEntity is DBNWConfigData nwConfigData))
+                throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBNWConfigData)}");
+
+
+            // Проверка на Revit Server
+            if (!string.IsNullOrWhiteSpace(rsn))
             {
-                #region Анализ и открытие рабочих наборов
-                IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(modelPathFrom);
-                IList<WorksetId> worksetIds = new List<WorksetId>();
+                Module.CurrentLogger.Error("Экспорт NMWC на Revit Server не поддерживается. Нужно указать обычную сетевую/локальную папку.");
+                return null;
+            }
 
-                StringBuilder openedWSSB = new StringBuilder();
-                foreach (WorksetPreview worksetPrev in worksets)
+
+            #region Анализ и открытие рабочих наборов
+            IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(modelPathFrom);
+            IList<WorksetId> worksetIds = new List<WorksetId>();
+
+            StringBuilder openedWSSB = new StringBuilder();
+            foreach (WorksetPreview worksetPrev in worksets)
+            {
+                if (!WSName_IsMatchByRules(worksetPrev.Name, nwConfigData.WorksetToCloseNamesStartWith))
                 {
-                    if (!WSName_IsMatchByRules(worksetPrev.Name, nwConfigData.WorksetToCloseNamesStartWith))
-                    {
-                        worksetIds.Add(worksetPrev.Id);
-                        openedWSSB.Append($"{worksetPrev.Name}, ");
-                    }
+                    worksetIds.Add(worksetPrev.Id);
+                    openedWSSB.Append($"{worksetPrev.Name}, ");
                 }
-                SetOpenOptions(worksetIds);
+            }
+            SetOpenOptions(worksetIds);
 
-                // Логирую список закрытых РН
-                Module.CurrentLogger.Info($"Список открываемых РН в файле {ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}: {openedWSSB.ToString().TrimEnd(new char[] { ',', ' ' })}");
-                #endregion
+            // Логирую список закрытых РН
+            Module.CurrentLogger.Info($"Список открываемых РН в файле {ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}: {openedWSSB.ToString().TrimEnd(new char[] { ',', ' ' })}");
+            #endregion
 
-                #region Устанавливаем параметры экспорта в Navisworks
-                NavisworksExportOptions exportOptions = new NavisworksExportOptions
-                {
-                    FacetingFactor = nwConfigData.FacetingFactor,
-                    ConvertElementProperties = nwConfigData.ConvertElementProperties,
-                    ExportLinks = nwConfigData.ExportLinks,
-                    FindMissingMaterials = nwConfigData.FindMissingMaterials,
-                    ExportScope = nwConfigData.ExportScope,
-                    DivideFileIntoLevels = nwConfigData.DivideFileIntoLevels,
-                    ExportRoomGeometry = nwConfigData.ExportRoomGeometry,
-                };
-                #endregion
-
-                // Открываем документ по указанному пути
-                Document doc = null;
+            
+            // Открываем документ по указанному пути
+            Document doc = null;
+            try
+            {
                 try
                 {
                     doc = app.OpenDocumentFile(modelPathFrom, _openOptions);
@@ -104,7 +105,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     .WhereElementIsNotElementType()
                     .Where(e => e.Name.Equals(nwConfigData.ViewName))
                     .Select(e => e as View3D);
-                if (currentDoc3DViews.Count() == 0)
+                if (!currentDoc3DViews.Any())
                 {
                     Module.CurrentLogger.Error($"Не удалось найти вид с именем ({nwConfigData.ViewName}). Либо конфигурация не верная, либо такого вида в проекте нет. Нужно вмешаться человеку");
                     return null;
@@ -120,7 +121,7 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
 #if Debug2020 || Revit2020 || Debug2023 || Revit2023
                         && (e.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
 #else
-                        && (e.Category.Id.Value == (long)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
+                    && (e.Category.Id.Value == (long)BuiltInCategory.OST_RvtLinks || e.Category.IsVisibleInUI))
 #endif
                     .ToArray();
 
@@ -129,22 +130,59 @@ namespace KPLN_BIMTools_Ribbon.ExternalCommands
                     Module.CurrentLogger.Error($"На виде с именем ({nwConfigData.ViewName}) НЕТ элементов для экспорта. Нужно вмешаться человеку");
                     return null;
                 }
-
-                exportOptions.ViewId = viewId;
                 #endregion
 
+
+                #region Устанавливаем параметры экспорта в Navisworks
+                NavisworksExportOptions exportOptions = new NavisworksExportOptions
+                {
+                    FacetingFactor = nwConfigData.FacetingFactor,
+                    ConvertElementProperties = nwConfigData.ConvertElementProperties,
+                    ExportLinks = nwConfigData.ExportLinks,
+                    FindMissingMaterials = nwConfigData.FindMissingMaterials,
+                    ExportScope = nwConfigData.ExportScope,
+                    DivideFileIntoLevels = nwConfigData.DivideFileIntoLevels,
+                    ExportRoomGeometry = nwConfigData.ExportRoomGeometry,
+                    ViewId = viewId,
+                };
+                #endregion
+
+
                 #region Экспорт в Navisworks
-                string folderTo = $"{rsn}{nwConfigData.PathTo}";
-                CurrentDocName = $"{doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0]}{nwConfigData.NavisDocPostfix}.nwc";
+                string folderTo = nwConfigData.PathTo;
+                if (!Directory.Exists(folderTo))
+                    Directory.CreateDirectory(folderTo);
+
+                string docTitle = doc.Title.Split(new[] { "_отсоединено" }, StringSplitOptions.None)[0];
+                CurrentDocName = $"{docTitle}{nwConfigData.NavisDocPostfix}.nwc";
 
                 doc.Export(folderTo, CurrentDocName, exportOptions);
-                doc.Close(false);
 
                 return $"{folderTo}\\{CurrentDocName}";
                 #endregion
             }
-            else
-                throw new Exception($"Скинь разработчику: Не удалось совершить корректный апкастинг из {nameof(DBConfigEntity)} в {nameof(DBNWConfigData)}");
+            catch (Exception ex)
+            {
+                Module.CurrentLogger.Error(
+                    $"Не удалось экспортировать NWC ({ModelPathUtils.ConvertModelPathToUserVisiblePath(modelPathFrom)}). " +
+                    $"Ошибка: {ex.Message}");
+
+                return null;
+            }
+            finally
+            {
+                if (doc != null && doc.IsValidObject)
+                {
+                    try
+                    {
+                        doc.Close(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        Module.CurrentLogger.Error($"Не удалось закрыть документ после NWC-экспорта. Ошибка: {ex.Message}");
+                    }
+                }
+            }
         }
     }
 }

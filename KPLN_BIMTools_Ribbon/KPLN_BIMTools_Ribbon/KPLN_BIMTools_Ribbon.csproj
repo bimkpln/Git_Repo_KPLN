@@ -153,12 +153,14 @@
     <Compile Include="Common\IExecuteByUIApp.cs" />
     <Compile Include="Common\ExchangeService.cs" />
     <Compile Include="Core\SQLite\DBEnvironment.cs" />
+    <Compile Include="Core\SQLite\Entities\DBIFCConfigData.cs" />
     <Compile Include="Core\SQLite\SQLiteService.cs" />
     <Compile Include="ExternalCommands\batchAddingParameters.cs" />
     <Compile Include="ExternalCommands\CommandCollectionParameters.cs" />
     <Compile Include="ExternalCommands\CommandDBManager.cs" />
     <Compile Include="ExternalCommands\CommandLTablesExport.cs" />
     <Compile Include="ExternalCommands\CommandAutoExchangeConfig.cs" />
+    <Compile Include="ExternalCommands\CommandIFCExport.cs" />
     <Compile Include="ExternalCommands\CommandNWExport.cs" />
     <Compile Include="ExternalCommands\CommandRVTExchange.cs" />
     <Compile Include="Forms\batchAddingParametersWindowCopyFromFamily.xaml.cs">
@@ -190,6 +192,9 @@
       <DependentUpon>ConfigItem.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Models\DBProjectWrapper.cs" />
+    <Compile Include="Forms\IFCExtraSettings.xaml.cs">
+      <DependentUpon>IFCExtraSettings.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ViewModels\DBManagerViewModel.cs" />
     <Compile Include="Forms\Models\DBRevitDocExchangesWrapper.cs" />
     <Compile Include="Forms\IntValidationRule.cs" />
@@ -271,6 +276,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\IFCExtraSettings.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\RVTExtraSettings.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -333,6 +342,10 @@
     <Resource Include="Imagens\сollectionParameters16_dark.png" />
     <Resource Include="Imagens\сollectionParameters32.png" />
     <Resource Include="Imagens\сollectionParameters32_dark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\ifcExport16.png" />
+    <Resource Include="Imagens\ifcExport32.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

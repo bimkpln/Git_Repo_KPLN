@@ -201,6 +201,19 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         NameChangeFind = string.Empty
                     });
                     break;
+                case (RevitDocExchangeEnum.IFC):
+                    SelectedConfig = new IFCExtraSettings(new DBIFCConfigData()
+                    {
+                        FileVersion = IFCVersion.Default,
+                        SpaceBoundaryLevel = 0,
+                        WallAndColumnSplitting = true,
+                        ExportBaseQuantities = true,
+                        ExportLinks = false,
+                        ViewName = "IFC",
+                        WorksetToCloseNamesStartWith = "00_",
+                        IfcDocPostfix = string.Empty,
+                    });
+                    break;
             }
         }
 
@@ -218,6 +231,10 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 case (RevitDocExchangeEnum.Revit):
                     if (dBConfigEntity is DBRVTConfigData dbRVTConfigData)
                         SelectedConfig = new RVTExtraSettings(dbRVTConfigData);
+                    break;
+                case (RevitDocExchangeEnum.IFC):
+                    if (dBConfigEntity is DBIFCConfigData dbIFCConfigData)
+                        SelectedConfig = new IFCExtraSettings(dbIFCConfigData);
                     break;
             }
         }
@@ -512,6 +529,22 @@ namespace KPLN_BIMTools_Ribbon.Forms
                         _sqliteService.DropTable();
                         SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
+                    }
+                    break;
+                case RevitDocExchangeEnum.IFC:
+                    IFCExtraSettings extraIFCSettings = (IFCExtraSettings)SelectedConfig;
+                    DBIFCConfigData dbIFCConfigData = extraIFCSettings.CurrentDBIFCConfigData;
+
+                    IEnumerable<DBIFCConfigData> dBIFCConfigDatas = FileEntitiesList
+                        .Select(fe => new DBIFCConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(dbIFCConfigData));
+
+                    if (_sqliteService.GetConfigItems().Count() == 0)
+                        _sqliteService.PostConfigItems_ByIFCConfigs(dBIFCConfigDatas);
+                    else
+                    {
+                        _sqliteService.DropTable();
+                        SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
+                        _sqliteService.PostConfigItems_ByIFCConfigs(dBIFCConfigDatas);
                     }
                     break;
             }

@@ -31,10 +31,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public double FacetingFactor
         {
             get => _facetingFactor;
-            set
-            {
-                SetField(ref _facetingFactor, value);
-            }
+            set => SetField(ref _facetingFactor, value);
         }
 
         /// <summary>
@@ -43,10 +40,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public bool ConvertElementProperties
         {
             get => _convertElementProperties;
-            set
-            {
-                SetField(ref _convertElementProperties, value);
-            }
+            set => SetField(ref _convertElementProperties, value);
         }
 
         /// <summary>
@@ -55,10 +49,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public bool ExportLinks
         {
             get => _exportLinks;
-            set
-            {
-                SetField(ref _exportLinks, value);
-            }
+            set => SetField(ref _exportLinks, value);
         }
 
         /// <summary>
@@ -67,10 +58,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public bool FindMissingMaterials
         {
             get => _findMissingMaterials;
-            set
-            {
-                SetField(ref _findMissingMaterials, value);
-            }
+            set => SetField(ref _findMissingMaterials, value);
         }
 
         /// <summary>
@@ -79,10 +67,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public NavisworksExportScope ExportScope
         {
             get => _exportScope;
-            set
-            {
-                SetField(ref _exportScope, value);
-            }
+            set => SetField(ref _exportScope, value);
         }
 
         /// <summary>
@@ -91,10 +76,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public bool DivideFileIntoLevels
         {
             get => _divideFileIntoLevels;
-            set
-            {
-                SetField(ref _divideFileIntoLevels, value);
-            }
+            set => SetField(ref _divideFileIntoLevels, value);
         }
 
         /// <summary>
@@ -103,10 +85,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public bool ExportRoomGeometry
         {
             get => _exportRoomGeometry;
-            set
-            {
-                SetField(ref _exportRoomGeometry, value);
-            }
+            set => SetField(ref _exportRoomGeometry, value);
         }
         #endregion
 
@@ -117,10 +96,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public string ViewName
         {
             get => _viewName;
-            set
-            {
-                SetField(ref _viewName, value);
-            }
+            set => SetField(ref _viewName, value);
         }
 
         /// <summary>
@@ -129,10 +105,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public string WorksetToCloseNamesStartWith
         {
             get => _worksetToCloseNamesStartWith;
-            set
-            {
-                SetField(ref _worksetToCloseNamesStartWith, value);
-            }
+            set => SetField(ref _worksetToCloseNamesStartWith, value);
         }
 
         /// <summary>
@@ -141,10 +114,7 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite.Entities
         public string NavisDocPostfix
         {
             get => _navisDocPostfix;
-            set
-            {
-                SetField(ref _navisDocPostfix, value);
-            }
+            set => SetField(ref _navisDocPostfix, value);
         }
         #endregion
 
