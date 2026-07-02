@@ -60,6 +60,7 @@ namespace KPLN_Library_DBWorker.Core
     public enum RevitDocExchangeEnum
     {
         Navisworks,
-        Revit
+        Revit,
+        IFC
     }
 }
