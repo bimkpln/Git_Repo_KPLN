@@ -20,8 +20,10 @@ namespace KPLN_CommandsWheel.Forms
 
         private readonly List<RevitCommandInfo> _commands;
         private readonly RevitCommandExecutor _executor;
+        private readonly List<Path> _slices = new List<Path>();
         private bool _canCloseOnDeactivate;
         private bool _isClosing;
+        private int _selectedIndex = -1;
 
         internal CommandsWheelWindow(IEnumerable<RevitCommandInfo> commands, RevitCommandExecutor executor)
         {
@@ -73,6 +75,27 @@ namespace KPLN_CommandsWheel.Forms
                 {
                     args.Handled = true;
                     CloseWheel();
+                    return;
+                }
+
+                if (args.Key == Key.Left)
+                {
+                    args.Handled = true;
+                    MoveSelection(-1);
+                    return;
+                }
+
+                if (args.Key == Key.Right)
+                {
+                    args.Handled = true;
+                    MoveSelection(1);
+                    return;
+                }
+
+                if (args.Key == Key.Enter || args.Key == Key.Return || args.Key == Key.Space)
+                {
+                    args.Handled = true;
+                    RunSelectedCommand();
                 }
             };
 
@@ -114,8 +137,8 @@ namespace KPLN_CommandsWheel.Forms
             {
                 Width = plateRadius * 2,
                 Height = plateRadius * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(138, 24, 28, 34)),
-                Stroke = new SolidColorBrush(Color.FromArgb(175, 210, 220, 230)),
+                Fill = new SolidColorBrush(Color.FromArgb(16, 24, 28, 34)),
+                Stroke = new SolidColorBrush(Color.FromArgb(38, 210, 220, 230)),
                 StrokeThickness = 1,
                 Cursor = Cursors.SizeAll,
                 ToolTip = "\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u044c"
@@ -130,6 +153,9 @@ namespace KPLN_CommandsWheel.Forms
 
             if (_commands.Count > 0)
             {
+                _slices.Clear();
+                _selectedIndex = 0;
+
                 List<UIElement> icons = new List<UIElement>();
                 double segmentAngle = 360.0 / _commands.Count;
                 double gapAngle = _commands.Count > 1 ? 1.5 : 0;
@@ -140,7 +166,8 @@ namespace KPLN_CommandsWheel.Forms
                     double startAngle = -90 + index * segmentAngle + gapAngle / 2;
                     double endAngle = -90 + (index + 1) * segmentAngle - gapAngle / 2;
 
-                    Path slice = CreateCommandSlice(command, center, innerRadius, outerRadius, startAngle, endAngle);
+                    Path slice = CreateCommandSlice(command, index, center, innerRadius, outerRadius, startAngle, endAngle);
+                    _slices.Add(slice);
                     canvas.Children.Add(slice);
 
                     UIElement icon = CreateCommandIcon(command);
@@ -154,12 +181,9 @@ namespace KPLN_CommandsWheel.Forms
                 {
                     canvas.Children.Add(icon);
                 }
-            }
 
-            Border closeButton = CreateCloseButton(innerRadius * 2);
-            Canvas.SetLeft(closeButton, center - closeButton.Width / 2);
-            Canvas.SetTop(closeButton, center - closeButton.Height / 2);
-            canvas.Children.Add(closeButton);
+                RefreshSliceStates();
+            }
 
             root.Children.Add(canvas);
             return root;
@@ -167,6 +191,7 @@ namespace KPLN_CommandsWheel.Forms
 
         private Path CreateCommandSlice(
             RevitCommandInfo command,
+            int index,
             double center,
             double innerRadius,
             double outerRadius,
@@ -191,11 +216,12 @@ namespace KPLN_CommandsWheel.Forms
             };
             slice.MouseEnter += delegate
             {
-                ApplySliceState(slice, command, true);
+                _selectedIndex = index;
+                RefreshSliceStates();
             };
             slice.MouseLeave += delegate
             {
-                ApplySliceState(slice, command, false);
+                RefreshSliceStates();
             };
             slice.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
             {
@@ -245,53 +271,9 @@ namespace KPLN_CommandsWheel.Forms
             return host;
         }
 
-        private Border CreateCloseButton(double size)
+        private void ApplySliceState(Path slice, RevitCommandInfo command, bool isSelected)
         {
-            Border button = new Border
-            {
-                Width = size,
-                Height = size,
-                CornerRadius = new CornerRadius(size / 2),
-                Background = new SolidColorBrush(Color.FromRgb(190, 45, 58)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(238, 160, 168)),
-                BorderThickness = new Thickness(1),
-                ToolTip = "\u0417\u0430\u043a\u0440\u044b\u0442\u044c",
-                Cursor = Cursors.Hand,
-                Child = new TextBlock
-                {
-                    Text = "\u00D7",
-                    FontSize = 30,
-                    Foreground = Brushes.White,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, -4, 0, 0)
-                }
-            };
-
-            button.MouseLeftButtonDown += delegate (object sender, MouseButtonEventArgs args)
-            {
-                args.Handled = true;
-            };
-            button.MouseEnter += delegate
-            {
-                button.Background = new SolidColorBrush(Color.FromRgb(215, 58, 72));
-            };
-            button.MouseLeave += delegate
-            {
-                button.Background = new SolidColorBrush(Color.FromRgb(190, 45, 58));
-            };
-            button.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
-            {
-                args.Handled = true;
-                CloseWheel();
-            };
-
-            return button;
-        }
-
-        private void ApplySliceState(Path slice, RevitCommandInfo command, bool isHover)
-        {
-            if (isHover)
+            if (isSelected)
             {
                 slice.Fill = command.CanPost
                     ? new SolidColorBrush(Color.FromArgb(246, 62, 144, 207))
@@ -306,6 +288,43 @@ namespace KPLN_CommandsWheel.Forms
                 : new SolidColorBrush(Color.FromArgb(224, 88, 88, 88));
             slice.Stroke = new SolidColorBrush(Color.FromArgb(150, 230, 235, 240));
             slice.StrokeThickness = 1;
+        }
+
+        private void RefreshSliceStates()
+        {
+            for (int index = 0; index < _slices.Count && index < _commands.Count; index++)
+            {
+                ApplySliceState(_slices[index], _commands[index], index == _selectedIndex);
+            }
+        }
+
+        private void MoveSelection(int direction)
+        {
+            if (_commands.Count == 0)
+            {
+                return;
+            }
+
+            if (_selectedIndex < 0 || _selectedIndex >= _commands.Count)
+            {
+                _selectedIndex = 0;
+            }
+            else
+            {
+                _selectedIndex = (_selectedIndex + direction + _commands.Count) % _commands.Count;
+            }
+
+            RefreshSliceStates();
+        }
+
+        private void RunSelectedCommand()
+        {
+            if (_selectedIndex < 0 || _selectedIndex >= _commands.Count)
+            {
+                return;
+            }
+
+            RunAndClose(_commands[_selectedIndex]);
         }
 
         private void RunAndClose(RevitCommandInfo command)
