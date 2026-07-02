@@ -11,6 +11,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -22,6 +23,7 @@ namespace KPLN_ApartmentManager.Forms
         void RequestPlaceApartment(int apartmentId);
         void RequestConvertTo3D(ApartmentPresetData presetData);
         void RequestRefreshApartmentPresets(ApartmentPresetData presetData);
+        void RequestUpdateApartmentFamilies();
         void RequestUpdateApartmentMarks();
     }
 
@@ -38,16 +40,32 @@ namespace KPLN_ApartmentManager.Forms
         public string Title { get; set; }
     }
 
+    public enum ApartmentGeneratedElementsGroupingMode
+    {
+        None,
+        ByApartment,
+        WholePlan
+    }
+
+    public class ApartmentGeneratedElementsGroupingModeOption
+    {
+        public ApartmentGeneratedElementsGroupingMode Value { get; set; }
+        public string Title { get; set; }
+    }
+
     public class ApartmentPresetData
     {
+        public const string NoWorksetSelection = "Активный рабочий набор";
+
         public string SelectedPlanName { get; set; }
         public string SelectedPlanModelSignature { get; set; }
 
         public string LowerConstraint { get; set; }
         public string UpperConstraint { get; set; }
 
-        public int BaseOffset { get; set; }
-        public int WallHeight { get; set; }
+        public double BaseOffset { get; set; }
+        public double WallHeight { get; set; }
+        public double AreaMismatchTolerance { get; set; }
 
         public Dictionary<int, string> WallTypeByThickness { get; set; }
 
@@ -59,6 +77,15 @@ namespace KPLN_ApartmentManager.Forms
         public string RoomDoor { get; set; }
 
         public Dictionary<string, string> DoorsByRoomCategory { get; set; }
+
+        public string WallWorksetName { get; set; }
+        public string DoorWorksetName { get; set; }
+        public string RoomWorksetName { get; set; }
+        public string FurnitureWorksetName { get; set; }
+        public string PlumbingWorksetName { get; set; }
+        public string WindowWorksetName { get; set; }
+
+        public ApartmentGeneratedElementsGroupingMode GeneratedElementsGroupingMode { get; set; }
 
         public ApartmentFamilyPostProcessAction FamilyPostProcessAction { get; set; }
 
@@ -72,6 +99,7 @@ namespace KPLN_ApartmentManager.Forms
                 UpperConstraint = UpperConstraint,
                 BaseOffset = BaseOffset,
                 WallHeight = WallHeight,
+                AreaMismatchTolerance = AreaMismatchTolerance,
                 WallTypeByThickness = WallTypeByThickness != null
                     ? new Dictionary<int, string>(WallTypeByThickness)
                     : new Dictionary<int, string>(),
@@ -83,6 +111,13 @@ namespace KPLN_ApartmentManager.Forms
                 DoorsByRoomCategory = DoorsByRoomCategory != null
                     ? new Dictionary<string, string>(DoorsByRoomCategory)
                     : new Dictionary<string, string>(),
+                WallWorksetName = WallWorksetName,
+                DoorWorksetName = DoorWorksetName,
+                RoomWorksetName = RoomWorksetName,
+                FurnitureWorksetName = FurnitureWorksetName,
+                PlumbingWorksetName = PlumbingWorksetName,
+                WindowWorksetName = WindowWorksetName,
+                GeneratedElementsGroupingMode = GeneratedElementsGroupingMode,
                 FamilyPostProcessAction = FamilyPostProcessAction
             };
         }
@@ -118,6 +153,7 @@ namespace KPLN_ApartmentManager.Forms
                     UpperConstraint = "Неприсоединённая",
                     BaseOffset = 0,
                     WallHeight = 3000,
+                    AreaMismatchTolerance = 0.5,
                     WallTypeByThickness = new Dictionary<int, string>(),
                     WindowType = "Не выбрано",
                     WindowSillHeight = 900,
@@ -125,6 +161,13 @@ namespace KPLN_ApartmentManager.Forms
                     BathroomDoor = "Не выбрано",
                     RoomDoor = "Не выбрано",
                     DoorsByRoomCategory = new Dictionary<string, string>(),
+                    WallWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    DoorWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    RoomWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    FurnitureWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    PlumbingWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    WindowWorksetName = ApartmentPresetData.NoWorksetSelection,
+                    GeneratedElementsGroupingMode = ApartmentGeneratedElementsGroupingMode.None,
                     FamilyPostProcessAction = ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
                 };
 
@@ -135,6 +178,7 @@ namespace KPLN_ApartmentManager.Forms
             _vm.ApartmentPresetDataRefreshRequested += Vm_ApartmentPresetDataRefreshRequested;
             _vm.ConvertTo3DRequested += Vm_ConvertTo3DRequested;
             _vm.FamilyPostProcessActionChanged += Vm_FamilyPostProcessActionChanged;
+            _vm.ApartmentFamiliesUpdateRequested += Vm_ApartmentFamiliesUpdateRequested;
             _vm.ApartmentMarksUpdateRequested += Vm_ApartmentMarksUpdateRequested;
             _vm.ApartmentPresetDataChanged += Vm_ApartmentPresetDataChanged;
 
@@ -216,6 +260,15 @@ namespace KPLN_ApartmentManager.Forms
             _externalController.RequestUpdateApartmentMarks();
         }
 
+        private void Vm_ApartmentFamiliesUpdateRequested()
+        {
+            if (_externalController == null)
+                return;
+
+            WindowState = WindowState.Minimized;
+            _externalController.RequestUpdateApartmentFamilies();
+        }
+
         private void Vm_RequestClose()
         {
             Close();
@@ -269,16 +322,130 @@ namespace KPLN_ApartmentManager.Forms
             if (string.IsNullOrWhiteSpace(text) || text.Any(x => !char.IsDigit(x)))
                 e.CancelCommand();
         }
+
+        private void SignedDecimal_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            TextBox textBox = sender as TextBox;
+            if (textBox == null)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            e.Handled = !IsPotentialDecimalText(GetTextAfterInput(textBox, e.Text));
+        }
+
+        private void SignedDecimal_Pasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (!e.DataObject.GetDataPresent(typeof(string)))
+            {
+                e.CancelCommand();
+                return;
+            }
+
+            TextBox textBox = sender as TextBox;
+            string text = e.DataObject.GetData(typeof(string)) as string;
+            string nextText = textBox != null
+                ? GetTextAfterInput(textBox, text)
+                : text;
+
+            if (!IsPotentialDecimalText(nextText))
+                e.CancelCommand();
+        }
+
+        private void PresetComboBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            ComboBox comboBox = sender as ComboBox;
+            if (comboBox == null || comboBox.IsDropDownOpen)
+                return;
+
+            e.Handled = true;
+
+            UIElement parent = comboBox.Parent as UIElement;
+            if (parent == null)
+                return;
+
+            MouseWheelEventArgs args = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            {
+                RoutedEvent = UIElement.MouseWheelEvent,
+                Source = sender
+            };
+            parent.RaiseEvent(args);
+        }
+
+        private static string GetTextAfterInput(TextBox textBox, string input)
+        {
+            string text = textBox.Text ?? "";
+            input = input ?? "";
+
+            int selectionStart = textBox.SelectionStart;
+            if (selectionStart < 0)
+                selectionStart = 0;
+            if (selectionStart > text.Length)
+                selectionStart = text.Length;
+
+            int selectionLength = textBox.SelectionLength;
+            if (selectionLength < 0)
+                selectionLength = 0;
+            if (selectionStart + selectionLength > text.Length)
+                selectionLength = text.Length - selectionStart;
+
+            return text.Remove(selectionStart, selectionLength).Insert(selectionStart, input);
+        }
+
+        private static bool IsPotentialDecimalText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return true;
+
+            bool hasSeparator = false;
+
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+
+                if (char.IsDigit(c))
+                    continue;
+
+                if (c == '-')
+                {
+                    if (i != 0)
+                        return false;
+                    continue;
+                }
+
+                if (c == '.' || c == ',')
+                {
+                    if (hasSeparator)
+                        return false;
+
+                    hasSeparator = true;
+                    continue;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
     }
 
     internal class ApartmentManagerVm : INotifyPropertyChanged
     {
         private const string DbPath = @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_ApartmentManager.db";
         private const string RfaFolderPath = @"X:\BIM\3_Семейства\1_АР\000_Архитектурная концепция\000_Семейства квартир";
+        private const int Long3DConversionApartmentWarningThreshold = 10;
+        private const string FamilyFileCreatedTicksColumnName = "FILE_CREATED_UTC_TICKS";
+        private const string FamilyFileModifiedTicksColumnName = "FILE_MODIFIED_UTC_TICKS";
+        private const string PreviewSourceColumnName = "PIC_SOURCE";
+        private const string HasPicColumnAlias = "HAS_PIC";
+        private const string ManualPreviewSource = "manual";
+        private const string AutoPreviewSource = "auto";
 
         public event Action<int> ItemPicked;
         public event Action ApartmentPresetDataRefreshRequested;
         public event Action ConvertTo3DRequested;
+        public event Action ApartmentFamiliesUpdateRequested;
         public event Action ApartmentMarksUpdateRequested;
         public event Action<ApartmentPresetData> ApartmentPresetDataChanged;
         public event Action<ApartmentFamilyPostProcessAction> FamilyPostProcessActionChanged;
@@ -337,6 +504,7 @@ namespace KPLN_ApartmentManager.Forms
         public ICommand OpenApartmentPresetsCommand { get; private set; }
         public ICommand RefreshApartmentPresetsCommand { get; private set; }
         public ICommand ConvertTo3DCommand { get; private set; }
+        public ICommand UpdateApartmentFamiliesCommand { get; private set; }
         public ICommand UpdateApartmentMarksCommand { get; private set; }
         public ICommand CloseCommand { get; private set; }
         public ICommand UpdateDbCommand { get; private set; }
@@ -375,6 +543,7 @@ namespace KPLN_ApartmentManager.Forms
             OpenApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
             RefreshApartmentPresetsCommand = new RelayCommand(OnOpenApartmentPresets);
             ConvertTo3DCommand = new RelayCommand(OnConvertTo3D, CanConvertTo3D);
+            UpdateApartmentFamiliesCommand = new RelayCommand(OnUpdateApartmentFamilies);
             UpdateApartmentMarksCommand = new RelayCommand(OnUpdateApartmentMarks);
             UpdateDbCommand = new RelayCommand<Window>(OnUpdateDb);
 
@@ -382,6 +551,7 @@ namespace KPLN_ApartmentManager.Forms
                 .FirstOrDefault(x => initialPresetData != null && x.Value == initialPresetData.FamilyPostProcessAction)
                 ?? FamilyPostProcessActions.FirstOrDefault();
 
+            RefreshOutdatedFamilyPreviewsOnOpen();
             LoadTypes();
         }
 
@@ -442,8 +612,31 @@ namespace KPLN_ApartmentManager.Forms
             ApartmentMarksUpdateRequested?.Invoke();
         }
 
+        private void OnUpdateApartmentFamilies()
+        {
+            ApartmentFamiliesUpdateRequested?.Invoke();
+        }
+
         private void OnConvertTo3D()
         {
+            int apartmentCount = PresetsVm != null && PresetsVm.SelectedPlan != null
+                ? PresetsVm.SelectedPlan.ApartmentCount
+                : 0;
+
+            if (apartmentCount > Long3DConversionApartmentWarningThreshold)
+            {
+                MessageBoxResult result = MessageBox.Show(
+                    "Будет обработано квартир: " + apartmentCount + "\n\n" +
+                    "Построение 3D для большого количества квартир может занять много времени. Продолжить?",
+                    "KPLN. Менеджер квартир",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+
+                if (result != MessageBoxResult.Yes)
+                    return;
+            }
+
             ConvertTo3DRequested?.Invoke();
         }
 
@@ -564,18 +757,36 @@ namespace KPLN_ApartmentManager.Forms
             try
             {
                 byte[] bytes = File.ReadAllBytes(filePath);
+                EnsureFamilyFileMetadataColumns(DbPath);
 
                 using (var con = OpenConnection(DbPath, false))
                 using (var cmd = con.CreateCommand())
                 {
-                    cmd.CommandText = "UPDATE Main SET PIC = @pic WHERE ID = @id;";
+                    string familyPath = GetFamilyPathById(con, item.Id);
+                    FamilyFileTimestampInfo timestamp = GetFamilyFileTimestampInfo(familyPath);
+
+                    cmd.CommandText =
+                        "UPDATE Main SET PIC = @pic" +
+                        ", " + PreviewSourceColumnName + " = @previewSource" +
+                        (timestamp != null
+                            ? ", " + FamilyFileCreatedTicksColumnName + " = @createdTicks, " +
+                              FamilyFileModifiedTicksColumnName + " = @modifiedTicks"
+                            : "") +
+                        " WHERE ID = @id;";
                     cmd.Parameters.AddWithValue("@id", item.Id);
+                    cmd.Parameters.AddWithValue("@previewSource", ManualPreviewSource);
 
                     var p = cmd.CreateParameter();
                     p.ParameterName = "@pic";
                     p.DbType = System.Data.DbType.Binary;
                     p.Value = bytes;
                     cmd.Parameters.Add(p);
+
+                    if (timestamp != null)
+                    {
+                        cmd.Parameters.AddWithValue("@createdTicks", timestamp.CreatedUtcTicks);
+                        cmd.Parameters.AddWithValue("@modifiedTicks", timestamp.ModifiedUtcTicks);
+                    }
 
                     int affected = cmd.ExecuteNonQuery();
                     if (affected <= 0)
@@ -628,6 +839,339 @@ namespace KPLN_ApartmentManager.Forms
             return con;
         }
 
+        private static string GetFamilyPathById(SQLiteConnection con, int id)
+        {
+            if (con == null)
+                return null;
+
+            using (var cmd = con.CreateCommand())
+            {
+                cmd.CommandText = "SELECT FPATH FROM Main WHERE ID = @id LIMIT 1;";
+                cmd.Parameters.AddWithValue("@id", id);
+
+                object result = cmd.ExecuteScalar();
+                if (result == null || result == DBNull.Value)
+                    return null;
+
+                return Convert.ToString(result).Trim();
+            }
+        }
+
+        private void RefreshOutdatedFamilyPreviewsOnOpen()
+        {
+            if (!IsDep8)
+                return;
+
+            if (!File.Exists(DbPath) || !Directory.Exists(RfaFolderPath))
+                return;
+
+            try
+            {
+                EnsureFamilyFileMetadataColumns(DbPath);
+
+                string[] files = Directory.GetFiles(RfaFolderPath, "*.rfa", SearchOption.TopDirectoryOnly);
+                Dictionary<string, ApartmentDbFileRecord> dbItemsByPath = LoadFamilyDbItemsByPath();
+                UpdateFamilyFileTimestampRecords(dbItemsByPath, files, false, false);
+            }
+            catch
+            {
+            }
+        }
+
+        private static Dictionary<string, ApartmentDbFileRecord> LoadFamilyDbItemsByPath()
+        {
+            Dictionary<string, ApartmentDbFileRecord> dbItemsByPath = new Dictionary<string, ApartmentDbFileRecord>(StringComparer.OrdinalIgnoreCase);
+
+            using (var con = OpenConnection(DbPath, true))
+            using (var cmd = con.CreateCommand())
+            {
+                cmd.CommandText =
+                    "SELECT ID, FPATH, " + FamilyFileCreatedTicksColumnName + ", " +
+                    FamilyFileModifiedTicksColumnName + ", " + PreviewSourceColumnName + ", " +
+                    "CASE WHEN PIC IS NULL THEN 0 ELSE 1 END AS " + HasPicColumnAlias + " " +
+                    "FROM Main " +
+                    "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
+
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        int id = r.GetInt32(0);
+                        string path = r.IsDBNull(1) ? null : r.GetString(1);
+
+                        if (string.IsNullOrWhiteSpace(path))
+                            continue;
+
+                        path = path.Trim();
+
+                        if (!dbItemsByPath.ContainsKey(path))
+                        {
+                            dbItemsByPath.Add(path, new ApartmentDbFileRecord
+                            {
+                                Id = id,
+                                FilePath = path,
+                                CreatedUtcTicks = ReadNullableInt64(r, FamilyFileCreatedTicksColumnName),
+                                ModifiedUtcTicks = ReadNullableInt64(r, FamilyFileModifiedTicksColumnName),
+                                PreviewSource = ReadNullableString(r, PreviewSourceColumnName),
+                                HasPreview = ReadNullableInt64(r, HasPicColumnAlias).GetValueOrDefault() != 0
+                            });
+                        }
+                    }
+                }
+            }
+
+            return dbItemsByPath;
+        }
+
+        private static List<string> UpdateFamilyFileTimestampRecords(
+            Dictionary<string, ApartmentDbFileRecord> dbItemsByPath,
+            IEnumerable<string> files,
+            bool clearPreviewWithoutStoredTimestamp,
+            bool refreshMissingAutoPreviews)
+        {
+            List<string> autoPreviewUpdateNames = new List<string>();
+
+            if (dbItemsByPath == null || dbItemsByPath.Count == 0 || files == null)
+                return autoPreviewUpdateNames;
+
+            List<ApartmentFileTimestampUpdate> timestampUpdates = new List<ApartmentFileTimestampUpdate>();
+
+            foreach (string file in files)
+            {
+                if (string.IsNullOrWhiteSpace(file))
+                    continue;
+
+                ApartmentDbFileRecord dbRecord;
+                if (!dbItemsByPath.TryGetValue(file, out dbRecord))
+                    continue;
+
+                FamilyFileTimestampInfo currentTimestamp = GetFamilyFileTimestampInfo(file);
+                if (currentTimestamp == null)
+                    continue;
+
+                bool hasStoredTimestamp =
+                    dbRecord.CreatedUtcTicks.HasValue &&
+                    dbRecord.ModifiedUtcTicks.HasValue;
+
+                bool timestampChanged =
+                    hasStoredTimestamp &&
+                    (dbRecord.CreatedUtcTicks.Value != currentTimestamp.CreatedUtcTicks ||
+                     dbRecord.ModifiedUtcTicks.Value != currentTimestamp.ModifiedUtcTicks);
+
+                bool refreshPreview =
+                    timestampChanged ||
+                    (!hasStoredTimestamp && clearPreviewWithoutStoredTimestamp) ||
+                    (refreshMissingAutoPreviews && !dbRecord.HasPreview);
+                bool updateAutoPreview = refreshPreview && !IsManualPreviewSource(dbRecord.PreviewSource);
+                byte[] previewBytes = updateAutoPreview
+                    ? ShellPreviewHelper.GetShellPreviewBytes(file)
+                    : null;
+
+                if (!hasStoredTimestamp || timestampChanged || updateAutoPreview)
+                {
+                    timestampUpdates.Add(new ApartmentFileTimestampUpdate
+                    {
+                        Record = dbRecord,
+                        Timestamp = currentTimestamp,
+                        UpdatePreview = updateAutoPreview,
+                        PreviewBytes = previewBytes
+                    });
+
+                    if (updateAutoPreview)
+                        autoPreviewUpdateNames.Add(Path.GetFileNameWithoutExtension(file));
+                }
+            }
+
+            if (timestampUpdates.Count == 0)
+                return autoPreviewUpdateNames;
+
+            using (var con = OpenConnection(DbPath, false))
+            using (var tx = con.BeginTransaction())
+            {
+                foreach (ApartmentFileTimestampUpdate update in timestampUpdates)
+                {
+                    if (update == null || update.Record == null || update.Timestamp == null)
+                        continue;
+
+                    using (var updateCmd = con.CreateCommand())
+                    {
+                        updateCmd.Transaction = tx;
+                        List<string> assignments = new List<string>();
+
+                        if (update.UpdatePreview)
+                        {
+                            assignments.Add("PIC = @pic");
+                            assignments.Add(PreviewSourceColumnName + " = @previewSource");
+                        }
+
+                        assignments.Add(FamilyFileCreatedTicksColumnName + " = @createdTicks");
+                        assignments.Add(FamilyFileModifiedTicksColumnName + " = @modifiedTicks");
+
+                        updateCmd.CommandText =
+                            "UPDATE Main SET " + string.Join(", ", assignments) + " " +
+                            "WHERE ID = @id;";
+
+                        if (update.UpdatePreview)
+                        {
+                            var pPic = updateCmd.CreateParameter();
+                            pPic.ParameterName = "@pic";
+                            pPic.DbType = System.Data.DbType.Binary;
+                            pPic.Value = (object)update.PreviewBytes ?? DBNull.Value;
+                            updateCmd.Parameters.Add(pPic);
+
+                            updateCmd.Parameters.AddWithValue("@previewSource", AutoPreviewSource);
+                        }
+
+                        updateCmd.Parameters.AddWithValue("@createdTicks", update.Timestamp.CreatedUtcTicks);
+                        updateCmd.Parameters.AddWithValue("@modifiedTicks", update.Timestamp.ModifiedUtcTicks);
+                        updateCmd.Parameters.AddWithValue("@id", update.Record.Id);
+                        updateCmd.ExecuteNonQuery();
+                    }
+                }
+
+                tx.Commit();
+            }
+
+            return autoPreviewUpdateNames;
+        }
+
+        private static void EnsureFamilyFileMetadataColumns(string dbPath)
+        {
+            using (var con = OpenConnection(dbPath, false))
+            {
+                EnsureColumn(con, "Main", FamilyFileCreatedTicksColumnName, "INTEGER");
+                EnsureColumn(con, "Main", FamilyFileModifiedTicksColumnName, "INTEGER");
+                EnsureColumn(con, "Main", PreviewSourceColumnName, "TEXT");
+                InitializePreviewSourceColumn(con);
+            }
+        }
+
+        private static void InitializePreviewSourceColumn(SQLiteConnection con)
+        {
+            if (con == null)
+                return;
+
+            using (var cmd = con.CreateCommand())
+            {
+                cmd.CommandText =
+                    "UPDATE Main SET " + PreviewSourceColumnName + " = " +
+                    "CASE WHEN PIC IS NULL THEN @autoSource ELSE @manualSource END " +
+                    "WHERE " + PreviewSourceColumnName + " IS NULL OR TRIM(" + PreviewSourceColumnName + ") = '';";
+                cmd.Parameters.AddWithValue("@autoSource", AutoPreviewSource);
+                cmd.Parameters.AddWithValue("@manualSource", ManualPreviewSource);
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static void EnsureColumn(SQLiteConnection con, string tableName, string columnName, string columnType)
+        {
+            if (con == null || string.IsNullOrWhiteSpace(tableName) ||
+                string.IsNullOrWhiteSpace(columnName) || string.IsNullOrWhiteSpace(columnType))
+            {
+                return;
+            }
+
+            if (TableHasColumn(con, tableName, columnName))
+                return;
+
+            using (var cmd = con.CreateCommand())
+            {
+                cmd.CommandText = "ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnType + ";";
+                cmd.ExecuteNonQuery();
+            }
+        }
+
+        private static bool TableHasColumn(SQLiteConnection con, string tableName, string columnName)
+        {
+            if (con == null || string.IsNullOrWhiteSpace(tableName) || string.IsNullOrWhiteSpace(columnName))
+                return false;
+
+            using (var cmd = con.CreateCommand())
+            {
+                cmd.CommandText = "PRAGMA table_info(" + tableName + ");";
+                using (var r = cmd.ExecuteReader())
+                {
+                    while (r.Read())
+                    {
+                        string name = r["name"] != null && r["name"] != DBNull.Value
+                            ? Convert.ToString(r["name"])
+                            : null;
+
+                        if (string.Equals(name, columnName, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static long? ReadNullableInt64(SQLiteDataReader reader, string columnName)
+        {
+            if (reader == null || string.IsNullOrWhiteSpace(columnName))
+                return null;
+
+            try
+            {
+                int ordinal = reader.GetOrdinal(columnName);
+                if (reader.IsDBNull(ordinal))
+                    return null;
+
+                return Convert.ToInt64(reader.GetValue(ordinal));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string ReadNullableString(SQLiteDataReader reader, string columnName)
+        {
+            if (reader == null || string.IsNullOrWhiteSpace(columnName))
+                return null;
+
+            try
+            {
+                int ordinal = reader.GetOrdinal(columnName);
+                if (reader.IsDBNull(ordinal))
+                    return null;
+
+                return Convert.ToString(reader.GetValue(ordinal));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool IsManualPreviewSource(string previewSource)
+        {
+            return string.Equals(
+                previewSource != null ? previewSource.Trim() : "",
+                ManualPreviewSource,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static FamilyFileTimestampInfo GetFamilyFileTimestampInfo(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+                return null;
+
+            try
+            {
+                FileInfo fileInfo = new FileInfo(filePath);
+                return new FamilyFileTimestampInfo
+                {
+                    CreatedUtcTicks = fileInfo.CreationTimeUtc.Ticks,
+                    ModifiedUtcTicks = fileInfo.LastWriteTimeUtc.Ticks
+                };
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private void OnUpdateDb(Window ownerWindow)
         {
             if (!IsDep8)
@@ -647,59 +1191,37 @@ namespace KPLN_ApartmentManager.Forms
 
             try
             {
+                EnsureFamilyFileMetadataColumns(DbPath);
+
                 string[] files = Directory.GetFiles(RfaFolderPath, "*.rfa", SearchOption.TopDirectoryOnly);
                 HashSet<string> actualPaths = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
 
-                Dictionary<string, int> dbItemsByPath = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                Dictionary<string, ApartmentDbFileRecord> dbItemsByPath = LoadFamilyDbItemsByPath();
 
-                using (var con = OpenConnection(DbPath, true))
-                using (var cmd = con.CreateCommand())
-                {
-                    cmd.CommandText =
-                        "SELECT ID, FPATH " +
-                        "FROM Main " +
-                        "WHERE FPATH IS NOT NULL AND TRIM(FPATH) <> '';";
-
-                    using (var r = cmd.ExecuteReader())
-                    {
-                        while (r.Read())
-                        {
-                            int id = r.GetInt32(0);
-                            string path = r.IsDBNull(1) ? null : r.GetString(1);
-
-                            if (string.IsNullOrWhiteSpace(path))
-                                continue;
-
-                            path = path.Trim();
-
-                            if (!dbItemsByPath.ContainsKey(path))
-                                dbItemsByPath.Add(path, id);
-                        }
-                    }
-                }
-
-                List<KeyValuePair<string, int>> itemsToDelete = dbItemsByPath
+                List<ApartmentDbFileRecord> itemsToDelete = dbItemsByPath
                     .Where(x => !actualPaths.Contains(x.Key))
+                    .Select(x => x.Value)
                     .ToList();
 
                 List<string> deletedNames = new List<string>();
+                List<string> autoPreviewUpdateNames = UpdateFamilyFileTimestampRecords(dbItemsByPath, files, false, true);
 
                 if (itemsToDelete.Count > 0)
                 {
                     using (var con = OpenConnection(DbPath, false))
                     using (var tx = con.BeginTransaction())
                     {
-                        foreach (var kvp in itemsToDelete)
+                        foreach (ApartmentDbFileRecord itemToDelete in itemsToDelete)
                         {
                             using (var deleteCmd = con.CreateCommand())
                             {
                                 deleteCmd.Transaction = tx;
                                 deleteCmd.CommandText = "DELETE FROM Main WHERE ID = @id;";
-                                deleteCmd.Parameters.AddWithValue("@id", kvp.Value);
+                                deleteCmd.Parameters.AddWithValue("@id", itemToDelete.Id);
                                 deleteCmd.ExecuteNonQuery();
                             }
 
-                            deletedNames.Add(Path.GetFileNameWithoutExtension(kvp.Key));
+                            deletedNames.Add(Path.GetFileNameWithoutExtension(itemToDelete.FilePath));
                         }
 
                         tx.Commit();
@@ -754,24 +1276,35 @@ namespace KPLN_ApartmentManager.Forms
                                 foreach (var item in itemsToInsert)
                                 {
                                     byte[] picBytes = ShellPreviewHelper.GetShellPreviewBytes(item.FilePath);
+                                    FamilyFileTimestampInfo timestamp = GetFamilyFileTimestampInfo(item.FilePath);
 
                                     using (var insertCmd = con.CreateCommand())
                                     {
                                         insertCmd.Transaction = tx;
                                         insertCmd.CommandText =
-                                            "INSERT INTO Main (ID, FPATH, VNAME, ATYPE, PIC) " +
-                                            "VALUES (@id, @fpath, @vname, @atype, @pic);";
+                                            "INSERT INTO Main (ID, FPATH, VNAME, ATYPE, PIC, " +
+                                            PreviewSourceColumnName + ", " +
+                                            FamilyFileCreatedTicksColumnName + ", " + FamilyFileModifiedTicksColumnName + ") " +
+                                            "VALUES (@id, @fpath, @vname, @atype, @pic, @previewSource, @createdTicks, @modifiedTicks);";
 
                                         insertCmd.Parameters.AddWithValue("@id", nextId++);
                                         insertCmd.Parameters.AddWithValue("@fpath", item.FilePath);
                                         insertCmd.Parameters.AddWithValue("@vname", item.FileName);
                                         insertCmd.Parameters.AddWithValue("@atype", item.SelectedAtype);
+                                        insertCmd.Parameters.AddWithValue("@previewSource", AutoPreviewSource);
 
                                         var pPic = insertCmd.CreateParameter();
                                         pPic.ParameterName = "@pic";
                                         pPic.DbType = System.Data.DbType.Binary;
                                         pPic.Value = (object)picBytes ?? DBNull.Value;
                                         insertCmd.Parameters.Add(pPic);
+
+                                        insertCmd.Parameters.AddWithValue(
+                                            "@createdTicks",
+                                            timestamp != null ? (object)timestamp.CreatedUtcTicks : DBNull.Value);
+                                        insertCmd.Parameters.AddWithValue(
+                                            "@modifiedTicks",
+                                            timestamp != null ? (object)timestamp.ModifiedUtcTicks : DBNull.Value);
 
                                         insertCmd.ExecuteNonQuery();
                                     }
@@ -787,9 +1320,9 @@ namespace KPLN_ApartmentManager.Forms
 
                 LoadTypes();
 
-                if (deletedNames.Count == 0 && addedCount == 0)
+                if (deletedNames.Count == 0 && addedCount == 0 && autoPreviewUpdateNames.Count == 0)
                 {
-                    MessageBox.Show("БД уже актуальна. Удалённых и новых файлов не найдено.", "ApartmentManager");
+                    MessageBox.Show("БД уже актуальна. Удалённых, новых и изменённых файлов не найдено.", "ApartmentManager");
                     return;
                 }
 
@@ -809,6 +1342,17 @@ namespace KPLN_ApartmentManager.Forms
                         message += "\n\n";
 
                     message += "Добавлено в БД: " + addedCount;
+                }
+
+                if (autoPreviewUpdateNames.Count > 0)
+                {
+                    if (!string.IsNullOrWhiteSpace(message))
+                        message += "\n\n";
+
+                    message += "Обновлено авто-превью для изменённых семейств: " + autoPreviewUpdateNames.Count;
+
+                    if (autoPreviewUpdateNames.Count <= 20)
+                        message += "\n" + string.Join("\n", autoPreviewUpdateNames);
                 }
 
                 MessageBox.Show(message, "ApartmentManager");
@@ -849,6 +1393,30 @@ namespace KPLN_ApartmentManager.Forms
         {
             RequestClose?.Invoke();
         }
+    }
+
+    internal class ApartmentDbFileRecord
+    {
+        public int Id { get; set; }
+        public string FilePath { get; set; }
+        public long? CreatedUtcTicks { get; set; }
+        public long? ModifiedUtcTicks { get; set; }
+        public string PreviewSource { get; set; }
+        public bool HasPreview { get; set; }
+    }
+
+    internal class FamilyFileTimestampInfo
+    {
+        public long CreatedUtcTicks { get; set; }
+        public long ModifiedUtcTicks { get; set; }
+    }
+
+    internal class ApartmentFileTimestampUpdate
+    {
+        public ApartmentDbFileRecord Record { get; set; }
+        public FamilyFileTimestampInfo Timestamp { get; set; }
+        public bool UpdatePreview { get; set; }
+        public byte[] PreviewBytes { get; set; }
     }
 
     internal class ApartmentTypeVm

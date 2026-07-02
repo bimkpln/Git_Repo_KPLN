@@ -1,5 +1,7 @@
-﻿using KPLN_CommandsWheel.Models;
+﻿using KPLN_CommandsWheel.ExternalCommands;
+using KPLN_CommandsWheel.Models;
 using KPLN_CommandsWheel.Services;
+using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -172,18 +174,12 @@ namespace KPLN_CommandsWheel.Forms
         private IEnumerable<RevitCommandInfo> CommandsByIds(IEnumerable<string> ids)
         {
             if (ids == null)
-            {
                 yield break;
-            }
 
             foreach (string id in ids)
             {
-                RevitCommandInfo command;
-
-                if (!string.IsNullOrWhiteSpace(id) && _commandsById.TryGetValue(id, out command))
-                {
+                if (!string.IsNullOrWhiteSpace(id) && _commandsById.TryGetValue(id, out RevitCommandInfo command))
                     yield return command;
-                }
             }
         }
 
@@ -192,9 +188,7 @@ namespace KPLN_CommandsWheel.Forms
             List<RevitCommandInfo> list = commands.ToList();
 
             if (list.Count == 0 && string.IsNullOrWhiteSpace(emptyText))
-            {
                 return;
-            }
 
             TextBlock header = new TextBlock
             {
@@ -526,7 +520,6 @@ namespace KPLN_CommandsWheel.Forms
             if (command == null || ids == null || string.IsNullOrWhiteSpace(command.Id))
             {
                 return -1;
-            }
 
             return ids.FindIndex(id => string.Equals(id, command.Id, StringComparison.OrdinalIgnoreCase));
         }
@@ -552,6 +545,8 @@ namespace KPLN_CommandsWheel.Forms
             UserSettingsService.Save(_settings);
             Rebuild();
             _executor.Run(command);
+
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandSearch.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
         }
 
         private bool IsFavorite(RevitCommandInfo command)

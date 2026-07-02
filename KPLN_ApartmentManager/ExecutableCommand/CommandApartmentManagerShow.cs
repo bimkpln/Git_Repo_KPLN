@@ -90,7 +90,6 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (_controller != null)
                 _controller.DetachWindow();
 
-            // Closed is raised outside Revit API context; keep the subscription and no-op while the window is null.
             _controller = null;
             _window = null;
         }
@@ -232,6 +231,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
         public void RequestRefreshApartmentPresets(ApartmentPresetData presetData)
         {
             _handler.PrepareRefreshApartmentPresets(presetData);
+            _externalEvent.Raise();
+        }
+
+        public void RequestUpdateApartmentFamilies()
+        {
+            _handler.PrepareUpdateApartmentFamilies();
             _externalEvent.Raise();
         }
 

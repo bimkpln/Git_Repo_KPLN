@@ -105,16 +105,20 @@ namespace KPLN_Tools.Common.HolesManager
                     continue;
 
                 Transform trans = linkedModel.GetTotalTransform();
-                BoundingBoxIntersectsFilter filter = CreateFilter(fiBBox, trans);
-                if (filter == null)
-                    continue;
-
+                
                 // Перевод координат отверстия на координаты связи
                 BoundingBoxXYZ inversedFiBBox = new BoundingBoxXYZ()
                 {
                     Min = trans.Inverse.OfPoint(fiBBox.Min),
                     Max = trans.Inverse.OfPoint(fiBBox.Max),
                 };
+                
+                
+                // Создание фильтра
+                BoundingBoxIntersectsFilter filter = CreateFilter(inversedFiBBox);
+                if (filter == null)
+                    continue;
+
 
                 // Поиск перекрытий, которые пересекаются с расширенным отверстием
                 IEnumerable<Floor> floorColl = new FilteredElementCollector(linkDoc)
@@ -245,7 +249,7 @@ namespace KPLN_Tools.Common.HolesManager
         /// <summary>
         /// Создание фильтра, для поиска перекрытий, над/под которыми оно расположено
         /// </summary>
-        private BoundingBoxIntersectsFilter CreateFilter(BoundingBoxXYZ bbox, Transform transform)
+        private static BoundingBoxIntersectsFilter CreateFilter(BoundingBoxXYZ bbox)
         {
             double minX = bbox.Min.X;
             double minY = bbox.Min.Y;
@@ -259,9 +263,7 @@ namespace KPLN_Tools.Common.HolesManager
             double smaxX = Math.Max(minX, maxX);
             double smaxY = Math.Max(minY, maxY);
 
-            Outline outline = new Outline(
-                transform.Inverse.OfPoint(new XYZ(sminX - 1, sminY - 1, bbox.Min.Z - 50)),
-                transform.Inverse.OfPoint(new XYZ(smaxX + 1, smaxY + 1, bbox.Max.Z + 50)));
+            Outline outline = new Outline(new XYZ(sminX - 1, sminY - 1, bbox.Min.Z - 50), new XYZ(smaxX + 1, smaxY + 1, bbox.Max.Z + 50));
             
             if (outline.IsEmpty)
                 return null;

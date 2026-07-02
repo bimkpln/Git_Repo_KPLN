@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -10,8 +11,10 @@ namespace KPLN_ApartmentManager.Forms
     public class ApartmentPresetPanelContext
     {
         public List<ApartmentPlanPresetOption> Plans { get; set; }
+        public List<string> WorksetOptions { get; set; }
 
         public string ActivePlanName { get; set; }
+        public string ActiveWorksetName { get; set; }
 
         public bool IsDataStale { get; set; }
 
@@ -20,13 +23,19 @@ namespace KPLN_ApartmentManager.Forms
         public ApartmentPresetPanelContext()
         {
             Plans = new List<ApartmentPlanPresetOption>();
+            WorksetOptions = new List<string>();
         }
 
         public ApartmentPresetPanelContext CloneSnapshot()
         {
             ApartmentPresetPanelContext result = new ApartmentPresetPanelContext();
             result.ActivePlanName = ActivePlanName;
+            result.ActiveWorksetName = ActiveWorksetName;
             result.IsDataStale = IsDataStale;
+
+            result.WorksetOptions = WorksetOptions != null
+                ? new List<string>(WorksetOptions)
+                : new List<string>();
 
             if (Plans != null)
             {
@@ -45,6 +54,7 @@ namespace KPLN_ApartmentManager.Forms
 
         public string LowerConstraintText { get; set; }
         public string UpperConstraintText { get; set; }
+        public int ApartmentCount { get; set; }
 
         public List<int> WallThicknesses { get; set; }
         public Dictionary<int, List<string>> WallTypeOptionsByThickness { get; set; }
@@ -89,6 +99,7 @@ namespace KPLN_ApartmentManager.Forms
             result.ModelSignature = ModelSignature;
             result.LowerConstraintText = LowerConstraintText;
             result.UpperConstraintText = UpperConstraintText;
+            result.ApartmentCount = ApartmentCount;
             result.WallThicknesses = WallThicknesses != null ? new List<int>(WallThicknesses) : new List<int>();
             result.WallTypeOptionsByThickness = CloneDictionaryList(WallTypeOptionsByThickness);
             result.WindowTypeOptions = WindowTypeOptions != null ? new List<string>(WindowTypeOptions) : new List<string>();
@@ -241,6 +252,7 @@ namespace KPLN_ApartmentManager.Forms
     {
         private const int ShaftWallTypeStorageKey = int.MinValue;
         private const int LoggiaWallTypeStorageKey = int.MinValue + 1;
+        private const bool EnableWindow3DModule = false;
 
         public event Action<ApartmentPresetData> DataChanged;
         public event Action StateChanged;
@@ -254,6 +266,8 @@ namespace KPLN_ApartmentManager.Forms
         public ObservableCollection<PresetSelectionVm> Assignments { get; private set; }
         public ObservableCollection<PresetSelectionVm> WallAssignments { get; private set; }
         public ObservableCollection<PresetSelectionVm> DoorAssignments { get; private set; }
+        public ObservableCollection<string> WorksetOptions { get; private set; }
+        public ObservableCollection<ApartmentGeneratedElementsGroupingModeOption> GroupingModeOptions { get; private set; }
         private ApartmentPlanPresetOption _selectedPlan;
 
         public ApartmentPlanPresetOption SelectedPlan
@@ -330,6 +344,22 @@ namespace KPLN_ApartmentManager.Forms
                 if (_wallHeightText != value)
                 {
                     _wallHeightText = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private string _areaMismatchToleranceText;
+
+        public string AreaMismatchToleranceText
+        {
+            get { return _areaMismatchToleranceText; }
+            set
+            {
+                if (_areaMismatchToleranceText != value)
+                {
+                    _areaMismatchToleranceText = value;
                     OnPropertyChanged();
                     NotifyDataChanged();
                 }
@@ -421,6 +451,118 @@ namespace KPLN_ApartmentManager.Forms
             get { return SelectedPlan != null && SelectedPlan.HasLoggiaWallMarkers; }
         }
 
+        private string _selectedWallWorkset;
+
+        public string SelectedWallWorkset
+        {
+            get { return _selectedWallWorkset; }
+            set
+            {
+                if (_selectedWallWorkset != value)
+                {
+                    _selectedWallWorkset = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private string _selectedDoorWorkset;
+
+        public string SelectedDoorWorkset
+        {
+            get { return _selectedDoorWorkset; }
+            set
+            {
+                if (_selectedDoorWorkset != value)
+                {
+                    _selectedDoorWorkset = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private string _selectedRoomWorkset;
+
+        public string SelectedRoomWorkset
+        {
+            get { return _selectedRoomWorkset; }
+            set
+            {
+                if (_selectedRoomWorkset != value)
+                {
+                    _selectedRoomWorkset = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private string _selectedFurnitureWorkset;
+
+        public string SelectedFurnitureWorkset
+        {
+            get { return _selectedFurnitureWorkset; }
+            set
+            {
+                if (_selectedFurnitureWorkset != value)
+                {
+                    _selectedFurnitureWorkset = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private string _selectedPlumbingWorkset;
+
+        public string SelectedPlumbingWorkset
+        {
+            get { return _selectedPlumbingWorkset; }
+            set
+            {
+                if (_selectedPlumbingWorkset != value)
+                {
+                    _selectedPlumbingWorkset = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private string _selectedWindowWorkset;
+
+        public string SelectedWindowWorkset
+        {
+            get { return _selectedWindowWorkset; }
+            set
+            {
+                if (_selectedWindowWorkset != value)
+                {
+                    _selectedWindowWorkset = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
+        private ApartmentGeneratedElementsGroupingModeOption _selectedGroupingMode;
+
+        public ApartmentGeneratedElementsGroupingModeOption SelectedGroupingMode
+        {
+            get { return _selectedGroupingMode; }
+            set
+            {
+                if (!ReferenceEquals(_selectedGroupingMode, value))
+                {
+                    _selectedGroupingMode = value;
+                    OnPropertyChanged();
+                    NotifyDataChanged();
+                }
+            }
+        }
+
         private string _statusText;
 
         public string StatusText
@@ -446,10 +588,10 @@ namespace KPLN_ApartmentManager.Forms
                 if (_isDataStale)
                     return false;
 
-                if (ParseInt(WallHeightText) <= 0)
+                if (ParseDouble(WallHeightText) <= 0)
                     return false;
 
-                if (HasWindowMarkers)
+                if (EnableWindow3DModule && HasWindowMarkers)
                 {
                     if (string.IsNullOrWhiteSpace(SelectedWindowType) ||
                         string.Equals(SelectedWindowType, "Не выбрано", StringComparison.OrdinalIgnoreCase))
@@ -489,6 +631,25 @@ namespace KPLN_ApartmentManager.Forms
             Assignments = new ObservableCollection<PresetSelectionVm>();
             WallAssignments = new ObservableCollection<PresetSelectionVm>();
             DoorAssignments = new ObservableCollection<PresetSelectionVm>();
+            WorksetOptions = new ObservableCollection<string>();
+            GroupingModeOptions = new ObservableCollection<ApartmentGeneratedElementsGroupingModeOption>
+            {
+                new ApartmentGeneratedElementsGroupingModeOption
+                {
+                    Value = ApartmentGeneratedElementsGroupingMode.None,
+                    Title = "Не группировать"
+                },
+                new ApartmentGeneratedElementsGroupingModeOption
+                {
+                    Value = ApartmentGeneratedElementsGroupingMode.ByApartment,
+                    Title = "Группировать по квартирам"
+                },
+                new ApartmentGeneratedElementsGroupingModeOption
+                {
+                    Value = ApartmentGeneratedElementsGroupingMode.WholePlan,
+                    Title = "Группировать всё построенное на плане"
+                }
+            };
             WindowTypeOptions = new ObservableCollection<string>();
             ShaftWallTypeOptions = new ObservableCollection<string>();
             LoggiaWallTypeOptions = new ObservableCollection<string>();
@@ -515,8 +676,12 @@ namespace KPLN_ApartmentManager.Forms
                 foreach (ApartmentPlanPresetOption plan in _context.Plans)
                     Plans.Add(plan);
 
+                RefreshWorksetFields();
+                RefreshGroupingFields();
+
                 BaseOffsetText = (_currentData.BaseOffset).ToString();
                 WallHeightText = (_currentData.WallHeight > 0 ? _currentData.WallHeight : 3000).ToString();
+                AreaMismatchToleranceText = (_currentData.AreaMismatchTolerance > 0 ? _currentData.AreaMismatchTolerance : 0.5).ToString();
                 WindowSillHeightText = (_currentData.WindowSillHeight > 0 ? _currentData.WindowSillHeight : 900).ToString();
 
                 ApartmentPlanPresetOption selected = ResolveInitialPlan();
@@ -577,10 +742,20 @@ namespace KPLN_ApartmentManager.Forms
                     : preserved.SelectedPlanModelSignature;
                 preserved.LowerConstraint = LowerConstraintText;
                 preserved.UpperConstraint = UpperConstraintText;
-                preserved.BaseOffset = ParseInt(BaseOffsetText);
-                preserved.WallHeight = ParseInt(WallHeightText, 3000);
+                preserved.BaseOffset = ParseDouble(BaseOffsetText);
+                preserved.WallHeight = ParseDouble(WallHeightText, 3000);
+                preserved.AreaMismatchTolerance = ParsePositiveDouble(AreaMismatchToleranceText, 0.5);
                 preserved.WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : preserved.WindowType;
                 preserved.WindowSillHeight = ParseInt(WindowSillHeightText, 900);
+                preserved.WallWorksetName = NormalizeWorksetSelection(SelectedWallWorkset);
+                preserved.DoorWorksetName = NormalizeWorksetSelection(SelectedDoorWorkset);
+                preserved.RoomWorksetName = NormalizeWorksetSelection(SelectedRoomWorkset);
+                preserved.FurnitureWorksetName = NormalizeWorksetSelection(SelectedFurnitureWorkset);
+                preserved.PlumbingWorksetName = NormalizeWorksetSelection(SelectedPlumbingWorkset);
+                preserved.WindowWorksetName = NormalizeWorksetSelection(SelectedWindowWorkset);
+                preserved.GeneratedElementsGroupingMode = SelectedGroupingMode != null
+                    ? SelectedGroupingMode.Value
+                    : ApartmentGeneratedElementsGroupingMode.None;
                 SetPresetShaftWallType(preserved, !string.IsNullOrWhiteSpace(SelectedShaftWallType) ? SelectedShaftWallType : GetPresetShaftWallType(preserved));
                 SetPresetLoggiaWallType(preserved, !string.IsNullOrWhiteSpace(SelectedLoggiaWallType) ? SelectedLoggiaWallType : GetPresetLoggiaWallType(preserved));
                 return preserved;
@@ -614,8 +789,9 @@ namespace KPLN_ApartmentManager.Forms
                 SelectedPlanModelSignature = SelectedPlan != null ? SelectedPlan.ModelSignature : "",
                 LowerConstraint = LowerConstraintText,
                 UpperConstraint = UpperConstraintText,
-                BaseOffset = ParseInt(BaseOffsetText),
-                WallHeight = ParseInt(WallHeightText, 3000),
+                BaseOffset = ParseDouble(BaseOffsetText),
+                WallHeight = ParseDouble(WallHeightText, 3000),
+                AreaMismatchTolerance = ParsePositiveDouble(AreaMismatchToleranceText, 0.5),
                 WallTypeByThickness = wallTypeByThickness,
                 WindowType = !string.IsNullOrWhiteSpace(SelectedWindowType) ? SelectedWindowType : "Не выбрано",
                 WindowSillHeight = ParseInt(WindowSillHeightText, 900),
@@ -623,6 +799,15 @@ namespace KPLN_ApartmentManager.Forms
                 BathroomDoor = "Не выбрано",
                 RoomDoor = "Не выбрано",
                 DoorsByRoomCategory = doorsByRoomCategory,
+                WallWorksetName = NormalizeWorksetSelection(SelectedWallWorkset),
+                DoorWorksetName = NormalizeWorksetSelection(SelectedDoorWorkset),
+                RoomWorksetName = NormalizeWorksetSelection(SelectedRoomWorkset),
+                FurnitureWorksetName = NormalizeWorksetSelection(SelectedFurnitureWorkset),
+                PlumbingWorksetName = NormalizeWorksetSelection(SelectedPlumbingWorkset),
+                WindowWorksetName = NormalizeWorksetSelection(SelectedWindowWorkset),
+                GeneratedElementsGroupingMode = SelectedGroupingMode != null
+                    ? SelectedGroupingMode.Value
+                    : ApartmentGeneratedElementsGroupingMode.None,
                 FamilyPostProcessAction = _currentData != null
                     ? _currentData.FamilyPostProcessAction
                     : ApartmentFamilyPostProcessAction.Save2DFamiliesFromUnderlay
@@ -695,6 +880,7 @@ namespace KPLN_ApartmentManager.Forms
             _selectedPlan.LoggiaWallTypeOptions = resolved.LoggiaWallTypeOptions ?? new List<string>();
             _selectedPlan.HasLoggiaWallMarkers = resolved.HasLoggiaWallMarkers;
             _selectedPlan.ModelSignature = resolved.ModelSignature;
+            _selectedPlan.ApartmentCount = resolved.ApartmentCount;
             _selectedPlan.RoomCategories = resolved.RoomCategories ?? new List<string>();
             _selectedPlan.DoorRequirements = resolved.DoorRequirements ?? new List<ApartmentDoorRequirementOption>();
             _selectedPlan.DoorTypeOptionsByRequirementKey = resolved.DoorTypeOptionsByRequirementKey ?? new Dictionary<string, List<string>>();
@@ -727,6 +913,88 @@ namespace KPLN_ApartmentManager.Forms
             OnPropertyChanged(nameof(HasShaftWallMarkers));
             OnPropertyChanged(nameof(HasLoggiaWallMarkers));
             UpdateStateText();
+        }
+
+        private void RefreshWorksetFields()
+        {
+            WorksetOptions.Clear();
+            WorksetOptions.Add(GetDefaultWorksetSelectionLabel());
+
+            List<string> options = _context != null && _context.WorksetOptions != null
+                ? _context.WorksetOptions
+                : new List<string>();
+
+            foreach (string option in options
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x))
+            {
+                if (!WorksetOptions.Contains(option))
+                    WorksetOptions.Add(option);
+            }
+
+            _selectedWallWorkset = ResolveSavedWorksetSelection(_currentData != null ? _currentData.WallWorksetName : null);
+            _selectedDoorWorkset = ResolveSavedWorksetSelection(_currentData != null ? _currentData.DoorWorksetName : null);
+            _selectedRoomWorkset = ResolveSavedWorksetSelection(_currentData != null ? _currentData.RoomWorksetName : null);
+            _selectedFurnitureWorkset = ResolveSavedWorksetSelection(_currentData != null ? _currentData.FurnitureWorksetName : null);
+            _selectedPlumbingWorkset = ResolveSavedWorksetSelection(_currentData != null ? _currentData.PlumbingWorksetName : null);
+            _selectedWindowWorkset = ResolveSavedWorksetSelection(_currentData != null ? _currentData.WindowWorksetName : null);
+
+            OnPropertyChanged(nameof(WorksetOptions));
+            OnPropertyChanged(nameof(SelectedWallWorkset));
+            OnPropertyChanged(nameof(SelectedDoorWorkset));
+            OnPropertyChanged(nameof(SelectedRoomWorkset));
+            OnPropertyChanged(nameof(SelectedFurnitureWorkset));
+            OnPropertyChanged(nameof(SelectedPlumbingWorkset));
+            OnPropertyChanged(nameof(SelectedWindowWorkset));
+        }
+
+        private void RefreshGroupingFields()
+        {
+            ApartmentGeneratedElementsGroupingMode savedMode = _currentData != null
+                ? _currentData.GeneratedElementsGroupingMode
+                : ApartmentGeneratedElementsGroupingMode.None;
+
+            _selectedGroupingMode = GroupingModeOptions.FirstOrDefault(x => x.Value == savedMode) ??
+                                    GroupingModeOptions.FirstOrDefault(x => x.Value == ApartmentGeneratedElementsGroupingMode.None);
+
+            OnPropertyChanged(nameof(GroupingModeOptions));
+            OnPropertyChanged(nameof(SelectedGroupingMode));
+        }
+
+        private string ResolveSavedWorksetSelection(string savedWorksetName)
+        {
+            string defaultSelection = WorksetOptions.FirstOrDefault() ?? ApartmentPresetData.NoWorksetSelection;
+
+            if (IsDefaultWorksetSelection(savedWorksetName))
+                return defaultSelection;
+
+            if (!string.IsNullOrWhiteSpace(savedWorksetName) &&
+                WorksetOptions.Any(x => string.Equals(x, savedWorksetName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return WorksetOptions.First(x => string.Equals(x, savedWorksetName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return defaultSelection;
+        }
+
+        private string GetDefaultWorksetSelectionLabel()
+        {
+            string activeWorksetName = _context != null ? _context.ActiveWorksetName : null;
+            return !string.IsNullOrWhiteSpace(activeWorksetName)
+                ? ApartmentPresetData.NoWorksetSelection + ": " + activeWorksetName.Trim()
+                : ApartmentPresetData.NoWorksetSelection;
+        }
+
+        private static bool IsDefaultWorksetSelection(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return true;
+
+            string trimmed = value.Trim();
+            return string.Equals(trimmed, ApartmentPresetData.NoWorksetSelection, StringComparison.OrdinalIgnoreCase) ||
+                   trimmed.StartsWith(ApartmentPresetData.NoWorksetSelection + ":", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, "Без рабочего набора", StringComparison.OrdinalIgnoreCase);
         }
 
         private void RefreshWindowFields()
@@ -1001,6 +1269,36 @@ namespace KPLN_ApartmentManager.Forms
             return int.TryParse(text, out value) ? value : defaultValue;
         }
 
+        private static double ParseDouble(string text, double defaultValue = 0)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return defaultValue;
+
+            double value;
+            string trimmed = text.Trim();
+
+            if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.CurrentCulture, out value))
+                return value;
+
+            if (double.TryParse(trimmed.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+                return value;
+
+            return defaultValue;
+        }
+
+        private static double ParsePositiveDouble(string text, double defaultValue)
+        {
+            double value = ParseDouble(text, defaultValue);
+            return value > 0 ? value : defaultValue;
+        }
+
+        private static string NormalizeWorksetSelection(string value)
+        {
+            return IsDefaultWorksetSelection(value)
+                ? ApartmentPresetData.NoWorksetSelection
+                : value.Trim();
+        }
+
         private void NotifyDataChanged()
         {
             if (_isRefreshing)
@@ -1043,7 +1341,9 @@ namespace KPLN_ApartmentManager.Forms
 
             if (!CanConvertTo3D)
             {
-                StatusText = "Заполните все найденные стены, шахты, лоджии, двери и окна.";
+                StatusText = EnableWindow3DModule
+                    ? "Заполните все найденные стены, шахты, лоджии, двери и окна."
+                    : "Заполните все найденные стены, шахты, лоджии и двери.";
                 return;
             }
 
@@ -1071,6 +1371,9 @@ namespace KPLN_ApartmentManager.Forms
             if (result.WallHeight <= 0)
                 result.WallHeight = 3000;
 
+            if (result.AreaMismatchTolerance <= 0)
+                result.AreaMismatchTolerance = 0.5;
+
             if (string.IsNullOrWhiteSpace(result.WindowType))
                 result.WindowType = "Не выбрано";
 
@@ -1091,6 +1394,16 @@ namespace KPLN_ApartmentManager.Forms
 
             if (string.IsNullOrWhiteSpace(result.RoomDoor))
                 result.RoomDoor = "Не выбрано";
+
+            result.WallWorksetName = NormalizeWorksetSelection(result.WallWorksetName);
+            result.DoorWorksetName = NormalizeWorksetSelection(result.DoorWorksetName);
+            result.RoomWorksetName = NormalizeWorksetSelection(result.RoomWorksetName);
+            result.FurnitureWorksetName = NormalizeWorksetSelection(result.FurnitureWorksetName);
+            result.PlumbingWorksetName = NormalizeWorksetSelection(result.PlumbingWorksetName);
+            result.WindowWorksetName = NormalizeWorksetSelection(result.WindowWorksetName);
+
+            if (!Enum.IsDefined(typeof(ApartmentGeneratedElementsGroupingMode), result.GeneratedElementsGroupingMode))
+                result.GeneratedElementsGroupingMode = ApartmentGeneratedElementsGroupingMode.None;
 
             return result;
         }

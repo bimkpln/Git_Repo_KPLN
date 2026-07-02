@@ -1,5 +1,7 @@
-﻿using KPLN_CommandsWheel.Models;
+﻿using KPLN_CommandsWheel.ExternalCommands;
+using KPLN_CommandsWheel.Models;
 using KPLN_CommandsWheel.Services;
+using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -65,9 +67,7 @@ namespace KPLN_CommandsWheel.Forms
             Deactivated += delegate
             {
                 if (_canCloseOnDeactivate && !_isClosing)
-                {
                     CloseWheel();
-                }
             };
             KeyDown += delegate (object sender, KeyEventArgs args)
             {
@@ -105,14 +105,10 @@ namespace KPLN_CommandsWheel.Forms
         internal static bool TryActivateExisting()
         {
             if (_current == null || !_current.IsVisible)
-            {
                 return false;
-            }
 
             if (_current.WindowState == WindowState.Minimized)
-            {
                 _current.WindowState = WindowState.Normal;
-            }
 
             _current.Activate();
             return true;
@@ -334,15 +330,16 @@ namespace KPLN_CommandsWheel.Forms
         private void RunAndClose(RevitCommandInfo command)
         {
             _executor.Run(command);
+            
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandsWheel.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+
             CloseWheel();
         }
 
         private void CloseWheel()
         {
             if (_isClosing)
-            {
                 return;
-            }
 
             _isClosing = true;
             _canCloseOnDeactivate = false;
@@ -387,9 +384,7 @@ namespace KPLN_CommandsWheel.Forms
         private void StartDrag(MouseButtonEventArgs args)
         {
             if (args.ChangedButton != MouseButton.Left)
-            {
                 return;
-            }
 
             args.Handled = true;
             try

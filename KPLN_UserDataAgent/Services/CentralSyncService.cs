@@ -50,7 +50,17 @@ namespace KPLN_UserDataAgent.Services
             timer?.Dispose();
         }
 
+        public void SyncNow(string source)
+        {
+            RunSync(source ?? "CentralSync.Manual");
+        }
+
         private void OnTimer(object state)
+        {
+            RunSync("CentralSync.Timer");
+        }
+
+        private void RunSync(string source)
         {
             if (Interlocked.Exchange(ref _isSyncing, 1) == 1)
                 return;
@@ -61,7 +71,7 @@ namespace KPLN_UserDataAgent.Services
             }
             catch (Exception exception)
             {
-                _errorGuard.QueueException("CentralSync", exception);
+                _errorGuard.QueueException(source, exception);
             }
             finally
             {
