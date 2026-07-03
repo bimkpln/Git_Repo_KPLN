@@ -103,6 +103,7 @@ namespace KPLN_CoordiantorAI.Forms
             _session = _sessions[0];
 
             InitializeComponent();
+            InitializeModelTab();
             SessionsListBox.ItemsSource = _sessions;
             SessionsListBox.SelectedItem = _session;
             BindSession(_session);
@@ -296,40 +297,76 @@ namespace KPLN_CoordiantorAI.Forms
             SaveSessionSafely();
         }
 
-        private void OnModelWorkClick(object sender, RoutedEventArgs e)
+        private void OnMainTabSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, MainTabControl))
+                return;
+
+            if (!_isWaitingForAnswer && RegulationsSearchTab != null && RegulationsSearchTab.IsSelected && MessageTextBox != null)
+                MessageTextBox.Focus();
+        }
+
+        private void InitializeModelTab()
+        {
+            ModelTabContent.Content = CreateModelTabContent();
+        }
+
+        private FrameworkElement CreateModelTabContent()
         {
             if (_revitDocument == null || _revitUiDocument == null)
-            {
-                MessageBox.Show(this, "Не найден активный документ Revit.", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("Не найден активный документ Revit.");
 
             ExternalModelSettings settings = _repository.LoadExternalModelSettings();
+            if (settings == null)
+                settings = new ExternalModelSettings();
+
             ConnectionType connectionType;
             if (!Enum.TryParse(settings.ConnectionTypeName, true, out connectionType))
-            {
-                MessageBox.Show(this, "В настройках не указан способ подключения внешней модели (conType).", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("В настройках не указан способ подключения внешней модели (conType).");
 
             if (connectionType == ConnectionType.OnlineAPI &&
                 (string.IsNullOrWhiteSpace(settings.OnlineServerUrl) || string.IsNullOrWhiteSpace(settings.ApiKey)))
-            {
-                MessageBox.Show(this, "Для OnlineAPI укажите ONLINE_SERVER_URL и API_KEY во вкладке \"Внешняя модель\".", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("Для OnlineAPI укажите ONLINE_SERVER_URL и API_KEY во вкладке \"Внешняя модель\".");
 
             if (connectionType == ConnectionType.LocalServer && string.IsNullOrWhiteSpace(settings.LocalServerUrl))
-            {
-                MessageBox.Show(this, "Для LocalServer укажите LOCAL_SERVER_URL во вкладке \"Внешняя модель\".", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("Для LocalServer укажите LOCAL_SERVER_URL во вкладке \"Внешняя модель\".");
 
-            ExternalModelWindow modelWindow = new ExternalModelWindow(_revitDocument, _revitUiDocument, connectionType, settings)
+            return new ExternalModelControl(_revitDocument, _revitUiDocument, connectionType, settings);
+        }
+
+        private FrameworkElement CreateModelUnavailableContent(string message)
+        {
+            StackPanel panel = new StackPanel
             {
-                Owner = this
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 640
             };
-            modelWindow.Show();
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Работа с моделью недоступна",
+                Foreground = Brushes.White,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = message,
+                Foreground = CreateBrush(184, 192, 204),
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            return new Border
+            {
+                Background = CreateBrush(32, 36, 45),
+                Padding = new Thickness(24),
+                Child = panel
+            };
         }
 
         private void OnDeleteChatClick(object sender, RoutedEventArgs e)
@@ -1148,10 +1185,9 @@ namespace KPLN_CoordiantorAI.Forms
             SendButton.IsEnabled = !isWaiting;
             SessionsListBox.IsEnabled = !isWaiting;
             NewChatButton.IsEnabled = !isWaiting;
-            ModelWorkButton.IsEnabled = !isWaiting;
             StatusTextBlock.Text = isWaiting ? "Ожидание ответа ИИ..." : "Готово";
 
-            if (!isWaiting)
+            if (!isWaiting && RegulationsSearchTab != null && RegulationsSearchTab.IsSelected)
                 MessageTextBox.Focus();
         }
 

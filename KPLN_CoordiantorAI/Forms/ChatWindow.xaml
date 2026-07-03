@@ -55,12 +55,6 @@
             <Setter Property="Background" Value="#FF2C6BED"/>
             <Setter Property="BorderBrush" Value="#FF2C6BED"/>
         </Style>
-        <Style TargetType="Button" x:Key="ModelWorkButtonStyle" BasedOn="{StaticResource ToolbarButton}">
-            <Setter Property="Margin" Value="0,0,0,8"/>
-            <Setter Property="Background" Value="#FF1F7A55"/>
-            <Setter Property="BorderBrush" Value="#FF36B37E"/>
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
         <Style TargetType="Button" x:Key="CoordinatorCallButtonStyle" BasedOn="{StaticResource ToolbarButton}">
             <Setter Property="Margin" Value="0,6,0,0"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
@@ -245,47 +239,91 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="#FF20242D"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+            <Setter Property="Background" Value="#FF262B35"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#FF303642"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="#FF20242D"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#FF2C6BED"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <TabControl x:Name="MainTabControl"
+                SelectedIndex="0"
+                SelectionChanged="OnMainTabSelectionChanged">
+        <TabItem x:Name="ModelWorkTab" Header="Работа с моделью">
+            <ContentControl x:Name="ModelTabContent"/>
+        </TabItem>
+        <TabItem x:Name="RegulationsSearchTab" Header="Поиск по регламентам">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="241.111"/>
+                    <ColumnDefinition Width="8.889"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0"
+                <Border Grid.Column="0"
                 Background="#FF262B35"
                 BorderBrush="#FF343B49"
                 BorderThickness="0,0,1,0"
-                Padding="10">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+                Padding="10" Grid.ColumnSpan="2">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0"
+                        <TextBlock Grid.Row="0"
                            Text="Чаты"
                            Foreground="White"
                            FontWeight="SemiBold"
                            FontSize="15"
                            Margin="0,0,0,10"/>
 
-                <StackPanel Grid.Row="1" Margin="0,0,0,10">
-                    <Button x:Name="ModelWorkButton"
-                            Style="{StaticResource ModelWorkButtonStyle}"
-                            Content="Работа с моделью"
-                            Click="OnModelWorkClick"/>
-                    <Button x:Name="NewChatButton"
+                        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                            <Button x:Name="NewChatButton"
                             Style="{StaticResource NewChatButtonStyle}"
                             Content="Новый чат"
                             MouseEnter="OnNewChatButtonMouseEnter"
                             MouseLeave="OnNewChatButtonMouseLeave"
                             Click="OnNewChatClick"/>
-                </StackPanel>
+                        </StackPanel>
 
-                <ListBox x:Name="SessionsListBox"
+                        <ListBox x:Name="SessionsListBox"
                          Grid.Row="2"
                          BorderThickness="0"
                          Background="Transparent"
@@ -293,28 +331,28 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.VerticalScrollBarVisibility="Auto"
                          SelectionChanged="OnSessionsSelectionChanged">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Background="Transparent"
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Background="Transparent"
                                   Tag="{Binding}"
                                   ToolTip="{Binding FullQuestion}"
                                   MouseLeftButtonUp="OnChatCardMouseLeftButtonUp">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0"
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0"
                                            Text="{Binding Title}"
                                            Foreground="White"
                                            FontSize="13"
                                            FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis"
                                            Margin="10,8,36,0"/>
-                                <TextBlock Grid.Row="1"
+                                        <TextBlock Grid.Row="1"
                                            Text="{Binding UpdatedAtCaption}"
                                            Style="{StaticResource DimText}"
                                            Margin="10,3,36,8"/>
-                                <Button Grid.RowSpan="2"
+                                        <Button Grid.RowSpan="2"
                                         HorizontalAlignment="Right"
                                         VerticalAlignment="Bottom"
                                         Style="{StaticResource ChatDeleteButtonStyle}"
@@ -322,50 +360,50 @@
                                         Margin="0,0,-1,-1"
                                         Tag="{Binding}"
                                         Click="OnDeleteChatClick"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
 
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Background="#FF262B35" BorderBrush="#FF343B49" BorderThickness="0,0,0,1" Padding="12,10">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Координатор ИИ" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
-                        <TextBlock x:Name="SessionInfoTextBlock" Style="{StaticResource DimText}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="LikeButton" Style="{StaticResource ToolbarButton}" Content="👍  Лайк" MouseEnter="OnLikeButtonMouseEnter" MouseLeave="OnReactionButtonMouseLeave" Click="OnLikeClick"/>
-                        <Button x:Name="DislikeButton" Style="{StaticResource ToolbarButton}" Content="👎  Дизлайк" MouseEnter="OnDislikeButtonMouseEnter" MouseLeave="OnReactionButtonMouseLeave" Click="OnDislikeClick"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+                    <Border Grid.Row="0" Background="#FF262B35" BorderBrush="#FF343B49" BorderThickness="0,0,0,1" Padding="12,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Координатор ИИ" Foreground="White" FontWeight="SemiBold" FontSize="15"/>
+                                <TextBlock x:Name="SessionInfoTextBlock" Style="{StaticResource DimText}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="LikeButton" Style="{StaticResource ToolbarButton}" Content="👍  Лайк" MouseEnter="OnLikeButtonMouseEnter" MouseLeave="OnReactionButtonMouseLeave" Click="OnLikeClick"/>
+                                <Button x:Name="DislikeButton" Style="{StaticResource ToolbarButton}" Content="👎  Дизлайк" MouseEnter="OnDislikeButtonMouseEnter" MouseLeave="OnReactionButtonMouseLeave" Click="OnDislikeClick"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-            <ListBox x:Name="MessagesListBox"
+                    <ListBox x:Name="MessagesListBox"
                      Grid.Row="1"
                      ItemsSource="{Binding Messages}"
                      BorderThickness="0"
                      Background="#FF20242D"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid>
-                            <Border Style="{StaticResource BubbleBorder}">
-                                <StackPanel>
-                                    <RichTextBox Foreground="White"
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Border Style="{StaticResource BubbleBorder}">
+                                        <StackPanel>
+                                            <RichTextBox Foreground="White"
                                                  FontSize="13"
                                                  Background="Transparent"
                                                  BorderThickness="0"
@@ -376,105 +414,105 @@
                                                  VerticalScrollBarVisibility="Disabled"
                                                  Loaded="OnMessageRichTextBoxLoaded"
                                                  DataContextChanged="OnMessageRichTextBoxDataContextChanged"/>
-                                    <ItemsControl ItemsSource="{Binding SourceLinks}"
+                                            <ItemsControl ItemsSource="{Binding SourceLinks}"
                                                   Margin="0,6,0,0">
-                                        <ItemsControl.Style>
-                                            <Style TargetType="ItemsControl">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HasSourceLinks}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ItemsControl.Style>
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <WrapPanel/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Button Style="{StaticResource SourceLinkButtonStyle}"
+                                                <ItemsControl.Style>
+                                                    <Style TargetType="ItemsControl">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasSourceLinks}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ItemsControl.Style>
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Style="{StaticResource SourceLinkButtonStyle}"
                                                         Content="{Binding Caption}"
                                                         Tag="{Binding Uri}"
                                                         ToolTip="{Binding Url}"
                                                         Margin="0,0,6,4"
                                                         Click="OnSourceLinkButtonClick"/>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Text="{Binding CreatedAtCaption}"
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Text="{Binding CreatedAtCaption}"
                                                Foreground="#CCFFFFFF"
                                                FontSize="10"
                                                HorizontalAlignment="Right"
                                                Margin="0,4,0,0"/>
-                                    <Button Content="Не помогло. Написать координатору в Битрикс24"
+                                            <Button Content="Не помогло. Написать координатору в Битрикс24"
                                             Click="OnCoordinatorHelpClick">
-                                        <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource CoordinatorHelpButtonStyle}">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CanRequestCoordinatorHelp}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
-                                    <ItemsControl ItemsSource="{Binding CoordinatorOffers}"
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource CoordinatorHelpButtonStyle}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanRequestCoordinatorHelp}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            <ItemsControl ItemsSource="{Binding CoordinatorOffers}"
                                                   Margin="0,4,0,0"
                                                   FontSize="10.5">
-                                        <ItemsControl.Style>
-                                            <Style TargetType="ItemsControl">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding HasCoordinatorOffers}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </ItemsControl.Style>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Button Style="{StaticResource CoordinatorCallButtonStyle}"
+                                                <ItemsControl.Style>
+                                                    <Style TargetType="ItemsControl">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasCoordinatorOffers}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ItemsControl.Style>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Style="{StaticResource CoordinatorCallButtonStyle}"
                                                     Width="340"
                                                     Tag="{Binding}"
                                                     Click="OnCoordinatorCallClick">
-                                                    <Grid Width="316">
-                                                        <TextBlock Text="{Binding ButtonCaption}"
+                                                            <Grid Width="316">
+                                                                <TextBlock Text="{Binding ButtonCaption}"
                                                            TextAlignment="Left"
                                                            TextWrapping="Wrap"
                                                            HorizontalAlignment="Stretch"/>
-                                                    </Grid>
-                                                </Button>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+                                                            </Grid>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
 
-            <Border Grid.Row="2" Background="#FF262B35" BorderBrush="#FF343B49" BorderThickness="0,1,0,0" Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock x:Name="StatusTextBlock"
+                    <Border Grid.Row="2" Background="#FF262B35" BorderBrush="#FF343B49" BorderThickness="0,1,0,0" Padding="10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="StatusTextBlock"
                                Grid.Row="0"
                                Style="{StaticResource DimText}"
                                Margin="2,0,0,6"
                                Text="Готово"/>
-                    <Grid Grid.Row="1">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="MessageTextBox"
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="MessageTextBox"
                                  Grid.Column="0"
                                  MinHeight="34"
                                  MaxHeight="92"
@@ -483,14 +521,16 @@
                                  AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto"
                                  PreviewKeyDown="OnMessageTextBoxPreviewKeyDown"/>
-                        <Button x:Name="SendButton"
+                                <Button x:Name="SendButton"
                                 Grid.Column="1"
                                 Style="{StaticResource SendButtonStyle}"
                                 Content="Отправить"
                                 Click="OnSendClick"/>
-                    </Grid>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Grid>
-            </Border>
-        </Grid>
-    </Grid>
+            </Grid>
+        </TabItem>
+    </TabControl>
 </Window>
