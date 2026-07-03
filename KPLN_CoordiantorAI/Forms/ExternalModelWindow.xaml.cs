@@ -24,13 +24,36 @@ using KPLN_CoordiantorAI.ExternalModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static KPLN_CoordiantorAI.ExternalModel.Commands;
+using WpfGrid = System.Windows.Controls.Grid;
+using WpfTextBox = System.Windows.Controls.TextBox;
 
 namespace KPLN_CoordiantorAI.Forms
 {
-    /// <summary>
-    /// Логика взаимодействия для ExternalModelWindow.xaml
-    /// </summary>
     public partial class ExternalModelWindow : Window
+    {
+        public ExternalModelWindow(
+            Autodesk.Revit.DB.Document document,
+            UIDocument uiDocument,
+            ConnectionType connectionType,
+            ExternalModelSettings settings)
+        {
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
+            if (uiDocument == null)
+                throw new ArgumentNullException(nameof(uiDocument));
+
+            InitializeComponent();
+
+            ExternalModelControl control = new ExternalModelControl(document, uiDocument, connectionType, settings);
+            ModelContent.Content = control;
+            Title = control.DisplayTitle;
+        }
+    }
+
+    /// <summary>
+    /// Рабочая область взаимодействия с внешней моделью.
+    /// </summary>
+    public class ExternalModelControl : UserControl
     {
         private Autodesk.Revit.DB.Document _doc;
         private UIDocument _uiDoc;
@@ -49,15 +72,21 @@ namespace KPLN_CoordiantorAI.Forms
 
         private Border _typingIndicator;
         private DispatcherTimer _typingTimer;
+        private TextBlock TitleTextBlock;
+        private ScrollViewer ChatScrollViewer;
+        private StackPanel ChatHistory;
+        private WpfTextBox InputTextBox;
+        private Button SendButton;
 
+        public string DisplayTitle { get; private set; }
 
-        public ExternalModelWindow(
+        public ExternalModelControl(
             Autodesk.Revit.DB.Document document,
             UIDocument uiDocument,
             ConnectionType connectionType,
             ExternalModelSettings settings)
         {
-            InitializeComponent();
+            InitializeModelLayout();
             _doc = document;
             _uiDoc = uiDocument;
             _connectionType = connectionType;
@@ -73,17 +102,109 @@ namespace KPLN_CoordiantorAI.Forms
             SetupEventHandlers();
 
             // Показываем пользователю, какой режим активен
-            Title = GetWindowTitle();
+            DisplayTitle = GetModelTitle();
+            TitleTextBlock.Text = DisplayTitle;
         }
 
         // Показываем пользователю, какой режим активен
-        private string GetWindowTitle()
+        private string GetModelTitle()
         {
             string mode = _connectionType == ConnectionType.OnlineAPI
                 ? "Online (DeepSeek API)"
                 : "Local (LM Studio)";
 
             return $"Работа с моделью - {_doc.Title} - {mode}";
+        }
+
+        private void InitializeModelLayout()
+        {
+            MinHeight = 480;
+            MinWidth = 680;
+            Background = CreateBrush(32, 36, 45);
+            FontFamily = new FontFamily("Segoe UI");
+
+            WpfGrid root = new WpfGrid
+            {
+                Background = CreateBrush(32, 36, 45)
+            };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            Border header = new Border
+            {
+                Background = CreateBrush(38, 43, 53),
+                BorderBrush = CreateBrush(52, 59, 73),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Padding = new Thickness(12, 10, 12, 10)
+            };
+            WpfGrid.SetRow(header, 0);
+
+            TitleTextBlock = new TextBlock
+            {
+                Text = "Работа с моделью",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.White
+            };
+            header.Child = TitleTextBlock;
+            root.Children.Add(header);
+
+            ChatHistory = new StackPanel();
+            ChatScrollViewer = new ScrollViewer
+            {
+                Content = ChatHistory,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Margin = new Thickness(10)
+            };
+            WpfGrid.SetRow(ChatScrollViewer, 1);
+            root.Children.Add(ChatScrollViewer);
+
+            WpfGrid inputGrid = new WpfGrid
+            {
+                Margin = new Thickness(10, 0, 10, 10)
+            };
+            inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            WpfGrid.SetRow(inputGrid, 2);
+
+            InputTextBox = new WpfTextBox
+            {
+                Margin = new Thickness(0, 0, 10, 0),
+                Padding = new Thickness(10),
+                VerticalContentAlignment = VerticalAlignment.Center,
+                AcceptsReturn = true,
+                MinHeight = 40,
+                FontSize = 14,
+                Foreground = Brushes.White,
+                Background = CreateBrush(42, 48, 59),
+                BorderBrush = CreateBrush(75, 85, 104),
+                CaretBrush = Brushes.White
+            };
+            WpfGrid.SetColumn(InputTextBox, 0);
+            inputGrid.Children.Add(InputTextBox);
+
+            SendButton = new Button
+            {
+                Content = "Отправить",
+                Padding = new Thickness(15, 10, 15, 10),
+                MinWidth = 100,
+                MinHeight = 30,
+                Foreground = Brushes.White,
+                Background = CreateBrush(44, 107, 237),
+                BorderBrush = CreateBrush(44, 107, 237),
+                BorderThickness = new Thickness(1)
+            };
+            WpfGrid.SetColumn(SendButton, 1);
+            inputGrid.Children.Add(SendButton);
+
+            root.Children.Add(inputGrid);
+            Content = root;
+        }
+
+        private static Brush CreateBrush(byte red, byte green, byte blue)
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(red, green, blue));
         }
 
         //Задать текст под загрузку ИИ
@@ -224,7 +345,7 @@ namespace KPLN_CoordiantorAI.Forms
                     {
                         foreach (JObject tc in toolCalls)
                         {
-                            await ProcessSingleToolCall(tc);
+                            ProcessSingleToolCall(tc);
                         }
 
                         // После всех tools → следующий запрос к ИИ
@@ -299,7 +420,7 @@ namespace KPLN_CoordiantorAI.Forms
         }
 
 
-        private async Task ProcessSingleToolCall(JObject toolCall)
+        private void ProcessSingleToolCall(JObject toolCall)
         {
             string toolName = toolCall["function"]?["name"]?.ToString();
             string toolCallId = toolCall["id"]?.ToString() ?? Guid.NewGuid().ToString();
@@ -2526,7 +2647,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                 return responseJson;
             }
-            catch 
+            catch
             {
                 return responseJson;  // Если не JSON — возвращаем как текст
             }
