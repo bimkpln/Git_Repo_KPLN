@@ -22,6 +22,8 @@ using System.Windows.Navigation;
 
 namespace KPLN_CoordiantorAI.Forms
 {
+
+
     public class HalfWidthConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -30,7 +32,7 @@ namespace KPLN_CoordiantorAI.Forms
             if (!(value is double) || (width = (double)value) <= 0)
                 return DependencyProperty.UnsetValue;
 
-            return width * 0.5;
+            return width * 0.65;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -38,6 +40,135 @@ namespace KPLN_CoordiantorAI.Forms
             throw new NotSupportedException();
         }
     }
+
+    public class BubbleWidthConverter : IMultiValueConverter
+    {
+        private static readonly Regex SourceAnchorRegex = new Regex(
+            "<\\s*a\\b(?=[^>]*\\bdata-source\\s*=\\s*([\"'])(true|1)\\1)[^>]*>.*?<\\s*/\\s*a\\s*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        private static readonly Regex HtmlBreakRegex = new Regex(
+            "<\\s*br\\s*/?\\s*>|<\\s*/\\s*(p|div|li|ul|ol)\\s*>|<\\s*li\\b[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        private static readonly Regex HtmlTagRegex = new Regex(
+            "<[^>]+>",
+            RegexOptions.Singleline);
+
+        private static readonly Regex MarkdownBoldRegex = new Regex(
+            "\\*\\*(?<text>.+?)\\*\\*",
+            RegexOptions.Singleline);
+
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (values == null || values.Length < 2)
+                return DependencyProperty.UnsetValue;
+
+            if (!(values[0] is double))
+                return DependencyProperty.UnsetValue;
+
+            double listWidth = (double)values[0];
+            if (listWidth <= 0)
+                return DependencyProperty.UnsetValue;
+
+            string html = values[1] as string;
+            if (html == null)
+                html = string.Empty;
+
+            bool isUserMessage = false;
+            if (values.Length > 2 && values[2] is bool)
+                isUserMessage = (bool)values[2];
+
+            double maxRatio = 0.65;
+            if (parameter != null)
+            {
+                double parsedRatio;
+                if (double.TryParse(
+                    parameter.ToString(),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out parsedRatio))
+                {
+                    maxRatio = parsedRatio;
+                }
+            }
+
+            double minWidth = isUserMessage ? 140 : 180;
+            double maxWidth = listWidth * maxRatio;
+
+            string text = ExtractVisibleText(html);
+            int longestLineLength = GetLongestLineLength(text);
+
+            // Примерная ширина символа при FontSize=13.
+            // Если будет всё ещё широко — уменьши 7.2 до 6.5.
+            // Если будет слишком узко — увеличь до 7.8.
+            double charWidth = 7.2;
+
+            // +40 — запас на Padding, время сообщения и особенности RichTextBox.
+            double calculatedWidth = longestLineLength * charWidth + 40;
+
+            if (calculatedWidth < minWidth)
+                calculatedWidth = minWidth;
+
+            if (calculatedWidth > maxWidth)
+                calculatedWidth = maxWidth;
+
+            return calculatedWidth;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
+
+        private static string ExtractVisibleText(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return string.Empty;
+
+            string text = html;
+
+            // Убираем скрытые ссылки-источники, потому что они отдельно рисуются кнопками.
+            text = SourceAnchorRegex.Replace(text, string.Empty);
+
+            // HTML-переносы превращаем в реальные переносы строк.
+            text = HtmlBreakRegex.Replace(text, "\n");
+
+            // Убираем остальные HTML-теги.
+            text = HtmlTagRegex.Replace(text, string.Empty);
+
+            // Убираем markdown-жирность, оставляем сам текст.
+            text = MarkdownBoldRegex.Replace(text, "${text}");
+
+            text = WebUtility.HtmlDecode(text);
+            if (text == null)
+                text = string.Empty;
+
+            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            return text.Trim();
+        }
+
+        private static int GetLongestLineLength(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return 0;
+
+            string[] lines = text.Split(new[] { '\n' }, StringSplitOptions.None);
+
+            int max = 0;
+            foreach (string line in lines)
+            {
+                string trimmed = line == null ? string.Empty : line.Trim();
+                if (trimmed.Length > max)
+                    max = trimmed.Length;
+            }
+
+            return max;
+        }
+    }
+
+
 
     public partial class ChatWindow : Window
     {
