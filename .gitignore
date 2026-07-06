@@ -15,6 +15,9 @@
 *.userosscache
 *.sln.docstates
 
+# Windows-specific files
+[Tt]humbs.db
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
