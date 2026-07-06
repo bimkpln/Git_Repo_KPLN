@@ -12,6 +12,7 @@
         FontFamily="Segoe UI">
     <Window.Resources>
         <local:HalfWidthConverter x:Key="HalfWidthConverter"/>
+        <local:BubbleWidthConverter x:Key="BubbleWidthConverter"/>
         <Style TargetType="Button" x:Key="ToolbarButton">
             <Setter Property="MinHeight" Value="30"/>
             <Setter Property="Padding" Value="12,4"/>
@@ -227,16 +228,34 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+
+
+
+
+
+
         <Style TargetType="Border" x:Key="BubbleBorder">
-            <Setter Property="Width"
-                    Value="{Binding ActualWidth,
-                                    RelativeSource={RelativeSource AncestorType=ListBox},
-                                    Converter={StaticResource HalfWidthConverter}}"/>
+            <!-- Ширина считается по содержимому сообщения,
+         но ограничивается процентом от ширины чата -->
+            <Setter Property="Width">
+                <Setter.Value>
+                    <MultiBinding Converter="{StaticResource BubbleWidthConverter}"
+                          ConverterParameter="0.65">
+                        <Binding Path="ActualWidth"
+                         RelativeSource="{RelativeSource AncestorType=ListBox}"/>
+                        <Binding Path="Text"/>
+                        <Binding Path="IsUserMessage"/>
+                    </MultiBinding>
+                </Setter.Value>
+            </Setter>
+
             <Setter Property="Padding" Value="10,8"/>
             <Setter Property="Margin" Value="10,4"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Background" Value="#FF303642"/>
             <Setter Property="HorizontalAlignment" Value="Left"/>
+
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsUserMessage}" Value="True">
                     <Setter Property="Background" Value="#FF2C6BED"/>
@@ -244,6 +263,12 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+
+
+
+
+
         <Style TargetType="TabControl">
             <Setter Property="Background" Value="#FF20242D"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -516,15 +541,20 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
+
                                 <TextBox x:Name="MessageTextBox"
-                                 Grid.Column="0"
-                                 MinHeight="34"
-                                 MaxHeight="92"
-                                 Padding="8"
-                                 TextWrapping="Wrap"
-                                 AcceptsReturn="True"
-                                 VerticalScrollBarVisibility="Auto"
-                                 PreviewKeyDown="OnMessageTextBoxPreviewKeyDown"/>
+                                     SpellCheck.IsEnabled="True"
+                                     Language="ru-RU"
+                                     Grid.Column="0"
+                                     Height="70"
+                                     Padding="8"
+                                     VerticalContentAlignment="Top"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     HorizontalScrollBarVisibility="Disabled"
+                                     VerticalScrollBarVisibility="Auto"
+                                     PreviewKeyDown="OnMessageTextBoxPreviewKeyDown"/>
+
                                 <Button x:Name="SendButton"
                                 Grid.Column="1"
                                 Style="{StaticResource SendButtonStyle}"

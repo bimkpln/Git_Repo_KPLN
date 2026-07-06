@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -23,9 +24,11 @@ using KPLN_CoordiantorAI.Common;
 using KPLN_CoordiantorAI.ExternalModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Windows.Controls.Primitives;
 using static KPLN_CoordiantorAI.ExternalModel.Commands;
 using WpfGrid = System.Windows.Controls.Grid;
 using WpfTextBox = System.Windows.Controls.TextBox;
+using Control = System.Windows.Controls.Control;
 
 namespace KPLN_CoordiantorAI.Forms
 {
@@ -168,32 +171,48 @@ namespace KPLN_CoordiantorAI.Forms
             inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             WpfGrid.SetRow(inputGrid, 2);
 
+
+
             InputTextBox = new WpfTextBox
             {
+                Language = XmlLanguage.GetLanguage("ru-RU"),
+
                 Margin = new Thickness(0, 0, 10, 0),
-                Padding = new Thickness(10),
-                VerticalContentAlignment = VerticalAlignment.Center,
+                Padding = new Thickness(10, 8, 10, 8),
+
+                // Фиксированная высота. Поле больше не растёт вверх.
+                Height = 80,
+
+                // Текст внутри начинается сверху
+                VerticalContentAlignment = VerticalAlignment.Top,
+
+                // Многострочный ввод
                 AcceptsReturn = true,
-                MinHeight = 40,
+
+                // Перенос строк
+                TextWrapping = TextWrapping.Wrap,
+
+                // Горизонтальный скролл не нужен, вертикальный появляется при переполнении
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+
                 FontSize = 14,
                 Foreground = Brushes.White,
                 Background = CreateBrush(42, 48, 59),
                 BorderBrush = CreateBrush(75, 85, 104),
                 CaretBrush = Brushes.White
             };
+            SpellCheck.SetIsEnabled(InputTextBox, true);
+
+
             WpfGrid.SetColumn(InputTextBox, 0);
             inputGrid.Children.Add(InputTextBox);
 
             SendButton = new Button
             {
                 Content = "Отправить",
-                Padding = new Thickness(15, 10, 15, 10),
-                MinWidth = 100,
-                MinHeight = 30,
-                Foreground = Brushes.White,
-                Background = CreateBrush(44, 107, 237),
-                BorderBrush = CreateBrush(44, 107, 237),
-                BorderThickness = new Thickness(1)
+                Style = CreateSendButtonStyle(),
+                VerticalAlignment = VerticalAlignment.Bottom
             };
             WpfGrid.SetColumn(SendButton, 1);
             inputGrid.Children.Add(SendButton);
@@ -205,6 +224,76 @@ namespace KPLN_CoordiantorAI.Forms
         private static Brush CreateBrush(byte red, byte green, byte blue)
         {
             return new SolidColorBrush(System.Windows.Media.Color.FromRgb(red, green, blue));
+        }
+
+        private static Style CreateSendButtonStyle()
+        {
+            Style style = new Style(typeof(Button));
+
+            style.Setters.Add(new Setter(Control.MinHeightProperty, 30.0));
+            style.Setters.Add(new Setter(Control.MinWidthProperty, 92.0));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(15, 10, 15, 10)));
+            style.Setters.Add(new Setter(Control.BackgroundProperty, CreateBrush(44, 107, 237)));
+            style.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            style.Setters.Add(new Setter(Control.BorderBrushProperty, CreateBrush(44, 107, 237)));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
+
+            FrameworkElementFactory borderFactory = new FrameworkElementFactory(typeof(Border));
+            borderFactory.Name = "ButtonBorder";
+            borderFactory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+            borderFactory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+            borderFactory.SetBinding(Border.BorderThicknessProperty, new System.Windows.Data.Binding("BorderThickness")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+            borderFactory.SetBinding(Border.PaddingProperty, new System.Windows.Data.Binding("Padding")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+
+            FrameworkElementFactory contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            contentFactory.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
+
+            borderFactory.AppendChild(contentFactory);
+
+            ControlTemplate template = new ControlTemplate(typeof(Button));
+            template.VisualTree = borderFactory;
+
+            Trigger hoverTrigger = new Trigger
+            {
+                Property = UIElement.IsMouseOverProperty,
+                Value = true
+            };
+            hoverTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.96, "ButtonBorder"));
+            template.Triggers.Add(hoverTrigger);
+
+            Trigger pressedTrigger = new Trigger
+            {
+                Property = ButtonBase.IsPressedProperty,
+                Value = true
+            };
+            pressedTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.86, "ButtonBorder"));
+            template.Triggers.Add(pressedTrigger);
+
+            Trigger disabledTrigger = new Trigger
+            {
+                Property = UIElement.IsEnabledProperty,
+                Value = false
+            };
+            disabledTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.55, "ButtonBorder"));
+            template.Triggers.Add(disabledTrigger);
+
+            style.Setters.Add(new Setter(Control.TemplateProperty, template));
+
+            return style;
         }
 
         //Задать текст под загрузку ИИ
@@ -889,7 +978,7 @@ namespace KPLN_CoordiantorAI.Forms
                 BorderBrush = new SolidColorBrush(Colors.Gray),                                         // Цвет рамки
                 BorderThickness = new Thickness(1)                                                      // Толщина рамки 1px
             };
-            BindBubbleWidth(border);
+            BindBubbleWidth(border, text, isUser);
 
 
             if (isUser)
@@ -968,7 +1057,7 @@ namespace KPLN_CoordiantorAI.Forms
                 BorderBrush = new SolidColorBrush(Colors.Gray),
                 BorderThickness = new Thickness(1)
             };
-            BindBubbleWidth(border);
+            BindBubbleWidth(border, "ИИ печатает", false);
 
             var richTextBox = new RichTextBox
             {
@@ -994,7 +1083,7 @@ namespace KPLN_CoordiantorAI.Forms
 
         }
 
-        private void BindBubbleWidth(Border border)
+        private void BindBubbleWidth(Border border, string text, bool isUser)
         {
             if (border == null || ChatScrollViewer == null)
                 return;
@@ -1004,10 +1093,105 @@ namespace KPLN_CoordiantorAI.Forms
                 new System.Windows.Data.Binding("ActualWidth")
                 {
                     Source = ChatScrollViewer,
-                    Converter = new HalfWidthConverter()
+                    Converter = new ModelBubbleWidthConverter(text, isUser),
+                    ConverterParameter = "0.65"
                 });
         }
 
+
+        private class ModelBubbleWidthConverter : IValueConverter
+        {
+            private readonly string _text;
+            private readonly bool _isUser;
+
+            public ModelBubbleWidthConverter(string text, bool isUser)
+            {
+                _text = text ?? string.Empty;
+                _isUser = isUser;
+            }
+
+            public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            {
+                double chatWidth;
+
+                if (!(value is double) || (chatWidth = (double)value) <= 0)
+                    return DependencyProperty.UnsetValue;
+
+                double maxRatio = 0.65;
+
+                if (parameter != null)
+                {
+                    double parsedRatio;
+                    if (double.TryParse(
+                        parameter.ToString(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out parsedRatio))
+                    {
+                        maxRatio = parsedRatio;
+                    }
+                }
+
+                double minWidth = _isUser ? 140 : 180;
+                double maxWidth = chatWidth * maxRatio;
+
+                string visibleText = NormalizeBubbleText(_text);
+                int longestLineLength = GetLongestLineLength(visibleText);
+
+                double charWidth = 7.2;
+                double calculatedWidth = longestLineLength * charWidth + 50;
+
+                if (calculatedWidth < minWidth)
+                    calculatedWidth = minWidth;
+
+                if (calculatedWidth > maxWidth)
+                    calculatedWidth = maxWidth;
+
+                return calculatedWidth;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            {
+                throw new NotSupportedException();
+            }
+
+            private static string NormalizeBubbleText(string text)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                    return string.Empty;
+
+                return text
+                    .Replace("\r\n", "\n")
+                    .Replace("\r", "\n")
+                    .Replace("**", "")
+                    .Replace("__", "")
+                    .Replace("`", "")
+                    .Replace("###", "")
+                    .Replace("##", "")
+                    .Replace("#", "")
+                    .Trim();
+            }
+
+            private static int GetLongestLineLength(string text)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                    return 0;
+
+                string[] lines = text.Split(new[] { '\n' }, StringSplitOptions.None);
+
+                int max = 0;
+
+                foreach (string line in lines)
+                {
+                    string trimmed = line == null ? string.Empty : line.Trim();
+
+                    if (trimmed.Length > max)
+                        max = trimmed.Length;
+                }
+
+                return max;
+            }
+        }
 
 
         private async Task<string> SendToOpenRouter(List<object> _messages)
