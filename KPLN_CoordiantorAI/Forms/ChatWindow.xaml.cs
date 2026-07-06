@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -13,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -20,6 +22,23 @@ using System.Windows.Navigation;
 
 namespace KPLN_CoordiantorAI.Forms
 {
+    public class HalfWidthConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            double width;
+            if (!(value is double) || (width = (double)value) <= 0)
+                return DependencyProperty.UnsetValue;
+
+            return width * 0.5;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
     public partial class ChatWindow : Window
     {
         private static readonly Regex SupportedHtmlTagRegex = new Regex(

@@ -886,10 +886,10 @@ namespace KPLN_CoordiantorAI.Forms
                     new SolidColorBrush(System.Windows.Media.Color.FromRgb(59, 130, 246)) :             // Синий (#3B82F6) для пользователя
                     new SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 229, 229)),             // Серый (#E5E5E5) для ИИ
                 HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left,    // Выравнивание:  
-                MaxWidth = 450,                                                                         // Максимальная ширина (не растягивается бесконечно)
                 BorderBrush = new SolidColorBrush(Colors.Gray),                                         // Цвет рамки
                 BorderThickness = new Thickness(1)                                                      // Толщина рамки 1px
             };
+            BindBubbleWidth(border);
 
 
             if (isUser)
@@ -965,10 +965,10 @@ namespace KPLN_CoordiantorAI.Forms
                 CornerRadius = new CornerRadius(12),
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 229, 229)),
                 HorizontalAlignment = HorizontalAlignment.Left,
-                MaxWidth = 450,
                 BorderBrush = new SolidColorBrush(Colors.Gray),
                 BorderThickness = new Thickness(1)
             };
+            BindBubbleWidth(border);
 
             var richTextBox = new RichTextBox
             {
@@ -992,6 +992,20 @@ namespace KPLN_CoordiantorAI.Forms
             border.Child = richTextBox;
             return border;
 
+        }
+
+        private void BindBubbleWidth(Border border)
+        {
+            if (border == null || ChatScrollViewer == null)
+                return;
+
+            border.SetBinding(
+                FrameworkElement.WidthProperty,
+                new System.Windows.Data.Binding("ActualWidth")
+                {
+                    Source = ChatScrollViewer,
+                    Converter = new HalfWidthConverter()
+                });
         }
 
 
@@ -2794,7 +2808,6 @@ namespace KPLN_CoordiantorAI.Forms
             var para = new Paragraph();
             para.Margin = new Thickness(0, 0, 0, 5);
 
-            // Заголовки
             if (line.StartsWith("### "))
             {
                 var run = new Run(line.Substring(4));
@@ -2825,7 +2838,6 @@ namespace KPLN_CoordiantorAI.Forms
                 return;
             }
 
-            // Разделитель
             if (line.Trim() == "---" || line.Trim() == "***")
             {
                 var separator = new Separator();
@@ -2834,7 +2846,6 @@ namespace KPLN_CoordiantorAI.Forms
                 return;
             }
 
-            // Обычный текст с форматированием
             ParseInlineMarkdown(para, line);
             rtb.Document.Blocks.Add(para);
         }
@@ -2849,12 +2860,10 @@ namespace KPLN_CoordiantorAI.Forms
 
             while (pos < length)
             {
-                // Ищем маркеры
                 int boldStart = text.IndexOf("**", pos);
                 int italicStart = text.IndexOf("*", pos);
                 int codeStart = text.IndexOf("`", pos);
 
-                // Находим ближайший маркер
                 int nextMarker = -1;
                 string markerType = null;
 
@@ -2863,7 +2872,6 @@ namespace KPLN_CoordiantorAI.Forms
                     nextMarker = boldStart;
                     markerType = "bold";
                 }
-                // Проверяем, что это не начало жирного (**)
                 if (italicStart != -1 && (nextMarker == -1 || italicStart < nextMarker))
                 {
                     if (italicStart + 1 < length && text[italicStart + 1] != '*')
@@ -2880,7 +2888,6 @@ namespace KPLN_CoordiantorAI.Forms
 
                 if (nextMarker == -1)
                 {
-                    // Добавляем оставшийся обычный текст
                     if (pos < length)
                     {
                         paragraph.Inlines.Add(new Run(text.Substring(pos)));
@@ -2888,7 +2895,7 @@ namespace KPLN_CoordiantorAI.Forms
                     break;
                 }
 
-                // Добавляем обычный текст до маркера
+   
                 if (nextMarker > pos)
                 {
                     paragraph.Inlines.Add(new Run(text.Substring(pos, nextMarker - pos)));
@@ -2936,7 +2943,7 @@ namespace KPLN_CoordiantorAI.Forms
                         {
                             var run = new Run(text.Substring(pos + 1, codeEnd - pos - 1));
                             run.FontFamily = new System.Windows.Media.FontFamily("Consolas");
-                            run.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 112, 192)); // Насыщенный синий (как ссылка)
+                            run.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 112, 192)); 
                             paragraph.Inlines.Add(run);
                             pos = codeEnd + 1;
                         }
