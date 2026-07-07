@@ -15,6 +15,7 @@ namespace KPLN_ApartmentManager.Forms
 
         public string ActivePlanName { get; set; }
         public string ActiveWorksetName { get; set; }
+        public bool IsWorksharedDocument { get; set; }
 
         public bool IsDataStale { get; set; }
 
@@ -31,6 +32,7 @@ namespace KPLN_ApartmentManager.Forms
             ApartmentPresetPanelContext result = new ApartmentPresetPanelContext();
             result.ActivePlanName = ActivePlanName;
             result.ActiveWorksetName = ActiveWorksetName;
+            result.IsWorksharedDocument = IsWorksharedDocument;
             result.IsDataStale = IsDataStale;
 
             result.WorksetOptions = WorksetOptions != null
@@ -269,6 +271,11 @@ namespace KPLN_ApartmentManager.Forms
         public ObservableCollection<string> WorksetOptions { get; private set; }
         public ObservableCollection<ApartmentGeneratedElementsGroupingModeOption> GroupingModeOptions { get; private set; }
         private ApartmentPlanPresetOption _selectedPlan;
+
+        public bool IsWorksetSelectionEnabled
+        {
+            get { return _context != null && _context.IsWorksharedDocument; }
+        }
 
         public ApartmentPlanPresetOption SelectedPlan
         {
@@ -947,6 +954,7 @@ namespace KPLN_ApartmentManager.Forms
             OnPropertyChanged(nameof(SelectedFurnitureWorkset));
             OnPropertyChanged(nameof(SelectedPlumbingWorkset));
             OnPropertyChanged(nameof(SelectedWindowWorkset));
+            OnPropertyChanged(nameof(IsWorksetSelectionEnabled));
         }
 
         private void RefreshGroupingFields()
@@ -980,6 +988,9 @@ namespace KPLN_ApartmentManager.Forms
 
         private string GetDefaultWorksetSelectionLabel()
         {
+            if (_context != null && !_context.IsWorksharedDocument)
+                return ApartmentPresetData.WorksetsDisabledSelection;
+
             string activeWorksetName = _context != null ? _context.ActiveWorksetName : null;
             return !string.IsNullOrWhiteSpace(activeWorksetName)
                 ? ApartmentPresetData.NoWorksetSelection + ": " + activeWorksetName.Trim()
@@ -994,6 +1005,7 @@ namespace KPLN_ApartmentManager.Forms
             string trimmed = value.Trim();
             return string.Equals(trimmed, ApartmentPresetData.NoWorksetSelection, StringComparison.OrdinalIgnoreCase) ||
                    trimmed.StartsWith(ApartmentPresetData.NoWorksetSelection + ":", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, ApartmentPresetData.WorksetsDisabledSelection, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(trimmed, "Без рабочего набора", StringComparison.OrdinalIgnoreCase);
         }
 

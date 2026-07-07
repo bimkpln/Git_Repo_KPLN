@@ -125,6 +125,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             string trimmed = worksetName.Trim();
             return string.Equals(trimmed, ApartmentPresetData.NoWorksetSelection, StringComparison.OrdinalIgnoreCase) ||
                    trimmed.StartsWith(ApartmentPresetData.NoWorksetSelection + ":", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(trimmed, ApartmentPresetData.WorksetsDisabledSelection, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(trimmed, "Без рабочего набора", StringComparison.OrdinalIgnoreCase);
         }
 
