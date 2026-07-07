@@ -336,6 +336,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 get { return _fileProblemMessages.Count > 0; }
             }
 
+            public bool HasBlockingProblem
+            {
+                get
+                {
+                    return _fileProblemMessages.Count > 0 ||
+                           _hostConflictMessages.Count > 0 ||
+                           _failureMessages.Count > 0 ||
+                           _exceptions.Count > 0;
+                }
+            }
+
             public ApartmentFamilyLoadDiagnostic(string familyPath)
             {
                 FamilyPath = familyPath;
@@ -1789,6 +1800,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             int updatedCount = 0;
+            int unchangedCount = 0;
             int failedCount = 0;
             List<string> errors = new List<string>();
 
@@ -1819,6 +1831,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         {
                             updatedCount++;
                         }
+                        else if (!reloadDiagnostic.HasBlockingProblem)
+                        {
+                            unchangedCount++;
+                        }
                         else
                         {
                             failedCount++;
@@ -1840,11 +1856,13 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 t.Commit();
             }
 
-            MarkApartmentPresetDataStaleInWindow();
+            if (updatedCount > 0)
+                MarkApartmentPresetDataStaleInWindow();
 
             string resultMessage =
                 "Найдено в проекте: " + candidates.Count +
                 "\nОбновлено: " + updatedCount +
+                "\nБез изменений: " + unchangedCount +
                 "\nНе обновлено: " + failedCount;
 
             if (missingFiles.Count > 0)
