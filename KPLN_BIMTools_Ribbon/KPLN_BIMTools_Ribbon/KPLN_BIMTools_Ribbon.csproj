@@ -156,6 +156,7 @@
     <Compile Include="Core\SQLite\Entities\DBIFCConfigData.cs" />
     <Compile Include="Core\SQLite\SQLiteService.cs" />
     <Compile Include="ExternalCommands\batchAddingParameters.cs" />
+    <Compile Include="ExternalCommands\CommandCollectionFamilyParameters.cs" />
     <Compile Include="ExternalCommands\CommandCollectionParameters.cs" />
     <Compile Include="ExternalCommands\CommandDBManager.cs" />
     <Compile Include="ExternalCommands\CommandLTablesExport.cs" />
@@ -346,6 +347,12 @@
   <ItemGroup>
     <Resource Include="Imagens\ifcExport16.png" />
     <Resource Include="Imagens\ifcExport32.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\сollectionFamilyParameters16.png" />
+    <Resource Include="Imagens\сollectionFamilyParameters16_dark.png" />
+    <Resource Include="Imagens\сollectionFamilyParameters32.png" />
+    <Resource Include="Imagens\сollectionFamilyParameters32_dark.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
