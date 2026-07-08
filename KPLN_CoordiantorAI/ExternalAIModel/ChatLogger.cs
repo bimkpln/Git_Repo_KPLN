@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -52,11 +53,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 if (string.IsNullOrWhiteSpace(_logFilePath))
                     return;
 
-                //string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
                 DateTime timestamp = DateTime.Now;
 
                 StringBuilder logEntry = new StringBuilder();
-                //logEntry.AppendLine("[" + timestamp + "]");
+
                 logEntry.AppendLine("[" + FormatLogDate(timestamp) + "]");
                 AppendRequestMetadata(logEntry, timestamp, timestamp, null, null);
 
@@ -83,7 +84,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
             DateTime requestTime,
             DateTime responseTime,
             string revitModelName,
-            string revitViewName)
+            string revitViewName,
+            IDictionary<string, int> toolAreaStats = null)
         {
             try
             {
@@ -93,6 +95,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 StringBuilder logEntry = new StringBuilder();
                 logEntry.AppendLine("[" + FormatLogDate(requestTime) + "]");
                 AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName);
+                AppendToolAreaStats(logEntry, toolAreaStats);
                 logEntry.AppendLine("");
                 logEntry.AppendLine($"ВОПРОС: {question}");
                 logEntry.AppendLine($"ОТВЕТ: {answer}");
@@ -128,6 +131,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 timestamp,
                 null,
                 null,
+                null,
                 usdToRubRate);
         }
 
@@ -150,6 +154,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             DateTime responseTime,
             string revitModelName,
             string revitViewName,
+            IDictionary<string, int> toolAreaStats = null,
             double usdToRubRate = USD_TO_RUB_RATE)
         {
             try
@@ -157,7 +162,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 if (string.IsNullOrWhiteSpace(_logFilePath))
                     return;
 
-                //string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
                 string timestamp = FormatLogDate(requestTime);
 
                 // Расчёт стоимости
@@ -172,6 +177,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 StringBuilder logEntry = new StringBuilder();
                 logEntry.AppendLine("[" + timestamp + "]");
                 AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName);
+                AppendToolAreaStats(logEntry, toolAreaStats);
                 logEntry.AppendLine("");
                 logEntry.AppendLine($"ВОПРОС: {question}");
                 logEntry.AppendLine($"ОТВЕТ: {answer}");
@@ -218,7 +224,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 StringBuilder logEntry = new StringBuilder();
-                //logEntry.AppendLine(timestamp);
+
                 logEntry.AppendLine(FormatLogDate(timestamp));
                 AppendRequestMetadata(logEntry, timestamp, timestamp, null, null);
                 logEntry.AppendLine($"ВОПРОС: {question}");
@@ -249,6 +255,27 @@ namespace KPLN_CoordiantorAI.ExternalModel
             if (!string.IsNullOrWhiteSpace(revitViewName))
                 logEntry.AppendLine("REVIT_VIEW: " + revitViewName.Trim());
         }
+
+        private static void AppendToolAreaStats(StringBuilder logEntry, IDictionary<string, int> toolAreaStats)
+        {
+            if (toolAreaStats == null || toolAreaStats.Count == 0)
+                return;
+
+            int totalToolCalls = 0;
+            logEntry.AppendLine("--- TOOL AREA STATS ---");
+            foreach (KeyValuePair<string, int> item in toolAreaStats)
+            {
+                if (item.Value <= 0)
+                    continue;
+
+                totalToolCalls += item.Value;
+                logEntry.AppendLine(item.Key + ": " + item.Value);
+            }
+
+            logEntry.AppendLine("TOTAL_TOOL_CALLS: " + totalToolCalls);
+        }
+
+
 
         private static string FormatLogDate(DateTime value)
         {
