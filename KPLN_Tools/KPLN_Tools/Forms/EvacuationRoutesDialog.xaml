@@ -14,6 +14,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="16"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBlock x:Name="TbStairsInfo" FontSize="12" Margin="0,0,0,10"/>
@@ -44,7 +46,30 @@
             <CheckBox Grid.Row="2" Grid.Column="1" x:Name="CbUseRunWidth" Content="По ширине марша" Margin="8,0,0,0" Checked="UseRunWidth_Changed" Unchecked="UseRunWidth_Changed" IsChecked="True"/>
         </Grid>
 
-        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right">
+        <Grid Grid.Row="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="8"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <CheckBox Grid.Row="0" x:Name="CbAddToEvacuationWorkset" Content="Добавить в рабочий набор, содержащий слово ``ЭВАКУАЦИИ``" Checked="EvacuationWorkset_Changed" Unchecked="EvacuationWorkset_Changed" IsChecked="True"/>
+            <ComboBox Grid.Row="2" x:Name="CmbEvacuationWorksets" Height="26" SelectedValuePath="Id" Padding="6,0,4,0" VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch">
+                <ComboBox.ItemContainerStyle>
+                    <Style TargetType="{x:Type ComboBoxItem}">
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                        <Setter Property="Padding" Value="6,3,4,3"/>
+                    </Style>
+                </ComboBox.ItemContainerStyle>
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </Grid>
+
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Width="90" Height="24" Margin="0,0,12,0" Content="Отмена" Click="Cancel_Click"/>
             <Button Width="130" Height="24" Margin="0,0,8,0" Content="Выбрать лестницу" Click="PickOne_Click"/>
             <Button Width="100" Height="24" Content="Все лестницы" Click="Ok_Click"/>

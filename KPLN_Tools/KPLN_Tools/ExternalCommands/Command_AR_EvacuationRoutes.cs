@@ -78,6 +78,20 @@ namespace KPLN_Tools.ExternalCommands
             }
         }
 
+        private sealed class RunTopSearchContext
+        {
+            public List<Solid> RunSolids = new List<Solid>();
+            public List<Solid> FinishSolids = new List<Solid>();
+            public double MinZ;
+            public double MaxZ;
+        }
+
+        private struct RunClearWidthInfo
+        {
+            public double WidthFt;
+            public double CenterOffsetFt;
+        }
+
         private struct EndFace
         {
             public XYZ BL;  // Bottom-Left
@@ -113,8 +127,9 @@ namespace KPLN_Tools.ExternalCommands
             var stairs = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_Stairs).WhereElementIsNotElementType().OfType<Stairs>().ToList();
 
             int stairsCount = stairs.Count;
+            var evacuationWorksets = GetEvacuationWorksetOptions(doc);
 
-            var dlg = new EvacuationRoutesDialog(stairsCount);
+            var dlg = new EvacuationRoutesDialog(stairsCount, evacuationWorksets);
             new WindowInteropHelper(dlg) { Owner = uiapp.MainWindowHandle };
 
             bool? ok = dlg.ShowDialog();
@@ -264,6 +279,30 @@ namespace KPLN_Tools.ExternalCommands
             }
         }
 
+
+        private static List<EvacuationRoutesWorksetOption> GetEvacuationWorksetOptions(Document doc)
+        {
+            var result = new List<EvacuationRoutesWorksetOption>();
+            if (doc == null || !doc.IsWorkshared)
+                return result;
+
+            try
+            {
+                foreach (Workset ws in new FilteredWorksetCollector(doc).OfKind(WorksetKind.UserWorkset))
+                {
+                    if (ws == null || string.IsNullOrWhiteSpace(ws.Name)) continue;
+                    if (ws.Name.IndexOf("ЭВАКУАЦИИ", StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                    result.Add(new EvacuationRoutesWorksetOption(ws.Id.IntegerValue, ws.Name));
+                }
+            }
+            catch
+            {
+                return new List<EvacuationRoutesWorksetOption>();
+            }
+
+            return result;
+        }
 
         private static string FormatIdsLine(string title, IEnumerable<int> ids)
         {
@@ -427,7 +466,7 @@ namespace KPLN_Tools.ExternalCommands
         }
 
         // Создаёт или обновляет DirectShape с заданным appId/appDataId. Возвращает сам элемент (на будущее, если надо логировать).
-        private static DirectShape UpsertRouteShape(Document doc, ElementId categoryId, string appId, string appDataId, string name, Solid solid)
+        private static DirectShape UpsertRouteShape(Document doc, ElementId categoryId, string appId, string appDataId, string name, Solid solid, EvacuationRoutesDialogResult data)
         {
             if (solid == null || solid.Volume < 1e-9)
                 return null;
@@ -443,7 +482,26 @@ namespace KPLN_Tools.ExternalCommands
 
             ds.Name = name;
             ds.SetShape(new List<GeometryObject> { solid });
+            TrySetRouteShapeWorkset(ds, data);
             return ds;
+        }
+
+        private static void TrySetRouteShapeWorkset(DirectShape ds, EvacuationRoutesDialogResult data)
+        {
+            if (ds == null || data == null || !data.AddToEvacuationWorkset || !data.EvacuationWorksetId.HasValue)
+                return;
+
+            Parameter p = ds.get_Parameter(BuiltInParameter.ELEM_PARTITION_PARAM);
+            if (p == null || p.IsReadOnly)
+                return;
+
+            try
+            {
+                p.Set(data.EvacuationWorksetId.Value);
+            }
+            catch
+            {
+            }
         }
 
         // =========================
@@ -469,14 +527,6 @@ namespace KPLN_Tools.ExternalCommands
             if (p0.Z <= p1.Z) { bottomCenter = p0; topCenter = p1; }
             else { bottomCenter = p1; topCenter = p0; }
 
-#if Debug2023 || Debug2024 || Revit2023 || Revit2024
-            double widthFt = data.UseRunWidth ? GetRunWidthFt(run, bottomCenter, topCenter) : UnitUtils.ConvertToInternalUnits(data.WidthMm, UnitTypeId.Millimeters);
-#else
-            double widthFt = data.UseRunWidth ? GetRunWidthFt(run, bottomCenter, topCenter) : UnitUtils.ConvertToInternalUnits(data.WidthMm, DisplayUnitType.DUT_MILLIMETERS);
-#endif
-
-            if (widthFt <= 1e-9) return false;
-
             XYZ xP = new XYZ(topCenter.X - bottomCenter.X, topCenter.Y - bottomCenter.Y, 0.0);
             double lenPlan = xP.GetLength();
             if (lenPlan < 1e-9) return false;
@@ -486,21 +536,44 @@ namespace KPLN_Tools.ExternalCommands
             if (yP.GetLength() < 1e-9) yP = XYZ.BasisY;
             yP = yP.Normalize();
 
+            double widthFt;
+            XYZ routeBottomCenter = bottomCenter;
+            XYZ routeTopCenter = topCenter;
+
+            if (data.UseRunWidth)
+            {
+                RunClearWidthInfo clearWidth = GetRunClearWidthInfo(doc, stairs, run, bottomCenter, topCenter, xP, yP, lenPlan);
+                widthFt = clearWidth.WidthFt;
+                routeBottomCenter = bottomCenter + yP * clearWidth.CenterOffsetFt;
+                routeTopCenter = topCenter + yP * clearWidth.CenterOffsetFt;
+            }
+            else
+            {
+                widthFt = MmToInternal(data.WidthMm);
+            }
+
+            if (widthFt <= 1e-9) return false;
+
             XYZ halfW = yP * (widthFt / 2.0);
 
             Plane undersidePlane;
             if (!TryGetBestUndersidePlane(run, out undersidePlane))
                 return false;
 
-            double midGapFt = GetMidGapFt_NoDeps(run, undersidePlane, bottomCenter, xP, lenPlan, widthFt, yP);
-            if (midGapFt <= 1e-9) midGapFt = 0.0;
+            RunTopSearchContext topSearch = BuildRunTopSearchContext(doc, stairs, run);
+            double baseMidGapFt = GetMidGapFt(topSearch, undersidePlane, routeBottomCenter, xP, lenPlan, widthFt, yP, includeFinish: false);
+            if (baseMidGapFt <= 1e-9) baseMidGapFt = 0.0;
 
-            double liftFt = midGapFt + epsFt;
+            double finishMidGapFt = GetMidGapFt(topSearch, undersidePlane, routeBottomCenter, xP, lenPlan, widthFt, yP, includeFinish: true);
+            if (finishMidGapFt < baseMidGapFt) finishMidGapFt = baseMidGapFt;
 
-            XYZ SL_xy = new XYZ(bottomCenter.X, bottomCenter.Y, 0) - halfW;
-            XYZ SR_xy = new XYZ(bottomCenter.X, bottomCenter.Y, 0) + halfW;
-            XYZ EL_xy = new XYZ(topCenter.X, topCenter.Y, 0) - halfW;
-            XYZ ER_xy = new XYZ(topCenter.X, topCenter.Y, 0) + halfW;
+            double baseLiftFt = baseMidGapFt + epsFt;
+            double liftFt = finishMidGapFt + epsFt;
+
+            XYZ SL_xy = new XYZ(routeBottomCenter.X, routeBottomCenter.Y, 0) - halfW;
+            XYZ SR_xy = new XYZ(routeBottomCenter.X, routeBottomCenter.Y, 0) + halfW;
+            XYZ EL_xy = new XYZ(routeTopCenter.X, routeTopCenter.Y, 0) - halfW;
+            XYZ ER_xy = new XYZ(routeTopCenter.X, routeTopCenter.Y, 0) + halfW;
 
             double zSL = GetPlaneZAtXY(undersidePlane, SL_xy.X, SL_xy.Y);
             double zSR = GetPlaneZAtXY(undersidePlane, SR_xy.X, SR_xy.Y);
@@ -511,6 +584,11 @@ namespace KPLN_Tools.ExternalCommands
             XYZ SR = new XYZ(SR_xy.X, SR_xy.Y, zSR + liftFt);
             XYZ ER = new XYZ(ER_xy.X, ER_xy.Y, zER + liftFt);
             XYZ EL = new XYZ(EL_xy.X, EL_xy.Y, zEL + liftFt);
+
+            XYZ SL_base = new XYZ(SL_xy.X, SL_xy.Y, zSL + baseLiftFt);
+            XYZ SR_base = new XYZ(SR_xy.X, SR_xy.Y, zSR + baseLiftFt);
+            XYZ ER_base = new XYZ(ER_xy.X, ER_xy.Y, zER + baseLiftFt);
+            XYZ EL_base = new XYZ(EL_xy.X, EL_xy.Y, zEL + baseLiftFt);
 
             XYZ up = XYZ.BasisZ * heightFt;
             XYZ SLt = SL + up;
@@ -533,23 +611,23 @@ namespace KPLN_Tools.ExternalCommands
 
                 BottomEnd = new EndFace
                 {
-                    BL = SL,
-                    BR = SR,
-                    TR = SRt,
-                    TL = SLt
+                    BL = SL_base,
+                    BR = SR_base,
+                    TR = SR_base + up,
+                    TL = SL_base + up
                 },
 
                 TopEnd = new EndFace
                 {
-                    BL = EL,
-                    BR = ER,
-                    TR = ERt,
-                    TL = ELt
+                    BL = EL_base,
+                    BR = ER_base,
+                    TR = ER_base + up,
+                    TL = EL_base + up
                 }
             };
 
             // СОЗДАТЬ ИЛИ ОБНОВИТЬ
-            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.ElIdValue(run.Id).ToString(), $"ПЭ_{IDHelper.ElIdValue(stairs.Id)}{IDHelper.ElIdValue(run.Id)}", solid);
+            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.ElIdValue(run.Id).ToString(), $"ПЭ_{IDHelper.ElIdValue(stairs.Id)}{IDHelper.ElIdValue(run.Id)}", solid, data);
             return true;
         }
 
@@ -708,16 +786,16 @@ namespace KPLN_Tools.ExternalCommands
                 return false;
 
             // СОЗДАТЬ ИЛИ ОБНОВИТЬ
-            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.ElIdValue(landing.Id).ToString(), $"ПЭ_Л_{IDHelper.ElIdValue(stairs.Id)}_{IDHelper.ElIdValue(landing.Id)}", solid);
+            UpsertRouteShape(doc, new ElementId(BuiltInCategory.OST_Site), "KPLN_Tools", IDHelper.ElIdValue(landing.Id).ToString(), $"ПЭ_Л_{IDHelper.ElIdValue(stairs.Id)}_{IDHelper.ElIdValue(landing.Id)}", solid, data);
             return true;
         }
 
         // =========================
         //   НИЗ / ЗАЗОРЫ
         // =========================
-        private static double GetMidGapFt_NoDeps(StairsRun run, Plane undersidePlane, XYZ bottomCenter, XYZ xP, double lenPlan, double widthFt, XYZ yP)
+        private static double GetMidGapFt(RunTopSearchContext topSearch, Plane undersidePlane, XYZ bottomCenter, XYZ xP, double lenPlan, double widthFt, XYZ yP, bool includeFinish)
         {
-            double[] u = new double[] { 0.45, 0.50, 0.55 };
+            double[] u = new double[] { 0.08, 0.14, 0.20, 0.26, 0.32, 0.38, 0.44, 0.50, 0.56, 0.62, 0.68, 0.74, 0.80, 0.86, 0.92 };
 
             double sideFactor = 0.35;
             XYZ wSide = yP * (widthFt * sideFactor);
@@ -741,7 +819,7 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     XYZ p = samples[s];
 
-                    if (!TryGetTopZByVerticalIntersect(run, p, out double zTop))
+                    if (!TryGetTopZByVerticalIntersect(topSearch, p, includeFinish, out double zTop))
                         continue;
 
                     double zUnder = GetPlaneZAtXY(undersidePlane, p.X, p.Y);
@@ -758,33 +836,127 @@ namespace KPLN_Tools.ExternalCommands
             return maxGap;
         }
 
-        private static bool TryGetTopZByVerticalIntersect(StairsRun run, XYZ pointXY, out double zTop)
+        private static RunTopSearchContext BuildRunTopSearchContext(Document doc, Stairs stairs, StairsRun run)
+        {
+            var context = new RunTopSearchContext
+            {
+                MinZ = double.NegativeInfinity,
+                MaxZ = double.PositiveInfinity
+            };
+
+            AddElementSolids(run, context.RunSolids);
+
+            BoundingBoxXYZ runBox = run.get_BoundingBox(null);
+            if (doc == null || runBox == null)
+                return context;
+
+            // Отделка ступеней иногда живёт внутри родительской Stairs, а не в StairsRun.
+            // Используем её только как небольшую добавку над найденным верхом текущего марша.
+            AddElementSolids(stairs, context.FinishSolids);
+
+            double xyPaddingFt = MmToInternal(50.0);
+            double belowRunFt = MmToInternal(50.0);
+            double aboveRunFt = GetMaxFinishThicknessFt();
+
+            context.MinZ = runBox.Min.Z - belowRunFt;
+            context.MaxZ = runBox.Max.Z + aboveRunFt;
+
+            Outline outline = new Outline(
+                new XYZ(runBox.Min.X - xyPaddingFt, runBox.Min.Y - xyPaddingFt, context.MinZ),
+                new XYZ(runBox.Max.X + xyPaddingFt, runBox.Max.Y + xyPaddingFt, context.MaxZ));
+
+            var categories = new List<BuiltInCategory>
+            {
+                BuiltInCategory.OST_Floors,
+                BuiltInCategory.OST_GenericModel,
+                BuiltInCategory.OST_Parts
+            };
+
+            var excludedIds = new HashSet<long> { IDHelper.ElIdValue(run.Id) };
+            if (stairs != null)
+                excludedIds.Add(IDHelper.ElIdValue(stairs.Id));
+
+            IEnumerable<Element> candidates;
+            try
+            {
+                candidates = new FilteredElementCollector(doc)
+                    .WhereElementIsNotElementType()
+                    .WherePasses(new ElementMulticategoryFilter(categories))
+                    .WherePasses(new BoundingBoxIntersectsFilter(outline))
+                    .ToElements();
+            }
+            catch
+            {
+                return context;
+            }
+
+            foreach (Element elem in candidates)
+            {
+                if (elem == null) continue;
+                if (excludedIds.Contains(IDHelper.ElIdValue(elem.Id))) continue;
+                if (IsOwnRouteShape(elem)) continue;
+
+                BoundingBoxXYZ bb;
+                try
+                {
+                    bb = elem.get_BoundingBox(null);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (bb == null) continue;
+                if (bb.Max.Z < context.MinZ || bb.Min.Z > context.MaxZ) continue;
+
+                AddElementSolids(elem, context.FinishSolids);
+            }
+
+            return context;
+        }
+
+        private static bool TryGetTopZByVerticalIntersect(RunTopSearchContext topSearch, XYZ pointXY, bool includeFinish, out double zTop)
         {
             zTop = double.NegativeInfinity;
 
-            Options opt = new Options
-            {
-                DetailLevel = ViewDetailLevel.Fine,
-                ComputeReferences = false,
-                IncludeNonVisibleObjects = false
-            };
+            if (topSearch == null || topSearch.RunSolids == null || topSearch.RunSolids.Count == 0)
+                return false;
 
-            GeometryElement ge = run.get_Geometry(opt);
-            if (ge == null) return false;
+            double rayPaddingFt = MmToInternal(1000.0);
 
-            var solids = new List<Solid>();
-            CollectSolidsRecursive(ge, Transform.Identity, solids);
-            if (solids.Count == 0) return false;
+            double topZ = double.IsPositiveInfinity(topSearch.MaxZ) ? MmToInternal(20000.0) : topSearch.MaxZ + rayPaddingFt;
+            double botZ = double.IsNegativeInfinity(topSearch.MinZ) ? -MmToInternal(20000.0) : topSearch.MinZ - rayPaddingFt;
+            if (topZ <= botZ) return false;
 
-#if Debug2023 || Debug2024 || Revit2023 || Revit2024
-            double big = UnitUtils.ConvertToInternalUnits(20000.0, UnitTypeId.Millimeters);
-#else
-            double big = UnitUtils.ConvertToInternalUnits(20000.0, DisplayUnitType.DUT_MILLIMETERS);
-#endif
-
-            XYZ pTop = new XYZ(pointXY.X, pointXY.Y, big);
-            XYZ pBot = new XYZ(pointXY.X, pointXY.Y, -big);
+            XYZ pTop = new XYZ(pointXY.X, pointXY.Y, topZ);
+            XYZ pBot = new XYZ(pointXY.X, pointXY.Y, botZ);
             Line line = Line.CreateBound(pTop, pBot);
+
+            if (!TryGetTopZFromSolids(topSearch.RunSolids, line, topSearch.MinZ, topSearch.MaxZ, out double runTopZ))
+                return false;
+
+            zTop = runTopZ;
+
+            if (!includeFinish || topSearch.FinishSolids == null || topSearch.FinishSolids.Count == 0)
+                return true;
+
+            double finishBottomToleranceFt = MmToInternal(5.0);
+            double minFinishZ = runTopZ - finishBottomToleranceFt;
+            double maxFinishZ = runTopZ + GetMaxFinishThicknessFt();
+
+            if (TryGetTopZFromSolids(topSearch.FinishSolids, line, minFinishZ, maxFinishZ, out double finishTopZ) && finishTopZ > zTop)
+                zTop = finishTopZ;
+
+            return true;
+        }
+
+        private static bool TryGetTopZFromSolids(List<Solid> solids, Line line, double minZ, double maxZ, out double topZ)
+        {
+            topZ = double.NegativeInfinity;
+            if (solids == null || solids.Count == 0 || line == null)
+                return false;
+
+            double zFilterTolFt = MmToInternal(5.0);
 
             var opts = new SolidCurveIntersectionOptions();
             opts.ResultType = SolidCurveIntersectionMode.CurveSegmentsInside;
@@ -816,12 +988,69 @@ namespace KPLN_Tools.ExternalCommands
                     XYZ a = seg.GetEndPoint(0);
                     XYZ b = seg.GetEndPoint(1);
 
-                    if (a != null && a.Z > zTop) zTop = a.Z;
-                    if (b != null && b.Z > zTop) zTop = b.Z;
+                    TryUseTopPoint(a, minZ, maxZ, zFilterTolFt, ref topZ);
+                    TryUseTopPoint(b, minZ, maxZ, zFilterTolFt, ref topZ);
                 }
             }
 
-            return !double.IsNegativeInfinity(zTop);
+            return !double.IsNegativeInfinity(topZ);
+        }
+
+        private static void TryUseTopPoint(XYZ p, double minZ, double maxZ, double zFilterTolFt, ref double topZ)
+        {
+            if (p == null) return;
+            if (!double.IsNegativeInfinity(minZ) && p.Z < minZ - zFilterTolFt) return;
+            if (!double.IsPositiveInfinity(maxZ) && p.Z > maxZ + zFilterTolFt) return;
+            if (p.Z > topZ) topZ = p.Z;
+        }
+
+        private static void AddElementSolids(Element elem, List<Solid> solids)
+        {
+            if (elem == null || solids == null) return;
+
+            GeometryElement ge;
+            try
+            {
+                ge = elem.get_Geometry(CreateFineGeometryOptions());
+            }
+            catch
+            {
+                return;
+            }
+
+            if (ge == null) return;
+
+            CollectSolidsRecursive(ge, Transform.Identity, solids);
+        }
+
+        private static Options CreateFineGeometryOptions()
+        {
+            return new Options
+            {
+                DetailLevel = ViewDetailLevel.Fine,
+                ComputeReferences = false,
+                IncludeNonVisibleObjects = false
+            };
+        }
+
+        private static bool IsOwnRouteShape(Element elem)
+        {
+            DirectShape ds = elem as DirectShape;
+            return ds != null && string.Equals(ds.ApplicationId, "KPLN_Tools", StringComparison.Ordinal);
+        }
+
+        private static double MmToInternal(double valueMm)
+        {
+#if Debug2023 || Debug2024 || Revit2023 || Revit2024
+            return UnitUtils.ConvertToInternalUnits(valueMm, UnitTypeId.Millimeters);
+#else
+            return UnitUtils.ConvertToInternalUnits(valueMm, DisplayUnitType.DUT_MILLIMETERS);
+#endif
+        }
+
+        private static double GetMaxFinishThicknessFt()
+        {
+            return MmToInternal(80.0);
         }
 
         private static void CollectSolidsRecursive(GeometryElement ge, Transform tr, List<Solid> solids)
@@ -852,22 +1081,15 @@ namespace KPLN_Tools.ExternalCommands
         {
             plane = null;
 
-            Options opt = new Options
-            {
-                DetailLevel = ViewDetailLevel.Fine,
-                ComputeReferences = false,
-                IncludeNonVisibleObjects = false
-            };
-
-            GeometryElement ge = elem.get_Geometry(opt);
-            if (ge == null) return false;
+            var solids = new List<Solid>();
+            AddElementSolids(elem, solids);
+            if (solids.Count == 0) return false;
 
             PlanarFace best = null;
             double bestScore = double.NegativeInfinity;
 
-            foreach (GeometryObject go in ge)
+            foreach (Solid s in solids)
             {
-                Solid s = go as Solid;
                 if (s == null || s.Volume < 1e-9) continue;
 
                 foreach (Face f in s.Faces)
@@ -948,6 +1170,201 @@ namespace KPLN_Tools.ExternalCommands
         // =========================
         //   ШИРИНА МАРША
         // =========================
+        private static RunClearWidthInfo GetRunClearWidthInfo(Document doc, Stairs stairs, StairsRun run, XYZ bottom, XYZ top, XYZ xP, XYZ yP, double lenPlan)
+        {
+            double nominalWidthFt = GetRunWidthFt(run, bottom, top);
+            var result = new RunClearWidthInfo
+            {
+                WidthFt = nominalWidthFt,
+                CenterOffsetFt = 0.0
+            };
+
+            if (doc == null || run == null || nominalWidthFt <= 1e-9 || lenPlan <= 1e-9)
+                return result;
+
+            BoundingBoxXYZ runBox = run.get_BoundingBox(null);
+            if (runBox == null)
+                return result;
+
+            double centerY = new XYZ(bottom.X, bottom.Y, 0).DotProduct(yP);
+            double clearMinY = centerY - nominalWidthFt / 2.0;
+            double clearMaxY = centerY + nominalWidthFt / 2.0;
+
+            double runX0 = new XYZ(bottom.X, bottom.Y, 0).DotProduct(xP);
+            double runX1 = new XYZ(top.X, top.Y, 0).DotProduct(xP);
+            if (runX1 < runX0)
+            {
+                double tmp = runX0;
+                runX0 = runX1;
+                runX1 = tmp;
+            }
+
+            double endMarginFt = Math.Min(lenPlan * 0.05, MmToInternal(300.0));
+            if (runX1 - runX0 > endMarginFt * 2.0)
+            {
+                runX0 += endMarginFt;
+                runX1 -= endMarginFt;
+            }
+
+            var categories = GetClearWidthObstacleCategories();
+            if (categories.Count == 0)
+                return result;
+
+            double searchPaddingFt = MmToInternal(600.0);
+            double searchAboveFt = MmToInternal(1600.0);
+            double searchBelowFt = MmToInternal(100.0);
+
+            Outline outline = new Outline(
+                new XYZ(runBox.Min.X - searchPaddingFt, runBox.Min.Y - searchPaddingFt, runBox.Min.Z - searchBelowFt),
+                new XYZ(runBox.Max.X + searchPaddingFt, runBox.Max.Y + searchPaddingFt, runBox.Max.Z + searchAboveFt));
+
+            var excludedIds = new HashSet<long> { IDHelper.ElIdValue(run.Id) };
+            if (stairs != null)
+                excludedIds.Add(IDHelper.ElIdValue(stairs.Id));
+
+            IEnumerable<Element> candidates;
+            try
+            {
+                candidates = new FilteredElementCollector(doc)
+                    .WhereElementIsNotElementType()
+                    .WherePasses(new ElementMulticategoryFilter(categories))
+                    .WherePasses(new BoundingBoxIntersectsFilter(outline))
+                    .ToElements();
+            }
+            catch
+            {
+                return result;
+            }
+
+            double sideToleranceFt = MmToInternal(150.0);
+            double minUsableWidthFt = MmToInternal(300.0);
+
+            foreach (Element elem in candidates)
+            {
+                if (elem == null) continue;
+                if (excludedIds.Contains(IDHelper.ElIdValue(elem.Id))) continue;
+                if (IsOwnRouteShape(elem)) continue;
+
+                var solids = new List<Solid>();
+                AddElementSolids(elem, solids);
+                if (solids.Count == 0) continue;
+
+                foreach (Solid solid in solids)
+                {
+                    if (!TryGetSolidProjectionRange(solid, xP, yP, out double minX, out double maxX, out double minY, out double maxY))
+                        continue;
+
+                    if (maxX < runX0 || minX > runX1)
+                        continue;
+
+                    bool fromLeft = maxY <= centerY && maxY > clearMinY - sideToleranceFt && minY < centerY;
+                    bool fromRight = minY >= centerY && minY < clearMaxY + sideToleranceFt && maxY > centerY;
+
+                    if (fromLeft)
+                        clearMinY = Math.Max(clearMinY, Math.Min(maxY, clearMaxY));
+
+                    if (fromRight)
+                        clearMaxY = Math.Min(clearMaxY, Math.Max(minY, clearMinY));
+                }
+            }
+
+            double clearWidthFt = clearMaxY - clearMinY;
+            if (clearWidthFt < minUsableWidthFt || clearWidthFt > nominalWidthFt)
+                return result;
+
+            if (nominalWidthFt - clearWidthFt < MmToInternal(1.0))
+                return result;
+
+            result.WidthFt = clearWidthFt;
+            result.CenterOffsetFt = (clearMinY + clearMaxY) * 0.5 - centerY;
+            return result;
+        }
+
+        private static List<BuiltInCategory> GetClearWidthObstacleCategories()
+        {
+            var categories = new List<BuiltInCategory>();
+
+            AddBuiltInCategoryIfDefined(categories, "OST_Railings");
+            AddBuiltInCategoryIfDefined(categories, "OST_StairsRailing");
+            AddBuiltInCategoryIfDefined(categories, "OST_RailingSystem");
+            AddBuiltInCategoryIfDefined(categories, "OST_RailingRail");
+            AddBuiltInCategoryIfDefined(categories, "OST_RailingTopRail");
+            AddBuiltInCategoryIfDefined(categories, "OST_RailingHandRail");
+            AddBuiltInCategoryIfDefined(categories, "OST_RailingSupport");
+            AddBuiltInCategoryIfDefined(categories, "OST_Walls");
+            AddBuiltInCategoryIfDefined(categories, "OST_Floors");
+            AddBuiltInCategoryIfDefined(categories, "OST_Parts");
+            AddBuiltInCategoryIfDefined(categories, "OST_GenericModel");
+
+            return categories;
+        }
+
+        private static void AddBuiltInCategoryIfDefined(List<BuiltInCategory> categories, string name)
+        {
+            try
+            {
+                var bic = (BuiltInCategory)Enum.Parse(typeof(BuiltInCategory), name);
+                if (!categories.Contains(bic))
+                    categories.Add(bic);
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool TryGetSolidProjectionRange(Solid solid, XYZ xP, XYZ yP, out double minX, out double maxX, out double minY, out double maxY)
+        {
+            minX = double.PositiveInfinity;
+            maxX = double.NegativeInfinity;
+            minY = double.PositiveInfinity;
+            maxY = double.NegativeInfinity;
+
+            if (solid == null || solid.Volume < 1e-9)
+                return false;
+
+            bool hasPoints = false;
+
+            foreach (Face face in solid.Faces)
+            {
+                Mesh mesh;
+                try
+                {
+                    mesh = face.Triangulate();
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (mesh == null) continue;
+
+                for (int i = 0; i < mesh.NumTriangles; i++)
+                {
+                    MeshTriangle triangle = mesh.get_Triangle(i);
+                    if (triangle == null) continue;
+
+                    for (int j = 0; j < 3; j++)
+                    {
+                        XYZ p = triangle.get_Vertex(j);
+                        if (p == null) continue;
+
+                        XYZ pxy = new XYZ(p.X, p.Y, 0);
+                        double tx = pxy.DotProduct(xP);
+                        double ty = pxy.DotProduct(yP);
+
+                        if (tx < minX) minX = tx;
+                        if (tx > maxX) maxX = tx;
+                        if (ty < minY) minY = ty;
+                        if (ty > maxY) maxY = ty;
+
+                        hasPoints = true;
+                    }
+                }
+            }
+
+            return hasPoints;
+        }
+
         private static double GetRunWidthFt(StairsRun run, XYZ bottom, XYZ top)
         {
             try
