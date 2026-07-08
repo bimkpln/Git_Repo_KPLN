@@ -389,6 +389,10 @@ namespace KPLN_CoordiantorAI.Forms
             string userMessage = InputTextBox.Text.Trim();
             if (string.IsNullOrEmpty(userMessage)) return;
 
+            DateTime requestTime = DateTime.Now;
+            string requestModelName = GetCurrentRevitModelName();
+            string requestViewName = GetCurrentRevitViewName();
+
             // Пользовательское сообщение
             var userMsg = new { role = "user", content = userMessage };
             ChatHistoryMessages.Add(userMsg);
@@ -462,6 +466,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                         if (!string.IsNullOrEmpty(finalContent) && finalContent.Trim().Length > 10)
                         {
+                            DateTime responseTime = DateTime.Now;
                             ChatHistory.Children.Add(CreateMessageBlock($"AI: {finalContent}", false));
 
                             // Ищем и удаляем всю цепочку вызовов инструментов
@@ -484,10 +489,20 @@ namespace KPLN_CoordiantorAI.Forms
                                 }
                             }
 
-                            // Добавляем чистый ответ ассистента (без tool_calls)
+                            /// Добавляем чистый ответ ассистента (без tool_calls)
                             ChatHistoryMessages.Add(new { role = "assistant", content = finalContent });
 
-                            _logger.LogWithTokens(userMessage, finalContent, _lastCacheHit, _lastCacheMiss, _lastCompletion, _lastTotal);
+                            _logger.LogWithTokens(
+                                userMessage,
+                                finalContent,
+                                _lastCacheHit,
+                                _lastCacheMiss,
+                                _lastCompletion,
+                                _lastTotal,
+                                requestTime,
+                                responseTime,
+                                requestModelName,
+                                requestViewName);
                             break;
                         }
                     }
@@ -498,7 +513,7 @@ namespace KPLN_CoordiantorAI.Forms
             {
                 ChatHistory.Children.Add(CreateMessageBlock($"Ошибка: {ex.Message}", false));
                 // Логируем ошибку (вопрос пользователя и текст ошибки)
-                _logger.Log(userMessage, $"ОШИБКА: {ex.Message}");
+                _logger.Log(userMessage, $"ОШИБКА: {ex.Message}", requestTime, DateTime.Now, requestModelName, requestViewName);
             }
             finally
             {
@@ -507,6 +522,28 @@ namespace KPLN_CoordiantorAI.Forms
                 ChatScrollViewer.ScrollToEnd();
             }
         }
+
+
+
+        private string GetCurrentRevitModelName()
+        {
+            if (_doc == null)
+                return "Документ Revit не найден";
+
+            if (!string.IsNullOrWhiteSpace(_doc.Title))
+                return _doc.Title;
+
+            return string.IsNullOrWhiteSpace(_doc.PathName) ? "Без имени" : System.IO.Path.GetFileNameWithoutExtension(_doc.PathName);
+        }
+
+        private string GetCurrentRevitViewName()
+        {
+            Autodesk.Revit.DB.View activeView = _doc == null ? null : _doc.ActiveView;
+            return activeView == null || string.IsNullOrWhiteSpace(activeView.Name)
+                ? "Активный вид не найден"
+                : activeView.Name;
+        }
+
 
 
         private void ProcessSingleToolCall(JObject toolCall)
