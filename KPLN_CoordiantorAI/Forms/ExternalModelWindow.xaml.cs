@@ -64,6 +64,83 @@ namespace KPLN_CoordiantorAI.Forms
         private ConnectionType _connectionType;
         private ExternalModelSettings _settings;
 
+        private enum ModelToolArea
+        {
+            ViewContext,
+            Visibility,
+            Categories,
+            Families,
+            Parameters,
+            Geometry,
+            ModelInfo,
+            Worksets,
+            Selection,
+            Schedules,
+            Journal,
+            Other
+        }
+
+        private static readonly Dictionary<string, ModelToolArea> ToolAreas = new Dictionary<string, ModelToolArea>
+        {
+            { "get_active_view_in_revit", ModelToolArea.ViewContext },
+            { "get_all_elements_shown_in_view", ModelToolArea.Visibility },
+
+            { "get_category_by_keyword", ModelToolArea.Categories },
+            { "get_elements_by_category", ModelToolArea.Categories },
+            { "get_model_categories", ModelToolArea.Categories },
+            { "get_categories_from_elementids", ModelToolArea.Categories },
+            { "get_object_classes_from_elementids", ModelToolArea.Categories },
+
+            { "get_element_types_for_elementids", ModelToolArea.Families },
+            { "get_all_elementids_for_specific_type_ids", ModelToolArea.Families },
+            { "get_all_used_families_in_model", ModelToolArea.Families },
+            { "get_all_used_families_of_category", ModelToolArea.Families },
+            { "get_all_used_types_of_a_family", ModelToolArea.Families },
+            { "get_all_elements_of_specific_families", ModelToolArea.Families },
+
+            { "get_parameters_from_elementid", ModelToolArea.Parameters },
+            { "get_parameter_value_for_element_ids", ModelToolArea.Parameters },
+            { "get_all_additional_properties_from_elementid", ModelToolArea.Parameters },
+            { "get_additional_property_for_all_elementids", ModelToolArea.Parameters },
+
+            { "get_location_for_element_ids", ModelToolArea.Geometry },
+            { "get_boundingboxes_for_element_ids", ModelToolArea.Geometry },
+            { "get_boundary_lines", ModelToolArea.Geometry },
+            { "get_room_boundary_lines", ModelToolArea.Geometry },
+            { "get_host_id_for_element_ids", ModelToolArea.Geometry },
+            { "get_material_layers_from_types", ModelToolArea.Geometry },
+            { "set_view_section_box_to_elements", ModelToolArea.Geometry },
+
+            { "get_model_file_info", ModelToolArea.ModelInfo },
+            { "get_all_project_units", ModelToolArea.ModelInfo },
+            { "get_all_warnings_in_the_model", ModelToolArea.ModelInfo },
+
+            { "get_all_workset_information", ModelToolArea.Worksets },
+            { "get_worksets_from_elementids", ModelToolArea.Worksets },
+            { "get_worksharing_information_for_element_ids", ModelToolArea.Worksets },
+
+            { "get_user_selection_in_revit", ModelToolArea.Selection },
+            { "set_user_selection_in_revit", ModelToolArea.Selection },
+
+            { "get_graphic_overrides_for_element_ids_in_view", ModelToolArea.Visibility },
+            { "get_graphic_filters_applied_to_views", ModelToolArea.Visibility },
+            { "get_all_parameter_filters_in_model", ModelToolArea.Visibility },
+            { "get_graphic_overrides_view_filters", ModelToolArea.Visibility },
+            { "get_category_visibility_overrides_in_view", ModelToolArea.Visibility },
+            { "get_workset_visibility_in_view", ModelToolArea.Visibility },
+            { "get_link_graphics_overrides_in_view", ModelToolArea.Visibility },
+            { "get_if_elements_pass_filter", ModelToolArea.Visibility },
+
+            { "get_viewports_and_schedules_on_sheets", ModelToolArea.Schedules },
+            { "get_schedules_info_and_columns", ModelToolArea.Schedules },
+            { "get_schedule_sorting_info", ModelToolArea.Schedules },
+
+            { "get_journal_entries_since", ModelToolArea.Journal }
+        };
+
+
+
+
         private int _lastCacheHit = 0;
         private int _lastCacheMiss = 0;
         private int _lastCompletion = 0;
@@ -71,6 +148,7 @@ namespace KPLN_CoordiantorAI.Forms
 
 
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly Dictionary<ModelToolArea, int> _currentToolAreaStats = new Dictionary<ModelToolArea, int>();
         public List<object> ChatHistoryMessages { get; } = new List<object>();
 
         private Border _typingIndicator;
@@ -389,6 +467,11 @@ namespace KPLN_CoordiantorAI.Forms
             string userMessage = InputTextBox.Text.Trim();
             if (string.IsNullOrEmpty(userMessage)) return;
 
+            DateTime requestTime = DateTime.Now;
+            string requestModelName = GetCurrentRevitModelName();
+            string requestViewName = GetCurrentRevitViewName();
+            _currentToolAreaStats.Clear();
+
             // Пользовательское сообщение
             var userMsg = new { role = "user", content = userMessage };
             ChatHistoryMessages.Add(userMsg);
@@ -462,6 +545,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                         if (!string.IsNullOrEmpty(finalContent) && finalContent.Trim().Length > 10)
                         {
+                            DateTime responseTime = DateTime.Now;
                             ChatHistory.Children.Add(CreateMessageBlock($"AI: {finalContent}", false));
 
                             // Ищем и удаляем всю цепочку вызовов инструментов
@@ -484,10 +568,21 @@ namespace KPLN_CoordiantorAI.Forms
                                 }
                             }
 
-                            // Добавляем чистый ответ ассистента (без tool_calls)
+                            /// Добавляем чистый ответ ассистента (без tool_calls)
                             ChatHistoryMessages.Add(new { role = "assistant", content = finalContent });
 
-                            _logger.LogWithTokens(userMessage, finalContent, _lastCacheHit, _lastCacheMiss, _lastCompletion, _lastTotal);
+                            _logger.LogWithTokens(
+                                userMessage,
+                                finalContent,
+                                _lastCacheHit,
+                                _lastCacheMiss,
+                                _lastCompletion,
+                                _lastTotal,
+                                requestTime,
+                                responseTime,
+                                requestModelName,
+                                requestViewName,
+                                GetCurrentToolAreaStatsForLog());
                             break;
                         }
                     }
@@ -498,7 +593,7 @@ namespace KPLN_CoordiantorAI.Forms
             {
                 ChatHistory.Children.Add(CreateMessageBlock($"Ошибка: {ex.Message}", false));
                 // Логируем ошибку (вопрос пользователя и текст ошибки)
-                _logger.Log(userMessage, $"ОШИБКА: {ex.Message}");
+                _logger.Log(userMessage, $"ОШИБКА: {ex.Message}", requestTime, DateTime.Now, requestModelName, requestViewName, GetCurrentToolAreaStatsForLog());
             }
             finally
             {
@@ -509,9 +604,58 @@ namespace KPLN_CoordiantorAI.Forms
         }
 
 
+
+        private string GetCurrentRevitModelName()
+        {
+            if (_doc == null)
+                return "Документ Revit не найден";
+
+            if (!string.IsNullOrWhiteSpace(_doc.Title))
+                return _doc.Title;
+
+            return string.IsNullOrWhiteSpace(_doc.PathName) ? "Без имени" : System.IO.Path.GetFileNameWithoutExtension(_doc.PathName);
+        }
+
+        private string GetCurrentRevitViewName()
+        {
+            Autodesk.Revit.DB.View activeView = _doc == null ? null : _doc.ActiveView;
+            return activeView == null || string.IsNullOrWhiteSpace(activeView.Name)
+                ? "Активный вид не найден"
+                : activeView.Name;
+        }
+
+        private void RegisterToolAreaCall(string toolName)
+        {
+            ModelToolArea area;
+            if (string.IsNullOrWhiteSpace(toolName) || !ToolAreas.TryGetValue(toolName, out area))
+                area = ModelToolArea.Other;
+
+            int currentCount;
+            _currentToolAreaStats.TryGetValue(area, out currentCount);
+            _currentToolAreaStats[area] = currentCount + 1;
+        }
+
+        private Dictionary<string, int> GetCurrentToolAreaStatsForLog()
+        {
+            Dictionary<string, int> stats = new Dictionary<string, int>();
+            foreach (ModelToolArea area in Enum.GetValues(typeof(ModelToolArea)))
+            {
+                int count;
+                if (_currentToolAreaStats.TryGetValue(area, out count) && count > 0)
+                    stats[area.ToString()] = count;
+            }
+
+            return stats;
+        }
+
+
+
+
+
         private void ProcessSingleToolCall(JObject toolCall)
         {
             string toolName = toolCall["function"]?["name"]?.ToString();
+            RegisterToolAreaCall(toolName);
             string toolCallId = toolCall["id"]?.ToString() ?? Guid.NewGuid().ToString();
 
             string toolResult = "";
@@ -2832,10 +2976,10 @@ namespace KPLN_CoordiantorAI.Forms
 
                         // Сохраняем в логгер (нужно будет передать вопрос и ответ)
                         // Пока сохраняем в поле класса, чтобы использовать позже
-                        _lastCacheHit = cacheHit;
-                        _lastCacheMiss = cacheMiss;
-                        _lastCompletion = completion;
-                        _lastTotal = total;
+                        _lastCacheHit += cacheHit;
+                        _lastCacheMiss += cacheMiss;
+                        _lastCompletion += completion;
+                        _lastTotal += total;
                     }
                 }
                 catch (Exception ex)
