@@ -105,10 +105,12 @@
     <Compile Include="Common\Lists\TBlockEntity.cs" />
     <Compile Include="Common\Lists\UniCodesCollection.cs" />
     <Compile Include="Common\UserErrorException.cs" />
+    <Compile Include="ExecutableCommand\DeleteElemsExcCmd.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListIZMFilling.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListRevisionClouds.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListTBlockParamCopier.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListRenumber.cs" />
+    <Compile Include="ExternalCommands\Views\ExtCmdDeleteUnusedViews.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdViewTemplateCopy.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdCutCopy.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdViewTemplateCopySolo.cs" />
@@ -121,16 +123,22 @@
     <Compile Include="Forms\CopyViewFormSelectManyDocs.xaml.cs">
       <DependentUpon>CopyViewFormSelectManyDocs.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\DeleteUnusedViewsForm.xaml.cs">
+      <DependentUpon>DeleteUnusedViewsForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\CopyViewSoloForm.xaml.cs">
       <DependentUpon>CopyViewSoloForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Entities\DeleteUnusedViewsM.cs" />
+    <Compile Include="Forms\Entities\TreeElementEntity.cs" />
     <Compile Include="Forms\FrmIZMFilling.xaml.cs">
       <DependentUpon>FrmIZMFilling.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ListRenumberForm.xaml.cs">
       <DependentUpon>ListRenumberForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\MVVM\ListRenumberVM.cs" />
+    <Compile Include="Forms\ViewModels\DeleteUnusedViewsVM.cs" />
+    <Compile Include="Forms\ViewModels\ListRenumberVM.cs" />
     <Compile Include="Forms\Commands\RelayCommand.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Module.cs" />
@@ -208,6 +216,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\DeleteUnusedViewsForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\CopyViewSoloForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -219,6 +231,9 @@
     <Page Include="Forms\ListRenumberForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\Styles.xaml">
+      <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
@@ -281,7 +296,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="ExecutableCommand\" />
+    <Resource Include="Imagens\CmdDeleteViews16.png" />
+    <Resource Include="Imagens\CmdDeleteViews16_dark.png" />
+    <Resource Include="Imagens\CmdDeleteViews32.png" />
+    <Resource Include="Imagens\CmdDeleteViews32_dark.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Imagens\ViewTemplateCopySolo16.png" />
@@ -294,6 +312,9 @@
     <Resource Include="Imagens\CommandIZMFilling16_dark.png" />
     <Resource Include="Imagens\CommandIZMFilling32.png" />
     <Resource Include="Imagens\CommandIZMFilling32_dark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Forms\Converters\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild">
