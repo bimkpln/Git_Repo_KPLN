@@ -14,62 +14,77 @@ namespace KPLN_UserDataAgent
     public class Module : IExternalModule
     {
         private static UserDataRepository _repository;
+        private static PluginUsageRepository _pluginRepository;
         private static ErrorGuard _errorGuard;
         private static CentralSyncService _syncService;
+        private static PluginUsageSyncService _pluginSyncService;
+        private static PluginUsageTracker _pluginUsageTracker;
+        private static NonDefaultCommandBindingService _nonDefaultCommandBindingService;
         private static bool _isInitialized;
 
         public Result Close()
         {
-            Action close = () =>
-            {
-                _syncService?.SyncNow("Закрытие Revit");
-                _syncService?.Dispose();
-            };
-
-            if (_errorGuard == null)
-                close();
-            else
-                _errorGuard.Run("Module.Close", close);
+            SafeRun("Module.Close.Sync", () => _syncService?.SyncNow("Закрытие Revit"));
+            SafeRun("Module.Close.PluginSync", () => _pluginSyncService?.SyncNow("Закрытие Revit"));
+            SafeDisposePluginUsage();
+            SafeRun("Module.Close.DisposeSync", () => _syncService?.Dispose());
 
             return Result.Succeeded;
         }
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
-            ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
-
-            _repository = new UserDataRepository(ModuleData.LocalDatabasePath, ModuleData.CentralDatabasePath);
-            _errorGuard = new ErrorGuard(ModuleData.ShowDebugErrors, _repository.InsertError);
-
-            _errorGuard.Run("Module.Execute", () =>
+            try
             {
-                _repository.InitializeLocal();
+                ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
 
-                if (_isInitialized)
-                    return;
+                _repository = new UserDataRepository(ModuleData.LocalDatabasePath, ModuleData.CentralDatabasePath);
+                _errorGuard = new ErrorGuard(ModuleData.ShowDebugErrors, _repository.InsertError);
 
-                AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-                TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+                _errorGuard.Run("Module.Execute", () =>
+                {
+                    _repository.InitializeLocal();
 
-                application.ControlledApplication.DocumentOpened += OnDocumentOpened;
-                application.ControlledApplication.DocumentClosing += OnDocumentClosing;
-                application.ControlledApplication.DocumentChanged += OnDocumentChanged;
-                application.ControlledApplication.DocumentSaving += OnDocumentSaving;
-                application.ControlledApplication.DocumentSaved += OnDocumentSaved;
-                application.ControlledApplication.DocumentSavingAs += OnDocumentSavingAs;
-                application.ControlledApplication.DocumentSavedAs += OnDocumentSavedAs;
-                application.ControlledApplication.DocumentSynchronizingWithCentral += OnDocumentSynchronizingWithCentral;
-                application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronizedWithCentral;
-                application.ViewActivated += OnViewActivated;
-                application.Idling += OnIdling;
+                    if (_isInitialized)
+                        return;
 
-                _syncService = new CentralSyncService(_repository, _errorGuard);
-                _syncService.Start();
+                    AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+                    TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
-                _isInitialized = true;
-            });
+                    application.ControlledApplication.DocumentOpened += OnDocumentOpened;
+                    application.ControlledApplication.DocumentClosing += OnDocumentClosing;
+                    application.ControlledApplication.DocumentChanged += OnDocumentChanged;
+                    application.ControlledApplication.DocumentSaving += OnDocumentSaving;
+                    application.ControlledApplication.DocumentSaved += OnDocumentSaved;
+                    application.ControlledApplication.DocumentSavingAs += OnDocumentSavingAs;
+                    application.ControlledApplication.DocumentSavedAs += OnDocumentSavedAs;
+                    application.ControlledApplication.DocumentSynchronizingWithCentral += OnDocumentSynchronizingWithCentral;
+                    application.ControlledApplication.DocumentSynchronizedWithCentral += OnDocumentSynchronizedWithCentral;
+                    application.ViewActivated += OnViewActivated;
+                    application.Idling += OnIdling;
+
+                    _syncService = new CentralSyncService(_repository, _errorGuard);
+                    _syncService.Start();
+
+                    InitializePluginUsage(application, tabName);
+
+                    _isInitialized = true;
+                });
+            }
+            catch (Exception exception)
+            {
+                SafeQueueException("Module.Execute.Fatal", exception);
+            }
 
             return Result.Succeeded;
+        }
+
+        public static IDisposable BeginPluginExecution(string tabName, string buttonName)
+        {
+            PluginUsageTracker tracker = _pluginUsageTracker;
+            return tracker == null
+                ? EmptyDisposable.Instance
+                : tracker.BeginExecution(tabName, buttonName);
         }
 
         private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs args)
@@ -77,12 +92,12 @@ namespace KPLN_UserDataAgent
             Exception exception = args.ExceptionObject as Exception
                 ?? new Exception(args.ExceptionObject?.ToString() ?? "Unknown unhandled exception");
 
-            _errorGuard?.HandleException("AppDomain.UnhandledException", exception);
+            SafeQueueException("AppDomain.UnhandledException", exception);
         }
 
         private static void OnUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs args)
         {
-            _errorGuard?.HandleException("TaskScheduler.UnobservedTaskException", args.Exception);
+            SafeQueueException("TaskScheduler.UnobservedTaskException", args.Exception);
             args.SetObserved();
         }
 
@@ -133,18 +148,22 @@ namespace KPLN_UserDataAgent
 
         private static void OnIdling(object sender, IdlingEventArgs args)
         {
-            _errorGuard?.ShowPendingDialog();
+            SafeRun("Module.PluginUsage.Idling", () => _nonDefaultCommandBindingService?.OnIdling());
         }
 
         private static void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            _errorGuard.Run("DocumentChanged", () =>
-            {
-                Document document = args.GetDocument();
-                if (document == null)
-                    return;
+            Document document = null;
+            string eventName = "DocumentChanged";
+            string[] transactions = new string[0];
+            int addedCount = 0;
+            int modifiedCount = 0;
+            int deletedCount = 0;
 
-                string eventName = "DocumentChanged";
+            SafeRun("DocumentChanged.Read", () =>
+            {
+                document = args.GetDocument();
+
                 try
                 {
                     eventName = string.Format("DocumentChanged.{0}", args.Operation);
@@ -154,24 +173,40 @@ namespace KPLN_UserDataAgent
                 }
 
                 IEnumerable<string> transactionNames = args.GetTransactionNames();
-                string[] transactions = transactionNames == null
+                transactions = transactionNames == null
                     ? new string[0]
                     : transactionNames.Where(t => !string.IsNullOrWhiteSpace(t)).Distinct().ToArray();
 
-                int addedCount = SafeCount(() => args.GetAddedElementIds());
-                int modifiedCount = SafeCount(() => args.GetModifiedElementIds());
-                int deletedCount = SafeCount(() => args.GetDeletedElementIds());
+                addedCount = SafeCount(() => args.GetAddedElementIds());
+                modifiedCount = SafeCount(() => args.GetModifiedElementIds());
+                deletedCount = SafeCount(() => args.GetDeletedElementIds());
+            });
+
+            SafeRun("DocumentChanged.UserEvents", () =>
+            {
+                if (document == null)
+                    return;
 
                 if (transactions.Length == 0)
                 {
                     WriteEventUnsafe(eventName, document, string.Empty, addedCount, modifiedCount, deletedCount);
-                    return;
                 }
-
-                foreach (string transactionName in transactions)
+                else
                 {
-                    WriteEventUnsafe(eventName, document, transactionName, addedCount, modifiedCount, deletedCount);
+                    foreach (string transactionName in transactions)
+                    {
+                        WriteEventUnsafe(eventName, document, transactionName, addedCount, modifiedCount, deletedCount);
+                    }
                 }
+            });
+
+            SafeRun("DocumentChanged.PluginUsage", () =>
+            {
+                _pluginUsageTracker?.RecordDocumentChanged(
+                    transactions,
+                    addedCount,
+                    modifiedCount,
+                    deletedCount);
             });
         }
 
@@ -213,6 +248,80 @@ namespace KPLN_UserDataAgent
             catch
             {
                 return 0;
+            }
+        }
+
+        private static void InitializePluginUsage(UIControlledApplication application, string tabName)
+        {
+            try
+            {
+                _pluginRepository = new PluginUsageRepository(
+                    ModuleData.PluginLocalDatabasePath,
+                    ModuleData.PluginCentralDatabasePath);
+                _pluginRepository.InitializeLocal();
+                _pluginSyncService = new PluginUsageSyncService(_pluginRepository, _errorGuard);
+                _pluginUsageTracker = new PluginUsageTracker(
+                    _pluginRepository,
+                    _pluginSyncService,
+                    _errorGuard,
+                    tabName);
+                _nonDefaultCommandBindingService = new NonDefaultCommandBindingService(
+                    application,
+                    _pluginUsageTracker,
+                    _errorGuard);
+                _pluginSyncService.Start();
+            }
+            catch (Exception exception)
+            {
+                SafeQueueException("Module.PluginUsage.Initialize", exception);
+                SafeDisposePluginUsage();
+            }
+        }
+
+        private static void SafeDisposePluginUsage()
+        {
+            SafeRun("Module.PluginUsage.DisposeCommands", () => _nonDefaultCommandBindingService?.Dispose());
+            SafeRun("Module.PluginUsage.DisposeSync", () => _pluginSyncService?.Dispose());
+
+            _nonDefaultCommandBindingService = null;
+            _pluginUsageTracker = null;
+            _pluginSyncService = null;
+            _pluginRepository = null;
+        }
+
+        private static void SafeRun(string source, Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                SafeQueueException(source, exception);
+            }
+        }
+
+        private static void SafeQueueException(string source, Exception exception)
+        {
+            try
+            {
+                _errorGuard?.QueueException(source, exception);
+            }
+            catch
+            {
+            }
+        }
+
+        private sealed class EmptyDisposable : IDisposable
+        {
+            public static readonly EmptyDisposable Instance = new EmptyDisposable();
+
+            private EmptyDisposable()
+            {
+            }
+
+            public void Dispose()
+            {
             }
         }
     }

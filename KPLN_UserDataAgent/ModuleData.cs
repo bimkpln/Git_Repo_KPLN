@@ -43,6 +43,15 @@ namespace KPLN_UserDataAgent
             get { return Path.Combine(StatisticsDirectory, "UserEvents"); }
         }
 
+        /// <summary>
+        /// Корневая папка центральных SQLite-баз запусков плагинов.
+        /// Внутри создаются файлы по отделу и месяцу с PluginEvents.
+        /// </summary>
+        public static string PluginCentralDatabasePath
+        {
+            get { return Path.Combine(StatisticsDirectory, "UserPluginsEvents"); }
+        }
+
         public static string DatabasePath
         {
             get { return CentralDatabasePath; }
@@ -66,6 +75,21 @@ namespace KPLN_UserDataAgent
                     "KPLN",
                     "UserDataAgent",
                     "KPLN_UserDataAgent_Local.db");
+            }
+        }
+
+        /// <summary>
+        /// Локальная SQLite-база-очередь запусков плагинов на диске пользователя.
+        /// </summary>
+        public static string PluginLocalDatabasePath
+        {
+            get
+            {
+                return Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "KPLN",
+                    "UserDataAgent",
+                    "KPLN_UserDataAgentPlugin_Local.db");
             }
         }
 
@@ -122,6 +146,12 @@ namespace KPLN_UserDataAgent
         /// Текущий месяц входит в этот лимит.
         /// </summary>
         public const int CentralDatabaseRetentionMonths = 0;
+
+        /// <summary>
+        /// Количество последних месяцев, которые хранятся в центральных базах запусков плагинов.
+        /// 0 означает, что агент не удаляет старые центральные базы автоматически.
+        /// </summary>
+        public const int PluginCentralDatabaseRetentionMonths = 0;
 
         /// <summary>
         /// Таймаут ожидания блокировки локальной SQLite-базы пользователя.

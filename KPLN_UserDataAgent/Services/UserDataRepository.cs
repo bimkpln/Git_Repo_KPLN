@@ -9,6 +9,7 @@ namespace KPLN_UserDataAgent.Services
 {
     internal sealed class UserDataRepository
     {
+        private const string InvalidLocalSchemaMessagePrefix = "Local database schema is invalid:";
         private readonly object _localLock = new object();
         private readonly object _centralSchemaLock = new object();
         private readonly HashSet<string> _ensuredCentralDatabasePaths =
@@ -46,33 +47,14 @@ namespace KPLN_UserDataAgent.Services
                 if (_isLocalSchemaInitialized && File.Exists(_localDatabasePath))
                     return;
 
-                using (SQLiteConnection connection = CreateConnection(_localDatabasePath, ModuleData.LocalBusyTimeoutMs))
-                {
-                    connection.Open();
-                    ExecuteNonQuery(connection, null, "PRAGMA journal_mode=WAL;");
-                    ExecuteNonQuery(connection, null, "PRAGMA busy_timeout=" + ModuleData.LocalBusyTimeoutMs + ";");
-                    EnsureLocalSchema(connection, null);
-                    _isLocalSchemaInitialized = true;
-                }
+                InitializeLocalWithRecovery();
             }
         }
 
         public void InsertEvent(UserEventRecord userEvent)
         {
-            InitializeLocal();
-
-            lock (_localLock)
-            {
-                using (SQLiteConnection connection = CreateConnection(_localDatabasePath, ModuleData.LocalBusyTimeoutMs))
-                {
-                    connection.Open();
-                    using (SQLiteTransaction transaction = connection.BeginTransaction())
-                    {
-                        InsertLocalUserEvent(connection, transaction, userEvent);
-                        transaction.Commit();
-                    }
-                }
-            }
+            ExecuteLocalWriteWithRecovery((connection, transaction) =>
+                InsertLocalUserEvent(connection, transaction, userEvent));
         }
 
         public void InsertError(string source, Exception exception)
@@ -81,8 +63,70 @@ namespace KPLN_UserDataAgent.Services
                 return;
 
             AgentErrorRecord error = AgentErrorRecord.Create(source, exception);
+
+            ExecuteLocalWriteWithRecovery((connection, transaction) =>
+                InsertLocalAgentError(connection, transaction, error));
+        }
+
+        private void InitializeLocalWithRecovery()
+        {
+            bool databaseFilesExistedBeforeInitialize = LocalDatabaseFilesExist(_localDatabasePath);
+
+            try
+            {
+                OpenAndEnsureLocalDatabase(databaseFilesExistedBeforeInitialize);
+            }
+            catch (Exception exception)
+            {
+                if (!databaseFilesExistedBeforeInitialize || !IsRecoverableLocalDatabaseException(exception))
+                    throw;
+
+                RecreateLocalDatabase();
+                OpenAndEnsureLocalDatabase(false);
+            }
+        }
+
+        private void OpenAndEnsureLocalDatabase(bool validateExistingSchema)
+        {
+            using (SQLiteConnection connection = CreateConnection(_localDatabasePath, ModuleData.LocalBusyTimeoutMs))
+            {
+                connection.Open();
+                ExecuteNonQuery(connection, null, "PRAGMA journal_mode=WAL;");
+                ExecuteNonQuery(connection, null, "PRAGMA busy_timeout=" + ModuleData.LocalBusyTimeoutMs + ";");
+                if (validateExistingSchema)
+                    ValidateLocalSchema(connection, null);
+
+                EnsureLocalSchema(connection, null);
+                ValidateLocalSchema(connection, null);
+                _isLocalSchemaInitialized = true;
+            }
+        }
+
+        private void ExecuteLocalWriteWithRecovery(Action<SQLiteConnection, SQLiteTransaction> writeAction)
+        {
             InitializeLocal();
 
+            try
+            {
+                ExecuteLocalWrite(writeAction);
+            }
+            catch (Exception exception)
+            {
+                if (!LocalDatabaseFilesExist(_localDatabasePath) || !IsRecoverableLocalDatabaseException(exception))
+                    throw;
+
+                lock (_localLock)
+                {
+                    RecreateLocalDatabase();
+                }
+
+                InitializeLocal();
+                ExecuteLocalWrite(writeAction);
+            }
+        }
+
+        private void ExecuteLocalWrite(Action<SQLiteConnection, SQLiteTransaction> writeAction)
+        {
             lock (_localLock)
             {
                 using (SQLiteConnection connection = CreateConnection(_localDatabasePath, ModuleData.LocalBusyTimeoutMs))
@@ -90,7 +134,7 @@ namespace KPLN_UserDataAgent.Services
                     connection.Open();
                     using (SQLiteTransaction transaction = connection.BeginTransaction())
                     {
-                        InsertLocalAgentError(connection, transaction, error);
+                        writeAction(connection, transaction);
                         transaction.Commit();
                     }
                 }
@@ -225,6 +269,9 @@ namespace KPLN_UserDataAgent.Services
                     if (remainingEvents > 0)
                         userEvents.AddRange(LoadPendingEvents(databasePath, remainingEvents));
 
+                    if (!File.Exists(databasePath))
+                        continue;
+
                     int remainingErrors = batchSize - errors.Count;
                     if (remainingErrors > 0)
                         errors.AddRange(LoadPendingErrors(databasePath, remainingErrors));
@@ -240,43 +287,55 @@ namespace KPLN_UserDataAgent.Services
         private IEnumerable<UserEventRecord> LoadPendingEvents(string databasePath, int batchSize)
         {
             List<UserEventRecord> result = new List<UserEventRecord>();
-            using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
-            using (SQLiteCommand command = connection.CreateCommand())
+            try
             {
-                connection.Open();
-                EnsureLocalSchema(connection, null);
-                command.CommandText =
-                    "SELECT ue.Id, ue.SyncId, ue.EventTime, ue.WindowsUser, ue.DepartmentKey, ue.EventTransactionId, " +
-                    "et.EventName, et.TransactionName, " +
-                    "ue.AddedCount, ue.ModifiedCount, ue.DeletedCount " +
-                    "FROM UserEvents ue " +
-                    "LEFT JOIN EventTransactions et ON et.Id=ue.EventTransactionId " +
-                    "WHERE ue.IsSynced=0 " +
-                    "ORDER BY ue.Id " +
-                    "LIMIT @Limit;";
-                command.Parameters.AddWithValue("@Limit", batchSize);
-
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
+                using (SQLiteCommand command = connection.CreateCommand())
                 {
-                    while (reader.Read())
+                    connection.Open();
+                    ValidateLocalSchema(connection, null);
+                    EnsureLocalSchema(connection, null);
+                    ValidateLocalSchema(connection, null);
+                    command.CommandText =
+                        "SELECT ue.Id, ue.SyncId, ue.EventTime, ue.WindowsUser, ue.DepartmentKey, ue.EventTransactionId, " +
+                        "et.EventName, et.TransactionName, " +
+                        "ue.AddedCount, ue.ModifiedCount, ue.DeletedCount " +
+                        "FROM UserEvents ue " +
+                        "LEFT JOIN EventTransactions et ON et.Id=ue.EventTransactionId " +
+                        "WHERE ue.IsSynced=0 " +
+                        "ORDER BY ue.Id " +
+                        "LIMIT @Limit;";
+                    command.Parameters.AddWithValue("@Limit", batchSize);
+
+                    using (SQLiteDataReader reader = command.ExecuteReader())
                     {
-                        result.Add(new UserEventRecord
+                        while (reader.Read())
                         {
-                            LocalId = Convert.ToInt64(reader["Id"]),
-                            LocalDatabasePath = databasePath,
-                            SyncId = Convert.ToString(reader["SyncId"]),
-                            EventTime = Convert.ToString(reader["EventTime"]),
-                            WindowsUser = Convert.ToString(reader["WindowsUser"]),
-                            DepartmentKey = Convert.ToString(reader["DepartmentKey"]),
-                            EventTransactionId = Convert.ToInt64(reader["EventTransactionId"]),
-                            EventName = Convert.ToString(reader["EventName"]),
-                            TransactionName = Convert.ToString(reader["TransactionName"]),
-                            AddedCount = ReadInt(reader, "AddedCount"),
-                            ModifiedCount = ReadInt(reader, "ModifiedCount"),
-                            DeletedCount = ReadInt(reader, "DeletedCount")
-                        });
+                            result.Add(new UserEventRecord
+                            {
+                                LocalId = Convert.ToInt64(reader["Id"]),
+                                LocalDatabasePath = databasePath,
+                                SyncId = Convert.ToString(reader["SyncId"]),
+                                EventTime = Convert.ToString(reader["EventTime"]),
+                                WindowsUser = Convert.ToString(reader["WindowsUser"]),
+                                DepartmentKey = Convert.ToString(reader["DepartmentKey"]),
+                                EventTransactionId = Convert.ToInt64(reader["EventTransactionId"]),
+                                EventName = Convert.ToString(reader["EventName"]),
+                                TransactionName = Convert.ToString(reader["TransactionName"]),
+                                AddedCount = ReadInt(reader, "AddedCount"),
+                                ModifiedCount = ReadInt(reader, "ModifiedCount"),
+                                DeletedCount = ReadInt(reader, "DeletedCount")
+                            });
+                        }
                     }
                 }
+            }
+            catch (Exception exception)
+            {
+                if (TryDeleteRecoverableLocalQueueDatabase(databasePath, exception))
+                    return result;
+
+                throw;
             }
 
             return result;
@@ -285,38 +344,50 @@ namespace KPLN_UserDataAgent.Services
         private IEnumerable<AgentErrorRecord> LoadPendingErrors(string databasePath, int batchSize)
         {
             List<AgentErrorRecord> result = new List<AgentErrorRecord>();
-            using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
-            using (SQLiteCommand command = connection.CreateCommand())
+            try
             {
-                connection.Open();
-                EnsureLocalSchema(connection, null);
-                command.CommandText =
-                    "SELECT Id, SyncId, ErrorTime, WindowsUser, DepartmentKey, Source, ErrorType, ErrorMessage, ErrorStackTrace " +
-                    "FROM AgentErrors " +
-                    "WHERE IsSynced=0 " +
-                    "ORDER BY Id " +
-                    "LIMIT @Limit;";
-                command.Parameters.AddWithValue("@Limit", batchSize);
-
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
+                using (SQLiteCommand command = connection.CreateCommand())
                 {
-                    while (reader.Read())
+                    connection.Open();
+                    ValidateLocalSchema(connection, null);
+                    EnsureLocalSchema(connection, null);
+                    ValidateLocalSchema(connection, null);
+                    command.CommandText =
+                        "SELECT Id, SyncId, ErrorTime, WindowsUser, DepartmentKey, Source, ErrorType, ErrorMessage, ErrorStackTrace " +
+                        "FROM AgentErrors " +
+                        "WHERE IsSynced=0 " +
+                        "ORDER BY Id " +
+                        "LIMIT @Limit;";
+                    command.Parameters.AddWithValue("@Limit", batchSize);
+
+                    using (SQLiteDataReader reader = command.ExecuteReader())
                     {
-                        result.Add(new AgentErrorRecord
+                        while (reader.Read())
                         {
-                            LocalId = Convert.ToInt64(reader["Id"]),
-                            LocalDatabasePath = databasePath,
-                            SyncId = Convert.ToString(reader["SyncId"]),
-                            ErrorTime = Convert.ToString(reader["ErrorTime"]),
-                            WindowsUser = Convert.ToString(reader["WindowsUser"]),
-                            DepartmentKey = Convert.ToString(reader["DepartmentKey"]),
-                            Source = Convert.ToString(reader["Source"]),
-                            ErrorType = Convert.ToString(reader["ErrorType"]),
-                            ErrorMessage = Convert.ToString(reader["ErrorMessage"]),
-                            ErrorStackTrace = Convert.ToString(reader["ErrorStackTrace"])
-                        });
+                            result.Add(new AgentErrorRecord
+                            {
+                                LocalId = Convert.ToInt64(reader["Id"]),
+                                LocalDatabasePath = databasePath,
+                                SyncId = Convert.ToString(reader["SyncId"]),
+                                ErrorTime = Convert.ToString(reader["ErrorTime"]),
+                                WindowsUser = Convert.ToString(reader["WindowsUser"]),
+                                DepartmentKey = Convert.ToString(reader["DepartmentKey"]),
+                                Source = Convert.ToString(reader["Source"]),
+                                ErrorType = Convert.ToString(reader["ErrorType"]),
+                                ErrorMessage = Convert.ToString(reader["ErrorMessage"]),
+                                ErrorStackTrace = Convert.ToString(reader["ErrorStackTrace"])
+                            });
+                        }
                     }
                 }
+            }
+            catch (Exception exception)
+            {
+                if (TryDeleteRecoverableLocalQueueDatabase(databasePath, exception))
+                    return result;
+
+                throw;
             }
 
             return result;
@@ -570,6 +641,143 @@ namespace KPLN_UserDataAgent.Services
             EnsureAgentErrorsSchema(connection, transaction, true);
         }
 
+        private static void ValidateLocalSchema(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            ValidateTableSchema(
+                connection,
+                transaction,
+                "EventTransactions",
+                new[]
+                {
+                    new LocalColumnDefinition("Id", "INTEGER", false, 1),
+                    new LocalColumnDefinition("EventName", "TEXT", true, 0),
+                    new LocalColumnDefinition("TransactionName", "TEXT", true, 0)
+                });
+
+            ValidateTableSchema(
+                connection,
+                transaction,
+                "UserEvents",
+                new[]
+                {
+                    new LocalColumnDefinition("Id", "INTEGER", false, 1),
+                    new LocalColumnDefinition("SyncId", "TEXT", true, 0),
+                    new LocalColumnDefinition("EventTime", "TEXT", true, 0),
+                    new LocalColumnDefinition("WindowsUser", "TEXT", true, 0),
+                    new LocalColumnDefinition("EventTransactionId", "INTEGER", true, 0),
+                    new LocalColumnDefinition("AddedCount", "INTEGER", true, 0),
+                    new LocalColumnDefinition("ModifiedCount", "INTEGER", true, 0),
+                    new LocalColumnDefinition("DeletedCount", "INTEGER", true, 0),
+                    new LocalColumnDefinition("DepartmentKey", "TEXT", true, 0),
+                    new LocalColumnDefinition("IsSynced", "INTEGER", true, 0),
+                    new LocalColumnDefinition("SyncedAt", "TEXT", true, 0)
+                });
+
+            ValidateTableSchema(
+                connection,
+                transaction,
+                "AgentErrors",
+                new[]
+                {
+                    new LocalColumnDefinition("Id", "INTEGER", false, 1),
+                    new LocalColumnDefinition("SyncId", "TEXT", true, 0),
+                    new LocalColumnDefinition("ErrorTime", "TEXT", true, 0),
+                    new LocalColumnDefinition("WindowsUser", "TEXT", true, 0),
+                    new LocalColumnDefinition("Source", "TEXT", true, 0),
+                    new LocalColumnDefinition("ErrorType", "TEXT", true, 0),
+                    new LocalColumnDefinition("ErrorMessage", "TEXT", true, 0),
+                    new LocalColumnDefinition("ErrorStackTrace", "TEXT", true, 0),
+                    new LocalColumnDefinition("DepartmentKey", "TEXT", true, 0),
+                    new LocalColumnDefinition("IsSynced", "INTEGER", true, 0),
+                    new LocalColumnDefinition("SyncedAt", "TEXT", true, 0)
+                });
+        }
+
+        private static void ValidateTableSchema(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            string tableName,
+            LocalColumnDefinition[] expectedColumns)
+        {
+            Dictionary<string, LocalTableColumn> actualColumns = ReadTableColumns(connection, transaction, tableName);
+            if (actualColumns.Count == 0)
+                ThrowInvalidLocalSchema("Missing table " + tableName + ".");
+
+            Dictionary<string, LocalColumnDefinition> expectedByName =
+                expectedColumns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+
+            foreach (LocalColumnDefinition expectedColumn in expectedColumns)
+            {
+                LocalTableColumn actualColumn;
+                if (!actualColumns.TryGetValue(expectedColumn.Name, out actualColumn))
+                    ThrowInvalidLocalSchema("Missing column " + tableName + "." + expectedColumn.Name + ".");
+
+                if (!ColumnSchemaMatches(expectedColumn, actualColumn))
+                    ThrowInvalidLocalSchema("Column mismatch " + tableName + "." + expectedColumn.Name + ".");
+            }
+
+            foreach (LocalTableColumn actualColumn in actualColumns.Values)
+            {
+                if (!expectedByName.ContainsKey(actualColumn.Name))
+                    ThrowInvalidLocalSchema("Unexpected column " + tableName + "." + actualColumn.Name + ".");
+            }
+        }
+
+        private static Dictionary<string, LocalTableColumn> ReadTableColumns(
+            SQLiteConnection connection,
+            SQLiteTransaction transaction,
+            string tableName)
+        {
+            Dictionary<string, LocalTableColumn> columns =
+                new Dictionary<string, LocalTableColumn>(StringComparer.OrdinalIgnoreCase);
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "PRAGMA table_info(" + QuoteIdentifier(tableName) + ");";
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        LocalTableColumn column = new LocalTableColumn(
+                            Convert.ToString(reader["name"]),
+                            Convert.ToString(reader["type"]),
+                            ReadPragmaInt(reader, "notnull") != 0,
+                            ReadPragmaInt(reader, "pk"));
+                        columns[column.Name] = column;
+                    }
+                }
+            }
+
+            return columns;
+        }
+
+        private static bool ColumnSchemaMatches(LocalColumnDefinition expected, LocalTableColumn actual)
+        {
+            return string.Equals(
+                    NormalizeColumnType(expected.Type),
+                    NormalizeColumnType(actual.Type),
+                    StringComparison.OrdinalIgnoreCase)
+                && expected.NotNull == actual.NotNull
+                && expected.PrimaryKey == actual.PrimaryKey;
+        }
+
+        private static string NormalizeColumnType(string columnType)
+        {
+            return (columnType ?? string.Empty).Trim();
+        }
+
+        private static int ReadPragmaInt(SQLiteDataReader reader, string columnName)
+        {
+            object value = reader[columnName];
+            return value == null || value == DBNull.Value ? 0 : Convert.ToInt32(value);
+        }
+
+        private static void ThrowInvalidLocalSchema(string message)
+        {
+            throw new InvalidOperationException(InvalidLocalSchemaMessagePrefix + " " + message);
+        }
+
         private void EnsureCentralSchema(
             SQLiteConnection connection,
             SQLiteTransaction transaction,
@@ -609,6 +817,108 @@ namespace KPLN_UserDataAgent.Services
             {
                 return databasePath ?? string.Empty;
             }
+        }
+
+        private void RecreateLocalDatabase()
+        {
+            _isLocalSchemaInitialized = false;
+            DeleteDatabaseFiles(_localDatabasePath);
+        }
+
+        private bool TryDeleteRecoverableLocalQueueDatabase(string databasePath, Exception exception)
+        {
+            if (!IsLocalQueueDatabasePath(databasePath) || !IsRecoverableLocalDatabaseException(exception))
+                return false;
+
+            try
+            {
+                DeleteDatabaseFiles(databasePath);
+
+                if (string.Equals(
+                    NormalizeDatabasePath(databasePath),
+                    NormalizeDatabasePath(_localDatabasePath),
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    _isLocalSchemaInitialized = false;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool IsLocalQueueDatabasePath(string databasePath)
+        {
+            string localPath = NormalizeDatabasePath(_localDatabasePath);
+            string targetPath = NormalizeDatabasePath(databasePath);
+
+            string localDirectory = Path.GetDirectoryName(localPath);
+            string targetDirectory = Path.GetDirectoryName(targetPath);
+            if (string.IsNullOrWhiteSpace(localDirectory)
+                || string.IsNullOrWhiteSpace(targetDirectory)
+                || !string.Equals(localDirectory, targetDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            string localExtension = Path.GetExtension(localPath);
+            string targetExtension = Path.GetExtension(targetPath);
+            if (!string.Equals(localExtension, targetExtension, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            string localName = Path.GetFileNameWithoutExtension(localPath);
+            string targetName = Path.GetFileNameWithoutExtension(targetPath);
+            return string.Equals(localName, targetName, StringComparison.OrdinalIgnoreCase)
+                || targetName.StartsWith(localName + "_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool LocalDatabaseFilesExist(string databasePath)
+        {
+            return File.Exists(databasePath)
+                || File.Exists(databasePath + "-wal")
+                || File.Exists(databasePath + "-shm");
+        }
+
+        private static bool IsRecoverableLocalDatabaseException(Exception exception)
+        {
+            if (exception == null)
+                return false;
+
+            InvalidOperationException invalidOperationException = exception as InvalidOperationException;
+            if (invalidOperationException != null
+                && (invalidOperationException.Message ?? string.Empty).StartsWith(
+                    InvalidLocalSchemaMessagePrefix,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            SQLiteException sqliteException = exception as SQLiteException;
+            if (sqliteException == null)
+                return false;
+
+            string message = sqliteException.Message ?? string.Empty;
+            return ContainsInvariant(message, "not a database")
+                || ContainsInvariant(message, "database disk image is malformed")
+                || ContainsInvariant(message, "malformed database schema")
+                || ContainsInvariant(message, "schema is corrupt")
+                || ContainsInvariant(message, "no such table")
+                || ContainsInvariant(message, "no such column")
+                || ContainsInvariant(message, "has no column named")
+                || ContainsInvariant(message, "is not a table")
+                || ContainsInvariant(message, "is a view")
+                || ContainsInvariant(message, "cannot modify")
+                || ContainsInvariant(message, "NOT NULL constraint failed")
+                || ContainsInvariant(message, "datatype mismatch")
+                || ContainsInvariant(message, "foreign key mismatch");
+        }
+
+        private static bool ContainsInvariant(string source, string value)
+        {
+            return (source ?? string.Empty).IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static void CreateCentralSchema(SQLiteConnection connection, SQLiteTransaction transaction)
@@ -994,12 +1304,24 @@ namespace KPLN_UserDataAgent.Services
 
         private bool HasPendingRows(string databasePath)
         {
-            using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
+            try
             {
-                connection.Open();
-                EnsureLocalSchema(connection, null);
-                return CountPendingRows(connection, "UserEvents") > 0
-                    || CountPendingRows(connection, "AgentErrors") > 0;
+                using (SQLiteConnection connection = CreateConnection(databasePath, ModuleData.LocalBusyTimeoutMs))
+                {
+                    connection.Open();
+                    ValidateLocalSchema(connection, null);
+                    EnsureLocalSchema(connection, null);
+                    ValidateLocalSchema(connection, null);
+                    return CountPendingRows(connection, "UserEvents") > 0
+                        || CountPendingRows(connection, "AgentErrors") > 0;
+                }
+            }
+            catch (Exception exception)
+            {
+                if (TryDeleteRecoverableLocalQueueDatabase(databasePath, exception))
+                    return false;
+
+                throw;
             }
         }
 
@@ -1246,6 +1568,38 @@ namespace KPLN_UserDataAgent.Services
             string directoryPath = Path.GetDirectoryName(databasePath);
             if (!string.IsNullOrWhiteSpace(directoryPath))
                 Directory.CreateDirectory(directoryPath);
+        }
+
+        private sealed class LocalColumnDefinition
+        {
+            public LocalColumnDefinition(string name, string type, bool notNull, int primaryKey)
+            {
+                Name = name;
+                Type = type;
+                NotNull = notNull;
+                PrimaryKey = primaryKey;
+            }
+
+            public string Name { get; private set; }
+            public string Type { get; private set; }
+            public bool NotNull { get; private set; }
+            public int PrimaryKey { get; private set; }
+        }
+
+        private sealed class LocalTableColumn
+        {
+            public LocalTableColumn(string name, string type, bool notNull, int primaryKey)
+            {
+                Name = name;
+                Type = type;
+                NotNull = notNull;
+                PrimaryKey = primaryKey;
+            }
+
+            public string Name { get; private set; }
+            public string Type { get; private set; }
+            public bool NotNull { get; private set; }
+            public int PrimaryKey { get; private set; }
         }
 
         private sealed class PendingSyncBatch
