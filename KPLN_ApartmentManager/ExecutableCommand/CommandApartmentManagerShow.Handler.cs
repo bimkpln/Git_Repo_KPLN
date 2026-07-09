@@ -24,6 +24,11 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private static void ApplyApartmentFailureHandling(Transaction transaction)
         {
+            ApplyApartmentFailureHandling(transaction, new ApartmentWarningSuppressor());
+        }
+
+        private static void ApplyApartmentFailureHandling(Transaction transaction, IFailuresPreprocessor preprocessor)
+        {
             if (transaction == null)
                 return;
 
@@ -31,7 +36,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             if (options == null)
                 return;
 
-            options.SetFailuresPreprocessor(new ApartmentWarningSuppressor());
+            options.SetFailuresPreprocessor(preprocessor);
             transaction.SetFailureHandlingOptions(options);
         }
 
@@ -133,9 +138,21 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
         private class ApartmentFamilyLoadOptions : IFamilyLoadOptions
         {
+            private readonly ApartmentFamilyLoadDiagnostic _diagnostic;
+
+            public ApartmentFamilyLoadOptions(ApartmentFamilyLoadDiagnostic diagnostic = null)
+            {
+                _diagnostic = diagnostic;
+            }
+
             public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
             {
                 overwriteParameterValues = false;
+                if (_diagnostic != null)
+                    _diagnostic.Add(
+                        "Revit запросил действие для уже загруженного семейства: " +
+                        "familyInUse = " + familyInUse +
+                        ", overwriteParameterValues = false, продолжить = true.");
                 return true;
             }
 
@@ -143,15 +160,36 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 source = FamilySource.Family;
                 overwriteParameterValues = false;
+                if (_diagnostic != null)
+                {
+                    _diagnostic.AddSharedFamilyDecision(sharedFamily, familyInUse, source, overwriteParameterValues);
+                    _diagnostic.Add(
+                        "Revit запросил действие для вложенного shared-семейства '" +
+                        GetFamilyNameForDiagnostic(sharedFamily) +
+                        "': familyInUse = " + familyInUse +
+                        ", source = Family, overwriteParameterValues = false, продолжить = true.");
+                }
                 return true;
             }
         }
 
         private class ApartmentFamilyReloadOptions : IFamilyLoadOptions
         {
+            private readonly ApartmentFamilyLoadDiagnostic _diagnostic;
+
+            public ApartmentFamilyReloadOptions(ApartmentFamilyLoadDiagnostic diagnostic = null)
+            {
+                _diagnostic = diagnostic;
+            }
+
             public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
             {
                 overwriteParameterValues = true;
+                if (_diagnostic != null)
+                    _diagnostic.Add(
+                        "Revit запросил действие для уже загруженного семейства: " +
+                        "familyInUse = " + familyInUse +
+                        ", overwriteParameterValues = true, продолжить = true.");
                 return true;
             }
 
@@ -159,8 +197,711 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             {
                 source = FamilySource.Family;
                 overwriteParameterValues = true;
+                if (_diagnostic != null)
+                {
+                    _diagnostic.AddSharedFamilyDecision(sharedFamily, familyInUse, source, overwriteParameterValues);
+                    _diagnostic.Add(
+                        "Revit запросил действие для вложенного shared-семейства '" +
+                        GetFamilyNameForDiagnostic(sharedFamily) +
+                        "': familyInUse = " + familyInUse +
+                        ", source = Family, overwriteParameterValues = true, продолжить = true.");
+                }
                 return true;
             }
+        }
+
+        private class ApartmentFailureDiagnosticCollector : IFailuresPreprocessor
+        {
+            private readonly List<string> _messages = new List<string>();
+
+            public IList<string> Messages
+            {
+                get { return _messages; }
+            }
+
+            public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
+            {
+                if (failuresAccessor == null)
+                    return FailureProcessingResult.Continue;
+
+                IList<FailureMessageAccessor> failures = failuresAccessor.GetFailureMessages();
+                if (failures == null || failures.Count == 0)
+                    return FailureProcessingResult.Continue;
+
+                foreach (FailureMessageAccessor failure in failures.ToList())
+                {
+                    if (failure == null)
+                        continue;
+
+                    string description = GetFailureDescription(failure);
+                    string message = GetFailureSeverityName(failure) + ": " + FormatDiagnosticValue(description);
+
+                    ICollection<ElementId> elementIds = GetFailureElementIds(failure);
+                    if (elementIds != null && elementIds.Count > 0)
+                    {
+                        message += " Элементы: " + string.Join(
+                            ", ",
+                            elementIds
+                                .Where(x => x != null && x != ElementId.InvalidElementId)
+                                .Take(8)
+                                .Select(x => IDHelper.ElIdValue(x).ToString())
+                                .ToArray());
+
+                        if (elementIds.Count > 8)
+                            message += ", ...";
+                    }
+
+                    if (!_messages.Any(x => string.Equals(x, message, StringComparison.OrdinalIgnoreCase)))
+                        _messages.Add(message);
+
+                    if (IsFailureWarning(failure) && ShouldSuppressApartmentWarning(description))
+                    {
+                        failuresAccessor.DeleteWarning(failure);
+                    }
+                }
+
+                return FailureProcessingResult.Continue;
+            }
+
+            private static string GetFailureDescription(FailureMessageAccessor failure)
+            {
+                try
+                {
+                    return failure.GetDescriptionText();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            private static string GetFailureSeverityName(FailureMessageAccessor failure)
+            {
+                try
+                {
+                    FailureSeverity severity = failure.GetSeverity();
+                    if (severity == FailureSeverity.Warning)
+                        return "Предупреждение Revit";
+                    if (severity == FailureSeverity.Error)
+                        return "Ошибка Revit";
+
+                    return "Сообщение Revit";
+                }
+                catch
+                {
+                    return "Сообщение Revit";
+                }
+            }
+
+            private static ICollection<ElementId> GetFailureElementIds(FailureMessageAccessor failure)
+            {
+                try
+                {
+                    return failure.GetFailingElementIds();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            private static bool IsFailureWarning(FailureMessageAccessor failure)
+            {
+                try
+                {
+                    return failure.GetSeverity() == FailureSeverity.Warning;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        private class ApartmentFamilyLoadDiagnostic
+        {
+            private readonly List<string> _messages = new List<string>();
+            private readonly List<string> _exceptions = new List<string>();
+            private readonly List<string> _failureMessages = new List<string>();
+            private readonly List<string> _fileProblemMessages = new List<string>();
+            private readonly List<string> _hostConflictMessages = new List<string>();
+            private readonly List<string> _sharedFamilyDecisions = new List<string>();
+            private bool? _loadFamilyResult;
+            private string _loadedFamilyName;
+
+            public string FamilyPath { get; private set; }
+
+            public bool HasFileProblem
+            {
+                get { return _fileProblemMessages.Count > 0; }
+            }
+
+            public bool HasBlockingProblem
+            {
+                get
+                {
+                    return _fileProblemMessages.Count > 0 ||
+                           _hostConflictMessages.Count > 0 ||
+                           _failureMessages.Count > 0 ||
+                           _exceptions.Count > 0;
+                }
+            }
+
+            public ApartmentFamilyLoadDiagnostic(string familyPath)
+            {
+                FamilyPath = familyPath;
+            }
+
+            public void Add(string message)
+            {
+                if (string.IsNullOrWhiteSpace(message))
+                    return;
+
+                _messages.Add(message.Trim());
+            }
+
+            public void AddException(string stage, Exception ex)
+            {
+                if (ex == null)
+                    return;
+
+                string message = stage + ": " + ex.GetType().Name + ": " + ex.Message;
+                _exceptions.Add(message);
+                Add(message);
+            }
+
+            public void AddFamilyFileOpenException(Exception ex)
+            {
+                AddFamilyFileOpenException("Ошибка открытия файла семейства через OpenDocumentFile", ex);
+            }
+
+            public void AddFamilyFileOpenException(string stage, Exception ex)
+            {
+                if (ex == null)
+                    return;
+
+                if (IsSavedByLaterRevitVersionException(ex))
+                {
+                    AddFileProblem(
+                        "Файл семейства сохранён в более новой версии Revit. Текущий Revit не может его открыть или загрузить. Сообщение Revit: " +
+                        ex.Message);
+                    return;
+                }
+
+                if (string.Equals(ex.GetType().Name, "CorruptModelException", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddFileProblem("Revit не смог открыть файл семейства. Сообщение Revit: " + ex.Message);
+                    return;
+                }
+
+                AddException(stage, ex);
+            }
+
+            public void AddFileProblem(string message)
+            {
+                if (string.IsNullOrWhiteSpace(message))
+                    return;
+
+                string trimmed = message.Trim();
+                if (!_fileProblemMessages.Any(x => string.Equals(x, trimmed, StringComparison.OrdinalIgnoreCase)))
+                    _fileProblemMessages.Add(trimmed);
+            }
+
+            public void AddFailureMessages(IEnumerable<string> messages)
+            {
+                if (messages == null)
+                    return;
+
+                foreach (string message in messages)
+                {
+                    if (string.IsNullOrWhiteSpace(message))
+                        continue;
+
+                    string trimmed = message.Trim();
+                    if (!_failureMessages.Any(x => string.Equals(x, trimmed, StringComparison.OrdinalIgnoreCase)))
+                        _failureMessages.Add(trimmed);
+
+                    Add("Failure API: " + trimmed);
+                }
+            }
+
+            public void AddLoadFamilyResult(bool loaded, Family loadedFamily)
+            {
+                _loadFamilyResult = loaded;
+                _loadedFamilyName = loadedFamily == null ? null : GetFamilyNameForDiagnostic(loadedFamily);
+            }
+
+            public void AddHostConflict(string message)
+            {
+                if (string.IsNullOrWhiteSpace(message))
+                    return;
+
+                string trimmed = message.Trim();
+                if (!_hostConflictMessages.Any(x => string.Equals(x, trimmed, StringComparison.OrdinalIgnoreCase)))
+                    _hostConflictMessages.Add(trimmed);
+            }
+
+            public void AddSharedFamilyDecision(Family sharedFamily, bool familyInUse, FamilySource source, bool overwriteParameterValues)
+            {
+                string familyName = GetFamilyNameForDiagnostic(sharedFamily);
+                string placementType = GetFamilyPlacementTypeForDiagnostic(sharedFamily);
+                string sourceName = source == FamilySource.Family ? "из файла" : "из проекта";
+
+                string message =
+                    familyName +
+                    " (" + placementType +
+                    ", используется в проекте = " + (familyInUse ? "да" : "нет") +
+                    ", выбрано = " + sourceName +
+                    ", параметры = " + (overwriteParameterValues ? "перезаписать" : "не перезаписывать") +
+                    ")";
+
+                if (!_sharedFamilyDecisions.Any(x => string.Equals(x, message, StringComparison.OrdinalIgnoreCase)))
+                    _sharedFamilyDecisions.Add(message);
+            }
+
+            public string BuildReport(string title)
+            {
+                List<string> lines = new List<string>();
+
+                if (!string.IsNullOrWhiteSpace(title))
+                    lines.Add(title.Trim());
+
+                if (!string.IsNullOrWhiteSpace(FamilyPath))
+                {
+                    lines.Add("Файл:");
+                    lines.Add(FamilyPath);
+                }
+
+                bool hasPrimaryCause = _fileProblemMessages.Count > 0 || _hostConflictMessages.Count > 0;
+
+                if (_fileProblemMessages.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Проблема файла:");
+
+                    foreach (string message in _fileProblemMessages.Take(3))
+                        lines.Add("- " + message);
+
+                    if (_fileProblemMessages.Count > 3)
+                        lines.Add("- ...");
+                }
+
+                if (_hostConflictMessages.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Найден конфликт основы:");
+
+                    foreach (string message in _hostConflictMessages.Take(4))
+                        lines.Add("- " + message);
+
+                    if (_hostConflictMessages.Count > 4)
+                        lines.Add("- ...");
+                }
+
+                if (_loadFamilyResult.HasValue)
+                {
+                    lines.Add("");
+                    if (_loadFamilyResult.Value)
+                    {
+                        lines.Add("Результат: семейство загружено.");
+                        if (!string.IsNullOrWhiteSpace(_loadedFamilyName))
+                            lines.Add("Загружено: " + _loadedFamilyName);
+                    }
+                    else
+                    {
+                        lines.Add("Технически:");
+                        lines.Add("doc.LoadFamily вернул false.");
+                    }
+                }
+
+                if (!hasPrimaryCause && _sharedFamilyDecisions.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Что удалось получить из Revit API:");
+                    lines.Add("Revit запросил решение по вложенным shared-семействам, но точный текст ручного окна не отдал.");
+
+                    foreach (string message in _sharedFamilyDecisions.Take(4))
+                        lines.Add("- " + message);
+
+                    if (_sharedFamilyDecisions.Count > 4)
+                        lines.Add("- ...");
+                }
+
+                if (!hasPrimaryCause && _failureMessages.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Сообщения Revit:");
+
+                    foreach (string message in _failureMessages.Take(5))
+                        lines.Add("- " + message);
+
+                    if (_failureMessages.Count > 5)
+                        lines.Add("- ...");
+                }
+
+                if (!hasPrimaryCause && _exceptions.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Исключения:");
+
+                    foreach (string message in _exceptions.Take(3))
+                        lines.Add("- " + message);
+
+                    if (_exceptions.Count > 3)
+                        lines.Add("- ...");
+                }
+
+                if (!_loadFamilyResult.HasValue && !hasPrimaryCause && _sharedFamilyDecisions.Count == 0 && _failureMessages.Count == 0 && _exceptions.Count == 0 && _messages.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Технические детали:");
+
+                    foreach (string message in _messages.Take(4))
+                        lines.Add("- " + message);
+
+                    if (_messages.Count > 4)
+                        lines.Add("- ...");
+                }
+
+                return LimitDialogText(string.Join("\n", lines.ToArray()), 3500);
+            }
+        }
+
+        private class FamilyHostDiagnosticInfo
+        {
+            public string Name { get; set; }
+            public string PlacementTypeName { get; set; }
+            public bool? HasHost { get; set; }
+        }
+
+        private static bool IsSavedByLaterRevitVersionException(Exception ex)
+        {
+            if (ex == null)
+                return false;
+
+            string typeName = ex.GetType().Name ?? "";
+            string message = ex.Message ?? "";
+
+            return
+                typeName.IndexOf("CorruptModelException", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                (message.IndexOf("saved by a later version", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 message.IndexOf("later version", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 message.IndexOf("более новой версии", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                 message.IndexOf("более поздней версии", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static string GetFamilyNameForDiagnostic(Family family)
+        {
+            if (family == null)
+                return "<неизвестно>";
+
+            try
+            {
+                return !string.IsNullOrWhiteSpace(family.Name)
+                    ? family.Name.Trim()
+                    : "<без имени>";
+            }
+            catch
+            {
+                return "<не удалось прочитать имя>";
+            }
+        }
+
+        private static string GetFamilyPlacementTypeForDiagnostic(Family family)
+        {
+            if (family == null)
+                return "тип размещения неизвестен";
+
+            string placementName = GetFamilyPlacementTypeNameForDiagnostic(family);
+            if (string.IsNullOrWhiteSpace(placementName))
+                return "тип размещения не прочитан";
+
+            bool? hasHost = IsHostedPlacementTypeName(placementName);
+            if (hasHost == true)
+                return "с основой: " + placementName;
+
+            if (hasHost == false)
+                return "без основы: " + placementName;
+
+            return "тип размещения: " + placementName;
+        }
+
+        private static string GetFamilyPlacementTypeNameForDiagnostic(Family family)
+        {
+            if (family == null)
+                return null;
+
+            try
+            {
+                FamilyPlacementType placementType = family.FamilyPlacementType;
+                return placementType.ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool? IsHostedPlacementTypeName(string placementTypeName)
+        {
+            if (string.IsNullOrWhiteSpace(placementTypeName))
+                return null;
+
+            if (placementTypeName.IndexOf("Hosted", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                placementTypeName.IndexOf("FaceBased", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                placementTypeName.IndexOf("WallBased", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                placementTypeName.IndexOf("CeilingBased", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                placementTypeName.IndexOf("FloorBased", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                placementTypeName.IndexOf("RoofBased", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static FamilyHostDiagnosticInfo BuildFamilyHostDiagnosticInfo(Family family)
+        {
+            if (family == null)
+                return null;
+
+            string name = GetFamilyNameForDiagnostic(family);
+            if (string.IsNullOrWhiteSpace(name) || name.StartsWith("<"))
+                return null;
+
+            string placementTypeName = GetFamilyPlacementTypeNameForDiagnostic(family);
+
+            return new FamilyHostDiagnosticInfo
+            {
+                Name = name,
+                PlacementTypeName = string.IsNullOrWhiteSpace(placementTypeName) ? "<не прочитан>" : placementTypeName,
+                HasHost = IsHostedPlacementTypeName(placementTypeName)
+            };
+        }
+
+        private static void AddFamilyHostConflictDiagnostics(
+            Document projectDoc,
+            string familyPath,
+            IEnumerable<Family> projectFamilies,
+            ApartmentFamilyLoadDiagnostic diagnostic)
+        {
+            if (diagnostic == null || projectDoc == null || string.IsNullOrWhiteSpace(familyPath) || !File.Exists(familyPath))
+                return;
+
+            if (diagnostic.HasFileProblem)
+                return;
+
+            List<Family> projectFamilyList = projectFamilies == null
+                ? new FilteredElementCollector(projectDoc)
+                    .OfClass(typeof(Family))
+                    .Cast<Family>()
+                    .ToList()
+                : projectFamilies.Where(x => x != null).ToList();
+
+            Dictionary<string, FamilyHostDiagnosticInfo> projectFamilyByName = projectFamilyList
+                .Select(BuildFamilyHostDiagnosticInfo)
+                .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Name))
+                .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+
+            Document familyDoc = null;
+
+            try
+            {
+                familyDoc = projectDoc.Application.OpenDocumentFile(familyPath);
+
+                IEnumerable<FamilyHostDiagnosticInfo> fileFamilyDefinitions = new FilteredElementCollector(familyDoc)
+                    .OfClass(typeof(Family))
+                    .Cast<Family>()
+                    .Select(BuildFamilyHostDiagnosticInfo);
+
+                IEnumerable<FamilyHostDiagnosticInfo> fileFamiliesFromInstances = new FilteredElementCollector(familyDoc)
+                    .OfClass(typeof(FamilyInstance))
+                    .Cast<FamilyInstance>()
+                    .Select(GetFamilyFromInstanceForDiagnostic)
+                    .Select(BuildFamilyHostDiagnosticInfo);
+
+                List<FamilyHostDiagnosticInfo> fileFamilies = fileFamilyDefinitions
+                    .Concat(fileFamiliesFromInstances)
+                    .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Name))
+                    .GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(x => x.First())
+                    .ToList();
+
+                foreach (FamilyHostDiagnosticInfo fileFamily in fileFamilies)
+                {
+                    FamilyHostDiagnosticInfo projectFamily;
+                    if (!projectFamilyByName.TryGetValue(fileFamily.Name, out projectFamily))
+                        continue;
+
+                    if (!projectFamily.HasHost.HasValue || !fileFamily.HasHost.HasValue)
+                        continue;
+
+                    if (projectFamily.HasHost.Value == fileFamily.HasHost.Value)
+                        continue;
+
+                    diagnostic.AddHostConflict(BuildFamilyHostConflictMessage(projectFamily, fileFamily));
+                }
+            }
+            catch (Exception ex)
+            {
+                diagnostic.AddFamilyFileOpenException(ex);
+            }
+            finally
+            {
+                if (familyDoc != null)
+                {
+                    try
+                    {
+                        familyDoc.Close(false);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
+        private static string BuildFamilyHostConflictMessage(FamilyHostDiagnosticInfo projectFamily, FamilyHostDiagnosticInfo fileFamily)
+        {
+            string projectHost = projectFamily.HasHost == true ? "с основой" : "без основы";
+            string fileHost = fileFamily.HasHost == true ? "с основой" : "без основы";
+
+            return "В проекте уже имеется версия семейства '" + projectFamily.Name + "' " + projectHost +
+                   ". Ее невозможно заменить семейством " + fileHost +
+                   ". (проект: " + projectFamily.PlacementTypeName +
+                   "; файл: " + fileFamily.PlacementTypeName + ")";
+        }
+
+        private static Family GetFamilyFromInstanceForDiagnostic(FamilyInstance instance)
+        {
+            if (instance == null)
+                return null;
+
+            try
+            {
+                return instance.Symbol != null ? instance.Symbol.Family : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string BuildFamilySymbolDiagnosticName(FamilySymbol symbol)
+        {
+            if (symbol == null)
+                return "<неизвестно>";
+
+            string familyName = "";
+            string typeName = "";
+
+            try
+            {
+                if (symbol.Family != null && !string.IsNullOrWhiteSpace(symbol.Family.Name))
+                    familyName = symbol.Family.Name.Trim();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(symbol.Name))
+                    typeName = symbol.Name.Trim();
+            }
+            catch
+            {
+            }
+
+            if (!string.IsNullOrWhiteSpace(familyName) && !string.IsNullOrWhiteSpace(typeName))
+                return familyName + " - " + typeName;
+
+            if (!string.IsNullOrWhiteSpace(typeName))
+                return typeName;
+
+            if (!string.IsNullOrWhiteSpace(familyName))
+                return familyName;
+
+            return "<без имени>";
+        }
+
+        private static string BuildApartmentPlacementFailureReport(
+            string familyPath,
+            FamilySymbol symbol,
+            XYZ insertPoint,
+            IEnumerable<string> failureMessages,
+            Exception exception)
+        {
+            List<string> lines = new List<string>();
+            lines.Add("Не удалось разместить 2D-семейство квартиры.");
+
+            if (!string.IsNullOrWhiteSpace(familyPath))
+            {
+                lines.Add("");
+                lines.Add("Файл:");
+                lines.Add(familyPath);
+            }
+
+            lines.Add("");
+            lines.Add("Тип:");
+            lines.Add(BuildFamilySymbolDiagnosticName(symbol));
+
+            lines.Add("Точка:");
+            lines.Add(FormatPointForFamilyLoadDiagnostic(insertPoint));
+
+            if (exception != null)
+            {
+                lines.Add("");
+                lines.Add("Исключение:");
+                lines.Add(exception.GetType().Name + ": " + exception.Message);
+            }
+
+            if (failureMessages != null)
+            {
+                List<string> messages = failureMessages
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                if (messages.Count > 0)
+                {
+                    lines.Add("");
+                    lines.Add("Сообщения Revit:");
+
+                    foreach (string message in messages)
+                        lines.Add("- " + message);
+                }
+            }
+
+            return LimitDialogText(string.Join("\n", lines.ToArray()), 6000);
+        }
+
+        private static string FormatPointForFamilyLoadDiagnostic(XYZ point)
+        {
+            if (point == null)
+                return "<нет>";
+
+            try
+            {
+                return "(" +
+                       Math.Round(IDHelper.ConvertInternalToMm(point.X)).ToString() + "; " +
+                       Math.Round(IDHelper.ConvertInternalToMm(point.Y)).ToString() + "; " +
+                       Math.Round(IDHelper.ConvertInternalToMm(point.Z)).ToString() +
+                       ") мм";
+            }
+            catch
+            {
+                return "<не удалось отформатировать>";
+            }
+        }
+
+        private static string LimitDialogText(string text, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(text) || maxLength <= 0 || text.Length <= maxLength)
+                return text;
+
+            return text.Substring(0, maxLength) + "\n...";
         }
 
         private class ApartmentFamilyReloadCandidate
@@ -610,17 +1351,31 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 .ToList();
         }
 
-        private static string GetFamilyNameFromFile(Document projectDoc, string familyPath)
+        private static string GetFamilyNameFromFile(Document projectDoc, string familyPath, ApartmentFamilyLoadDiagnostic diagnostic = null)
         {
             if (projectDoc == null)
+            {
+                if (diagnostic != null)
+                    diagnostic.Add("Не удалось прочитать имя семейства из файла: projectDoc = null.");
                 return null;
+            }
 
             if (string.IsNullOrWhiteSpace(familyPath) || !File.Exists(familyPath))
+            {
+                if (diagnostic != null)
+                    diagnostic.Add("Не удалось прочитать имя семейства из файла: файл не найден.");
                 return null;
+            }
 
             string cachedName;
             if (_familyNameByPathCache.TryGetValue(familyPath, out cachedName))
+            {
+                if (diagnostic != null)
+                    diagnostic.Add(
+                        "Имя семейства из файла взято из кэша: '" +
+                        (string.IsNullOrWhiteSpace(cachedName) ? "<пусто>" : cachedName) + "'.");
                 return string.IsNullOrWhiteSpace(cachedName) ? null : cachedName;
+            }
 
             Document familyDoc = null;
             string detectedName = null;
@@ -636,9 +1391,16 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
                 if (family != null && !string.IsNullOrWhiteSpace(family.Name))
                     detectedName = family.Name.Trim();
+
+                if (diagnostic != null)
+                    diagnostic.Add(
+                        "Имя семейства из файла: '" +
+                        (string.IsNullOrWhiteSpace(detectedName) ? "<не найдено>" : detectedName) + "'.");
             }
-            catch
+            catch (Exception ex)
             {
+                if (diagnostic != null)
+                    diagnostic.AddFamilyFileOpenException(ex);
             }
             finally
             {
@@ -1038,6 +1800,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             int updatedCount = 0;
+            int unchangedCount = 0;
             int failedCount = 0;
             List<string> errors = new List<string>();
 
@@ -1050,35 +1813,56 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                     if (candidate == null || string.IsNullOrWhiteSpace(candidate.FamilyPath))
                         continue;
 
+                    ApartmentFamilyLoadDiagnostic reloadDiagnostic = new ApartmentFamilyLoadDiagnostic(candidate.FamilyPath);
+
                     try
                     {
+                        reloadDiagnostic.Add("Перезагружаем уже загруженное 2D-семейство квартиры '" + candidate.FamilyName + "'.");
+                        AddFamilyHostConflictDiagnostics(doc, candidate.FamilyPath, null, reloadDiagnostic);
+
                         Family loadedFamily;
-                        bool loaded = doc.LoadFamily(candidate.FamilyPath, new ApartmentFamilyReloadOptions(), out loadedFamily);
+                        bool loaded = doc.LoadFamily(candidate.FamilyPath, new ApartmentFamilyReloadOptions(reloadDiagnostic), out loadedFamily);
+                        reloadDiagnostic.AddLoadFamilyResult(loaded, loadedFamily);
+                        reloadDiagnostic.Add(
+                            "doc.LoadFamily завершился: loaded = " + loaded +
+                            ", loadedFamily = '" + GetFamilyNameForDiagnostic(loadedFamily) + "'.");
+
                         if (loaded || loadedFamily != null)
                         {
                             updatedCount++;
                         }
+                        else if (!reloadDiagnostic.HasBlockingProblem)
+                        {
+                            unchangedCount++;
+                        }
                         else
                         {
                             failedCount++;
-                            errors.Add(candidate.FamilyName + ": Revit не перезагрузил семейство.");
+                            errors.Add(
+                                candidate.FamilyName + ": " +
+                                reloadDiagnostic.BuildReport("Revit не перезагрузил семейство."));
                         }
                     }
                     catch (Exception ex)
                     {
                         failedCount++;
-                        errors.Add(candidate.FamilyName + ": " + ex.Message);
+                        reloadDiagnostic.AddFamilyFileOpenException("Исключение во время перезагрузки семейства", ex);
+                        errors.Add(
+                            candidate.FamilyName + ": " +
+                            reloadDiagnostic.BuildReport("Ошибка перезагрузки семейства."));
                     }
                 }
 
                 t.Commit();
             }
 
-            MarkApartmentPresetDataStaleInWindow();
+            if (updatedCount > 0)
+                MarkApartmentPresetDataStaleInWindow();
 
             string resultMessage =
                 "Найдено в проекте: " + candidates.Count +
                 "\nОбновлено: " + updatedCount +
+                "\nБез изменений: " + unchangedCount +
                 "\nНе обновлено: " + failedCount;
 
             if (missingFiles.Count > 0)
@@ -1086,7 +1870,10 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             if (errors.Count > 0)
             {
-                List<string> shortErrors = errors.Take(15).ToList();
+                List<string> shortErrors = errors
+                    .Take(5)
+                    .Select(x => LimitDialogText(x, 1200))
+                    .ToList();
                 resultMessage += "\n\nОшибки:\n- " + string.Join("\n- ", shortErrors);
                 if (errors.Count > shortErrors.Count)
                     resultMessage += "\n- ...";
@@ -1118,26 +1905,48 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             }
 
             FamilySymbol symbol = null;
+            ApartmentFamilyLoadDiagnostic loadDiagnostic = new ApartmentFamilyLoadDiagnostic(familyPath);
+            ApartmentFailureDiagnosticCollector failureCollector = new ApartmentFailureDiagnosticCollector();
 
-            using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Загрузка семейства квартиры"))
+            try
             {
-                t.Start();
-
-                Family family = LoadOrFindFamily(doc, familyPath);
-                if (family == null)
-                    throw new Exception("Не удалось загрузить или найти семейство в проекте.");
-
-                symbol = GetFirstFamilySymbol(doc, family);
-                if (symbol == null)
-                    throw new Exception("В семействе не найден ни один типоразмер.");
-
-                if (!symbol.IsActive)
+                using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Загрузка семейства квартиры"))
                 {
-                    symbol.Activate();
-                    doc.Regenerate();
+                    t.Start();
+                    ApplyApartmentFailureHandling(t, failureCollector);
+
+                    Family family = LoadOrFindFamily(doc, familyPath, loadDiagnostic);
+                    if (family == null)
+                        throw new Exception("Не удалось загрузить или найти семейство в проекте.");
+
+                    loadDiagnostic.Add("Итоговое семейство в проекте: '" + GetFamilyNameForDiagnostic(family) + "'.");
+
+                    symbol = GetFirstFamilySymbol(doc, family);
+                    if (symbol == null)
+                        throw new Exception("В семействе не найден ни один типоразмер.");
+
+                    loadDiagnostic.Add("Первый типоразмер: '" + BuildFamilySymbolDiagnosticName(symbol) + "'.");
+
+                    if (!symbol.IsActive)
+                    {
+                        loadDiagnostic.Add("Активируем типоразмер.");
+                        symbol.Activate();
+                        doc.Regenerate();
+                    }
+
+                    t.Commit();
                 }
 
-                t.Commit();
+                loadDiagnostic.AddFailureMessages(failureCollector.Messages);
+            }
+            catch (Exception ex)
+            {
+                loadDiagnostic.AddFailureMessages(failureCollector.Messages);
+                loadDiagnostic.AddException("Ошибка на этапе загрузки/активации семейства квартиры", ex);
+                TaskDialog.Show(
+                    "KPLN. Менеджер квартир",
+                    loadDiagnostic.BuildReport("Не удалось загрузить 2D-семейство квартиры."));
+                return false;
             }
 
             int placedCount = 0;
@@ -1159,17 +1968,30 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                         break;
                     }
 
-                    using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Размещение семейства квартиры"))
+                    ApartmentFailureDiagnosticCollector placementFailureCollector = new ApartmentFailureDiagnosticCollector();
+
+                    try
                     {
-                        t.Start();
+                        using (Transaction t = new Transaction(doc, "KPLN. Менеджер квартир. Размещение семейства квартиры"))
+                        {
+                            t.Start();
+                            ApplyApartmentFailureHandling(t, placementFailureCollector);
 
-                        FamilyInstance placedInstance = PlaceFamilyInstance(doc, floorPlan, symbol, insertPoint);
-                        if (placedInstance == null)
-                            throw new Exception("Не удалось разместить семейство квартиры.");
+                            FamilyInstance placedInstance = PlaceFamilyInstance(doc, floorPlan, symbol, insertPoint);
+                            if (placedInstance == null)
+                                throw new Exception("Revit не создал экземпляр семейства.");
 
-                        AppendComment(placedInstance, ApartmentInstanceMarker);
+                            AppendComment(placedInstance, ApartmentInstanceMarker);
 
-                        t.Commit();
+                            t.Commit();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show(
+                            "KPLN. Менеджер квартир",
+                            BuildApartmentPlacementFailureReport(familyPath, symbol, insertPoint, placementFailureCollector.Messages, ex));
+                        break;
                     }
 
                     placedCount++;
@@ -1184,7 +2006,7 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             return placedCount > 0;
         }
 
-        private static Family LoadOrFindFamily(Document doc, string familyPath)
+        private static Family LoadOrFindFamily(Document doc, string familyPath, ApartmentFamilyLoadDiagnostic diagnostic = null)
         {
             if (doc == null)
                 throw new ArgumentNullException("doc");
@@ -1197,6 +2019,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
 
             string fileFamilyName = Path.GetFileNameWithoutExtension(familyPath);
 
+            if (diagnostic != null)
+            {
+                diagnostic.Add("Имя файла без расширения: '" + fileFamilyName + "'.");
+                diagnostic.Add("Проверяем, загружено ли семейство в проект.");
+            }
+
             List<Family> existingFamilies = new FilteredElementCollector(doc)
                 .OfClass(typeof(Family))
                 .Cast<Family>()
@@ -1205,32 +2033,66 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             Family existingByFileName = existingFamilies.FirstOrDefault(f =>
                 string.Equals(f.Name, fileFamilyName, StringComparison.OrdinalIgnoreCase));
 
+            if (diagnostic != null)
+                diagnostic.Add(
+                    existingByFileName != null
+                        ? "Семейство уже найдено в проекте по имени файла: '" + GetFamilyNameForDiagnostic(existingByFileName) + "'."
+                        : "Семейство по имени файла в проекте не найдено.");
+
             if (existingByFileName != null)
                 return existingByFileName;
 
-            string realFamilyName = GetFamilyNameFromFile(doc, familyPath);
+            string realFamilyName = GetFamilyNameFromFile(doc, familyPath, diagnostic);
 
             if (!string.IsNullOrWhiteSpace(realFamilyName))
             {
                 Family existingByRealName = existingFamilies.FirstOrDefault(f =>
                     string.Equals(f.Name, realFamilyName, StringComparison.OrdinalIgnoreCase));
 
+                if (diagnostic != null)
+                    diagnostic.Add(
+                        existingByRealName != null
+                            ? "Семейство уже найдено в проекте по имени из файла: '" + GetFamilyNameForDiagnostic(existingByRealName) + "'."
+                            : "Семейство по имени из файла в проекте не найдено.");
+
                 if (existingByRealName != null)
                     return existingByRealName;
+            }
+            else if (diagnostic != null)
+            {
+                diagnostic.Add("Реальное имя семейства из файла определить не удалось.");
             }
 
             Family loadedFamily = null;
 
+            AddFamilyHostConflictDiagnostics(doc, familyPath, existingFamilies, diagnostic);
+
             try
             {
-                bool loaded = doc.LoadFamily(familyPath, new ApartmentFamilyLoadOptions(), out loadedFamily);
+                if (diagnostic != null)
+                    diagnostic.Add("Вызываем doc.LoadFamily для загрузки семейства квартиры.");
+
+                bool loaded = doc.LoadFamily(familyPath, new ApartmentFamilyLoadOptions(diagnostic), out loadedFamily);
+
+                if (diagnostic != null)
+                {
+                    diagnostic.AddLoadFamilyResult(loaded, loadedFamily);
+                    diagnostic.Add(
+                        "doc.LoadFamily завершился: loaded = " + loaded +
+                        ", loadedFamily = '" + GetFamilyNameForDiagnostic(loadedFamily) + "'.");
+                }
 
                 if (loaded && loadedFamily != null)
                     return loadedFamily;
             }
-            catch
+            catch (Exception ex)
             {
+                if (diagnostic != null)
+                    diagnostic.AddFamilyFileOpenException("Исключение во время doc.LoadFamily", ex);
             }
+
+            if (diagnostic != null)
+                diagnostic.Add("Проверяем, появилось ли семейство в проекте после doc.LoadFamily.");
 
             existingFamilies = new FilteredElementCollector(doc)
                 .OfClass(typeof(Family))
@@ -1242,6 +2104,12 @@ namespace KPLN_ApartmentManager.ExecutableCommand
                 Family existingAfterLoadByRealName = existingFamilies.FirstOrDefault(f =>
                     string.Equals(f.Name, realFamilyName, StringComparison.OrdinalIgnoreCase));
 
+                if (diagnostic != null)
+                    diagnostic.Add(
+                        existingAfterLoadByRealName != null
+                            ? "После загрузки семейство найдено по имени из файла: '" + GetFamilyNameForDiagnostic(existingAfterLoadByRealName) + "'."
+                            : "После загрузки семейство по имени из файла не найдено.");
+
                 if (existingAfterLoadByRealName != null)
                     return existingAfterLoadByRealName;
             }
@@ -1249,8 +2117,17 @@ namespace KPLN_ApartmentManager.ExecutableCommand
             Family existingAfterLoadByFileName = existingFamilies.FirstOrDefault(f =>
                 string.Equals(f.Name, fileFamilyName, StringComparison.OrdinalIgnoreCase));
 
+            if (diagnostic != null)
+                diagnostic.Add(
+                    existingAfterLoadByFileName != null
+                        ? "После загрузки семейство найдено по имени файла: '" + GetFamilyNameForDiagnostic(existingAfterLoadByFileName) + "'."
+                        : "После загрузки семейство по имени файла не найдено.");
+
             if (existingAfterLoadByFileName != null)
                 return existingAfterLoadByFileName;
+
+            if (diagnostic != null)
+                diagnostic.Add("Итог: семейство не удалось загрузить или найти в проекте.");
 
             return null;
         }

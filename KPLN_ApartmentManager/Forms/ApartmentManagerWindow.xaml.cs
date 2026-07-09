@@ -56,6 +56,7 @@ namespace KPLN_ApartmentManager.Forms
     public class ApartmentPresetData
     {
         public const string NoWorksetSelection = "Активный рабочий набор";
+        public const string WorksetsDisabledSelection = "Рабочие наборы отключены";
 
         public string SelectedPlanName { get; set; }
         public string SelectedPlanModelSignature { get; set; }
