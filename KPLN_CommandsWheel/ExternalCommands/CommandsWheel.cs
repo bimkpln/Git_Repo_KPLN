@@ -14,12 +14,12 @@ namespace KPLN_CommandsWheel.ExternalCommands
     [Regeneration(RegenerationOption.Manual)]
     public class CommandsWheel : IExternalCommand
     {
-        internal const string PluginName = "Комадна: Штурвал команд";
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             if (CommandsWheelWindow.TryActivateExisting())
+            {
                 return Result.Succeeded;
+            }
 
             UIApplication uiapp = commandData.Application;
             UserSettings settings = UserSettingsService.Load();
@@ -32,8 +32,11 @@ namespace KPLN_CommandsWheel.ExternalCommands
             List<RevitCommandInfo> wheelCommands = new List<RevitCommandInfo>();
             foreach (string id in settings.WheelCommandIds.Take(8))
             {
-                if (!string.IsNullOrWhiteSpace(id) && commandsById.TryGetValue(id, out RevitCommandInfo command))
+                RevitCommandInfo command;
+                if (!string.IsNullOrWhiteSpace(id) && commandsById.TryGetValue(id, out command))
+                {
                     wheelCommands.Add(command);
+                }
             }
 
             if (wheelCommands.Count == 0)
@@ -45,7 +48,7 @@ namespace KPLN_CommandsWheel.ExternalCommands
             RevitCommandExecutor executor = new RevitCommandExecutor();
             CommandsWheelWindow window = new CommandsWheelWindow(wheelCommands, executor);
             WindowOwnerHelper.Apply(window);
-            WindowPositionHelper.ShowNearCursor(window, 16, 16);
+            WindowPositionHelper.ShowCenteredOnCursor(window);
             window.Show();
 
             return Result.Succeeded;
