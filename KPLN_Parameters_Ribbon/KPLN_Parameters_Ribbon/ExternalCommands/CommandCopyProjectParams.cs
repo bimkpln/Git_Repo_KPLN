@@ -117,10 +117,17 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     Print("Не скопирован параметр: " + paramName + ", т.к. он пуст.", MessageType.Code);
                     return check;
                 }
+                
                 ElementId targetGlobalParamId = GlobalParametersManager.FindByName(currentDoc, paramName);
                 GlobalParameter targetGlobalParam = currentDoc.GetElement(targetGlobalParamId) as GlobalParameter;
                 targetGlobalParam.SetValue(paramValue);
-                Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, Math.Round((paramValue as DoubleParameterValue).Value * 57.2957795D)), MessageType.Code);
+                
+                Print(string.Format("Параметру: \"{0}\" заменено значение с \"{1}\" на \"{2}\"", 
+                    paramName,
+                    paramValue,
+                    Math.Round((paramValue as DoubleParameterValue).Value * 57.2957795D)), 
+                    MessageType.Code);
+                
                 check = true;
             }
             catch (Exception)
@@ -150,20 +157,41 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             {
                 if (param.StorageType == StorageType.String)
                 {
+                    string oldParamData = currentParam.AsString();
                     currentParam.Set(param.AsString());
-                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsString()), MessageType.Code);
+                    
+                    Print(string.Format("Параметру: \"{0}\" заменено значение с \"{1}\" на \"{2}\"", 
+                        paramName,
+                        oldParamData,
+                        param.AsString()),
+                        MessageType.Code);
+                    
                     check = true;
                 }
                 else if (param.StorageType == StorageType.Double)
                 {
+                    string oldParamData = currentParam.AsValueString();
                     currentParam.Set(param.AsDouble());
-                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsDouble()), MessageType.Code);
+                    
+                    Print(string.Format("Параметру: \"{0}\" заменено значение с \"{1}\"\ на \"{2}\"",
+                        paramName,
+                        oldParamData,
+                        param.AsDouble()), 
+                        MessageType.Code);
+                    
                     check = true;
                 }
                 else if (param.StorageType == StorageType.Integer)
                 {
+                    string oldParamData = currentParam.AsString();
                     currentParam.Set(param.AsInteger());
-                    Print(string.Format("Параметру: \"{0}\" присвоено значение: \"{1}\"", paramName, param.AsInteger()), MessageType.Code);
+                    
+                    Print(string.Format("Параметру: \"{0}\" заменено значение с \"{1}\" на \"{2}\"",
+                        paramName,
+                        oldParamData,
+                        param.AsInteger()), 
+                        MessageType.Code);
+                    
                     check = true;
                 }
                 else
@@ -175,6 +203,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
             {
                 PrintError(e, "Не удалось присвоить параметр: " + paramName);
             }
+
             return check;
         }
     }
