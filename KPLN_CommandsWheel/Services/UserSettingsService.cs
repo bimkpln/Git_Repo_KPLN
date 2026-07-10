@@ -84,6 +84,14 @@ namespace KPLN_CommandsWheel.Services
             settings.FavoriteCommandIds = Clean(settings.FavoriteCommandIds, int.MaxValue);
             settings.WheelCommandIds = Clean(settings.WheelCommandIds, MaxWheelCommands);
             settings.RecentCommandIds = Clean(settings.RecentCommandIds, MaxRecentCommands);
+            settings.WheelMode = NormalizeWheelMode(settings.WheelMode);
+            settings.CommandSearchHotkey = NormalizeHotkey(settings.CommandSearchHotkey);
+            settings.CommandsWheelHotkey = NormalizeHotkey(settings.CommandsWheelHotkey);
+
+            if (string.Equals(settings.WheelMode, WheelModeNames.Pinned, StringComparison.OrdinalIgnoreCase))
+            {
+                settings.IsWheelCloseButtonVisible = true;
+            }
         }
 
         private static List<string> Clean(IEnumerable<string> values, int maxCount)
@@ -99,6 +107,44 @@ namespace KPLN_CommandsWheel.Services
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Take(maxCount)
                 .ToList();
+        }
+
+        private static string NormalizeWheelMode(string value)
+        {
+            if (string.Equals(value, WheelModeNames.Pinned, StringComparison.OrdinalIgnoreCase))
+            {
+                return WheelModeNames.Pinned;
+            }
+
+            return WheelModeNames.Unpinned;
+        }
+
+        private static HotkeyGesture NormalizeHotkey(HotkeyGesture hotkey)
+        {
+            if (hotkey == null)
+            {
+                return new HotkeyGesture();
+            }
+
+            hotkey.Keys = HotkeyGestureService.NormalizeKeys(hotkey.Keys).Take(3).ToList();
+            hotkey.MouseButton = NormalizeMouseButton(hotkey.MouseButton);
+
+            return hotkey;
+        }
+
+        private static string NormalizeMouseButton(string value)
+        {
+            if (string.Equals(value, "XButton1", StringComparison.OrdinalIgnoreCase))
+            {
+                return "XButton1";
+            }
+
+            if (string.Equals(value, "XButton2", StringComparison.OrdinalIgnoreCase))
+            {
+                return "XButton2";
+            }
+
+            return null;
         }
     }
 }

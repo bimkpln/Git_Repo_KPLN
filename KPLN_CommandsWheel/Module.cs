@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -11,13 +12,18 @@ namespace KPLN_CommandsWheel
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-        public Result Close() => Result.Succeeded;
+        public Result Close()
+        {
+            Services.HotkeyService.Shutdown();
+            return Result.Succeeded;
+        }
 
         public Result Execute(UIControlledApplication application, string tabName)
         {
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+            Services.HotkeyService.Initialize();
 
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
@@ -53,6 +59,8 @@ namespace KPLN_CommandsWheel
                 "KPLN_CommandsWheel.Imagens.settingsWheels.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
+
+            Services.HotkeyService.Initialize();
 
             return Result.Succeeded;
         }
