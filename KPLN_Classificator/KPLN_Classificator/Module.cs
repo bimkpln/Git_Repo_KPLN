@@ -1,6 +1,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Classificator.ExecutableCommand;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Classificator.Availability;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,18 +39,29 @@ namespace KPLN_Classificator
                 panel = tryPanels.First();
 
 
-            //Ищу  выпадающий список
-            string pullDownName = "Параметры";
+            //Ищу  выпадающий список если нет - создаю
+            PulldownButton paramsPullDownBtn = null;
+            string paramsPullDownName = "Параметры";
             IList<RibbonItem> tryParamsPullDownBtns = panel.GetItems();
-            if (!(tryParamsPullDownBtns.FirstOrDefault(ri => ri.Name.Equals(pullDownName)) is PulldownButton paramsPullDownBtn))
+            RibbonItem rii = tryParamsPullDownBtns.FirstOrDefault(ri => ri.Name.Equals(paramsPullDownName));
+            if (rii == null)
             {
-                HtmlOutput.Print(
-                    "Отправь разработчику - ошибка инициализации плагина KPLN_Classificator. " +
-                        "Нет выпадающего списка для кнопки. Нарушен порядок плагинов в БД",
-                    MessageType.Error);
+                PulldownButtonData paramsPullDownBtnData = new PulldownButtonData("Параметры", "Параметры")
+                {
+                    ToolTip = "Коллекция плагинов по работе с параметрами в проекте",
+                    LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainParams", 32),
+                };
+                paramsPullDownBtn = panel.AddItem(paramsPullDownBtnData) as PulldownButton;
 
-                return Result.Cancelled;
+                SetRIShowText(paramsPullDownBtn, false);
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+                // Регистрация кнопки для смены иконок
+                KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((paramsPullDownBtn, "mainParams", _assemblyName));
+#endif
             }
+            else
+                paramsPullDownBtn = rii as PulldownButton;
 
 
             AddPushButtonDataInPullDown(
@@ -97,6 +109,15 @@ namespace KPLN_Classificator
             // Регистрация кнопки для смены иконок
             KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
 #endif
+        }
+
+        /// <summary>
+        /// Тонкая настройка видимости текста RibbonItem
+        /// </summary>
+        private static void SetRIShowText(RibbonItem ri, bool showName)
+        {
+            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(ri.GetId());
+            revitRibbonItem.ShowText = showName;
         }
     }
 }

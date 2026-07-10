@@ -173,7 +173,7 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                     string oldParamData = currentParam.AsValueString();
                     currentParam.Set(param.AsDouble());
                     
-                    Print(string.Format("Параметру: \"{0}\" заменено значение с \"{1}\"\ на \"{2}\"",
+                    Print(string.Format("Параметру: \"{0}\" заменено значение с \"{1}\" на \"{2}\"",
                         paramName,
                         oldParamData,
                         param.AsDouble()), 

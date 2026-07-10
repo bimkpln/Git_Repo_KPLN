@@ -1,7 +1,7 @@
 ﻿using Autodesk.Revit.UI;
 using System.Reflection;
 
-namespace KPLN_Parameters_Ribbon.Common
+namespace KPLN_Classificator.Availability
 {
     /// <summary>
     /// Extension UI.RibbonItem для поиска ID элемента UI.RibbonItem

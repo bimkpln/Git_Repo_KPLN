@@ -26,23 +26,32 @@ namespace KPLN_Parameters_Ribbon
                 panel = application.CreateRibbonPanel(tabName, panelName);
 
 
-            //Добавляю выпадающий список pullDown
-            PulldownButtonData uparamsPullDownBtnData = new PulldownButtonData("Параметры", "Параметры")
+            //Ищу  выпадающий список если нет - создаю
+            PulldownButton paramsPullDownBtn = null;
+            string paramsPullDownName = "Параметры";
+            IList<RibbonItem> tryParamsPullDownBtns = panel.GetItems();
+            RibbonItem rii = tryParamsPullDownBtns.FirstOrDefault(ri => ri.Name.Equals(paramsPullDownName));
+            if (rii == null)
             {
-                ToolTip = "Коллекция плагинов по работе с параметрами в проекте",
-                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainParams", 32),
-            };
-            PulldownButton paramsPullDownBtn = panel.AddItem(uparamsPullDownBtnData) as PulldownButton;
-            
-            SetRIShowText(paramsPullDownBtn, false);
+                PulldownButtonData paramsPullDownBtnData = new PulldownButtonData("Параметры", "Параметры")
+                {
+                    ToolTip = "Коллекция плагинов по работе с параметрами в проекте",
+                    LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainParams", 32),
+                };
+                paramsPullDownBtn = panel.AddItem(paramsPullDownBtnData) as PulldownButton;
+
+                SetRIShowText(paramsPullDownBtn, false);
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
-            // Регистрация кнопки для смены иконок
-            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((paramsPullDownBtn, "mainParams", _assemblyName));
+                // Регистрация кнопки для смены иконок
+                KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((paramsPullDownBtn, "mainParams", _assemblyName));
 #endif
+            }
+            else
+                paramsPullDownBtn = rii as PulldownButton;
 
 
-            # region Добавляю кнопки в панель
+            #region Добавляю кнопки в панель
             AddPushButtonDataInPullDown(
                 "Копирование параметров проекта",
                 "Параметры\nпроекта",

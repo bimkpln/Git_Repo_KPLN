@@ -44,6 +44,15 @@
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <!-- STATIC REFERENCES -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Classificator\Debug\2020\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Classificator\Debug\2023\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <OutputPath>C:\KPLN_Debug\KPLN_Classificator\Debug\2024\</OutputPath>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -64,6 +73,14 @@
   <ItemGroup>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UIFramework">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\AdWindows.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
@@ -88,6 +105,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Availability\RibbonItemExtensions.cs" />
     <Compile Include="Availability\StaticAvailable.cs" />
     <Compile Include="Commands\CommandFindAllElementsInModel.cs" />
     <Compile Include="Commands\CommandFindElementsInModel.cs" />
@@ -142,6 +160,10 @@
     <Resource Include="Imagens\classificator16_dark.png" />
     <Resource Include="Imagens\classificator32.png" />
     <Resource Include="Imagens\classificator32_dark.png" />
+    <Resource Include="Imagens\mainParams16.png" />
+    <Resource Include="Imagens\mainParams16_dark.png" />
+    <Resource Include="Imagens\mainParams32.png" />
+    <Resource Include="Imagens\mainParams32_dark.png" />
     <Content Include="Resources\Классификатор_типы.xml" />
   </ItemGroup>
   <ItemGroup>
