@@ -30,8 +30,10 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             if (doc.IsFamilyDocument)
             {
                 MessageBox.Show(
+                    "Плагин работает только в проектах Revit. Сейчас открыт файл семейства.",
                     $"KPLN: {PluginName}",
-                    "Плагин работает только в проектах Revit. Сейчас открыт файл семейства.");
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
 
                 return Result.Cancelled;
             }
