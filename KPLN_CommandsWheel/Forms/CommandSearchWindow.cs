@@ -2,22 +2,37 @@
 using KPLN_CommandsWheel.Services;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace KPLN_CommandsWheel.Forms
 {
     internal class CommandSearchWindow : Window
     {
+        private static CommandSearchWindow _current;
+
         private readonly List<RevitCommandInfo> _commands;
         private readonly Dictionary<string, RevitCommandInfo> _commandsById;
         private readonly UserSettings _settings;
         private readonly RevitCommandExecutor _executor;
         private readonly TextBox _searchBox;
         private readonly StackPanel _contentPanel;
+        private readonly HashSet<string> _capturedHotkeyKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _pressedHotkeyKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private RadioButton _unpinnedWheelRadioButton;
+        private RadioButton _pinnedWheelRadioButton;
+        private CheckBox _wheelCloseButtonCheckBox;
+        private Button _commandSearchHotkeyButton;
+        private Button _commandsWheelHotkeyButton;
+        private bool _isUpdatingSettingsControls;
+        private bool _isCapturingHotkey;
+        private HotkeyTarget _capturingHotkeyTarget;
 
         private enum CommandListKind
         {
@@ -26,8 +41,16 @@ namespace KPLN_CommandsWheel.Forms
             Favorites
         }
 
+        private enum HotkeyTarget
+        {
+            CommandSearch,
+            CommandsWheel
+        }
+
         internal CommandSearchWindow(IEnumerable<RevitCommandInfo> commands, UserSettings settings, RevitCommandExecutor executor)
         {
+            _current = this;
+
             _commands = commands
                 .Where(command => command != null && !string.IsNullOrWhiteSpace(command.Id))
                 .OrderBy(command => command.Name)
@@ -46,6 +69,7 @@ namespace KPLN_CommandsWheel.Forms
             MinWidth = 600;
             MinHeight = 560;
             Background = Brushes.White;
+            Focusable = true;
 
             _searchBox = CreateSearchBox();
             _contentPanel = new StackPanel();
@@ -59,19 +83,90 @@ namespace KPLN_CommandsWheel.Forms
 
             PreviewKeyDown += delegate (object sender, KeyEventArgs args)
             {
+                if (_isCapturingHotkey)
+                {
+                    args.Handled = true;
+                    CaptureKeyboardHotkey(args);
+                    return;
+                }
+
                 if (args.Key == Key.Escape)
                 {
                     args.Handled = true;
                     Close();
                 }
             };
+            PreviewKeyUp += delegate (object sender, KeyEventArgs args)
+            {
+                if (_isCapturingHotkey)
+                {
+                    args.Handled = true;
+                    ReleaseKeyboardHotkey(args);
+                }
+            };
+            PreviewMouseDown += delegate (object sender, MouseButtonEventArgs args)
+            {
+                if (_isCapturingHotkey)
+                {
+                    args.Handled = true;
+                    CaptureMouseHotkey(args);
+                }
+            };
+            Closed += delegate
+            {
+                if (ReferenceEquals(_current, this))
+                {
+                    _current = null;
+                }
+
+                if (_isCapturingHotkey)
+                {
+                    _isCapturingHotkey = false;
+                    _capturedHotkeyKeys.Clear();
+                    _pressedHotkeyKeys.Clear();
+                    HotkeyService.ResumeHotkeys();
+                }
+            };
 
             Rebuild();
         }
 
+        internal static bool TryActivateExisting()
+        {
+            if (_current == null || !_current.IsVisible)
+            {
+                return false;
+            }
+
+            if (_current.WindowState == WindowState.Minimized)
+            {
+                _current.WindowState = WindowState.Normal;
+            }
+
+            _current.Activate();
+            return true;
+        }
+
         private UIElement CreateContent()
         {
-            Grid root = new Grid { Margin = new Thickness(14) };
+            TabControl tabControl = new TabControl { Margin = new Thickness(14) };
+            tabControl.Items.Add(new TabItem
+            {
+                Header = "Команды",
+                Content = CreateCommandsContent()
+            });
+            tabControl.Items.Add(new TabItem
+            {
+                Header = "Настройки",
+                Content = CreateSettingsContent()
+            });
+
+            return tabControl;
+        }
+
+        private UIElement CreateCommandsContent()
+        {
+            Grid root = new Grid();
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
@@ -87,6 +182,396 @@ namespace KPLN_CommandsWheel.Forms
             root.Children.Add(scrollViewer);
 
             return root;
+        }
+
+        private UIElement CreateSettingsContent()
+        {
+            StackPanel panel = new StackPanel
+            {
+                Margin = new Thickness(18, 18, 18, 16)
+            };
+
+            panel.Children.Add(CreateSettingsHeader("Штурвал"));
+
+            _unpinnedWheelRadioButton = new RadioButton
+            {
+                Content = "Не закреплён",
+                Margin = new Thickness(0, 2, 0, 4),
+                GroupName = "WheelMode"
+            };
+            _unpinnedWheelRadioButton.Checked += delegate
+            {
+                if (_isUpdatingSettingsControls)
+                {
+                    return;
+                }
+
+                _settings.WheelMode = WheelModeNames.Unpinned;
+                _settings.IsWheelCloseButtonVisible = false;
+                SaveSettingsAndRefresh();
+            };
+            panel.Children.Add(_unpinnedWheelRadioButton);
+
+            _pinnedWheelRadioButton = new RadioButton
+            {
+                Content = "Закреплён",
+                Margin = new Thickness(0, 0, 0, 10),
+                GroupName = "WheelMode"
+            };
+            _pinnedWheelRadioButton.Checked += delegate
+            {
+                if (_isUpdatingSettingsControls)
+                {
+                    return;
+                }
+
+                _settings.WheelMode = WheelModeNames.Pinned;
+                _settings.IsWheelCloseButtonVisible = true;
+                SaveSettingsAndRefresh();
+            };
+            panel.Children.Add(_pinnedWheelRadioButton);
+
+            _wheelCloseButtonCheckBox = new CheckBox
+            {
+                Content = "Кнопка закрытия (красный крест)",
+                Margin = new Thickness(0, 0, 0, 16)
+            };
+            _wheelCloseButtonCheckBox.Checked += delegate
+            {
+                if (_isUpdatingSettingsControls)
+                {
+                    return;
+                }
+
+                _settings.IsWheelCloseButtonVisible = true;
+                SaveSettingsAndRefresh();
+            };
+            _wheelCloseButtonCheckBox.Unchecked += delegate
+            {
+                if (_isUpdatingSettingsControls)
+                {
+                    return;
+                }
+
+                _settings.IsWheelCloseButtonVisible = false;
+                SaveSettingsAndRefresh();
+            };
+            panel.Children.Add(_wheelCloseButtonCheckBox);
+
+            panel.Children.Add(CreateSettingsHeader("Горячие клавиши"));
+            panel.Children.Add(CreateHotkeyRow("Окно Команды", HotkeyTarget.CommandSearch, out _commandSearchHotkeyButton));
+            panel.Children.Add(CreateHotkeyRow("Штурвал", HotkeyTarget.CommandsWheel, out _commandsWheelHotkeyButton));
+            panel.Children.Add(CreateHotkeyHelp());
+
+            RefreshSettingsControls();
+
+            return new ScrollViewer
+            {
+                Content = panel,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+            };
+        }
+
+        private TextBlock CreateSettingsHeader(string text)
+        {
+            return new TextBlock
+            {
+                Text = text,
+                FontSize = 13,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+        }
+
+        private UIElement CreateHotkeyHelp()
+        {
+            Border border = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(248, 248, 248)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(226, 226, 226)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 10, 0, 0)
+            };
+
+            StackPanel stackPanel = new StackPanel();
+
+            TextBlock text = new TextBlock
+            {
+                Text = "Можно назначить от одной до трёх любых клавиш клавиатуры.\nДля мыши доступны только боковые кнопки XButton1 и XButton2.\nВажно: ЛКМ, ПКМ и колесо не назначаются.",
+                Foreground = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
+                TextWrapping = TextWrapping.Wrap,
+                LineHeight = 18,
+                Margin = new Thickness(0, 0, 0, 10)
+            };
+            stackPanel.Children.Add(text);
+
+            stackPanel.Children.Add(CreateMouseButtonsImage());
+
+            border.Child = stackPanel;
+            return border;
+        }
+
+        private UIElement CreateMouseButtonsImage()
+        {
+            const string resourceName = "KPLN_CommandsWheel.Imagens.mouseSideButtons.png";
+
+            Stream stream = typeof(CommandSearchWindow).Assembly.GetManifestResourceStream(resourceName);
+            if (stream == null)
+            {
+                return new TextBlock
+                {
+                    Text = "XButton1 — верхняя боковая кнопка, XButton2 — нижняя боковая кнопка.",
+                    Foreground = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
+                    TextWrapping = TextWrapping.Wrap
+                };
+            }
+
+            using (stream)
+            {
+                BitmapImage image = new BitmapImage();
+                image.BeginInit();
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.StreamSource = stream;
+                image.EndInit();
+                image.Freeze();
+
+                return new Image
+                {
+                    Source = image,
+                    Width = 200,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 2, 0, 0)
+                };
+            }
+        }
+
+        private UIElement CreateHotkeyRow(string title, HotkeyTarget target, out Button hotkeyButton)
+        {
+            Grid row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            row.Children.Add(new TextBlock
+            {
+                Text = title,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = Brushes.Black
+            });
+
+            hotkeyButton = new Button
+            {
+                Height = 30,
+                Margin = new Thickness(0, 0, 6, 0),
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(10, 0, 10, 0)
+            };
+            hotkeyButton.Click += delegate
+            {
+                StartHotkeyCapture(target);
+            };
+            Grid.SetColumn(hotkeyButton, 1);
+            row.Children.Add(hotkeyButton);
+
+            Button clearButton = new Button
+            {
+                Content = "Очистить",
+                Height = 30,
+                MinWidth = 80,
+                Padding = new Thickness(10, 0, 10, 0)
+            };
+            clearButton.Click += delegate
+            {
+                ClearHotkey(target);
+            };
+            Grid.SetColumn(clearButton, 2);
+            row.Children.Add(clearButton);
+
+            return row;
+        }
+
+        private void RefreshSettingsControls()
+        {
+            _isUpdatingSettingsControls = true;
+
+            bool isPinned = string.Equals(_settings.WheelMode, WheelModeNames.Pinned, StringComparison.OrdinalIgnoreCase);
+            if (_unpinnedWheelRadioButton != null)
+            {
+                _unpinnedWheelRadioButton.IsChecked = !isPinned;
+            }
+
+            if (_pinnedWheelRadioButton != null)
+            {
+                _pinnedWheelRadioButton.IsChecked = isPinned;
+            }
+
+            if (_wheelCloseButtonCheckBox != null)
+            {
+                _wheelCloseButtonCheckBox.IsEnabled = !isPinned;
+                _wheelCloseButtonCheckBox.IsChecked = isPinned || _settings.IsWheelCloseButtonVisible;
+            }
+
+            if (_commandSearchHotkeyButton != null)
+            {
+                _commandSearchHotkeyButton.Content = GetHotkeyButtonText(HotkeyTarget.CommandSearch);
+            }
+
+            if (_commandsWheelHotkeyButton != null)
+            {
+                _commandsWheelHotkeyButton.Content = GetHotkeyButtonText(HotkeyTarget.CommandsWheel);
+            }
+
+            _isUpdatingSettingsControls = false;
+        }
+
+        private string GetHotkeyButtonText(HotkeyTarget target)
+        {
+            if (_isCapturingHotkey && _capturingHotkeyTarget == target)
+            {
+                return "Нажмите сочетание...";
+            }
+
+            return HotkeyGestureService.ToDisplayText(GetHotkey(target));
+        }
+
+        private void StartHotkeyCapture(HotkeyTarget target)
+        {
+            _isCapturingHotkey = true;
+            _capturingHotkeyTarget = target;
+            _capturedHotkeyKeys.Clear();
+            _pressedHotkeyKeys.Clear();
+            HotkeyService.SuspendHotkeys();
+            RefreshSettingsControls();
+            Dispatcher.BeginInvoke(new Action(delegate
+            {
+                Focus();
+                Keyboard.Focus(this);
+            }), DispatcherPriority.Input);
+        }
+
+        private void StopHotkeyCapture()
+        {
+            _isCapturingHotkey = false;
+            _capturedHotkeyKeys.Clear();
+            _pressedHotkeyKeys.Clear();
+            HotkeyService.ResumeHotkeys();
+            RefreshSettingsControls();
+            _searchBox.Focus();
+            Keyboard.Focus(_searchBox);
+        }
+
+        private void CaptureKeyboardHotkey(KeyEventArgs args)
+        {
+            if (args.Key == Key.Escape)
+            {
+                StopHotkeyCapture();
+                return;
+            }
+
+            string keyName = HotkeyGestureService.GetKeyName(args);
+            if (string.IsNullOrWhiteSpace(keyName) || args.IsRepeat)
+            {
+                return;
+            }
+
+            _capturedHotkeyKeys.Add(keyName);
+            _pressedHotkeyKeys.Add(keyName);
+
+            if (_capturedHotkeyKeys.Count > 3)
+            {
+                MessageBox.Show(this, "В сочетании может быть не больше трёх клавиш клавиатуры.", "Горячие клавиши", MessageBoxButton.OK, MessageBoxImage.Information);
+                StopHotkeyCapture();
+            }
+        }
+
+        private void ReleaseKeyboardHotkey(KeyEventArgs args)
+        {
+            string keyName = HotkeyGestureService.GetKeyName(args);
+            if (!string.IsNullOrWhiteSpace(keyName))
+            {
+                _pressedHotkeyKeys.Remove(keyName);
+            }
+
+            if (_capturedHotkeyKeys.Count == 0 || _pressedHotkeyKeys.Count != 0)
+            {
+                return;
+            }
+
+            AssignHotkey(_capturingHotkeyTarget, new HotkeyGesture
+            {
+                Keys = HotkeyGestureService.NormalizeKeys(_capturedHotkeyKeys)
+            });
+        }
+
+        private void CaptureMouseHotkey(MouseButtonEventArgs args)
+        {
+            HotkeyGesture gesture = HotkeyGestureService.FromMouseEvent(args, _pressedHotkeyKeys);
+            if (HotkeyGestureService.IsEmpty(gesture))
+            {
+                return;
+            }
+
+            AssignHotkey(_capturingHotkeyTarget, gesture);
+        }
+
+        private void AssignHotkey(HotkeyTarget target, HotkeyGesture gesture)
+        {
+            if (gesture.Keys != null && gesture.Keys.Count > 3)
+            {
+                MessageBox.Show(this, "В сочетании может быть не больше трёх клавиш клавиатуры.", "Горячие клавиши", MessageBoxButton.OK, MessageBoxImage.Information);
+                StopHotkeyCapture();
+                return;
+            }
+
+            HotkeyTarget otherTarget = target == HotkeyTarget.CommandSearch
+                ? HotkeyTarget.CommandsWheel
+                : HotkeyTarget.CommandSearch;
+
+            if (!HotkeyGestureService.IsEmpty(gesture) && HotkeyGestureService.AreEqual(gesture, GetHotkey(otherTarget)))
+            {
+                MessageBox.Show(this, "Для окна Команды и Штурвала нужны разные сочетания.", "Горячие клавиши", MessageBoxButton.OK, MessageBoxImage.Information);
+                StopHotkeyCapture();
+                return;
+            }
+
+            SetHotkey(target, gesture);
+            SaveSettingsAndRefresh();
+            StopHotkeyCapture();
+        }
+
+        private void ClearHotkey(HotkeyTarget target)
+        {
+            SetHotkey(target, new HotkeyGesture());
+            SaveSettingsAndRefresh();
+        }
+
+        private HotkeyGesture GetHotkey(HotkeyTarget target)
+        {
+            return target == HotkeyTarget.CommandSearch
+                ? _settings.CommandSearchHotkey
+                : _settings.CommandsWheelHotkey;
+        }
+
+        private void SetHotkey(HotkeyTarget target, HotkeyGesture gesture)
+        {
+            if (target == HotkeyTarget.CommandSearch)
+            {
+                _settings.CommandSearchHotkey = gesture;
+                return;
+            }
+
+            _settings.CommandsWheelHotkey = gesture;
+        }
+
+        private void SaveSettingsAndRefresh()
+        {
+            UserSettingsService.Save(_settings);
+            HotkeyService.ReloadSettings(_settings);
+            RefreshSettingsControls();
         }
 
         private TextBox CreateSearchBox()

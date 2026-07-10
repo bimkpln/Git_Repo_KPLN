@@ -227,10 +227,14 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Services\CommandWindowService.cs" />
+    <Compile Include="Services\HotkeyGestureService.cs" />
+    <Compile Include="Services\HotkeyService.cs" />
     <Compile Include="Services\IconSourceLoader.cs" />
     <Compile Include="Services\JsonSerialization.cs" />
     <Compile Include="Services\RevitCommandExecutor.cs" />
     <Compile Include="Services\RibbonCommandCollector.cs" />
+    <Compile Include="Services\SelectionCustomCommandService.cs" />
     <Compile Include="Services\UserSettingsService.cs" />
     <Compile Include="Services\WindowOwnerHelper.cs" />
   </ItemGroup>
@@ -245,10 +249,13 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\commandsWheels.png" />
+    <EmbeddedResource Include="Imagens\settingsWheels.png" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Imagens\settingsWheels.png" />
+    <EmbeddedResource Include="Imagens\mouseSideButtons.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\commandsWheels.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
