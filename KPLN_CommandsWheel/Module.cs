@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using System.IO;
 using System.Linq;
@@ -11,10 +12,21 @@ namespace KPLN_CommandsWheel
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private static UIControlledApplication _hotkeyApplication;
+        private static bool _hotkeyInitializationScheduled;
+        private static bool _hotkeyInitializationCompleted;
 
         public Result Close()
         {
+            if (_hotkeyInitializationScheduled && _hotkeyApplication != null)
+            {
+                _hotkeyApplication.Idling -= InitializeHotkeysOnIdle;
+            }
+
             Services.HotkeyService.Shutdown();
+            _hotkeyApplication = null;
+            _hotkeyInitializationScheduled = false;
+            _hotkeyInitializationCompleted = false;
             return Result.Succeeded;
         }
 
@@ -23,7 +35,7 @@ namespace KPLN_CommandsWheel
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
-            Services.HotkeyService.Initialize();
+            ScheduleHotkeyInitialization(application);
 
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
@@ -60,9 +72,31 @@ namespace KPLN_CommandsWheel
                 "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
-            Services.HotkeyService.Initialize();
-
             return Result.Succeeded;
+        }
+
+        private static void ScheduleHotkeyInitialization(UIControlledApplication application)
+        {
+            if (_hotkeyInitializationScheduled || _hotkeyInitializationCompleted || application == null)
+            {
+                return;
+            }
+
+            _hotkeyApplication = application;
+            _hotkeyInitializationScheduled = true;
+            application.Idling += InitializeHotkeysOnIdle;
+        }
+
+        private static void InitializeHotkeysOnIdle(object sender, IdlingEventArgs args)
+        {
+            if (_hotkeyApplication != null)
+            {
+                _hotkeyApplication.Idling -= InitializeHotkeysOnIdle;
+            }
+
+            _hotkeyInitializationScheduled = false;
+            _hotkeyInitializationCompleted = true;
+            Services.HotkeyService.Initialize();
         }
 
         /// <summary>

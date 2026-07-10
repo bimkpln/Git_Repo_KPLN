@@ -300,7 +300,7 @@ namespace KPLN_CommandsWheel.Forms
 
             TextBlock text = new TextBlock
             {
-                Text = "Можно назначить от одной до трёх любых клавиш клавиатуры.\nДля мыши доступны только боковые кнопки XButton1 и XButton2.\nВажно: ЛКМ, ПКМ и колесо не назначаются.",
+                Text = "Можно назначить от одной до трёх любых клавиш клавиатуры.\nДля мыши доступны только боковые кнопки XButton1 и XButton2.\nВажно: ЛКМ, ПКМ и колесо не назначаются.\nИзменения горячих клавиш применяются после перезапуска Revit.",
                 Foreground = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
                 TextWrapping = TextWrapping.Wrap,
                 LineHeight = 18,
@@ -570,7 +570,6 @@ namespace KPLN_CommandsWheel.Forms
         private void SaveSettingsAndRefresh()
         {
             UserSettingsService.Save(_settings);
-            HotkeyService.ReloadSettings(_settings);
             RefreshSettingsControls();
         }
 

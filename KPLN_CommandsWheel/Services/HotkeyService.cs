@@ -50,34 +50,22 @@ namespace KPLN_CommandsWheel.Services
 
         internal static void Initialize()
         {
-            ReloadSettings();
-            EnsureExternalEvents();
-
             if (_isInitialized)
             {
-                RegisterKeyboardHotkeys();
+                EnsureExternalEvents();
                 return;
             }
+
+            ReloadSettings();
+            EnsureExternalEvents();
 
             _keyboardProc = KeyboardHookCallback;
             _mouseProc = MouseHookCallback;
 
             EnsureHotkeyWindow();
-            RegisterKeyboardHotkeys();
-
-            _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, IntPtr.Zero, 0);
-            if (_keyboardHook == IntPtr.Zero)
-            {
-                _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, GetCurrentProcessModuleHandle(), 0);
-            }
-
-            _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, IntPtr.Zero, 0);
-            if (_mouseHook == IntPtr.Zero)
-            {
-                _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetCurrentProcessModuleHandle(), 0);
-            }
-
             _isInitialized = true;
+            RegisterKeyboardHotkeys();
+            UpdateLowLevelHooks();
         }
 
         internal static void ReloadSettings(UserSettings settings = null)
@@ -90,24 +78,15 @@ namespace KPLN_CommandsWheel.Services
             if (_isInitialized)
             {
                 RegisterKeyboardHotkeys();
+                UpdateLowLevelHooks();
             }
         }
 
         internal static void Shutdown()
         {
             UnregisterKeyboardHotkeys();
-
-            if (_keyboardHook != IntPtr.Zero)
-            {
-                UnhookWindowsHookEx(_keyboardHook);
-                _keyboardHook = IntPtr.Zero;
-            }
-
-            if (_mouseHook != IntPtr.Zero)
-            {
-                UnhookWindowsHookEx(_mouseHook);
-                _mouseHook = IntPtr.Zero;
-            }
+            UnhookKeyboardHook();
+            UnhookMouseHook();
 
             if (_hotkeySource != null)
             {
@@ -128,6 +107,8 @@ namespace KPLN_CommandsWheel.Services
             _searchHotkeyActive = false;
             _wheelHotkeyActive = false;
             UnregisterKeyboardHotkeys();
+            UnhookKeyboardHook();
+            UnhookMouseHook();
         }
 
         internal static void ResumeHotkeys()
@@ -140,6 +121,7 @@ namespace KPLN_CommandsWheel.Services
             if (_isInitialized)
             {
                 RegisterKeyboardHotkeys();
+                UpdateLowLevelHooks();
             }
         }
 
@@ -220,6 +202,127 @@ namespace KPLN_CommandsWheel.Services
                 UnregisterHotKey(_hotkeySource.Handle, CommandsWheelHotkeyId);
                 _isCommandsWheelHotkeyRegistered = false;
             }
+        }
+
+        private static void UpdateLowLevelHooks()
+        {
+            if (!_isInitialized)
+            {
+                return;
+            }
+
+            if (_isSuspended || _settings == null)
+            {
+                UnhookKeyboardHook();
+                UnhookMouseHook();
+                return;
+            }
+
+            if (NeedsKeyboardHook())
+            {
+                EnsureKeyboardHook();
+            }
+            else
+            {
+                UnhookKeyboardHook();
+            }
+
+            if (NeedsMouseHook())
+            {
+                EnsureMouseHook();
+            }
+            else
+            {
+                UnhookMouseHook();
+            }
+        }
+
+        private static bool NeedsKeyboardHook()
+        {
+            return NeedsKeyboardHook(_settings.CommandSearchHotkey, _isCommandSearchHotkeyRegistered)
+                || NeedsKeyboardHook(_settings.CommandsWheelHotkey, _isCommandsWheelHotkeyRegistered);
+        }
+
+        private static bool NeedsKeyboardHook(HotkeyGesture gesture, bool isRegistered)
+        {
+            return IsKeyboardGesture(gesture) && !isRegistered;
+        }
+
+        private static bool IsKeyboardGesture(HotkeyGesture gesture)
+        {
+            return !HotkeyGestureService.IsEmpty(gesture)
+                && string.IsNullOrWhiteSpace(gesture.MouseButton);
+        }
+
+        private static bool NeedsMouseHook()
+        {
+            return HasMouseButton(_settings.CommandSearchHotkey)
+                || HasMouseButton(_settings.CommandsWheelHotkey);
+        }
+
+        private static bool HasMouseButton(HotkeyGesture gesture)
+        {
+            return gesture != null && !string.IsNullOrWhiteSpace(gesture.MouseButton);
+        }
+
+        private static void EnsureKeyboardHook()
+        {
+            if (_keyboardHook != IntPtr.Zero)
+            {
+                return;
+            }
+
+            if (_keyboardProc == null)
+            {
+                _keyboardProc = KeyboardHookCallback;
+            }
+
+            _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, IntPtr.Zero, 0);
+            if (_keyboardHook == IntPtr.Zero)
+            {
+                _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, GetCurrentProcessModuleHandle(), 0);
+            }
+        }
+
+        private static void EnsureMouseHook()
+        {
+            if (_mouseHook != IntPtr.Zero)
+            {
+                return;
+            }
+
+            if (_mouseProc == null)
+            {
+                _mouseProc = MouseHookCallback;
+            }
+
+            _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, IntPtr.Zero, 0);
+            if (_mouseHook == IntPtr.Zero)
+            {
+                _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetCurrentProcessModuleHandle(), 0);
+            }
+        }
+
+        private static void UnhookKeyboardHook()
+        {
+            if (_keyboardHook == IntPtr.Zero)
+            {
+                return;
+            }
+
+            UnhookWindowsHookEx(_keyboardHook);
+            _keyboardHook = IntPtr.Zero;
+        }
+
+        private static void UnhookMouseHook()
+        {
+            if (_mouseHook == IntPtr.Zero)
+            {
+                return;
+            }
+
+            UnhookWindowsHookEx(_mouseHook);
+            _mouseHook = IntPtr.Zero;
         }
 
         private static bool TryRegisterKeyboardHotkey(int id, HotkeyGesture gesture)
