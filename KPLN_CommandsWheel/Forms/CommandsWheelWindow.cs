@@ -1,7 +1,5 @@
-﻿using KPLN_CommandsWheel.ExternalCommands;
-using KPLN_CommandsWheel.Models;
+﻿using KPLN_CommandsWheel.Models;
 using KPLN_CommandsWheel.Services;
-using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,7 +65,9 @@ namespace KPLN_CommandsWheel.Forms
             Deactivated += delegate
             {
                 if (_canCloseOnDeactivate && !_isClosing)
+                {
                     CloseWheel();
+                }
             };
             KeyDown += delegate (object sender, KeyEventArgs args)
             {
@@ -105,10 +105,14 @@ namespace KPLN_CommandsWheel.Forms
         internal static bool TryActivateExisting()
         {
             if (_current == null || !_current.IsVisible)
+            {
                 return false;
+            }
 
             if (_current.WindowState == WindowState.Minimized)
+            {
                 _current.WindowState = WindowState.Normal;
+            }
 
             _current.Activate();
             return true;
@@ -137,8 +141,8 @@ namespace KPLN_CommandsWheel.Forms
             {
                 Width = plateRadius * 2,
                 Height = plateRadius * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(16, 24, 28, 34)),
-                Stroke = new SolidColorBrush(Color.FromArgb(38, 210, 220, 230)),
+                Fill = new SolidColorBrush(Color.FromArgb(18, 140, 140, 140)),
+                Stroke = new SolidColorBrush(Color.FromArgb(32, 180, 180, 180)),
                 StrokeThickness = 1,
                 Cursor = Cursors.SizeAll,
                 ToolTip = "\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u044c"
@@ -201,10 +205,8 @@ namespace KPLN_CommandsWheel.Forms
             Path slice = new Path
             {
                 Data = CreateSliceGeometry(center, innerRadius, outerRadius, startAngle, endAngle),
-                Fill = command.CanPost
-                    ? new SolidColorBrush(Color.FromArgb(224, 38, 111, 166))
-                    : new SolidColorBrush(Color.FromArgb(224, 88, 88, 88)),
-                Stroke = new SolidColorBrush(Color.FromArgb(150, 230, 235, 240)),
+                Fill = new SolidColorBrush(Color.FromArgb(42, 145, 145, 145)),
+                Stroke = new SolidColorBrush(Color.FromArgb(88, 235, 235, 235)),
                 StrokeThickness = 1,
                 ToolTip = command.Name,
                 Cursor = Cursors.Hand
@@ -275,18 +277,14 @@ namespace KPLN_CommandsWheel.Forms
         {
             if (isSelected)
             {
-                slice.Fill = command.CanPost
-                    ? new SolidColorBrush(Color.FromArgb(246, 62, 144, 207))
-                    : new SolidColorBrush(Color.FromArgb(246, 110, 110, 110));
+                slice.Fill = new SolidColorBrush(Color.FromArgb(104, 118, 118, 118));
                 slice.Stroke = Brushes.White;
                 slice.StrokeThickness = 2.2;
                 return;
             }
 
-            slice.Fill = command.CanPost
-                ? new SolidColorBrush(Color.FromArgb(224, 38, 111, 166))
-                : new SolidColorBrush(Color.FromArgb(224, 88, 88, 88));
-            slice.Stroke = new SolidColorBrush(Color.FromArgb(150, 230, 235, 240));
+            slice.Fill = new SolidColorBrush(Color.FromArgb(42, 145, 145, 145));
+            slice.Stroke = new SolidColorBrush(Color.FromArgb(88, 235, 235, 235));
             slice.StrokeThickness = 1;
         }
 
@@ -330,16 +328,15 @@ namespace KPLN_CommandsWheel.Forms
         private void RunAndClose(RevitCommandInfo command)
         {
             _executor.Run(command);
-            
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandsWheel.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
             CloseWheel();
         }
 
         private void CloseWheel()
         {
             if (_isClosing)
+            {
                 return;
+            }
 
             _isClosing = true;
             _canCloseOnDeactivate = false;
@@ -384,7 +381,9 @@ namespace KPLN_CommandsWheel.Forms
         private void StartDrag(MouseButtonEventArgs args)
         {
             if (args.ChangedButton != MouseButton.Left)
+            {
                 return;
+            }
 
             args.Handled = true;
             try
