@@ -34,17 +34,23 @@ namespace KPLN_Tools
             CommandLinkChanger_Start.SetStaticEnvironment(application);
 
 
-            //Добавляю панель
-            RibbonPanel panel = application.CreateRibbonPanel(tabName, "Инструменты");
+            //Ищу или создаю панель
+            string panelTName = "Инструменты";
+            RibbonPanel panel = null;
+            IEnumerable<RibbonPanel> tryTPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelTName);
+            if (tryTPanels.Any())
+                panel = tryTPanels.FirstOrDefault();
+            else
+                panel = application.CreateRibbonPanel(tabName, panelTName);
 
             //Ищу или создаю панель
-            string panelName = "Менеджеры";
+            string panelMName = "Менеджеры";
             RibbonPanel mPanel = null;
-            IEnumerable<RibbonPanel> tryMPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelName);
+            IEnumerable<RibbonPanel> tryMPanels = application.GetRibbonPanels(tabName).Where(i => i.Name == panelMName);
             if (tryMPanels.Any())
                 mPanel = tryMPanels.FirstOrDefault();
             else
-                mPanel = application.CreateRibbonPanel(tabName, panelName);
+                mPanel = application.CreateRibbonPanel(tabName, panelMName);
 
             //Добавляю выпадающий список pullDown
             #region Общие инструменты
