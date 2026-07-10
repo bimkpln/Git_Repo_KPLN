@@ -12,39 +12,34 @@ namespace KPLN_CommandsWheel.Services
 {
     internal static class HotkeyService
     {
-        private const int WH_KEYBOARD_LL = 13;
-        private const int WH_MOUSE_LL = 14;
-        private const int WM_KEYDOWN = 0x0100;
-        private const int WM_KEYUP = 0x0101;
-        private const int WM_SYSKEYDOWN = 0x0104;
-        private const int WM_SYSKEYUP = 0x0105;
-        private const int WM_XBUTTONDOWN = 0x020B;
+        private const int WM_INPUT = 0x00FF;
         private const int WM_HOTKEY = 0x0312;
-        private const int XBUTTON1 = 1;
-        private const int XBUTTON2 = 2;
+        private const int RIM_TYPEMOUSE = 0;
         private const int CommandSearchHotkeyId = 0x4B50;
         private const int CommandsWheelHotkeyId = 0x4B51;
+        private const ushort HID_USAGE_PAGE_GENERIC = 0x01;
+        private const ushort HID_USAGE_GENERIC_MOUSE = 0x02;
+        private const ushort RI_MOUSE_BUTTON_4_DOWN = 0x0040;
+        private const ushort RI_MOUSE_BUTTON_5_DOWN = 0x0100;
         private const uint MOD_ALT = 0x0001;
         private const uint MOD_CONTROL = 0x0002;
         private const uint MOD_SHIFT = 0x0004;
         private const uint MOD_NOREPEAT = 0x4000;
+        private const uint RID_INPUT = 0x10000003;
+        private const uint RIDEV_REMOVE = 0x00000001;
+        private const uint RIDEV_INPUTSINK = 0x00000100;
 
-        private static readonly HashSet<string> PressedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        private static HookProc _keyboardProc;
-        private static HookProc _mouseProc;
-        private static IntPtr _keyboardHook = IntPtr.Zero;
-        private static IntPtr _mouseHook = IntPtr.Zero;
         private static ExternalEvent _openCommandSearchEvent;
         private static ExternalEvent _openCommandsWheelEvent;
         private static HwndSource _hotkeySource;
         private static UserSettings _settings;
         private static bool _isInitialized;
         private static bool _isSuspended;
+        private static bool _isRawMouseRegistered;
+        private static IntPtr _rawInputBuffer = IntPtr.Zero;
+        private static uint _rawInputBufferSize;
         private static bool _isCommandSearchHotkeyRegistered;
         private static bool _isCommandsWheelHotkeyRegistered;
-        private static bool _searchHotkeyActive;
-        private static bool _wheelHotkeyActive;
         private static HotkeyTarget? _lastRaisedTarget;
         private static DateTime _lastRaiseTimeUtc;
 
@@ -59,34 +54,28 @@ namespace KPLN_CommandsWheel.Services
             ReloadSettings();
             EnsureExternalEvents();
 
-            _keyboardProc = KeyboardHookCallback;
-            _mouseProc = MouseHookCallback;
-
             EnsureHotkeyWindow();
             _isInitialized = true;
             RegisterKeyboardHotkeys();
-            UpdateLowLevelHooks();
+            UpdateInputHandlers();
         }
 
         internal static void ReloadSettings(UserSettings settings = null)
         {
             _settings = settings ?? UserSettingsService.Load();
-            PressedKeys.Clear();
-            _searchHotkeyActive = false;
-            _wheelHotkeyActive = false;
 
             if (_isInitialized)
             {
                 RegisterKeyboardHotkeys();
-                UpdateLowLevelHooks();
+                UpdateInputHandlers();
             }
         }
 
         internal static void Shutdown()
         {
             UnregisterKeyboardHotkeys();
-            UnhookKeyboardHook();
-            UnhookMouseHook();
+            UnregisterRawMouseInput();
+            FreeRawInputBuffer();
 
             if (_hotkeySource != null)
             {
@@ -97,31 +86,23 @@ namespace KPLN_CommandsWheel.Services
 
             _isInitialized = false;
             _isSuspended = false;
-            PressedKeys.Clear();
         }
 
         internal static void SuspendHotkeys()
         {
             _isSuspended = true;
-            PressedKeys.Clear();
-            _searchHotkeyActive = false;
-            _wheelHotkeyActive = false;
             UnregisterKeyboardHotkeys();
-            UnhookKeyboardHook();
-            UnhookMouseHook();
+            UnregisterRawMouseInput();
         }
 
         internal static void ResumeHotkeys()
         {
             _isSuspended = false;
-            PressedKeys.Clear();
-            _searchHotkeyActive = false;
-            _wheelHotkeyActive = false;
 
             if (_isInitialized)
             {
                 RegisterKeyboardHotkeys();
-                UpdateLowLevelHooks();
+                UpdateInputHandlers();
             }
         }
 
@@ -204,7 +185,7 @@ namespace KPLN_CommandsWheel.Services
             }
         }
 
-        private static void UpdateLowLevelHooks()
+        private static void UpdateInputHandlers()
         {
             if (!_isInitialized)
             {
@@ -213,48 +194,21 @@ namespace KPLN_CommandsWheel.Services
 
             if (_isSuspended || _settings == null)
             {
-                UnhookKeyboardHook();
-                UnhookMouseHook();
+                UnregisterRawMouseInput();
                 return;
             }
 
-            if (NeedsKeyboardHook())
+            if (NeedsRawMouseInput())
             {
-                EnsureKeyboardHook();
+                RegisterRawMouseInput();
             }
             else
             {
-                UnhookKeyboardHook();
-            }
-
-            if (NeedsMouseHook())
-            {
-                EnsureMouseHook();
-            }
-            else
-            {
-                UnhookMouseHook();
+                UnregisterRawMouseInput();
             }
         }
 
-        private static bool NeedsKeyboardHook()
-        {
-            return NeedsKeyboardHook(_settings.CommandSearchHotkey, _isCommandSearchHotkeyRegistered)
-                || NeedsKeyboardHook(_settings.CommandsWheelHotkey, _isCommandsWheelHotkeyRegistered);
-        }
-
-        private static bool NeedsKeyboardHook(HotkeyGesture gesture, bool isRegistered)
-        {
-            return IsKeyboardGesture(gesture) && !isRegistered;
-        }
-
-        private static bool IsKeyboardGesture(HotkeyGesture gesture)
-        {
-            return !HotkeyGestureService.IsEmpty(gesture)
-                && string.IsNullOrWhiteSpace(gesture.MouseButton);
-        }
-
-        private static bool NeedsMouseHook()
+        private static bool NeedsRawMouseInput()
         {
             return HasMouseButton(_settings.CommandSearchHotkey)
                 || HasMouseButton(_settings.CommandsWheelHotkey);
@@ -265,64 +219,60 @@ namespace KPLN_CommandsWheel.Services
             return gesture != null && !string.IsNullOrWhiteSpace(gesture.MouseButton);
         }
 
-        private static void EnsureKeyboardHook()
+        private static void RegisterRawMouseInput()
         {
-            if (_keyboardHook != IntPtr.Zero)
+            if (_isRawMouseRegistered)
             {
                 return;
             }
 
-            if (_keyboardProc == null)
+            EnsureHotkeyWindow();
+            if (_hotkeySource == null || _hotkeySource.Handle == IntPtr.Zero)
             {
-                _keyboardProc = KeyboardHookCallback;
+                return;
             }
 
-            _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, IntPtr.Zero, 0);
-            if (_keyboardHook == IntPtr.Zero)
+            RawInputDevice[] devices =
             {
-                _keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc, GetCurrentProcessModuleHandle(), 0);
-            }
+                new RawInputDevice
+                {
+                    UsagePage = HID_USAGE_PAGE_GENERIC,
+                    Usage = HID_USAGE_GENERIC_MOUSE,
+                    Flags = RIDEV_INPUTSINK,
+                    Target = _hotkeySource.Handle
+                }
+            };
+
+            _isRawMouseRegistered = RegisterRawInputDevices(
+                devices,
+                (uint)devices.Length,
+                (uint)Marshal.SizeOf(typeof(RawInputDevice)));
         }
 
-        private static void EnsureMouseHook()
+        private static void UnregisterRawMouseInput()
         {
-            if (_mouseHook != IntPtr.Zero)
+            if (!_isRawMouseRegistered)
             {
                 return;
             }
 
-            if (_mouseProc == null)
+            RawInputDevice[] devices =
             {
-                _mouseProc = MouseHookCallback;
-            }
+                new RawInputDevice
+                {
+                    UsagePage = HID_USAGE_PAGE_GENERIC,
+                    Usage = HID_USAGE_GENERIC_MOUSE,
+                    Flags = RIDEV_REMOVE,
+                    Target = IntPtr.Zero
+                }
+            };
 
-            _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, IntPtr.Zero, 0);
-            if (_mouseHook == IntPtr.Zero)
-            {
-                _mouseHook = SetWindowsHookEx(WH_MOUSE_LL, _mouseProc, GetCurrentProcessModuleHandle(), 0);
-            }
-        }
+            RegisterRawInputDevices(
+                devices,
+                (uint)devices.Length,
+                (uint)Marshal.SizeOf(typeof(RawInputDevice)));
 
-        private static void UnhookKeyboardHook()
-        {
-            if (_keyboardHook == IntPtr.Zero)
-            {
-                return;
-            }
-
-            UnhookWindowsHookEx(_keyboardHook);
-            _keyboardHook = IntPtr.Zero;
-        }
-
-        private static void UnhookMouseHook()
-        {
-            if (_mouseHook == IntPtr.Zero)
-            {
-                return;
-            }
-
-            UnhookWindowsHookEx(_mouseHook);
-            _mouseHook = IntPtr.Zero;
+            _isRawMouseRegistered = false;
         }
 
         private static bool TryRegisterKeyboardHotkey(int id, HotkeyGesture gesture)
@@ -373,13 +323,13 @@ namespace KPLN_CommandsWheel.Services
                 }
             }
 
-            if (modifiers == 0)
+            Key parsedKey;
+            if (!TryParseKey(mainKeys[0], out parsedKey))
             {
                 return false;
             }
 
-            Key parsedKey;
-            if (!TryParseKey(mainKeys[0], out parsedKey))
+            if (modifiers == 0 && parsedKey != Key.Tab)
             {
                 return false;
             }
@@ -407,7 +357,22 @@ namespace KPLN_CommandsWheel.Services
 
         private static IntPtr HotkeyWindowHook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (_isSuspended || message != WM_HOTKEY)
+            if (_isSuspended)
+            {
+                return IntPtr.Zero;
+            }
+
+            if (message == WM_INPUT)
+            {
+                if (_isRawMouseRegistered && IsForegroundCurrentProcess() && TryHandleRawMouseInput(lParam))
+                {
+                    handled = true;
+                }
+
+                return IntPtr.Zero;
+            }
+
+            if (message != WM_HOTKEY)
             {
                 return IntPtr.Zero;
             }
@@ -433,86 +398,75 @@ namespace KPLN_CommandsWheel.Services
             return IntPtr.Zero;
         }
 
-        private static IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        private static bool TryHandleRawMouseInput(IntPtr lParam)
         {
-            if (!_isSuspended && nCode >= 0 && IsForegroundCurrentProcess())
-            {
-                int message = wParam.ToInt32();
-                Kbdllhookstruct keyboardData = (Kbdllhookstruct)Marshal.PtrToStructure(lParam, typeof(Kbdllhookstruct));
-                string keyName = GetKeyNameFromVirtualKey(keyboardData.vkCode);
+            uint size = 0;
+            uint headerSize = (uint)Marshal.SizeOf(typeof(RawInputHeader));
 
-                if (!string.IsNullOrWhiteSpace(keyName))
-                {
-                    if (message == WM_KEYDOWN || message == WM_SYSKEYDOWN)
-                    {
-                        PressedKeys.Add(keyName);
-                        if (TryTriggerKeyboardHotkey())
-                        {
-                            return new IntPtr(1);
-                        }
-                    }
-                    else if (message == WM_KEYUP || message == WM_SYSKEYUP)
-                    {
-                        PressedKeys.Remove(keyName);
-                        RefreshKeyboardHotkeyActiveState();
-                    }
-                }
+            if (GetRawInputData(lParam, RID_INPUT, IntPtr.Zero, ref size, headerSize) == uint.MaxValue || size == 0)
+            {
+                return false;
             }
 
-            return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
+            if (!EnsureRawInputBuffer(size))
+            {
+                return false;
+            }
+
+            uint readSize = GetRawInputData(lParam, RID_INPUT, _rawInputBuffer, ref size, headerSize);
+            if (readSize == uint.MaxValue || readSize != size)
+            {
+                return false;
+            }
+
+            RawInput rawInput = (RawInput)Marshal.PtrToStructure(_rawInputBuffer, typeof(RawInput));
+            if (rawInput.Header.Type != RIM_TYPEMOUSE)
+            {
+                return false;
+            }
+
+            string mouseButton = null;
+            if ((rawInput.Mouse.ButtonFlags & RI_MOUSE_BUTTON_4_DOWN) == RI_MOUSE_BUTTON_4_DOWN)
+            {
+                mouseButton = "XButton1";
+            }
+            else if ((rawInput.Mouse.ButtonFlags & RI_MOUSE_BUTTON_5_DOWN) == RI_MOUSE_BUTTON_5_DOWN)
+            {
+                mouseButton = "XButton2";
+            }
+
+            return !string.IsNullOrWhiteSpace(mouseButton) && TryTriggerMouseHotkey(mouseButton);
         }
 
-        private static IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        private static bool EnsureRawInputBuffer(uint size)
         {
-            if (!_isSuspended && nCode >= 0 && wParam.ToInt32() == WM_XBUTTONDOWN && IsForegroundCurrentProcess())
+            if (size == 0 || size > int.MaxValue)
             {
-                Msllhookstruct mouseData = (Msllhookstruct)Marshal.PtrToStructure(lParam, typeof(Msllhookstruct));
-                int xButton = (mouseData.mouseData >> 16) & 0xffff;
-                string mouseButton = xButton == XBUTTON1 ? "XButton1" : xButton == XBUTTON2 ? "XButton2" : null;
-
-                if (!string.IsNullOrWhiteSpace(mouseButton) && TryTriggerMouseHotkey(mouseButton))
-                {
-                    return new IntPtr(1);
-                }
+                return false;
             }
 
-            return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
-        }
-
-        private static bool TryTriggerKeyboardHotkey()
-        {
-            if (_settings == null)
+            if (_rawInputBuffer != IntPtr.Zero && _rawInputBufferSize >= size)
             {
-                ReloadSettings();
-            }
-
-            bool searchMatches = HotkeyGestureService.Matches(_settings.CommandSearchHotkey, PressedKeys, null);
-            bool wheelMatches = HotkeyGestureService.Matches(_settings.CommandsWheelHotkey, PressedKeys, null);
-
-            if (searchMatches)
-            {
-                if (!_searchHotkeyActive)
-                {
-                    Raise(HotkeyTarget.CommandSearch);
-                }
-
-                _searchHotkeyActive = true;
                 return true;
             }
 
-            if (wheelMatches)
-            {
-                if (!_wheelHotkeyActive)
-                {
-                    Raise(HotkeyTarget.CommandsWheel);
-                }
+            FreeRawInputBuffer();
 
-                _wheelHotkeyActive = true;
-                return true;
+            _rawInputBuffer = Marshal.AllocHGlobal((int)size);
+            _rawInputBufferSize = size;
+            return _rawInputBuffer != IntPtr.Zero;
+        }
+
+        private static void FreeRawInputBuffer()
+        {
+            if (_rawInputBuffer == IntPtr.Zero)
+            {
+                return;
             }
 
-            RefreshKeyboardHotkeyActiveState();
-            return false;
+            Marshal.FreeHGlobal(_rawInputBuffer);
+            _rawInputBuffer = IntPtr.Zero;
+            _rawInputBufferSize = 0;
         }
 
         private static bool TryTriggerMouseHotkey(string mouseButton)
@@ -522,13 +476,15 @@ namespace KPLN_CommandsWheel.Services
                 ReloadSettings();
             }
 
-            if (HotkeyGestureService.Matches(_settings.CommandSearchHotkey, PressedKeys, mouseButton))
+            List<string> pressedKeys = GetPressedModifierKeys();
+
+            if (HotkeyGestureService.Matches(_settings.CommandSearchHotkey, pressedKeys, mouseButton))
             {
                 Raise(HotkeyTarget.CommandSearch);
                 return true;
             }
 
-            if (HotkeyGestureService.Matches(_settings.CommandsWheelHotkey, PressedKeys, mouseButton))
+            if (HotkeyGestureService.Matches(_settings.CommandsWheelHotkey, pressedKeys, mouseButton))
             {
                 Raise(HotkeyTarget.CommandsWheel);
                 return true;
@@ -537,17 +493,27 @@ namespace KPLN_CommandsWheel.Services
             return false;
         }
 
-        private static void RefreshKeyboardHotkeyActiveState()
+        private static List<string> GetPressedModifierKeys()
         {
-            if (_settings == null)
+            List<string> keys = new List<string>();
+            ModifierKeys modifiers = Keyboard.Modifiers;
+
+            if ((modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
-                _searchHotkeyActive = false;
-                _wheelHotkeyActive = false;
-                return;
+                keys.Add("Ctrl");
             }
 
-            _searchHotkeyActive = HotkeyGestureService.Matches(_settings.CommandSearchHotkey, PressedKeys, null);
-            _wheelHotkeyActive = HotkeyGestureService.Matches(_settings.CommandsWheelHotkey, PressedKeys, null);
+            if ((modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                keys.Add("Shift");
+            }
+
+            if ((modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+            {
+                keys.Add("Alt");
+            }
+
+            return HotkeyGestureService.NormalizeKeys(keys);
         }
 
         private static bool Raise(HotkeyTarget target)
@@ -591,30 +557,6 @@ namespace KPLN_CommandsWheel.Services
             }
         }
 
-        private static string GetKeyNameFromVirtualKey(int virtualKey)
-        {
-            switch (virtualKey)
-            {
-                case 0x10:
-                case 0xA0:
-                case 0xA1:
-                    return "Shift";
-
-                case 0x11:
-                case 0xA2:
-                case 0xA3:
-                    return "Ctrl";
-
-                case 0x12:
-                case 0xA4:
-                case 0xA5:
-                    return "Alt";
-
-                default:
-                    return HotkeyGestureService.NormalizeKey(KeyInterop.KeyFromVirtualKey(virtualKey));
-            }
-        }
-
         private static bool IsForegroundCurrentProcess()
         {
             IntPtr foregroundWindow = GetForegroundWindow();
@@ -626,17 +568,6 @@ namespace KPLN_CommandsWheel.Services
             int processId;
             GetWindowThreadProcessId(foregroundWindow, out processId);
             return processId == Process.GetCurrentProcess().Id;
-        }
-
-        private static IntPtr GetCurrentProcessModuleHandle()
-        {
-            using (Process process = Process.GetCurrentProcess())
-            {
-                using (ProcessModule module = process.MainModule)
-                {
-                    return GetModuleHandle(module.ModuleName);
-                }
-            }
         }
 
         private enum HotkeyTarget
@@ -673,40 +604,55 @@ namespace KPLN_CommandsWheel.Services
             }
         }
 
-        private delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
-
         [StructLayout(LayoutKind.Sequential)]
-        private struct Kbdllhookstruct
+        private struct RawInputDevice
         {
-            public int vkCode;
-            public int scanCode;
-            public int flags;
-            public int time;
-            public IntPtr dwExtraInfo;
+            public ushort UsagePage;
+            public ushort Usage;
+            public uint Flags;
+            public IntPtr Target;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct Point
+        private struct RawInputHeader
         {
-            public int x;
-            public int y;
+            public uint Type;
+            public uint Size;
+            public IntPtr Device;
+            public IntPtr WParam;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        private struct RawMouse
+        {
+            [FieldOffset(0)]
+            public ushort Flags;
+
+            [FieldOffset(4)]
+            public ushort ButtonFlags;
+
+            [FieldOffset(6)]
+            public ushort ButtonData;
+
+            [FieldOffset(8)]
+            public uint RawButtons;
+
+            [FieldOffset(12)]
+            public int LastX;
+
+            [FieldOffset(16)]
+            public int LastY;
+
+            [FieldOffset(20)]
+            public uint ExtraInformation;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct Msllhookstruct
+        private struct RawInput
         {
-            public Point pt;
-            public int mouseData;
-            public int flags;
-            public int time;
-            public IntPtr dwExtraInfo;
+            public RawInputHeader Header;
+            public RawMouse Mouse;
         }
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook, HookProc lpfn, IntPtr hMod, uint dwThreadId);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -714,16 +660,24 @@ namespace KPLN_CommandsWheel.Services
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-        [DllImport("user32.dll")]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RegisterRawInputDevices(
+            RawInputDevice[] pRawInputDevices,
+            uint uiNumDevices,
+            uint cbSize);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint GetRawInputData(
+            IntPtr hRawInput,
+            uint uiCommand,
+            IntPtr pData,
+            ref uint pcbSize,
+            uint cbSizeHeader);
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out int processId);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
     }
 }
