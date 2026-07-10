@@ -1010,7 +1010,6 @@ namespace KPLN_CommandsWheel.Forms
         {
             if (command == null || ids == null || string.IsNullOrWhiteSpace(command.Id))
                 return -1;
-            }
 
             return ids.FindIndex(id => string.Equals(id, command.Id, StringComparison.OrdinalIgnoreCase));
         }
