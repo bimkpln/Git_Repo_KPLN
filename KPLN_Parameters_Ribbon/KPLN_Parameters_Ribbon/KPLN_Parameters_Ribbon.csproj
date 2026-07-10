@@ -61,6 +61,14 @@
     <Reference Include="KPLN_Library_DBWorker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
     </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\Revit 2020\AdWindows.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UIFramework">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_ModelChecker_Lib, Version=1.3.11.0, Culture=neutral, processorArchitecture=AMD64">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\2024\KPLN_ModelChecker_Lib.dll</HintPath>
@@ -150,6 +158,7 @@
     <Compile Include="Common\GripParam\Builder\GripDirector.cs" />
     <Compile Include="Common\GripParam\GripParamError.cs" />
     <Compile Include="Common\GripParam\GripParamExection.cs" />
+    <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />
     <Compile Include="ExternalCommands\CommandGripParam.cs" />
@@ -210,6 +219,12 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\mainParams16.png" />
+    <Resource Include="Imagens\mainParams16_dark.png" />
+    <Resource Include="Imagens\mainParams32.png" />
+    <Resource Include="Imagens\mainParams32_dark.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
