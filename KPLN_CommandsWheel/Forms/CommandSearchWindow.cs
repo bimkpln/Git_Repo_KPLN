@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,6 +14,44 @@ using System.Windows.Threading;
 
 namespace KPLN_CommandsWheel.Forms
 {
+    /// <summary>
+    /// Класс-экстеншан для оформления текста
+    /// </summary>
+    internal static class InlineExtensions
+    {
+        public static InlineCollection Text(
+            this InlineCollection inlines,
+            string value)
+        {
+            inlines.Add(new Run(value));
+            return inlines;
+        }
+
+        public static InlineCollection Bold(
+            this InlineCollection inlines,
+            string value)
+        {
+            inlines.Add(new Run(value)
+            {
+                FontWeight = FontWeights.Bold
+            });
+
+            return inlines;
+        }
+
+        public static InlineCollection Italic(
+            this InlineCollection inlines,
+            string value)
+        {
+            inlines.Add(new Run(value)
+            {
+                FontStyle = FontStyles.Italic
+            });
+
+            return inlines;
+        }
+    }
+
     internal class CommandSearchWindow : Window
     {
         private static CommandSearchWindow _current;
@@ -300,14 +339,25 @@ namespace KPLN_CommandsWheel.Forms
 
             TextBlock text = new TextBlock
             {
-                Text = "Можно назначить от одной до трёх любых клавиш клавиатуры.\nДля мыши доступны ТОЛЬКО БОКОВЫЕ кнопки. ЛКМ, ПКМ и колесо не назначаются.\nЧтобы изменения для клавиш мышки вступили в силу - необходимо перезагрузить Revit.",
                 Foreground = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
                 TextWrapping = TextWrapping.Wrap,
                 LineHeight = 18,
                 Margin = new Thickness(0, 0, 0, 10)
             };
-            stackPanel.Children.Add(text);
 
+            text.Inlines
+                .Text("Можно назначить от одной до трёх любых клавиш клавиатуры. ")
+                .Italic("Рекомендуется ")
+                .Text("применять клавишу \"Tab\".\n\n")
+                .Bold("ВАЖНО: ")
+                .Text("Для мыши доступны только боковые кнопки (ЛКМ, ПКМ и колесо не назначаются).\n")
+                .Italic("ИНФО: ")
+                .Text(
+                    "Если назначаешь кнопки клавиатуры - они применяются без перезагрузки Revit. " +
+                    "Если кнопки мышки — Revit необходимо перезагрузить. " +
+                    "Если меняешь с кнопок клавиатуры на кнопки мышки или наобарот — Revit необходимо перезагрузить.");
+
+            stackPanel.Children.Add(text);
             stackPanel.Children.Add(CreateMouseButtonsImage());
 
             border.Child = stackPanel;
