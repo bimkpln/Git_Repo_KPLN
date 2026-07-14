@@ -213,7 +213,22 @@ namespace KPLN_BIMTools_Ribbon
             );
 
 
-
+            AddPushButtonDataInPullDown(
+                "Сбор информации по параметрам семейства",
+                "Сбор информации по параметрам семейства",
+                "Плагин, который собирает информацию по параметрам семейства",
+                string.Format(
+                    "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(CommandCollectionFamilyParameters).FullName,
+                paramPullDown,
+                "сollectionFamilyParameters",
+                "http://moodle/",
+                false
+            );
 
 
 
