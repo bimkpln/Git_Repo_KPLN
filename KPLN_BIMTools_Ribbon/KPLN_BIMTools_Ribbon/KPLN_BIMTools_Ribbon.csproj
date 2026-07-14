@@ -182,6 +182,9 @@
     <Compile Include="Forms\batchAddingParametersWindowСhoice.xaml.cs">
       <DependentUpon>batchAddingParametersWindowСhoice.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\CollectionFamilyParametersWindow.xaml.cs">
+      <DependentUpon>CollectionFamilyParametersWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\CollectionParametersWindow.xaml.cs">
       <DependentUpon>CollectionParametersWindow.xaml</DependentUpon>
     </Compile>
@@ -262,6 +265,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\batchAddingParametersWindowСhoice.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\CollectionFamilyParametersWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
