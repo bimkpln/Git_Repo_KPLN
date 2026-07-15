@@ -164,8 +164,9 @@
                 Background="Transparent"
                 BorderBrush="Transparent"
                 Content="👍"
-                Foreground="Green"
                 ToolTip="Проголосуй, если подсказка тебе помогла"
+                IsEnabled="False"
+                Foreground="Gray"
                 Click="BtnLike_Click"/>
             <Button 
                 Grid.Column="2"
@@ -174,8 +175,9 @@
                 Background="Transparent"
                 BorderBrush="Transparent"
                 Content="👎"
-                Foreground="Red"
                 ToolTip="Проголосуй, если подсказка не имеет смысла"
+                IsEnabled="False"
+                Foreground="Gray"
                 Click="BtnDislike_Click"/>
         </Grid>
 
