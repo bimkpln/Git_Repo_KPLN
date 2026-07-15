@@ -46,6 +46,8 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="8"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="6"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <CheckBox Grid.Row="0" x:Name="CbAddToEvacuationWorkset" Content="Добавить в рабочий набор, содержащий «ЭВАКУАЦИИ»" Checked="EvacuationWorkset_Changed" Unchecked="EvacuationWorkset_Changed" IsChecked="True"/>
@@ -62,51 +64,71 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
+            <TextBlock Grid.Row="4"
+                       Text="Статусы Построено и Частично проверяют на наличие путей эвакуации, а не на правильность их построения"
+                       Foreground="#666666"
+                       TextWrapping="Wrap"/>
         </Grid>
 
-        <DataGrid Grid.Row="4"
-                  x:Name="DgStairs"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  IsReadOnly="False"
-                  SelectionMode="Single"
-                  SelectionUnit="FullRow"
-                  HeadersVisibility="Column"
-                  GridLinesVisibility="Horizontal"
-                  SelectionChanged="DgStairs_SelectionChanged">
-            <DataGrid.Columns>
-                <DataGridTemplateColumn Header="Строить" Width="70">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsIncluded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Статус" Width="155" IsReadOnly="True">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="11" Height="11" Fill="{Binding StatusBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="ID" Binding="{Binding ElementId}" Width="85" IsReadOnly="True"/>
-                <DataGridTemplateColumn Header="Объект" Width="145" IsReadOnly="True">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Margin="{Binding ObjectIndent}" Text="{Binding ObjectText}" VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Имя" Binding="{Binding Name}" Width="160" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Тип" Binding="{Binding TypeName}" Width="330" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Элементы" Binding="{Binding ElementsText}" Width="130" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Уровни" Binding="{Binding NestedText}" Width="90" IsReadOnly="True"/>
-            </DataGrid.Columns>
-        </DataGrid>
+        <Grid Grid.Row="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="6"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Button Grid.Row="0"
+                    x:Name="BtnToggleSelection"
+                    Width="150"
+                    Height="26"
+                    HorizontalAlignment="Left"
+                    Content="Выделить всё"
+                    Click="ToggleSelection_Click"/>
+
+            <DataGrid Grid.Row="2"
+                      x:Name="DgStairs"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      IsReadOnly="False"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      SelectionChanged="DgStairs_SelectionChanged">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Строить" Width="70">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsIncluded, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Статус" Width="155" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="11" Height="11" Fill="{Binding StatusBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="ID" Binding="{Binding ElementId}" Width="85" IsReadOnly="True"/>
+                    <DataGridTemplateColumn Header="Объект" Width="145" IsReadOnly="True">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Margin="{Binding ObjectIndent}" Text="{Binding ObjectText}" VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Имя" Binding="{Binding Name}" Width="160" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Тип" Binding="{Binding TypeName}" Width="330" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Элементы" Binding="{Binding ElementsText}" Width="130" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Уровни" Binding="{Binding NestedText}" Width="90" IsReadOnly="True"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
 
         <Grid Grid.Row="6">
             <Grid.ColumnDefinitions>
