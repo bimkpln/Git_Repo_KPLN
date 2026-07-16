@@ -7,6 +7,7 @@ using KPLN_Tools.ExternalCommands.UI;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Windows.Interop;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -30,7 +31,10 @@ namespace KPLN_Tools.ExternalCommands
             CheckRoute,
             ResizeRoute,
             Build,
-            PickAndBuild
+            PickAndBuild,
+            PickDebugStair,
+            PickTrimRoute,
+            PickResizeRoute
         }
 
         private sealed class EvacuationRoutesExternalEventHandler : IExternalEventHandler
@@ -111,6 +115,30 @@ namespace KPLN_Tools.ExternalCommands
                 _requestKind = EvacuationRoutesRequestKind.PickAndBuild;
             }
 
+            public void RequestPickDebugStair(EvacuationRoutesDialog dialog, EvacuationRoutesDialogResult data)
+            {
+                _dialog = dialog;
+                _data = data;
+                _elementId = 0;
+                _requestKind = EvacuationRoutesRequestKind.PickDebugStair;
+            }
+
+            public void RequestPickTrimRoute(EvacuationRoutesDialog dialog)
+            {
+                _dialog = dialog;
+                _data = null;
+                _elementId = 0;
+                _requestKind = EvacuationRoutesRequestKind.PickTrimRoute;
+            }
+
+            public void RequestPickResizeRoute(EvacuationRoutesDialog dialog)
+            {
+                _dialog = dialog;
+                _data = null;
+                _elementId = 0;
+                _requestKind = EvacuationRoutesRequestKind.PickResizeRoute;
+            }
+
             public void Execute(UIApplication app)
             {
                 EvacuationRoutesRequestKind requestKind = _requestKind;
@@ -142,6 +170,127 @@ namespace KPLN_Tools.ExternalCommands
                     {
                         SelectAndShowElement(_owner.uidoc, elementId);
                         Notify(dialog, $"Выбран элемент ID {elementId}.");
+                        return;
+                    }
+
+                    if (requestKind == EvacuationRoutesRequestKind.PickDebugStair)
+                    {
+                        long? pickedId;
+                        HideForPick(dialog);
+                        try
+                        {
+                            pickedId = PickStairElementId(app, _owner.doc);
+                        }
+                        finally
+                        {
+                            RestoreAfterPick(dialog);
+                        }
+
+                        if (!pickedId.HasValue)
+                        {
+                            Finish(dialog, "Debug-отчёт отменён.");
+                            return;
+                        }
+
+                        EvacuationRoutesDialogResult debugData = new EvacuationRoutesDialogResult(
+                            data == null ? 2100 : data.HeightMm,
+                            data == null ? 1200 : data.WidthMm,
+                            data != null && data.UseRunWidth,
+                            true,
+                            data != null && data.AddToEvacuationWorkset,
+                            data == null ? (int?)null : data.EvacuationWorksetId,
+                            pickedId.Value,
+                            null,
+                            data == null ? null : data.UseRunWidthByElementId);
+
+                        string path = _owner.SaveStairDebugReportToDesktop(pickedId.Value, debugData);
+                        Finish(dialog, $"Debug-отчёт сохранён: {path}");
+                        return;
+                    }
+
+                    if (requestKind == EvacuationRoutesRequestKind.PickTrimRoute)
+                    {
+                        long? pickedRouteId;
+                        HideForPick(dialog);
+                        try
+                        {
+                            pickedRouteId = PickEvacuationRouteElementId(app, _owner.doc);
+                        }
+                        finally
+                        {
+                            RestoreAfterPick(dialog);
+                        }
+
+                        if (!pickedRouteId.HasValue)
+                        {
+                            Finish(dialog, "Обрезка отменена.");
+                            return;
+                        }
+
+                        EvacuationRoutesTrimRequest pickedTrimRequest = _owner.CreateTrimRequestForRoute(pickedRouteId.Value);
+                        if (pickedTrimRequest.IntersectingElementIds == null || pickedTrimRequest.IntersectingElementIds.Count == 0)
+                        {
+                            RouteCheckResult checkResult = _owner.CheckRouteIntersections(new EvacuationRoutesCheckRequest
+                            {
+                                StairElementId = pickedTrimRequest.StairElementId,
+                                ComponentElementId = pickedTrimRequest.ComponentElementId,
+                                RouteElementId = pickedTrimRequest.RouteElementId
+                            });
+
+                            Finish(dialog, checkResult.HasIntersections ? "Пересечения найдены, но элементов для обрезки в основном файле нет." : "Пересечений не найдено.");
+                            ShowRouteCheck(dialog, checkResult.ReportText);
+                            return;
+                        }
+
+                        RouteEditResult trimResult = _owner.TrimRouteIntersections(pickedTrimRequest);
+                        Finish(dialog, trimResult.Message);
+                        ShowRouteCheck(dialog, trimResult.CheckReport);
+                        UpdateDimensions(dialog, trimResult);
+                        if (trimResult.IsFixed)
+                            MarkFixed(dialog, trimResult.StairElementId);
+                        return;
+                    }
+
+                    if (requestKind == EvacuationRoutesRequestKind.PickResizeRoute)
+                    {
+                        long? pickedRouteId;
+                        HideForPick(dialog);
+                        try
+                        {
+                            pickedRouteId = PickEvacuationRouteElementId(app, _owner.doc);
+                        }
+                        finally
+                        {
+                            RestoreAfterPick(dialog);
+                        }
+
+                        if (!pickedRouteId.HasValue)
+                        {
+                            Finish(dialog, "Изменение габаритов отменено.");
+                            return;
+                        }
+
+                        EvacuationRoutesCheckRequest pickedRoute = _owner.CreateRouteCheckRequestForRoute(pickedRouteId.Value);
+                        RouteDimensionInfo dimensions = GetRouteDimensionInfo(_owner.doc, pickedRoute.RouteElementId, pickedRoute.ComponentElementId);
+                        if (dimensions.LengthMm <= 0 || dimensions.WidthMm <= 0 || dimensions.HeightMm <= 0)
+                        {
+                            Finish(dialog, $"Не удалось определить габариты пути ID {pickedRouteId.Value}.");
+                            return;
+                        }
+
+                        EvacuationRoutesResizeRequest pickedResizeRequest;
+                        if (!TryGetResizeRequestFromDialog(dialog, pickedRoute, dimensions, out pickedResizeRequest))
+                        {
+                            Finish(dialog, "Изменение габаритов отменено.");
+                            return;
+                        }
+
+                        RouteEditResult resizeResult = _owner.ResizeRouteShape(pickedResizeRequest);
+                        Finish(dialog, resizeResult.Message);
+                        ShowRouteCheck(dialog, resizeResult.CheckReport);
+                        UpdateDimensions(dialog, resizeResult);
+                        if (resizeResult.IsFixed)
+                            MarkFixed(dialog, resizeResult.StairElementId);
                         return;
                     }
 
@@ -210,7 +359,9 @@ namespace KPLN_Tools.ExternalCommands
                             true,
                             data.AddToEvacuationWorkset,
                             data.EvacuationWorksetId,
-                            pickedId.Value);
+                            pickedId.Value,
+                            null,
+                            data.UseRunWidthByElementId);
 
                         Notify(dialog, "Идёт обработка маршрутов...");
                         EvacuationRoutesOperationResult result = _owner.RunEvacuationRoutesOperation(pickedData);
@@ -286,6 +437,30 @@ namespace KPLN_Tools.ExternalCommands
                     result.HeightMm)));
             }
 
+            private static bool TryGetResizeRequestFromDialog(EvacuationRoutesDialog dialog, EvacuationRoutesCheckRequest route, RouteDimensionInfo dimensions, out EvacuationRoutesResizeRequest request)
+            {
+                request = null;
+                if (dialog == null || route == null)
+                    return false;
+
+                EvacuationRoutesResizeRequest localRequest = null;
+                bool accepted = false;
+                dialog.Dispatcher.Invoke(new Action(() =>
+                {
+                    accepted = dialog.TryCreateResizeRequestForRoute(
+                        route.RouteElementId,
+                        route.StairElementId,
+                        route.ComponentElementId,
+                        dimensions.LengthMm,
+                        dimensions.WidthMm,
+                        dimensions.HeightMm,
+                        out localRequest);
+                }));
+
+                request = localRequest;
+                return accepted && request != null;
+            }
+
             private static void SelectRow(EvacuationRoutesDialog dialog, long elementId)
             {
                 if (dialog == null)
@@ -335,6 +510,12 @@ namespace KPLN_Tools.ExternalCommands
             public StairsSelectionFilter(Document doc) { _doc = doc; }
 
             public bool AllowElement(Element elem) => elem is Stairs || elem is MultistoryStairs;
+            public bool AllowReference(Reference reference, XYZ position) => true;
+        }
+
+        private sealed class EvacuationRouteSelectionFilter : ISelectionFilter
+        {
+            public bool AllowElement(Element elem) => IsEvacuationRouteShape(elem);
             public bool AllowReference(Reference reference, XYZ position) => true;
         }
 
@@ -404,6 +585,14 @@ namespace KPLN_Tools.ExternalCommands
         {
             public double WidthFt;
             public double CenterOffsetFt;
+        }
+
+        private struct ProjectionRange2D
+        {
+            public double MinX;
+            public double MaxX;
+            public double MinY;
+            public double MaxY;
         }
 
         private sealed class RouteIntersectionReportItem
@@ -851,6 +1040,16 @@ namespace KPLN_Tools.ExternalCommands
                 {
                     handler.RequestResize(dlg, request);
                     externalEvent.Raise();
+                },
+                () =>
+                {
+                    handler.RequestPickTrimRoute(dlg);
+                    externalEvent.Raise();
+                },
+                () =>
+                {
+                    handler.RequestPickResizeRoute(dlg);
+                    externalEvent.Raise();
                 });
 
             new WindowInteropHelper(dlg) { Owner = uiapp.MainWindowHandle };
@@ -1222,6 +1421,25 @@ namespace KPLN_Tools.ExternalCommands
                 return GetMultistoryRouteBuildTargets(doc, parent);
 
             return new List<RouteBuildTarget> { CreateOrdinaryRouteBuildTarget(stairs) };
+        }
+
+        private static bool ShouldUseRunWidth(EvacuationRoutesDialogResult data, RouteBuildTarget target)
+        {
+            if (data == null)
+                return false;
+
+            Dictionary<long, bool> byElementId = data.UseRunWidthByElementId;
+            if (byElementId != null && target != null)
+            {
+                bool value;
+                if (target.OwnerElementId > 0 && byElementId.TryGetValue(target.OwnerElementId, out value))
+                    return value;
+
+                if (target.StandardStairsId > 0 && byElementId.TryGetValue(target.StandardStairsId, out value))
+                    return value;
+            }
+
+            return data.UseRunWidth;
         }
 
         private static List<RouteBuildTarget> FilterRouteBuildTargetsByIncludedIds(List<RouteBuildTarget> targets, IEnumerable<long> includedElementIds)
@@ -2722,6 +2940,20 @@ namespace KPLN_Tools.ExternalCommands
             }
         }
 
+        private static long? PickEvacuationRouteElementId(UIApplication uiapp, Document doc)
+        {
+            try
+            {
+                var uidoc = uiapp.ActiveUIDocument;
+                Reference r = uidoc.Selection.PickObject(ObjectType.Element, new EvacuationRouteSelectionFilter(), "Выберите построенный путь эвакуации ПЭ (Esc — Отмена)");
+                return r == null ? (long?)null : IDHelper.ElIdValue(r.ElementId);
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return null;
+            }
+        }
+
         private static void SelectAndShowElement(UIDocument uidoc, long elementId)
         {
             if (uidoc == null || uidoc.Document == null)
@@ -2733,6 +2965,549 @@ namespace KPLN_Tools.ExternalCommands
 
             uidoc.Selection.SetElementIds(new List<ElementId> { id });
             try { uidoc.ShowElements(id); } catch { }
+        }
+
+        private string SaveStairDebugReportToDesktop(long selectedElementId, EvacuationRoutesDialogResult data)
+        {
+            if (doc == null)
+                throw new InvalidOperationException("Документ Revit недоступен для debug-отчёта.");
+
+            Element selected = doc.GetElement(IDHelper.CreateElementId(selectedElementId));
+            if (selected == null)
+                throw new InvalidOperationException($"Элемент ID {selectedElementId} не найден.");
+
+            var lines = new List<string>
+            {
+                "KPLN. Пути эвакуации — DEBUG-отчёт по выбранной лестнице",
+                $"Дата: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
+                $"Документ: {doc.Title}",
+                $"Настройки окна: HeightMm={(data == null ? 0 : data.HeightMm)}; WidthMm={(data == null ? 0 : data.WidthMm)}; UseRunWidth={(data != null && data.UseRunWidth)}",
+                ""
+            };
+
+            AddDebugElementBlock(lines, "ВЫБРАННЫЙ ЭЛЕМЕНТ", selected, includeParameters: true);
+
+            List<RouteBuildTarget> targets = GetDebugRouteBuildTargets(doc, selected);
+            lines.Add("");
+            lines.Add($"Целей обработки найдено: {targets.Count}");
+
+            foreach (RouteBuildTarget target in targets)
+            {
+                if (target == null || target.Stairs == null)
+                    continue;
+
+                lines.Add("");
+                lines.Add("============================================================");
+                lines.Add($"TARGET: {target.DisplayName}");
+                lines.Add($"OwnerElementId={target.OwnerElementId}");
+                lines.Add($"StandardStairsId={target.StandardStairsId}");
+                lines.Add($"PlacementLevelId={FormatOptionalElementId(target.PlacementLevelId)}");
+                lines.Add($"VerticalOffset={FormatFtMm(target.VerticalOffsetFt)}");
+                lines.Add($"EffectiveUseRunWidth={ShouldUseRunWidth(data, target)}");
+
+                AddDebugStairComponents(lines, target);
+                AddDebugExistingRouteShapes(lines, target);
+                AddDebugDryRun(lines, target, data);
+            }
+
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            string fileName = $"KPLN_EvacuationRoutes_Debug_Stair_{selectedElementId}_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
+            string path = System.IO.Path.Combine(desktop, fileName);
+            System.IO.File.WriteAllLines(path, lines, System.Text.Encoding.UTF8);
+            return path;
+        }
+
+        private static List<RouteBuildTarget> GetDebugRouteBuildTargets(Document doc, Element selected)
+        {
+            if (doc == null || selected == null)
+                return new List<RouteBuildTarget>();
+
+            MultistoryStairs multistory = selected as MultistoryStairs;
+            if (multistory != null)
+                return GetMultistoryRouteBuildTargets(doc, multistory);
+
+            Stairs stairs = selected as Stairs;
+            if (stairs == null)
+                return new List<RouteBuildTarget>();
+
+            MultistoryStairs parent = GetParentMultistoryStairs(doc, stairs);
+            if (parent != null)
+                return GetMultistoryRouteBuildTargets(doc, parent);
+
+            return new List<RouteBuildTarget> { CreateOrdinaryRouteBuildTarget(stairs) };
+        }
+
+        private static void AddDebugStairComponents(List<string> lines, RouteBuildTarget target)
+        {
+            Stairs stairs = target == null ? null : target.Stairs;
+            if (lines == null || stairs == null)
+                return;
+
+            lines.Add("");
+            AddDebugElementBlock(lines, "ЛЕСТНИЦА", stairs, includeParameters: true);
+            AddDebugReflectedProperties(lines, stairs, "  StairProperty", new[]
+            {
+                "ActualRiserHeight", "ActualTreadDepth", "ActualRisersNumber", "ActualTreadsNumber",
+                "DesiredRisersNumber", "BaseElevation", "TopElevation", "Height", "NumberOfStories",
+                "MultistoryStairsId"
+            });
+
+            ICollection<ElementId> runIds = null;
+            ICollection<ElementId> landingIds = null;
+            try { runIds = stairs.GetStairsRuns(); } catch { }
+            try { landingIds = stairs.GetStairsLandings(); } catch { }
+
+            lines.Add($"  RunIds={FormatElementIds(runIds)}");
+            lines.Add($"  LandingIds={FormatElementIds(landingIds)}");
+
+            foreach (ElementId runId in runIds ?? new List<ElementId>())
+            {
+                StairsRun run = stairs.Document.GetElement(runId) as StairsRun;
+                lines.Add("");
+                AddDebugElementBlock(lines, $"МАРШ ID {IDHelper.ElIdValue(runId)}", run, includeParameters: true);
+                AddDebugReflectedProperties(lines, run, "  RunProperty", new[]
+                {
+                    "ActualRunWidth", "ActualRiserHeight", "ActualTreadDepth", "ActualRisersNumber",
+                    "ActualTreadsNumber", "BaseElevation", "TopElevation", "Height"
+                });
+                AddDebugRunPath(lines, run);
+                AddDebugExpectedRoute(lines, target, runId, isLanding: false);
+            }
+
+            foreach (ElementId landingId in landingIds ?? new List<ElementId>())
+            {
+                StairsLanding landing = stairs.Document.GetElement(landingId) as StairsLanding;
+                lines.Add("");
+                AddDebugElementBlock(lines, $"ПЛОЩАДКА ID {IDHelper.ElIdValue(landingId)}", landing, includeParameters: true);
+                AddDebugReflectedProperties(lines, landing, "  LandingProperty", new[] { "Height", "Thickness", "BaseElevation", "TopElevation" });
+                AddDebugSolidStats(lines, landing, "  LandingSolids");
+                AddDebugExpectedRoute(lines, target, landingId, isLanding: true);
+            }
+        }
+
+        private static void AddDebugExpectedRoute(List<string> lines, RouteBuildTarget target, ElementId componentId, bool isLanding)
+        {
+            if (lines == null || target == null || componentId == null)
+                return;
+
+            string appDataId = CreateRouteAppDataId(target, componentId);
+            string routeName = CreateRouteName(target, componentId, isLanding);
+            lines.Add($"  ExpectedRouteName={routeName}");
+            lines.Add($"  ExpectedApplicationDataId={appDataId}");
+        }
+
+        private void AddDebugExistingRouteShapes(List<string> lines, RouteBuildTarget target)
+        {
+            if (lines == null || doc == null || target == null || target.Stairs == null)
+                return;
+
+            lines.Add("");
+            lines.Add("ПОСТРОЕННЫЕ ПУТИ ЭВАКУАЦИИ ПО КОМПОНЕНТАМ");
+
+            foreach (Tuple<ElementId, string, bool> component in GetDebugRouteComponents(target.Stairs))
+            {
+                ElementId componentId = component.Item1;
+                string kind = component.Item2;
+                bool isLanding = component.Item3;
+                string appDataId = CreateRouteAppDataId(target, componentId);
+                DirectShape routeShape = FindExistingRouteShape(doc, "KPLN_Tools", appDataId);
+
+                lines.Add("");
+                lines.Add($"  {kind} ID {IDHelper.ElIdValue(componentId)} | appDataId={appDataId}");
+
+                if (routeShape == null)
+                {
+                    lines.Add("    RouteShape=не найден");
+                    continue;
+                }
+
+                lines.Add($"    RouteShapeId={IDHelper.ElIdValue(routeShape.Id)}");
+                lines.Add($"    RouteName={routeShape.Name}");
+                lines.Add($"    RouteBoundingBox={FormatBoundingBox(SafeGetBoundingBox(routeShape))}");
+
+                RouteDimensionInfo dimensions = GetRouteDimensionInfo(doc, IDHelper.ElIdValue(routeShape.Id), IDHelper.ElIdValue(componentId));
+                lines.Add($"    RouteDimensions: Length={dimensions.LengthMm:0.#} mm; Width={dimensions.WidthMm:0.#} mm; Height={dimensions.HeightMm:0.#} mm");
+                AddDebugRouteIntersections(lines, target, componentId, kind, routeShape);
+            }
+        }
+
+        private void AddDebugDryRun(List<string> lines, RouteBuildTarget target, EvacuationRoutesDialogResult data)
+        {
+            if (lines == null || doc == null || target == null || target.Stairs == null)
+                return;
+
+            lines.Add("");
+            lines.Add("DRY-RUN ПОСТРОЕНИЯ (rollback, модель не меняется)");
+
+            var debugLog = new RouteDebugLog { Enabled = true };
+            var reports = new List<RouteIntersectionReportItem>();
+
+            Transaction tx = null;
+            try
+            {
+                tx = new Transaction(doc, "KPLN: DEBUG dry-run путей эвакуации");
+                tx.Start();
+
+                bool ok = TryCreateRouteBodyOnStair(
+                    doc,
+                    target,
+                    data,
+                    reports,
+                    debugLog,
+                    out int createdRuns,
+                    out int createdLandings,
+                    out List<int> failedRuns,
+                    out List<int> failedLandings);
+
+                lines.Add($"DryRunResult ok={ok}; createdRuns={createdRuns}; createdLandings={createdLandings}; failedRuns={string.Join(", ", failedRuns ?? new List<int>())}; failedLandings={string.Join(", ", failedLandings ?? new List<int>())}");
+            }
+            catch (Exception ex)
+            {
+                lines.Add($"DryRun ERROR: {ex}");
+            }
+            finally
+            {
+                try
+                {
+                    if (tx != null && tx.GetStatus() == TransactionStatus.Started)
+                        tx.RollBack();
+                }
+                catch
+                {
+                }
+            }
+
+            lines.Add("");
+            lines.Add("DRY-RUN LOG:");
+            foreach (string line in debugLog.Lines ?? new List<string>())
+                lines.Add("  " + line);
+
+            lines.Add("");
+            lines.Add("DRY-RUN INTERSECTIONS:");
+            AddDebugIntersectionReports(lines, reports, "  ");
+        }
+
+        private void AddDebugRouteIntersections(List<string> lines, RouteBuildTarget target, ElementId componentId, string kind, DirectShape routeShape)
+        {
+            if (lines == null || routeShape == null)
+                return;
+
+            var solids = new List<Solid>();
+            AddElementSolids(routeShape, solids);
+            solids = GetValidSolids(solids);
+
+            var reports = new List<RouteIntersectionReportItem>();
+            AddRouteIntersectionReport(
+                doc,
+                solids,
+                routeShape,
+                string.IsNullOrWhiteSpace(routeShape.Name) ? $"Путь ID {IDHelper.ElIdValue(routeShape.Id)}" : routeShape.Name,
+                GetStairAndComponentIds(target == null ? null : target.Stairs),
+                reports,
+                null,
+                target,
+                componentId,
+                kind);
+
+            AddDebugIntersectionReports(lines, reports, "    ");
+        }
+
+        private static void AddDebugIntersectionReports(List<string> lines, List<RouteIntersectionReportItem> reports, string indent)
+        {
+            indent = indent ?? "";
+            if (lines == null)
+                return;
+
+            if (reports == null || reports.Count == 0)
+            {
+                lines.Add(indent + "Intersections=нет");
+                return;
+            }
+
+            foreach (RouteIntersectionReportItem report in reports)
+            {
+                lines.Add($"{indent}{report.ComponentKind} ID {report.ComponentElementId}; routeId={report.RouteElementId}; targets={(report.Targets == null ? 0 : report.Targets.Count)}");
+                foreach (RouteIntersectionTarget target in report.Targets ?? new List<RouteIntersectionTarget>())
+                    lines.Add(indent + "- " + FormatIntersectionTargetShort(target));
+            }
+        }
+
+        private static List<Tuple<ElementId, string, bool>> GetDebugRouteComponents(Stairs stairs)
+        {
+            var result = new List<Tuple<ElementId, string, bool>>();
+            if (stairs == null)
+                return result;
+
+            try
+            {
+                foreach (ElementId id in stairs.GetStairsRuns() ?? new List<ElementId>())
+                    result.Add(Tuple.Create(id, "Марш", false));
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                foreach (ElementId id in stairs.GetStairsLandings() ?? new List<ElementId>())
+                    result.Add(Tuple.Create(id, "Площадка", true));
+            }
+            catch
+            {
+            }
+
+            return result;
+        }
+
+        private static void AddDebugRunPath(List<string> lines, StairsRun run)
+        {
+            if (lines == null)
+                return;
+
+            if (run == null)
+            {
+                lines.Add("  RunPath=нет марша");
+                return;
+            }
+
+            try
+            {
+                CurveLoop path = run.GetStairsPath();
+                List<Curve> curves = path == null ? new List<Curve>() : path.ToList();
+                lines.Add($"  RunPathCurves={curves.Count}");
+
+                double totalPlanLength = 0.0;
+                for (int i = 0; i < curves.Count; i++)
+                {
+                    Curve curve = curves[i];
+                    XYZ a = curve.GetEndPoint(0);
+                    XYZ b = curve.GetEndPoint(1);
+                    double planLength = new XYZ(b.X - a.X, b.Y - a.Y, 0.0).GetLength();
+                    totalPlanLength += planLength;
+                    lines.Add($"    Curve {i}: {curve.GetType().Name}; P0={FormatXyz(a)}; P1={FormatXyz(b)}; PlanLength={FormatFtMm(planLength)}");
+                }
+
+                lines.Add($"  RunPathPlanLengthTotal={FormatFtMm(totalPlanLength)}");
+            }
+            catch (Exception ex)
+            {
+                lines.Add($"  RunPath ERROR: {ex.Message}");
+            }
+        }
+
+        private static void AddDebugElementBlock(List<string> lines, string title, Element elem, bool includeParameters)
+        {
+            if (lines == null)
+                return;
+
+            lines.Add(title);
+            if (elem == null)
+            {
+                lines.Add("  Element=null");
+                return;
+            }
+
+            lines.Add($"  Id={IDHelper.ElIdValue(elem.Id)}");
+            lines.Add($"  Category={GetElementCategoryName(elem)}");
+            lines.Add($"  Name={GetElementDisplayName(elem)}");
+            lines.Add($"  Type={GetElementTypeDisplayName(elem.Document, elem)}");
+            lines.Add($"  UniqueId={elem.UniqueId}");
+            lines.Add($"  IfcGUID={GetElementIfcGuid(elem.Document, elem)}");
+            lines.Add($"  BoundingBox={FormatBoundingBox(SafeGetBoundingBox(elem))}");
+            AddDebugSolidStats(lines, elem, "  Solids");
+
+            if (includeParameters)
+                AddDebugParameterDump(lines, elem, "  ");
+        }
+
+        private static void AddDebugSolidStats(List<string> lines, Element elem, string prefix)
+        {
+            if (lines == null)
+                return;
+
+            var solids = new List<Solid>();
+            AddElementSolids(elem, solids);
+            solids = GetValidSolids(solids);
+            double volume = solids.Sum(x => x == null ? 0.0 : x.Volume);
+            lines.Add($"{prefix}: count={solids.Count}; volume={FormatFt(volume)} ft3");
+        }
+
+        private static void AddDebugParameterDump(List<string> lines, Element elem, string indent)
+        {
+            if (lines == null || elem == null)
+                return;
+
+            var values = new List<string>();
+            try
+            {
+                foreach (Parameter parameter in elem.Parameters)
+                {
+                    string name = parameter?.Definition?.Name ?? "";
+                    if (string.IsNullOrWhiteSpace(name))
+                        continue;
+
+                    string value = FormatDebugParameterValue(elem.Document, parameter);
+                    if (string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    values.Add($"{name} = {value}");
+                }
+            }
+            catch
+            {
+            }
+
+            lines.Add($"{indent}Parameters non-empty count={values.Count}");
+            foreach (string value in values.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                lines.Add(indent + "  " + value);
+        }
+
+        private static string FormatDebugParameterValue(Document doc, Parameter parameter)
+        {
+            if (parameter == null)
+                return "";
+
+            try
+            {
+                string value = TryGetParameterStringValue(parameter);
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                switch (parameter.StorageType)
+                {
+                    case StorageType.Double:
+                        double raw = parameter.AsDouble();
+                        return $"{FormatFt(raw)} ft / {FormatMm(raw)} mm";
+                    case StorageType.Integer:
+                        return parameter.AsInteger().ToString(CultureInfo.InvariantCulture);
+                    case StorageType.ElementId:
+                        ElementId id = parameter.AsElementId();
+                        long value = IDHelper.ElIdValue(id);
+                        Element elem = doc == null ? null : doc.GetElement(id);
+                        return elem == null ? value.ToString(CultureInfo.InvariantCulture) : $"{value} ({GetElementDisplayName(elem)})";
+                    case StorageType.String:
+                        return parameter.AsString() ?? "";
+                }
+            }
+            catch
+            {
+            }
+
+            return "";
+        }
+
+        private static void AddDebugReflectedProperties(List<string> lines, object target, string prefix, IEnumerable<string> propertyNames)
+        {
+            if (lines == null || target == null || propertyNames == null)
+                return;
+
+            foreach (string propertyName in propertyNames)
+            {
+                try
+                {
+                    PropertyInfo property = target.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
+                    if (property == null)
+                        continue;
+
+                    object value = property.GetValue(target, null);
+                    lines.Add($"{prefix}.{propertyName}={FormatDebugObjectValue(value)}");
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private static string FormatDebugObjectValue(object value)
+        {
+            if (value == null)
+                return "null";
+
+            double doubleValue;
+            if (value is double)
+            {
+                doubleValue = (double)value;
+                return $"{FormatFt(doubleValue)} ft / {FormatMm(doubleValue)} mm";
+            }
+
+            ElementId elementId = value as ElementId;
+            if (elementId != null)
+                return IDHelper.ElIdValue(elementId).ToString(CultureInfo.InvariantCulture);
+
+            XYZ xyz = value as XYZ;
+            if (xyz != null)
+                return FormatXyz(xyz);
+
+            return Convert.ToString(value, CultureInfo.InvariantCulture);
+        }
+
+        private EvacuationRoutesCheckRequest CreateRouteCheckRequestForRoute(long routeElementId)
+        {
+            var request = new EvacuationRoutesCheckRequest
+            {
+                RouteElementId = routeElementId
+            };
+
+            DirectShape routeShape = doc?.GetElement(IDHelper.CreateElementId(routeElementId)) as DirectShape;
+            if (routeShape == null)
+                return request;
+
+            long componentId = GetRouteComponentElementId(routeShape);
+            request.ComponentElementId = componentId;
+            request.StairElementId = FindOwnerStairIdByComponentId(doc, componentId);
+            return request;
+        }
+
+        private EvacuationRoutesTrimRequest CreateTrimRequestForRoute(long routeElementId)
+        {
+            EvacuationRoutesCheckRequest checkRequest = CreateRouteCheckRequestForRoute(routeElementId);
+            var request = new EvacuationRoutesTrimRequest
+            {
+                StairElementId = checkRequest.StairElementId,
+                ComponentElementId = checkRequest.ComponentElementId,
+                RouteElementId = routeElementId
+            };
+
+            if (doc == null)
+                return request;
+
+            DirectShape routeShape = doc.GetElement(IDHelper.CreateElementId(routeElementId)) as DirectShape;
+            if (routeShape == null)
+                return request;
+
+            var routeSolids = new List<Solid>();
+            AddElementSolids(routeShape, routeSolids);
+            routeSolids = GetValidSolids(routeSolids);
+            if (routeSolids.Count == 0)
+                return request;
+
+            var reports = new List<RouteIntersectionReportItem>();
+            AddRouteIntersectionReport(
+                doc,
+                routeSolids,
+                routeShape,
+                string.IsNullOrWhiteSpace(routeShape.Name) ? $"Путь ID {routeElementId}" : routeShape.Name,
+                GetRouteCheckExcludedIds(checkRequest),
+                reports,
+                null,
+                null,
+                IDHelper.CreateElementId(checkRequest.ComponentElementId),
+                "Элемент");
+
+            request.IntersectingElementIds = reports
+                .SelectMany(x => x.Targets ?? new List<RouteIntersectionTarget>())
+                .Where(x => x != null && x.ElementId > 0 && !x.LinkInstanceId.HasValue)
+                .Select(x => x.ElementId)
+                .Distinct()
+                .ToList();
+
+            return request;
         }
 
         private RouteEditResult TrimRouteIntersections(EvacuationRoutesTrimRequest request)
@@ -3760,6 +4535,7 @@ namespace KPLN_Tools.ExternalCommands
 
             debugLog?.Add($"===== ОБРАБОТКА {(target.IsMultistoryPlacement ? "РАЗМЕЩЕНИЯ" : "ЛЕСТНИЦЫ")} {IDHelper.ElIdValue(stairs.Id)} =====");
             debugLog?.Add($"Target={target.DisplayName}; OwnerId={target.OwnerElementId}; PlacementLevel={FormatOptionalElementId(target.PlacementLevelId)}; Offset={FormatFtMm(target.VerticalOffsetFt)}");
+            debugLog?.Add($"EffectiveUseRunWidth={ShouldUseRunWidth(data, target)}");
             debugLog?.Add($"Runs={FormatElementIds(runIds)}");
             debugLog?.Add($"Landings={FormatElementIds(landingIds)}");
             debugLog?.AddBlank();
@@ -4164,22 +4940,79 @@ namespace KPLN_Tools.ExternalCommands
             if (cat == null)
                 return false;
 
-            return IsWallCategory(cat);
+            return IsReportableIntersectionCategory(cat);
+        }
+
+        private static bool IsReportableIntersectionCategory(Category category)
+        {
+            return IsWallCategory(category)
+                || IsFloorCategory(category)
+                || IsStairsCategory(category)
+                || IsRailingCategory(category);
         }
 
         private static bool IsWallCategory(Category category)
+        {
+            return IsBuiltInCategory(category, BuiltInCategory.OST_Walls);
+        }
+
+        private static bool IsFloorCategory(Category category)
+        {
+            return IsBuiltInCategory(category, BuiltInCategory.OST_Floors);
+        }
+
+        private static bool IsStairsCategory(Category category)
+        {
+            return IsBuiltInCategory(category, BuiltInCategory.OST_Stairs);
+        }
+
+        private static bool IsRailingCategory(Category category)
+        {
+            return IsBuiltInCategory(category,
+                "OST_Railings",
+                "OST_StairsRailing",
+                "OST_RailingSystem",
+                "OST_RailingRail",
+                "OST_RailingTopRail",
+                "OST_RailingHandRail",
+                "OST_RailingSupport");
+        }
+
+        private static bool IsBuiltInCategory(Category category, BuiltInCategory builtInCategory)
         {
             if (category == null)
                 return false;
 
             try
             {
-                return IDHelper.ElIdInt(category.Id) == (int)BuiltInCategory.OST_Walls;
+                return IDHelper.ElIdInt(category.Id) == (int)builtInCategory;
             }
             catch
             {
                 return false;
             }
+        }
+
+        private static bool IsBuiltInCategory(Category category, params string[] builtInCategoryNames)
+        {
+            if (category == null || builtInCategoryNames == null)
+                return false;
+
+            int categoryId = IDHelper.ElIdInt(category.Id);
+            foreach (string categoryName in builtInCategoryNames)
+            {
+                try
+                {
+                    var bic = (BuiltInCategory)Enum.Parse(typeof(BuiltInCategory), categoryName);
+                    if (categoryId == (int)bic)
+                        return true;
+                }
+                catch
+                {
+                }
+            }
+
+            return false;
         }
 
         private static bool HasMeaningfulSolidIntersection(Solid routeSolid, Element elem)
@@ -4193,10 +5026,11 @@ namespace KPLN_Tools.ExternalCommands
                 return false;
 
             double minIntersectionVolume = GetMinIntersectionVolumeFt3();
+            double minIntersectionThickness = GetMinIntersectionThicknessFt(elem);
 
             foreach (Solid elemSolid in solids)
             {
-                if (HasMeaningfulSolidIntersection(routeSolid, elemSolid, minIntersectionVolume))
+                if (HasMeaningfulSolidIntersection(routeSolid, elemSolid, minIntersectionVolume, minIntersectionThickness))
                     return true;
             }
 
@@ -4205,10 +5039,10 @@ namespace KPLN_Tools.ExternalCommands
 
         private static bool HasMeaningfulSolidIntersection(Solid routeSolid, Solid elemSolid)
         {
-            return HasMeaningfulSolidIntersection(routeSolid, elemSolid, GetMinIntersectionVolumeFt3());
+            return HasMeaningfulSolidIntersection(routeSolid, elemSolid, GetMinIntersectionVolumeFt3(), GetMinIntersectionThicknessFt());
         }
 
-        private static bool HasMeaningfulSolidIntersection(Solid routeSolid, Solid elemSolid, double minIntersectionVolume)
+        private static bool HasMeaningfulSolidIntersection(Solid routeSolid, Solid elemSolid, double minIntersectionVolume, double minIntersectionThickness)
         {
             if (routeSolid == null || routeSolid.Volume < 1e-9 || elemSolid == null || elemSolid.Volume < 1e-9)
                 return false;
@@ -4216,7 +5050,7 @@ namespace KPLN_Tools.ExternalCommands
             try
             {
                 Solid intersection = BooleanOperationsUtils.ExecuteBooleanOperation(routeSolid, elemSolid, BooleanOperationsType.Intersect);
-                return intersection != null && intersection.Volume > minIntersectionVolume && HasMinimumIntersectionThickness(intersection);
+                return intersection != null && intersection.Volume > minIntersectionVolume && HasMinimumIntersectionThickness(intersection, minIntersectionThickness);
             }
             catch
             {
@@ -4230,7 +5064,7 @@ namespace KPLN_Tools.ExternalCommands
             return oneMmFt * oneMmFt * oneMmFt;
         }
 
-        private static bool HasMinimumIntersectionThickness(Solid intersection)
+        private static bool HasMinimumIntersectionThickness(Solid intersection, double minThicknessFt)
         {
             if (intersection == null || intersection.Volume <= 1e-12)
                 return false;
@@ -4256,12 +5090,20 @@ namespace KPLN_Tools.ExternalCommands
                 return false;
 
             double effectiveThicknessFt = intersection.Volume / maxFaceArea;
-            return effectiveThicknessFt >= GetMinIntersectionThicknessFt();
+            return effectiveThicknessFt >= minThicknessFt;
         }
 
         private static double GetMinIntersectionThicknessFt()
         {
             return MmToInternal(5.0);
+        }
+
+        private static double GetMinIntersectionThicknessFt(Element elem)
+        {
+            if (elem != null && IsWallCategory(elem.Category))
+                return MmToInternal(30.0);
+
+            return GetMinIntersectionThicknessFt();
         }
 
         private static void AddLinkedIntersectionTargets(Document hostDoc, Solid routeSolid, string routeName, List<RouteIntersectionTarget> targets, HashSet<string> seen, RouteDebugLog debugLog)
@@ -4428,7 +5270,7 @@ namespace KPLN_Tools.ExternalCommands
             XYZ routeBottomCenter = bottomCenter;
             XYZ routeTopCenter = topCenter;
 
-            if (data.UseRunWidth)
+            if (ShouldUseRunWidth(data, target))
             {
                 RunClearWidthInfo clearWidth = GetRunClearWidthInfo(doc, stairs, run, bottomCenter, topCenter, xP, yP, lenPlan, debugLog);
                 widthFt = clearWidth.WidthFt;
@@ -4439,7 +5281,10 @@ namespace KPLN_Tools.ExternalCommands
             else
             {
                 widthFt = MmToInternal(data.WidthMm);
-                debugLog?.Add($"WidthMode=Manual; Width={FormatFtMm(widthFt)}");
+                double manualCenterOffsetFt = GetRunManualWidthCenterOffset(run, bottomCenter, topCenter, xP, yP, lenPlan, debugLog);
+                routeBottomCenter = bottomCenter + yP * manualCenterOffsetFt;
+                routeTopCenter = topCenter + yP * manualCenterOffsetFt;
+                debugLog?.Add($"WidthMode=Manual; Width={FormatFtMm(widthFt)}; CenterOffset={FormatFtMm(manualCenterOffsetFt)}");
             }
 
             if (widthFt <= 1e-9) return false;
@@ -4658,7 +5503,7 @@ namespace KPLN_Tools.ExternalCommands
 
 
 #if Debug2023 || Debug2024 || Revit2023 || Revit2024
-            double depthFt = data.UseRunWidth ? Math.Max(A.run.WidthFt, B.run.WidthFt) : UnitUtils.ConvertToInternalUnits(data.WidthMm, UnitTypeId.Millimeters);
+            double depthFt = UnitUtils.ConvertToInternalUnits(data.WidthMm, UnitTypeId.Millimeters);
 
             if (depthFt <= 1e-9)
                 return false;
@@ -4666,7 +5511,7 @@ namespace KPLN_Tools.ExternalCommands
             double landingCY = new XYZ(landingCenter.X, landingCenter.Y, 0).DotProduct(yDir);
             double tol = UnitUtils.ConvertToInternalUnits(2.0, UnitTypeId.Millimeters);
 #else
-            double depthFt = data.UseRunWidth ? Math.Max(A.run.WidthFt, B.run.WidthFt) : UnitUtils.ConvertToInternalUnits(data.WidthMm, DisplayUnitType.DUT_MILLIMETERS);
+            double depthFt = UnitUtils.ConvertToInternalUnits(data.WidthMm, DisplayUnitType.DUT_MILLIMETERS);
 
             if (depthFt <= 1e-9)
                 return false;
@@ -5665,6 +6510,75 @@ namespace KPLN_Tools.ExternalCommands
             return ds != null && string.Equals(ds.ApplicationId, "KPLN_Tools", StringComparison.Ordinal);
         }
 
+        private static bool IsEvacuationRouteShape(Element elem)
+        {
+            DirectShape ds = elem as DirectShape;
+            if (ds == null || !IsOwnRouteShape(ds))
+                return false;
+
+            string name = "";
+            try { name = ds.Name ?? ""; } catch { }
+            return name.StartsWith("ПЭ", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static long GetRouteComponentElementId(DirectShape routeShape)
+        {
+            if (routeShape == null)
+                return 0;
+
+            string appDataId = "";
+            try { appDataId = routeShape.ApplicationDataId ?? ""; } catch { }
+
+            long componentId = TryParseLastElementIdToken(appDataId);
+            if (componentId > 0)
+                return componentId;
+
+            string name = "";
+            try { name = routeShape.Name ?? ""; } catch { }
+            return TryParseLastElementIdToken(name);
+        }
+
+        private static long TryParseLastElementIdToken(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return 0;
+
+            MatchCollection matches = Regex.Matches(text, @"\d+");
+            for (int i = matches.Count - 1; i >= 0; i--)
+            {
+                if (long.TryParse(matches[i].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value) && value > 0)
+                    return value;
+            }
+
+            return 0;
+        }
+
+        private static long FindOwnerStairIdByComponentId(Document doc, long componentId)
+        {
+            if (doc == null || componentId <= 0)
+                return 0;
+
+            foreach (Stairs stairs in new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_Stairs)
+                .WhereElementIsNotElementType()
+                .OfType<Stairs>())
+            {
+                try
+                {
+                    if ((stairs.GetStairsRuns() ?? new List<ElementId>()).Any(x => IDHelper.ElIdValue(x) == componentId))
+                        return IDHelper.ElIdValue(stairs.Id);
+
+                    if ((stairs.GetStairsLandings() ?? new List<ElementId>()).Any(x => IDHelper.ElIdValue(x) == componentId))
+                        return IDHelper.ElIdValue(stairs.Id);
+                }
+                catch
+                {
+                }
+            }
+
+            return 0;
+        }
+
         private static double MmToInternal(double valueMm)
         {
 #if Debug2023 || Debug2024 || Revit2023 || Revit2024
@@ -5819,6 +6733,21 @@ namespace KPLN_Tools.ExternalCommands
                 debugLog?.Add($"RunWidthSource=Fallback; minY={FormatFt(nominalMinY)} maxY={FormatFt(nominalMaxY)} width={FormatFtMm(nominalWidthFt)} pathCenterY={FormatFt(pathCenterY)}");
             }
 
+            if (TryGetActualRunWidthFt(run, out double actualRunWidthFt) && actualRunWidthFt > 1e-9)
+            {
+                double nominalCenterY = (nominalMinY + nominalMaxY) * 0.5;
+                double widthDeltaFt = Math.Abs(nominalWidthFt - actualRunWidthFt);
+
+                nominalWidthFt = actualRunWidthFt;
+                nominalMinY = nominalCenterY - nominalWidthFt / 2.0;
+                nominalMaxY = nominalCenterY + nominalWidthFt / 2.0;
+
+                if (widthDeltaFt > MmToInternal(1.0))
+                    debugLog?.Add($"RunWidthSource=ActualRunWidth override; actual={FormatFtMm(actualRunWidthFt)} delta={FormatFtMm(widthDeltaFt)} minY={FormatFt(nominalMinY)} maxY={FormatFt(nominalMaxY)}");
+                else
+                    debugLog?.Add($"RunWidthSource=ActualRunWidth confirmed; actual={FormatFtMm(actualRunWidthFt)}");
+            }
+
             var result = new RunClearWidthInfo
             {
                 WidthFt = nominalWidthFt,
@@ -5863,8 +6792,11 @@ namespace KPLN_Tools.ExternalCommands
                 new XYZ(runBox.Min.X - searchPaddingFt, runBox.Min.Y - searchPaddingFt, runBox.Min.Z - searchBelowFt),
                 new XYZ(runBox.Max.X + searchPaddingFt, runBox.Max.Y + searchPaddingFt, runBox.Max.Z + searchAboveFt));
 
+            Solid obstacleTestSolid = TryCreateRunClearWidthObstacleTestSolid(run, bottom, top, yP, nominalWidthFt, debugLog);
+
             var excludedIds = GetStairAndComponentIds(stairs, includeAssociatedRailings: false);
             excludedIds.Add(IDHelper.ElIdValue(run.Id));
+            debugLog?.Add($"RunClearWidth excluded current stair/components count={excludedIds.Count}");
 
             IEnumerable<Element> candidates;
             try
@@ -5888,63 +6820,59 @@ namespace KPLN_Tools.ExternalCommands
                 if (excludedIds.Contains(IDHelper.ElIdValue(elem.Id))) continue;
                 if (IsOwnRouteShape(elem)) continue;
 
+                if (IsRailingObstacle(elem) && TryGetRailingPathProjectionRanges(elem, xP, yP, out List<ProjectionRange2D> railingPathRanges))
+                {
+                    if (obstacleTestSolid != null && !HasClearWidthObstacleSolidOverlap(obstacleTestSolid, elem))
+                    {
+                        debugLog?.Add($"RunClearWidth railing path skipped no-solid-overlap ID={IDHelper.ElIdValue(elem.Id)} host={GetRailingHostDebugValue(elem)} ranges={railingPathRanges.Count}");
+                        continue;
+                    }
+
+                    foreach (ProjectionRange2D range in railingPathRanges)
+                    {
+                        ApplyRunClearWidthObstacleRange(
+                            elem,
+                            range.MinX,
+                            range.MaxX,
+                            range.MinY,
+                            range.MaxY,
+                            runX0,
+                            runX1,
+                            minUsableWidthFt,
+                            debugLog,
+                            ref clearMinY,
+                            ref clearMaxY,
+                            "path");
+                    }
+
+                    continue;
+                }
+
                 var solids = new List<Solid>();
                 AddElementSolids(elem, solids);
                 if (solids.Count == 0) continue;
 
                 foreach (Solid solid in solids)
                 {
-                    if (!TryGetSolidProjectionRange(solid, xP, yP, out double minX, out double maxX, out double minY, out double maxY))
-                        continue;
-
-                    double overlapX = Math.Min(maxX, runX1) - Math.Max(minX, runX0);
-                    if (overlapX <= 0.0)
-                        continue;
-
-                    double minObstacleOverlapFt = GetMinRunWidthObstacleOverlapFt(runX1 - runX0);
-                    if (overlapX < minObstacleOverlapFt)
+                    if (!TryGetClearWidthObstacleProjectionRange(obstacleTestSolid, elem, solid, xP, yP, out double minX, out double maxX, out double minY, out double maxY))
                     {
-                        debugLog?.Add($"RunClearWidth obstacle skipped ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} minOverlap={FormatFtMm(minObstacleOverlapFt)} y={FormatFt(minY)}..{FormatFt(maxY)}");
+                        debugLog?.Add($"RunClearWidth obstacle skipped no-solid-overlap ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}'");
                         continue;
                     }
 
-                    double sideToleranceFt = GetRunClearWidthSideToleranceFt(elem);
-                    double currentCenterY = (clearMinY + clearMaxY) * 0.5;
-                    bool fromLeft = maxY <= currentCenterY && maxY > clearMinY - sideToleranceFt && minY < currentCenterY;
-                    bool fromRight = minY >= currentCenterY && minY < clearMaxY + sideToleranceFt && maxY > currentCenterY;
-                    bool crossesCenter = minY < currentCenterY && maxY > currentCenterY;
-
-                    if (fromLeft)
-                    {
-                        clearMinY = Math.Max(clearMinY, Math.Min(maxY, clearMaxY));
-                        debugLog?.Add($"RunClearWidth obstacle left ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} y={FormatFt(minY)}..{FormatFt(maxY)}");
-                    }
-
-                    if (fromRight)
-                    {
-                        clearMaxY = Math.Min(clearMaxY, Math.Max(minY, clearMinY));
-                        debugLog?.Add($"RunClearWidth obstacle right ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} y={FormatFt(minY)}..{FormatFt(maxY)}");
-                    }
-
-                    if (crossesCenter)
-                    {
-                        double leftWidth = Math.Max(0.0, minY - clearMinY);
-                        double rightWidth = Math.Max(0.0, clearMaxY - maxY);
-
-                        if (leftWidth >= minUsableWidthFt || rightWidth >= minUsableWidthFt)
-                        {
-                            if (rightWidth >= leftWidth)
-                                clearMinY = Math.Max(clearMinY, maxY);
-                            else
-                                clearMaxY = Math.Min(clearMaxY, minY);
-
-                            debugLog?.Add($"RunClearWidth obstacle center ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} chose={(rightWidth >= leftWidth ? "right" : "left")} left={FormatFtMm(leftWidth)} right={FormatFtMm(rightWidth)}");
-                        }
-                        else
-                        {
-                            debugLog?.Add($"RunClearWidth obstacle center ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} ignored; left={FormatFtMm(leftWidth)} right={FormatFtMm(rightWidth)}");
-                        }
-                    }
+                    ApplyRunClearWidthObstacleRange(
+                        elem,
+                        minX,
+                        maxX,
+                        minY,
+                        maxY,
+                        runX0,
+                        runX1,
+                        minUsableWidthFt,
+                        debugLog,
+                        ref clearMinY,
+                        ref clearMaxY,
+                        "solid");
                 }
             }
 
@@ -5961,6 +6889,24 @@ namespace KPLN_Tools.ExternalCommands
             return result;
         }
 
+        private static double GetRunManualWidthCenterOffset(StairsRun run, XYZ bottom, XYZ top, XYZ xP, XYZ yP, double lenPlan, RouteDebugLog debugLog)
+        {
+            if (run == null || bottom == null || top == null || xP == null || yP == null)
+                return 0.0;
+
+            double pathCenterY = new XYZ(bottom.X, bottom.Y, 0).DotProduct(yP);
+            if (TryGetRunGeometryWidthRange(run, xP, yP, bottom, top, lenPlan, out double minY, out double maxY))
+            {
+                double geometryCenterY = (minY + maxY) * 0.5;
+                double offset = geometryCenterY - pathCenterY;
+                debugLog?.Add($"ManualWidthCenter=Geometry; minY={FormatFt(minY)} maxY={FormatFt(maxY)} offset={FormatFtMm(offset)}");
+                return offset;
+            }
+
+            debugLog?.Add("ManualWidthCenter=Path; geometry range not found");
+            return 0.0;
+        }
+
         private static double GetMinRunWidthObstacleOverlapFt(double runLengthFt)
         {
             if (runLengthFt <= 1e-9)
@@ -5969,6 +6915,84 @@ namespace KPLN_Tools.ExternalCommands
             double byRatio = runLengthFt * 0.20;
             double min = MmToInternal(200.0);
             double max = MmToInternal(600.0);
+            return Math.Max(min, Math.Min(max, byRatio));
+        }
+
+        private static void ApplyRunClearWidthObstacleRange(
+            Element elem,
+            double minX,
+            double maxX,
+            double minY,
+            double maxY,
+            double runX0,
+            double runX1,
+            double minUsableWidthFt,
+            RouteDebugLog debugLog,
+            ref double clearMinY,
+            ref double clearMaxY,
+            string source)
+        {
+            double overlapX = Math.Min(maxX, runX1) - Math.Max(minX, runX0);
+            if (overlapX <= 0.0)
+                return;
+
+            double minObstacleOverlapFt = IsRailingObstacle(elem)
+                ? GetMinRailingPathObstacleOverlapFt(runX1 - runX0)
+                : GetMinRunWidthObstacleOverlapFt(runX1 - runX0);
+
+            if (overlapX < minObstacleOverlapFt)
+            {
+                debugLog?.Add($"RunClearWidth obstacle skipped {source} ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} minOverlap={FormatFtMm(minObstacleOverlapFt)} y={FormatFt(minY)}..{FormatFt(maxY)}");
+                return;
+            }
+
+            double sideToleranceFt = GetRunClearWidthSideToleranceFt(elem);
+            double currentCenterY = (clearMinY + clearMaxY) * 0.5;
+            bool fromLeft = maxY <= currentCenterY && maxY > clearMinY - sideToleranceFt && minY < currentCenterY;
+            bool fromRight = minY >= currentCenterY && minY < clearMaxY + sideToleranceFt && maxY > currentCenterY;
+            bool crossesCenter = minY < currentCenterY && maxY > currentCenterY;
+
+            if (fromLeft)
+            {
+                clearMinY = Math.Max(clearMinY, Math.Min(maxY, clearMaxY));
+                debugLog?.Add($"RunClearWidth obstacle left {source} ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} y={FormatFt(minY)}..{FormatFt(maxY)}");
+            }
+
+            if (fromRight)
+            {
+                clearMaxY = Math.Min(clearMaxY, Math.Max(minY, clearMinY));
+                debugLog?.Add($"RunClearWidth obstacle right {source} ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} y={FormatFt(minY)}..{FormatFt(maxY)}");
+            }
+
+            if (crossesCenter)
+            {
+                double leftWidth = Math.Max(0.0, minY - clearMinY);
+                double rightWidth = Math.Max(0.0, clearMaxY - maxY);
+
+                if (leftWidth >= minUsableWidthFt || rightWidth >= minUsableWidthFt)
+                {
+                    if (rightWidth >= leftWidth)
+                        clearMinY = Math.Max(clearMinY, maxY);
+                    else
+                        clearMaxY = Math.Min(clearMaxY, minY);
+
+                    debugLog?.Add($"RunClearWidth obstacle center {source} ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} chose={(rightWidth >= leftWidth ? "right" : "left")} left={FormatFtMm(leftWidth)} right={FormatFtMm(rightWidth)}");
+                }
+                else
+                {
+                    debugLog?.Add($"RunClearWidth obstacle center {source} ID={IDHelper.ElIdValue(elem.Id)} cat='{GetElementCategoryName(elem)}' overlapX={FormatFtMm(overlapX)} ignored; left={FormatFtMm(leftWidth)} right={FormatFtMm(rightWidth)}");
+                }
+            }
+        }
+
+        private static double GetMinRailingPathObstacleOverlapFt(double runLengthFt)
+        {
+            if (runLengthFt <= 1e-9)
+                return MmToInternal(100.0);
+
+            double byRatio = runLengthFt * 0.10;
+            double min = MmToInternal(100.0);
+            double max = MmToInternal(300.0);
             return Math.Max(min, Math.Min(max, byRatio));
         }
 
@@ -6028,6 +7052,181 @@ namespace KPLN_Tools.ExternalCommands
             return categories;
         }
 
+        private static double GetClearWidthObstacleMinIntersectionThicknessFt(Element elem)
+        {
+            return IsRailingObstacle(elem) ? MmToInternal(5.0) : MmToInternal(2.0);
+        }
+
+        private static bool HasClearWidthObstacleSolidOverlap(Solid obstacleTestSolid, Element elem)
+        {
+            if (obstacleTestSolid == null || obstacleTestSolid.Volume < 1e-9 || elem == null)
+                return false;
+
+            var solids = new List<Solid>();
+            AddElementSolids(elem, solids);
+            if (solids.Count == 0)
+                return false;
+
+            double minVolumeFt3 = GetMinIntersectionVolumeFt3();
+            double minThicknessFt = GetClearWidthObstacleMinIntersectionThicknessFt(elem);
+
+            foreach (Solid solid in GetValidSolids(solids))
+            {
+                if (HasMeaningfulSolidIntersection(obstacleTestSolid, solid, minVolumeFt3, minThicknessFt))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static string GetRailingHostDebugValue(Element elem)
+        {
+            Railing railing = elem as Railing;
+            if (railing == null)
+                return "нет";
+
+            try
+            {
+                ElementId hostId = railing.HostId;
+                long id = IDHelper.ElIdValue(hostId);
+                return id > 0 ? id.ToString(CultureInfo.InvariantCulture) : "нет";
+            }
+            catch
+            {
+                return "ошибка";
+            }
+        }
+
+        private static bool TryGetRailingPathProjectionRanges(Element elem, XYZ xP, XYZ yP, out List<ProjectionRange2D> ranges)
+        {
+            ranges = new List<ProjectionRange2D>();
+
+            Railing railing = elem as Railing;
+            if (railing == null || xP == null || yP == null)
+                return false;
+
+            IEnumerable<Curve> curves = null;
+            try
+            {
+                MethodInfo method = typeof(Railing).GetMethod("GetPath", Type.EmptyTypes);
+                object raw = method == null ? null : method.Invoke(railing, null);
+                curves = raw as IEnumerable<Curve>;
+            }
+            catch
+            {
+            }
+
+            if (curves == null)
+                return false;
+
+            double pathAllowanceFt = MmToInternal(50.0);
+
+            foreach (Curve curve in curves)
+            {
+                if (curve == null)
+                    continue;
+
+                var points = new List<XYZ>();
+                try
+                {
+                    IList<XYZ> tessellated = curve.Tessellate();
+                    if (tessellated != null)
+                        points.AddRange(tessellated.Where(x => x != null));
+                }
+                catch
+                {
+                }
+
+                if (points.Count == 0)
+                {
+                    try
+                    {
+                        points.Add(curve.GetEndPoint(0));
+                        points.Add(curve.GetEndPoint(1));
+                    }
+                    catch
+                    {
+                    }
+                }
+
+                if (points.Count == 0)
+                    continue;
+
+                double minX = double.PositiveInfinity;
+                double maxX = double.NegativeInfinity;
+                double minY = double.PositiveInfinity;
+                double maxY = double.NegativeInfinity;
+
+                foreach (XYZ point in points)
+                {
+                    if (point == null)
+                        continue;
+
+                    XYZ p = new XYZ(point.X, point.Y, 0.0);
+                    double px = p.DotProduct(xP);
+                    double py = p.DotProduct(yP);
+
+                    if (px < minX) minX = px;
+                    if (px > maxX) maxX = px;
+                    if (py < minY) minY = py;
+                    if (py > maxY) maxY = py;
+                }
+
+                if (!double.IsInfinity(minX) && !double.IsInfinity(maxX) && !double.IsInfinity(minY) && !double.IsInfinity(maxY))
+                {
+                    ranges.Add(new ProjectionRange2D
+                    {
+                        MinX = minX - pathAllowanceFt,
+                        MaxX = maxX + pathAllowanceFt,
+                        MinY = minY - pathAllowanceFt,
+                        MaxY = maxY + pathAllowanceFt
+                    });
+                }
+            }
+
+            return ranges.Count > 0;
+        }
+
+        private static Solid TryCreateRunClearWidthObstacleTestSolid(StairsRun run, XYZ bottom, XYZ top, XYZ yP, double widthFt, RouteDebugLog debugLog)
+        {
+            if (run == null || bottom == null || top == null || yP == null || yP.GetLength() < 1e-9 || widthFt <= 1e-9)
+                return null;
+
+            if (!TryGetElementSolidsZRange(run, out double minZ, out double maxZ))
+            {
+                BoundingBoxXYZ box = null;
+                try { box = run.get_BoundingBox(null); } catch { }
+                if (box == null)
+                    return null;
+
+                minZ = box.Min.Z;
+                maxZ = box.Max.Z;
+            }
+
+            minZ -= MmToInternal(150.0);
+            maxZ += MmToInternal(1400.0);
+            if (maxZ - minZ < MmToInternal(300.0))
+                maxZ = minZ + MmToInternal(300.0);
+
+            yP = yP.Normalize();
+            XYZ halfW = yP * (widthFt / 2.0);
+            XYZ bottomCenter = new XYZ(bottom.X, bottom.Y, minZ);
+            XYZ topCenter = new XYZ(top.X, top.Y, minZ);
+
+            XYZ SL = bottomCenter - halfW;
+            XYZ SR = bottomCenter + halfW;
+            XYZ ER = topCenter + halfW;
+            XYZ EL = topCenter - halfW;
+            XYZ up = XYZ.BasisZ * (maxZ - minZ);
+
+            Solid solid = BuildPrismFrom8Points(SL, SR, ER, EL, SL + up, SR + up, ER + up, EL + up);
+            if (solid == null || solid.Volume < 1e-9)
+                return null;
+
+            debugLog?.Add($"RunClearWidth obstacle test solid z={FormatFtMm(minZ)}..{FormatFtMm(maxZ)} width={FormatFtMm(widthFt)}");
+            return solid;
+        }
+
         private static void AddBuiltInCategoryIfDefined(List<BuiltInCategory> categories, string name)
         {
             try
@@ -6039,6 +7238,114 @@ namespace KPLN_Tools.ExternalCommands
             catch
             {
             }
+        }
+
+        private static bool TryGetElementSolidsZRange(Element elem, out double minZ, out double maxZ)
+        {
+            minZ = double.PositiveInfinity;
+            maxZ = double.NegativeInfinity;
+
+            if (elem == null)
+                return false;
+
+            var solids = new List<Solid>();
+            AddElementSolids(elem, solids);
+            foreach (Solid solid in GetValidSolids(solids))
+            {
+                if (!TryGetSolidZRange(solid, out double solidMinZ, out double solidMaxZ))
+                    continue;
+
+                if (solidMinZ < minZ) minZ = solidMinZ;
+                if (solidMaxZ > maxZ) maxZ = solidMaxZ;
+            }
+
+            return maxZ > minZ;
+        }
+
+        private static bool TryGetSolidZRange(Solid solid, out double minZ, out double maxZ)
+        {
+            minZ = double.PositiveInfinity;
+            maxZ = double.NegativeInfinity;
+
+            if (solid == null || solid.Volume < 1e-9)
+                return false;
+
+            bool hasPoints = false;
+
+            foreach (Face face in solid.Faces)
+            {
+                Mesh mesh;
+                try
+                {
+                    mesh = face.Triangulate();
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (mesh == null) continue;
+
+                for (int i = 0; i < mesh.NumTriangles; i++)
+                {
+                    MeshTriangle triangle = mesh.get_Triangle(i);
+                    if (triangle == null) continue;
+
+                    for (int j = 0; j < 3; j++)
+                    {
+                        XYZ p = triangle.get_Vertex(j);
+                        if (p == null) continue;
+
+                        if (p.Z < minZ) minZ = p.Z;
+                        if (p.Z > maxZ) maxZ = p.Z;
+                        hasPoints = true;
+                    }
+                }
+            }
+
+            return hasPoints;
+        }
+
+        private static bool TryGetClearWidthObstacleProjectionRange(
+            Solid obstacleTestSolid,
+            Element obstacleElement,
+            Solid obstacleSolid,
+            XYZ xP,
+            XYZ yP,
+            out double minX,
+            out double maxX,
+            out double minY,
+            out double maxY)
+        {
+            minX = double.PositiveInfinity;
+            maxX = double.NegativeInfinity;
+            minY = double.PositiveInfinity;
+            maxY = double.NegativeInfinity;
+
+            if (obstacleSolid == null || obstacleSolid.Volume < 1e-9)
+                return false;
+
+            Solid rangeSolid = obstacleSolid;
+            if (obstacleTestSolid != null && obstacleTestSolid.Volume > 1e-9)
+            {
+                try
+                {
+                    Solid intersection = BooleanOperationsUtils.ExecuteBooleanOperation(obstacleTestSolid, obstacleSolid, BooleanOperationsType.Intersect);
+                    if (intersection == null || intersection.Volume <= GetMinIntersectionVolumeFt3())
+                        return false;
+
+                    if (!HasMinimumIntersectionThickness(intersection, GetClearWidthObstacleMinIntersectionThicknessFt(obstacleElement)))
+                        return false;
+
+                    rangeSolid = intersection;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            return TryGetSolidProjectionRange(rangeSolid, xP, yP, out minX, out maxX, out minY, out maxY);
         }
 
         private static bool TryGetSolidProjectionRange(Solid solid, XYZ xP, XYZ yP, out double minX, out double maxX, out double minY, out double maxY)

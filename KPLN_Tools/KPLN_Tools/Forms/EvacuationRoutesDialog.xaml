@@ -2,9 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="KPLN. Маршруты эвакуации"
-        Width="1280"
+        Width="1360"
         Height="720"
-        MinWidth="1100"
+        MinWidth="1180"
         MinHeight="560"
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize"
@@ -35,10 +35,30 @@
             <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Высота мм:"/>
             <TextBox Grid.Column="1" x:Name="TbHeightMm" Margin="6,0,0,0" Height="26" VerticalContentAlignment="Center" PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_OnPaste"/>
 
-            <TextBlock Grid.Column="3" VerticalAlignment="Center" Text="Ширина мм:"/>
-            <TextBox Grid.Column="4" x:Name="TbWidthMm" Margin="6,0,0,0" Height="26" VerticalContentAlignment="Center" PreviewTextInput="DigitsOnly_PreviewTextInput" DataObject.Pasting="DigitsOnly_OnPaste"/>
+            <TextBlock Grid.Column="3" x:Name="LblWidthMm" VerticalAlignment="Center" Text="Ширина мм:"/>
+            <TextBox Grid.Column="4"
+                     x:Name="TbWidthMm"
+                     Margin="6,0,0,0"
+                     Height="26"
+                     VerticalContentAlignment="Center"
+                     ToolTip="Ручная ширина пути на марше. Используется, когда снята галочка «По ширине марша»."
+                     PreviewTextInput="DigitsOnly_PreviewTextInput"
+                     DataObject.Pasting="DigitsOnly_OnPaste"/>
 
-            <CheckBox Grid.Column="6" x:Name="CbUseRunWidth" Content="По ширине марша" VerticalAlignment="Center" Margin="6,0,0,0" Checked="UseRunWidth_Changed" Unchecked="UseRunWidth_Changed" IsChecked="True"/>
+            <CheckBox Grid.Column="6"
+                      x:Name="CbUseRunWidth"
+                      Content="По ширине марша"
+                      VerticalAlignment="Center"
+                      Margin="6,0,0,0"
+                      ToolTip="Когда включено, ширина на маршах берётся по фактической ширине марша с учётом найденных ограждений/стен."
+                      Checked="UseRunWidth_Changed"
+                      Unchecked="UseRunWidth_Changed"
+                      IsChecked="True"/>
+
+            <StackPanel Grid.Column="7" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="BtnPickTrimRoute" Width="30" Height="26" Margin="0,0,6,0" Content="✂" ToolTip="Выбрать построенный путь эвакуации и обрезать" Click="PickTrimRoute_Click"/>
+                <Button x:Name="BtnPickResizeRoute" Width="30" Height="26" Content="↔" ToolTip="Выбрать построенный путь эвакуации и изменить габариты" Click="PickResizeRoute_Click"/>
+            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="2">

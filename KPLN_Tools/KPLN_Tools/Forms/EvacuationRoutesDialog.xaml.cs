@@ -272,8 +272,18 @@ namespace KPLN_Tools.ExternalCommands.UI
         public int? EvacuationWorksetId { get; }
         public long? SelectedElementId { get; }
         public List<long> IncludedElementIds { get; }
+        public Dictionary<long, bool> UseRunWidthByElementId { get; }
 
-        public EvacuationRoutesDialogResult(int heightMm, int widthMm, bool useRunWidth, bool pickSingleStair, bool addToEvacuationWorkset, int? evacuationWorksetId, long? selectedElementId = null, IEnumerable<long> includedElementIds = null)
+        public EvacuationRoutesDialogResult(
+            int heightMm,
+            int widthMm,
+            bool useRunWidth,
+            bool pickSingleStair,
+            bool addToEvacuationWorkset,
+            int? evacuationWorksetId,
+            long? selectedElementId = null,
+            IEnumerable<long> includedElementIds = null,
+            IDictionary<long, bool> useRunWidthByElementId = null)
         {
             HeightMm = heightMm;
             WidthMm = widthMm;
@@ -286,11 +296,22 @@ namespace KPLN_Tools.ExternalCommands.UI
                 .Where(x => x > 0)
                 .Distinct()
                 .ToList();
+            UseRunWidthByElementId = (useRunWidthByElementId ?? new Dictionary<long, bool>())
+                .Where(x => x.Key > 0)
+                .GroupBy(x => x.Key)
+                .ToDictionary(x => x.Key, x => x.First().Value);
         }
     }
 
     public partial class EvacuationRoutesDialog : Window
     {
+        private sealed class ProblemItemSelection
+        {
+            public EvacuationRoutesProblemGroup Group { get; set; }
+            public EvacuationRoutesProblemItem Item { get; set; }
+            public string DisplayText { get; set; }
+        }
+
         public EvacuationRoutesDialogResult Result { get; private set; }
 
         private const int MinHeightMm = 2100;
@@ -302,6 +323,8 @@ namespace KPLN_Tools.ExternalCommands.UI
         private readonly Action<EvacuationRoutesDialogResult> _runOperation;
         private readonly Action<EvacuationRoutesTrimRequest> _trimRoute;
         private readonly Action<EvacuationRoutesResizeRequest> _resizeRoute;
+        private readonly Action _pickTrimRoute;
+        private readonly Action _pickResizeRoute;
         private List<EvacuationRoutesProblemGroup> _lastProblemGroups = new List<EvacuationRoutesProblemGroup>();
 
         private List<string> _lastReportLines = new List<string>();
@@ -316,7 +339,9 @@ namespace KPLN_Tools.ExternalCommands.UI
             Action<long> selectElement,
             Action<EvacuationRoutesDialogResult> runOperation,
             Action<EvacuationRoutesTrimRequest> trimRoute,
-            Action<EvacuationRoutesResizeRequest> resizeRoute)
+            Action<EvacuationRoutesResizeRequest> resizeRoute,
+            Action pickTrimRoute,
+            Action pickResizeRoute)
         {
             InitializeComponent();
 
@@ -327,6 +352,8 @@ namespace KPLN_Tools.ExternalCommands.UI
             _runOperation = runOperation;
             _trimRoute = trimRoute;
             _resizeRoute = resizeRoute;
+            _pickTrimRoute = pickTrimRoute;
+            _pickResizeRoute = pickResizeRoute;
 
             foreach (EvacuationRoutesStairListItem item in _stairs)
             {
@@ -357,7 +384,10 @@ namespace KPLN_Tools.ExternalCommands.UI
         private void StairItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (string.Equals(e.PropertyName, nameof(EvacuationRoutesStairListItem.IsIncluded), StringComparison.Ordinal))
+            {
                 UpdateToggleSelectionButton();
+                ApplyWidthMode();
+            }
         }
 
         private void DgStairs_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -386,6 +416,18 @@ namespace KPLN_Tools.ExternalCommands.UI
         private void BuildAll_Click(object sender, RoutedEventArgs e)
         {
             RunOperation(pickSingleStair: false, selectedElementId: null);
+        }
+
+        private void PickTrimRoute_Click(object sender, RoutedEventArgs e)
+        {
+            SetBusy("Выберите построенный путь эвакуации в Revit...");
+            _pickTrimRoute?.Invoke();
+        }
+
+        private void PickResizeRoute_Click(object sender, RoutedEventArgs e)
+        {
+            SetBusy("Выберите построенный путь эвакуации в Revit...");
+            _pickResizeRoute?.Invoke();
         }
 
         private void ToggleSelection_Click(object sender, RoutedEventArgs e)
@@ -542,14 +584,11 @@ namespace KPLN_Tools.ExternalCommands.UI
             bool useRunWidth = CbUseRunWidth.IsChecked == true;
 
             int widthMm = 0;
-            if (!useRunWidth)
+            if (!TryParsePositiveInt(TbWidthMm.Text, out widthMm))
             {
-                if (!TryParsePositiveInt(TbWidthMm.Text, out widthMm))
-                {
-                    MessageBox.Show(this, "Ширина должна быть числом (мм).", "Ошибка",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return false;
-                }
+                MessageBox.Show(this, "Ширина должна быть числом (мм).", "Ошибка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
             }
 
             if (!TryGetEvacuationWorksetResult(out bool addToEvacuationWorkset, out int? evacuationWorksetId))
@@ -568,18 +607,36 @@ namespace KPLN_Tools.ExternalCommands.UI
                 return false;
             }
 
-            result = new EvacuationRoutesDialogResult(heightMm, widthMm, useRunWidth, pickSingleStair, addToEvacuationWorkset, evacuationWorksetId, selectedElementId, includedElementIds);
+            Dictionary<long, bool> useRunWidthByElementId = BuildUseRunWidthByElementId(useRunWidth);
+            result = new EvacuationRoutesDialogResult(heightMm, widthMm, useRunWidth, pickSingleStair, addToEvacuationWorkset, evacuationWorksetId, selectedElementId, includedElementIds, useRunWidthByElementId);
             return true;
         }
 
         private void ApplyWidthMode()
         {
-            bool useRunWidth = CbUseRunWidth.IsChecked == true;
-            TbWidthMm.IsEnabled = !_isBusy && !useRunWidth;
-            if (useRunWidth)
-                TbWidthMm.Text = "";
-            else if (string.IsNullOrWhiteSpace(TbWidthMm.Text))
+            if (string.IsNullOrWhiteSpace(TbWidthMm.Text))
                 TbWidthMm.Text = "1200";
+
+            bool manualWidth = CbUseRunWidth == null || CbUseRunWidth.IsChecked != true;
+            bool enabled = !_isBusy && manualWidth;
+
+            TbWidthMm.IsEnabled = enabled;
+            if (LblWidthMm != null)
+                LblWidthMm.IsEnabled = enabled;
+        }
+
+        private Dictionary<long, bool> BuildUseRunWidthByElementId(bool useRunWidth)
+        {
+            var result = new Dictionary<long, bool>();
+            foreach (EvacuationRoutesStairListItem item in _stairs ?? new ObservableCollection<EvacuationRoutesStairListItem>())
+            {
+                if (item == null || !item.IsIncluded || item.ElementId <= 0)
+                    continue;
+
+                result[item.ElementId] = useRunWidth;
+            }
+
+            return result;
         }
 
         private void ApplyEvacuationWorksetMode()
@@ -620,6 +677,184 @@ namespace KPLN_Tools.ExternalCommands.UI
         {
             return _stairs.FirstOrDefault(x => x.ElementId == id)
                 ?? _stairs.FirstOrDefault(x => x.NestedStairIds != null && x.NestedStairIds.Contains(id));
+        }
+
+        private ProblemItemSelection SelectRouteProblemItem(string title)
+        {
+            List<ProblemItemSelection> choices = GetRouteProblemItemChoices();
+            if (choices.Count == 0)
+            {
+                MessageBox.Show(this,
+                    "В последнем результате нет элементов путей эвакуации для выбранной строки. Сначала выполните построение или выберите строку с проблемами.",
+                    "KPLN. Маршруты эвакуации",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return null;
+            }
+
+            if (choices.Count == 1)
+                return choices[0];
+
+            var listBox = new ListBox
+            {
+                ItemsSource = choices,
+                DisplayMemberPath = nameof(ProblemItemSelection.DisplayText),
+                MinWidth = 560,
+                MaxHeight = 300,
+                Margin = new Thickness(0, 8, 0, 12)
+            };
+            listBox.SelectedIndex = 0;
+
+            var okButton = new Button
+            {
+                Content = "Выбрать",
+                Width = 90,
+                Height = 28,
+                IsDefault = true,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Отмена",
+                Width = 90,
+                Height = 28,
+                IsCancel = true
+            };
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            buttons.Children.Add(okButton);
+            buttons.Children.Add(cancelButton);
+
+            var root = new DockPanel
+            {
+                Margin = new Thickness(14)
+            };
+
+            var header = new TextBlock
+            {
+                Text = "Выберите конкретный элемент пути эвакуации.",
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(Color.FromRgb(45, 55, 68))
+            };
+
+            DockPanel.SetDock(header, Dock.Top);
+            DockPanel.SetDock(buttons, Dock.Bottom);
+            root.Children.Add(header);
+            root.Children.Add(buttons);
+            root.Children.Add(listBox);
+
+            var window = new Window
+            {
+                Title = title,
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                Content = root
+            };
+
+            okButton.Click += (sender, args) => window.DialogResult = true;
+            listBox.MouseDoubleClick += (sender, args) =>
+            {
+                if (listBox.SelectedItem != null)
+                    window.DialogResult = true;
+            };
+
+            bool? accepted = window.ShowDialog();
+            if (accepted != true)
+                return null;
+
+            return listBox.SelectedItem as ProblemItemSelection;
+        }
+
+        private List<ProblemItemSelection> GetRouteProblemItemChoices()
+        {
+            var result = new List<ProblemItemSelection>();
+            var groups = _lastProblemGroups ?? new List<EvacuationRoutesProblemGroup>();
+            HashSet<long> selectedIds = GetSelectedStairScopeIds();
+            bool filterBySelection = selectedIds.Count > 0;
+
+            foreach (EvacuationRoutesProblemGroup group in groups)
+            {
+                if (group == null)
+                    continue;
+
+                bool groupMatches = !filterBySelection || selectedIds.Contains(group.StairElementId);
+
+                foreach (EvacuationRoutesProblemItem item in group.Items ?? new List<EvacuationRoutesProblemItem>())
+                {
+                    if (item == null || item.RouteElementId <= 0)
+                        continue;
+
+                    bool itemMatches = groupMatches || selectedIds.Contains(item.ComponentElementId);
+                    if (!itemMatches)
+                        continue;
+
+                    result.Add(new ProblemItemSelection
+                    {
+                        Group = group,
+                        Item = item,
+                        DisplayText = FormatRouteProblemChoice(group, item)
+                    });
+                }
+            }
+
+            return result
+                .OrderBy(x => x.Group == null ? 0 : x.Group.StairElementId)
+                .ThenBy(x => x.Item == null ? 0 : x.Item.ComponentElementId)
+                .ThenBy(x => x.Item == null ? 0 : x.Item.RouteElementId)
+                .ToList();
+        }
+
+        private HashSet<long> GetSelectedStairScopeIds()
+        {
+            var result = new HashSet<long>();
+            EvacuationRoutesStairListItem selected = GetSelectedItem();
+            if (selected == null)
+                return result;
+
+            if (selected.ElementId > 0)
+                result.Add(selected.ElementId);
+
+            foreach (long id in selected.NestedStairIds ?? new List<long>())
+            {
+                if (id > 0)
+                    result.Add(id);
+            }
+
+            if (selected.ParentMultistoryId.HasValue && selected.ParentMultistoryId.Value > 0)
+                result.Add(selected.ParentMultistoryId.Value);
+
+            return result;
+        }
+
+        private static string FormatRouteProblemChoice(EvacuationRoutesProblemGroup group, EvacuationRoutesProblemItem item)
+        {
+            string stairText = group == null || group.StairElementId <= 0
+                ? "Лестница"
+                : $"Лестница ID {group.StairElementId}";
+
+            string componentText = string.IsNullOrWhiteSpace(item.ComponentKind)
+                ? "Элемент"
+                : item.ComponentKind;
+
+            if (item.ComponentElementId > 0)
+                componentText += $" ID {item.ComponentElementId}";
+
+            string routeText = item.RouteElementId > 0
+                ? $"Путь ID {item.RouteElementId}"
+                : "Путь";
+
+            string message = string.IsNullOrWhiteSpace(item.Message)
+                ? ""
+                : $" - {item.Message}";
+
+            return $"{stairText} | {componentText} | {routeText}{message}";
         }
 
         private string SaveStatusReport()
@@ -681,6 +916,8 @@ namespace KPLN_Tools.ExternalCommands.UI
             BtnToggleSelection.IsEnabled = !busy;
             BtnPickAndBuild.IsEnabled = !busy;
             BtnBuildAll.IsEnabled = !busy;
+            BtnPickTrimRoute.IsEnabled = !busy;
+            BtnPickResizeRoute.IsEnabled = !busy;
             DgStairs.IsEnabled = !busy;
             TbHeightMm.IsEnabled = !busy;
             CbUseRunWidth.IsEnabled = !busy;
@@ -1042,6 +1279,44 @@ namespace KPLN_Tools.ExternalCommands.UI
             });
 
             UpdateStatus($"Запрошено изменение габаритов пути ID {item.RouteElementId}.");
+        }
+
+        public bool TryCreateResizeRequestForRoute(
+            long routeElementId,
+            long stairElementId,
+            long componentElementId,
+            double currentLengthMm,
+            double currentWidthMm,
+            double currentHeightMm,
+            out EvacuationRoutesResizeRequest request)
+        {
+            request = null;
+
+            var item = new EvacuationRoutesProblemItem
+            {
+                RouteElementId = routeElementId,
+                ComponentElementId = componentElementId,
+                CurrentLengthMm = currentLengthMm,
+                CurrentWidthMm = currentWidthMm,
+                CurrentHeightMm = currentHeightMm
+            };
+
+            if (!TryShowResizeDialog(item, out double newLengthMm, out double newWidthMm, out double newHeightMm, out int lengthDirection, out int widthDirection))
+                return false;
+
+            request = new EvacuationRoutesResizeRequest
+            {
+                StairElementId = stairElementId,
+                ComponentElementId = componentElementId,
+                RouteElementId = routeElementId,
+                NewLengthMm = newLengthMm,
+                NewWidthMm = newWidthMm,
+                NewHeightMm = newHeightMm,
+                LengthDirection = lengthDirection,
+                WidthDirection = widthDirection
+            };
+
+            return true;
         }
 
         private bool TryShowResizeDialog(EvacuationRoutesProblemItem item, out double newLengthMm, out double newWidthMm, out double newHeightMm, out int lengthDirection, out int widthDirection)
