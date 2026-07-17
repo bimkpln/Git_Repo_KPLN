@@ -4,6 +4,7 @@ using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.ViewModels;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,6 +25,27 @@ namespace KPLN_ExtraFilter.Forms
 
         public SelectionByModel(UIApplication uiapp, ViewFilterMode viewFilterMode, bool isUpdateble)
         {
+            SelectionByModel openedWindow = Application.Current?.Windows
+                .OfType<SelectionByModel>()
+                .FirstOrDefault(window => !ReferenceEquals(window, this) && window.IsLoaded);
+
+            if (openedWindow != null)
+            {
+                RestoreOpenedWindow(openedWindow);
+
+                // Команда запуска всё равно вызовет Show() для нового экземпляра.
+                // Делаем его невидимым и закрываем сразу после загрузки.
+                ShowActivated = false;
+                ShowInTaskbar = false;
+                WindowStyle = WindowStyle.None;
+                ResizeMode = ResizeMode.NoResize;
+                Width = 0;
+                Height = 0;
+                Opacity = 0;
+                Loaded += (sender, args) => Close();
+                return;
+            }
+
             CurrentSelectionByModelVM = new SelectionByModelVM(this, uiapp, viewFilterMode, isUpdateble);
 
             InitializeComponent();
@@ -65,6 +87,18 @@ namespace KPLN_ExtraFilter.Forms
         /// VM для окна
         /// </summary>
         public SelectionByModelVM CurrentSelectionByModelVM { get; set; }
+
+        private static void RestoreOpenedWindow(SelectionByModel openedWindow)
+        {
+            if (!openedWindow.IsVisible)
+                openedWindow.Show();
+
+            if (openedWindow.WindowState == WindowState.Minimized)
+                openedWindow.WindowState = WindowState.Normal;
+
+            openedWindow.Activate();
+            openedWindow.Focus();
+        }
 
         private void OnViewChanged(object sender, ViewActivatedEventArgs e) => _viewExtEv?.Raise();
 
