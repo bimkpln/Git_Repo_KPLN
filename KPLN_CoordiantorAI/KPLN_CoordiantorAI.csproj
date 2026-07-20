@@ -143,6 +143,7 @@
     <Compile Include="ExternalAIModel\Commands.cs" />
     <Compile Include="ExternalAIModel\Connection.cs" />
     <Compile Include="ExternalAIModel\DiagnosticLogger.cs" />
+    <Compile Include="ExternalAIModel\RevitApiExternalEventHandler.cs" />
     <Compile Include="ExternalCommands\SettingsAI.cs" />
     <Compile Include="ExternalCommands\StartAI.cs" />
     <Compile Include="Forms\ArticleAliasesWindow.xaml.cs">

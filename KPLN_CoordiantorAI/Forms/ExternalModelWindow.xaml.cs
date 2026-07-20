@@ -73,6 +73,8 @@ namespace KPLN_CoordiantorAI.Forms
         private bool _isRequestInProgress;
         private bool _isClosing;
         private CancellationTokenSource _currentRequestCancellation;
+        private RevitApiExternalEventHandler _revitApiExternalEventHandler;
+
 
         private enum ModelToolArea
         {
@@ -112,6 +114,7 @@ namespace KPLN_CoordiantorAI.Forms
             { "get_parameter_value_for_element_ids", ModelToolArea.Parameters },
             { "get_all_additional_properties_from_elementid", ModelToolArea.Parameters },
             { "get_additional_property_for_all_elementids", ModelToolArea.Parameters },
+            { "get_revitlookup_like_properties", ModelToolArea.Parameters },
 
             { "get_location_for_element_ids", ModelToolArea.Geometry },
             { "get_boundingboxes_for_element_ids", ModelToolArea.Geometry },
@@ -182,6 +185,8 @@ namespace KPLN_CoordiantorAI.Forms
             _uiDoc = uiDocument;
             _connectionType = connectionType;
             _settings = settings ?? new ExternalModelSettings();
+            _revitApiExternalEventHandler = new RevitApiExternalEventHandler();
+
 
             // Инициализация логгера
             _logger = new ChatLogger(_settings.LogFolder);
@@ -626,7 +631,7 @@ namespace KPLN_CoordiantorAI.Forms
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             if (IsCloseOrCancellationRequested(cancellationToken)) return;
-                            ProcessSingleToolCall(tc);
+                            await ProcessSingleToolCall(tc);
                         }
                         toolsBatchStopwatch.Stop();
                         _diagnosticLogger.LogEvent(requestId, "TOOLS_BATCH.END", new Dictionary<string, object>
@@ -909,7 +914,7 @@ namespace KPLN_CoordiantorAI.Forms
 
 
 
-        private void ProcessSingleToolCall(JObject toolCall)
+        private async Task ProcessSingleToolCall(JObject toolCall)
         {
             string toolName = toolCall["function"]?["name"]?.ToString();
             RegisterToolAreaCall(toolName);
@@ -1042,7 +1047,7 @@ namespace KPLN_CoordiantorAI.Forms
                     case "get_parameter_value_for_element_ids":
                         var ids_14 = new List<int>();
                         if (argsObj["list_elementIds"] is JArray arr_14)
-                            ids = arr_14.Select(t => t.Value<int>()).ToList();
+                            ids_14 = arr_14.Select(t => t.Value<int>()).ToList();
                         int idParameter = argsObj["idParameter"]?.Value<int>() ?? 0;
                         bool getIdValuesAsNames_14 = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
                         var result_14 = Commands.GetParameterValueForElementIds(_doc, ids_14, idParameter, getIdValuesAsNames_14);
@@ -1058,10 +1063,22 @@ namespace KPLN_CoordiantorAI.Forms
                     case "get_additional_property_for_all_elementids":
                         var ids_16 = new List<int>();
                         if (argsObj["list_elementIds"] is JArray arr_16)
-                            ids = arr_16.Select(t => t.Value<int>()).ToList();
+                            ids_16 = arr_16.Select(t => t.Value<int>()).ToList();
                         string propertyName = argsObj["propertyName"]?.Value<string>() ?? "";
                         var result_16 = Commands.GetAdditionalPropertyForAllElementIds(_doc, ids_16, propertyName);
                         toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_16);
+                        break;
+
+                    case "get_revitlookup_like_properties":
+                        int elementId_lookup = argsObj["elementId"]?.Value<int>() ?? 0;
+                        bool includeParameters_lookup = argsObj["includeParameters"]?.Value<bool>() ?? true;
+                        bool includeApiProperties_lookup = argsObj["includeApiProperties"]?.Value<bool>() ?? true;
+                        int maxValueLength_lookup = argsObj["maxValueLength"]?.Value<int>() ?? 1000;
+                        var result_lookup = Commands.GetRevitLookupLikeProperties(
+                            _doc,
+                            elementId_lookup,
+                            maxValueLength_lookup);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_lookup);
                         break;
 
                     case "get_location_for_element_ids":
@@ -1329,7 +1346,7 @@ namespace KPLN_CoordiantorAI.Forms
                         if (argsObj["list_elementIds"] is JArray arr_sectionBox)
                             ids_sectionBox = arr_sectionBox.Select(t => t.Value<int>()).ToList();
 
-                        var result_sectionBox = Commands.SetViewSectionBoxToElements(_doc, _uiDoc, ids_sectionBox);
+                        var result_sectionBox = await _revitApiExternalEventHandler.SetViewSectionBoxToElementsAsync(_doc, _uiDoc, ids_sectionBox);
                         toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sectionBox);
                         break;
 
@@ -1387,7 +1404,28 @@ namespace KPLN_CoordiantorAI.Forms
                     { "toolName", toolName },
                     { "elapsedMs", toolStopwatch.ElapsedMilliseconds }
                 });
-                throw;
+
+                toolResult = JsonConvert.SerializeObject(new
+                {
+                    success = false,
+                    error = ex.Message,
+                    exception_type = ex.GetType().FullName,
+                    tool_name = toolName
+                });
+
+                ChatHistoryMessages.Add(new
+                {
+                    role = "tool",
+                    tool_call_id = toolCallId,
+                    content = toolResult
+                });
+
+                _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "TOOL.ERROR_RESULT_ADDED", new Dictionary<string, object>
+                {
+                    { "toolName", toolName },
+                    { "toolCallId", toolCallId },
+                    { "resultLength", toolResult == null ? 0 : toolResult.Length }
+                });
             }
         }
 
@@ -1968,7 +2006,7 @@ namespace KPLN_CoordiantorAI.Forms
                         function = new
                         {
                             name = "get_parameters_from_elementid",
-                            description = "Возвращает ВСЕ параметры (по каждому парметру это: id параметра, имя, значение, storageType - типзначения, isReadOnly - только ли на чтение параметр (true) или нет(false)) одного конкретного элемента. Это основной инструмент для изучения доступных параметров. Рекомендуется вызывать первым перед массовым get_parameter_value_for_element_ids — чтобы узнать нужный idParameter. Обрати внимание что единица измерения в Revit не метры или миллиметры, а футы",
+                            description = "Возвращает ВСЕ параметры (по каждому парметру это: id параметра, имя, значение, storageType - типзначения, isReadOnly - только ли на чтение параметр (true) или нет(false)) одного конкретного элемента, parType - определяет какой это параметр (параметр экезмпляра или типоразмера). Это основной инструмент для изучения доступных параметров. Рекомендуется вызывать первым перед массовым get_parameter_value_for_element_ids — чтобы узнать нужный idParameter. Обрати внимание что единица измерения в Revit не метры или миллиметры, а футы",
                             parameters = new
                             {
                                 type = "object",
@@ -2075,6 +2113,43 @@ namespace KPLN_CoordiantorAI.Forms
                             }
                         }
                     },
+
+                    new
+                    {
+                        type = "function",
+                        function = new
+                        {
+                            name = "get_revitlookup_like_properties",
+                            description = "Возвращает RevitLookup-подобную информацию по одному элементу: публичные свойства Revit API класса элемента и специальные сложные свойства. " +
+                            "Для IndependentTag дополнительно возвращает GetTaggedLocalElementIds() и GetTaggedElementIds() с ElementId элементов которые туда попали. Для Dimension " +
+                            "дополнительно возвращает References (свойство показывает к каким элементам привязан размер) с ElementId элементов которые туда попали. " +
+                            "Для View3D возвращает GetSectionBox(). Для ViewSheet возвращает GetAllViewports(), GetAllPlacedViews() и Outline. " +
+                            "Для Viewport возвращает GetBoxCenter(), GetBoxOutline(), GetLabelOutline(), GetLabelOffset() и GetLabelLineLength(). " +
+                            "Для Room возвращает GetBoundarySegments(). Для Group и AssemblyInstance возвращает GetMemberIds(), " +
+                            "когда суммируешь количество элементов, полученных через это свойство, по категории, то делай это максимально точно, а не приблизительно" +
+                            "Используй, когда нужно понять, какие данные доступны у элемента через RevitLookup/API, или когда обычные параметры не дали нужное свойство. " +
+                            "Значения сложных объектов преобразуются в безопасный текст, длинные значения обрезаются по maxValueLength.",
+                            parameters = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    elementId = new
+                                    {
+                                        type = "integer",
+                                        description = "Element id элемента, который нужно исследовать."
+                                    },                                  
+                                    maxValueLength = new
+                                    {
+                                        type = "integer",
+                                        description = "Максимальная длина текстового значения одного свойства. По умолчанию 1000, допустимый диапазон в коде ограничен от 100 до 10000."
+                                    }
+                                },
+                                required = new[] { "elementId" }
+                            }
+                        }
+                    },
+
 
                     new
                     {

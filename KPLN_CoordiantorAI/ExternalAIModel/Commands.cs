@@ -4,11 +4,13 @@ using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Structure;
 using Autodesk.Revit.UI;
 using KPLN_CoordiantorAI.Common;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text;
@@ -763,21 +765,27 @@ namespace KPLN_CoordiantorAI.ExternalModel
             public string Value { get; set; }
             public string StorageType { get; set; }
             public bool IsReadOnly { get; set; }
+            public string parType { get; set; }
+            public string Error { get; set; }
         }
 
         public static object GetParametersFromElementId(Document doc, int elementId, bool getIdValuesAsNames)
         {
             var result = new List<ElementParameterInfo>();
+            var errors = new List<string>();
 
             var elem = doc.GetElement(IDHelper.ToElementId(elementId));
             if (elem == null)
                 return new { parameters = result };
 
+            //параметры экземпляра
             foreach (Parameter p in elem.Parameters)
             {
                 if (p == null) continue;
+                try
+                {
 
-                string name = p.Definition?.Name ?? "<no name>";
+                    string name = p.Definition?.Name ?? "<no name>";
                 string storageType = p.StorageType.ToString();
                 bool isReadOnly = p.IsReadOnly;
 
@@ -834,13 +842,105 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     ParameterName = name,
                     Value = value,
                     StorageType = storageType,
-                    IsReadOnly = isReadOnly
+                    IsReadOnly = isReadOnly,
+                    parType = "exemplar"
                 });
+                }
+                catch (Exception ex)
+                {
+                    errors.Add("Failed to read exemplar parameter: " + ex.Message);
+                }
+
             }
+
+            var elemType = doc.GetElement(elem.GetTypeId());
+
+            //параметры типоразмера
+            if (elemType != null)
+            {
+                foreach (Parameter p in elemType.Parameters)
+                {
+                    if (p == null) continue;
+                    try
+                    {
+
+                        string name = p.Definition?.Name ?? "<no name>";
+                        string storageType = p.StorageType.ToString();
+                    bool isReadOnly = p.IsReadOnly;
+
+                    string value = "";
+                    switch (p.StorageType)
+                    {
+                        case StorageType.String:
+                            value = p.AsString();
+                            break;
+
+                        case StorageType.Double:
+                            // Оставляем в “сыром” виде, без UnitUtils, чтобы не навязывать единицы
+                            value = p.AsDouble().ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            break;
+
+                        case StorageType.Integer:
+                            value = p.AsInteger().ToString();
+                            break;
+
+                        case StorageType.ElementId:
+                            var id = p.AsElementId();
+                            if (id != ElementId.InvalidElementId)
+                            {
+                                if (getIdValuesAsNames)
+                                {
+                                    var refElem = doc.GetElement(id);
+                                    value = refElem != null
+                                        ? refElem.Name
+                                        : IDHelper.ElIdInt(id).ToString();
+                                }
+                                else
+                                {
+                                    value = IDHelper.ElIdInt(id).ToString();
+                                }
+                            }
+                            else
+                            {
+                                value = "InvalidElementId";
+                            }
+                            break;
+
+                        case StorageType.None:
+                        default:
+                            value = p.AsValueString(); // попытка взять красиво отформатированное значение
+                            break;
+                    }
+
+                    // У Definition нет “Id” как у параметров семейства, поэтому используем Id самого параметра
+                    int paramId = p.Id != null ? IDHelper.ElIdInt(p.Id) : 0;
+
+                    result.Add(new ElementParameterInfo
+                    {
+                        ParameterId = paramId,
+                        ParameterName = name,
+                        Value = value,
+                        StorageType = storageType,
+                        IsReadOnly = isReadOnly,
+                        parType = "Type"
+                    });
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add("Failed to read type parameter: " + ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                errors.Add("Type element was not found for element type id.");
+            }
+
 
             return new
             {
-                parameters = result
+                parameters = result,
+                errors = errors
             };
         }
 
@@ -1220,6 +1320,661 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 invalid_element_ids = invalidElementIds
             };
         }
+
+
+        #endregion
+
+        #region 16_1_get_revitlookup_like_properties
+
+        public static object GetRevitLookupLikeProperties(
+            Document doc,
+            int elementId,
+            int maxValueLength = 1000)
+        {
+            try
+            {
+                Element elem = doc.GetElement(IDHelper.ToElementId(elementId));
+                if (elem == null)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = $"Элемент с ID {elementId} не найден.",
+                        element_id = elementId
+                    };
+                }
+
+                int safeMaxValueLength = Math.Max(100, Math.Min(maxValueLength, 10000));
+                var apiProperties = new List<object>();
+                var specialProperties = new List<object>();
+
+
+                PropertyInfo[] properties = elem.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                    foreach (PropertyInfo property in properties.OrderBy(p => p.Name))
+                    {
+                        if (!property.CanRead || property.GetIndexParameters().Length > 0)
+                            continue;
+
+                        try
+                        {
+                            object value = property.GetValue(elem, null);
+                            apiProperties.Add(new
+                            {
+                                name = property.Name,
+                                type = property.PropertyType.FullName,
+                                value = TrimForLookup(FormatLookupValue(value), safeMaxValueLength)
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            apiProperties.Add(new
+                            {
+                                name = property.Name,
+                                type = property.PropertyType.FullName,
+                                error = ex.Message
+                            });
+                        }
+                    }
+
+                AddSpecialLookupProperties(doc, elem, specialProperties, safeMaxValueLength);
+                return new
+                {
+                    success = true,
+                    element_id = elementId,
+                    unique_id = elem.UniqueId,
+                    class_name = elem.GetType().FullName,
+                    category = elem.Category != null ? elem.Category.Name : null,
+                    name = elem.Name,
+                    api_properties_count = apiProperties.Count,
+                    api_properties = apiProperties,
+                    special_properties = specialProperties
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Ошибка при получении свойств элемента: {ex.Message}",
+                    element_id = elementId
+                };
+            }
+        }
+
+        private static string FormatParameterValue(Document doc, Parameter parameter)
+        {
+            if (parameter == null)
+                return null;
+
+            switch (parameter.StorageType)
+            {
+                case StorageType.String:
+                    return parameter.AsString();
+
+                case StorageType.Double:
+                    return parameter.AsDouble().ToString(CultureInfo.InvariantCulture);
+
+                case StorageType.Integer:
+                    return parameter.AsInteger().ToString(CultureInfo.InvariantCulture);
+
+                case StorageType.ElementId:
+                    ElementId id = parameter.AsElementId();
+                    if (id == ElementId.InvalidElementId)
+                        return "InvalidElementId";
+
+                    Element refElement = doc.GetElement(id);
+                    string idText = IDHelper.ElIdInt(id).ToString(CultureInfo.InvariantCulture);
+                    return refElement == null ? idText : $"{idText} ({refElement.Name})";
+
+                case StorageType.None:
+                default:
+                    return parameter.AsValueString();
+            }
+        }
+
+        private static string FormatLookupValue(object value)
+        {
+            if (value == null)
+                return null;
+
+            if (value is ElementId elementId)
+                return IDHelper.ElIdInt(elementId).ToString(CultureInfo.InvariantCulture);
+
+            if (value is Element element)
+                return $"{element.GetType().Name}: {element.Name} [{IDHelper.ElIdInt(element.Id)}]";
+
+            if (value is Category category)
+                return $"{category.Name} [{IDHelper.ElIdInt(category.Id)}]";
+
+            if (value is XYZ xyz)
+                return $"X={xyz.X.ToString(CultureInfo.InvariantCulture)}, Y={xyz.Y.ToString(CultureInfo.InvariantCulture)}, Z={xyz.Z.ToString(CultureInfo.InvariantCulture)}";
+
+            if (value is BoundingBoxXYZ bbox)
+                return $"Min=({FormatLookupValue(bbox.Min)}), Max=({FormatLookupValue(bbox.Max)})";
+
+            if (value is Transform transform)
+                return $"Origin=({FormatLookupValue(transform.Origin)}), BasisX=({FormatLookupValue(transform.BasisX)}), BasisY=({FormatLookupValue(transform.BasisY)}), BasisZ=({FormatLookupValue(transform.BasisZ)})";
+
+            if (value is System.Collections.IEnumerable enumerable && !(value is string))
+            {
+                var items = new List<string>();
+                int count = 0;
+                foreach (object item in enumerable)
+                {
+                    if (count >= 50)
+                    {
+                        items.Add("...");
+                        break;
+                    }
+
+                    items.Add(FormatLookupValue(item));
+                    count++;
+                }
+
+                return string.Join("; ", items);
+            }
+
+            return Convert.ToString(value, CultureInfo.InvariantCulture);
+        }
+
+        private static string TrimForLookup(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+                return value;
+
+            return value.Substring(0, maxLength) + "...";
+        }
+
+        //======================================================================
+        //команды для обработки сложных свойств/методов элемента 
+        //======================================================================
+
+        private static void AddSpecialLookupProperties(Document doc, Element elem, List<object> specialProperties, int maxValueLength)
+        {
+            if (elem is IndependentTag tag)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetTaggedLocalElementIds",
+                        source = "IndependentTag.GetTaggedLocalElementIds()",
+                        value = tag.GetTaggedLocalElementIds()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetTaggedLocalElementIds", "IndependentTag.GetTaggedLocalElementIds()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetTaggedElementIds",
+                        source = "IndependentTag.GetTaggedElementIds()",
+                        value = tag.GetTaggedElementIds()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetTaggedElementIds", "IndependentTag.GetTaggedElementIds()", ex));
+                }
+            }
+
+            if (elem is Dimension dimension)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "References",
+                        source = "Dimension.References",
+                        value = FormatReferenceArray(doc, dimension.References, maxValueLength)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("References", "Dimension.References", ex));
+                }
+            }
+
+            if (elem is View3D view3D)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetSectionBox",
+                        source = "View3D.GetSectionBox()",
+                        value = FormatBoundingBoxXyz(view3D.GetSectionBox())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetSectionBox", "View3D.GetSectionBox()", ex));
+                }
+            }
+
+            if (elem is ViewSheet viewSheet)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetAllViewports",
+                        source = "ViewSheet.GetAllViewports()",
+                        value = FormatElementIdCollectionForLookup(doc, viewSheet.GetAllViewports())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetAllViewports", "ViewSheet.GetAllViewports()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetAllPlacedViews",
+                        source = "ViewSheet.GetAllPlacedViews()",
+                        value = FormatElementIdCollectionForLookup(doc, viewSheet.GetAllPlacedViews())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetAllPlacedViews", "ViewSheet.GetAllPlacedViews()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "Outline",
+                        source = "ViewSheet.Outline",
+                        value = FormatBoundingBoxUv(viewSheet.Outline)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("Outline", "ViewSheet.Outline", ex));
+                }
+            }
+
+            if (elem is Viewport viewport)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetBoxCenter",
+                        source = "Viewport.GetBoxCenter()",
+                        value = FormatXyz(viewport.GetBoxCenter())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetBoxCenter", "Viewport.GetBoxCenter()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetBoxOutline",
+                        source = "Viewport.GetBoxOutline()",
+                        value = FormatOutline(viewport.GetBoxOutline())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetBoxOutline", "Viewport.GetBoxOutline()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetLabelOutline",
+                        source = "Viewport.GetLabelOutline()",
+                        value = FormatOutline(viewport.GetLabelOutline())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetLabelOutline", "Viewport.GetLabelOutline()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetLabelOffset",
+                        source = "Viewport.GetLabelOffset()/LabelOffset",
+                        value = FormatXyz(GetViewportLabelOffset(viewport))
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetLabelOffset", "Viewport.GetLabelOffset()", ex));
+                }
+
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetLabelLineLength",
+                        source = "Viewport.GetLabelLineLength()/LabelLineLength",
+                        value = GetViewportLabelLineLength(viewport)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetLabelLineLength", "Viewport.GetLabelLineLength()", ex));
+                }
+            }
+
+            if (elem is Room room)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetBoundarySegments",
+                        source = "Room.GetBoundarySegments()",
+                        value = FormatRoomBoundarySegments(doc, room)
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetBoundarySegments", "Room.GetBoundarySegments()", ex));
+                }
+            }
+
+            if (elem is Autodesk.Revit.DB.Group group)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetMemberIds",
+                        source = "Group.GetMemberIds()",
+                        value = FormatElementIdCollectionForLookup(doc, group.GetMemberIds())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetMemberIds", "Group.GetMemberIds()", ex));
+                }
+            }
+
+            if (elem is AssemblyInstance assemblyInstance)
+            {
+                try
+                {
+                    specialProperties.Add(new
+                    {
+                        name = "GetMemberIds",
+                        source = "AssemblyInstance.GetMemberIds()",
+                        value = FormatElementIdCollectionForLookup(doc, assemblyInstance.GetMemberIds())
+                    });
+                }
+                catch (Exception ex)
+                {
+                    specialProperties.Add(CreateSpecialPropertyError("GetMemberIds", "AssemblyInstance.GetMemberIds()", ex));
+                }
+
+            }
+
+
+
+        }
+
+        //описывает какой метод не удалось вызыватьи передает инфу в результат
+        private static object CreateSpecialPropertyError(string name, string source, Exception ex)
+        {
+            return new
+            {
+                name = name,
+                source = source,
+                error = ex.Message,
+                exception_type = ex.GetType().FullName
+            };
+        }
+
+        private static List<object> FormatReferenceArray(Document doc, ReferenceArray references, int maxValueLength)
+        {
+            var result = new List<object>();
+            if (references == null)
+                return result;
+
+            foreach (Reference reference in references)
+            {
+                result.Add(reference.ElementId);
+
+            }
+
+            return result;
+        }
+
+        private static List<object> FormatRoomBoundarySegments(Document doc, Room room)
+        {
+            var result = new List<object>();
+            if (room == null)
+                return result;
+
+            IList<IList<BoundarySegment>> boundaries = room.GetBoundarySegments(new SpatialElementBoundaryOptions());
+            if (boundaries == null)
+                return result;
+
+            for (int loopIndex = 0; loopIndex < boundaries.Count; loopIndex++)
+            {
+                IList<BoundarySegment> loop = boundaries[loopIndex];
+                var segments = new List<object>();
+
+                if (loop != null)
+                {
+                    for (int segmentIndex = 0; segmentIndex < loop.Count; segmentIndex++)
+                    {
+                        BoundarySegment segment = loop[segmentIndex];
+                        segments.Add(FormatBoundarySegment(doc, segment, segmentIndex));
+                    }
+                }
+
+                result.Add(new
+                {
+                    loop_index = loopIndex,
+                    segment_count = segments.Count,
+                    segments = segments
+                });
+            }
+
+            return result;
+        }
+
+        private static object FormatBoundarySegment(Document doc, BoundarySegment segment, int segmentIndex)
+        {
+            if (segment == null)
+            {
+                return new
+                {
+                    segment_index = segmentIndex,
+                    is_null = true
+                };
+            }
+
+            Curve curve = null;
+            try
+            {
+                curve = segment.GetCurve();
+            }
+            catch
+            {
+            }
+
+            ElementId elementId = segment.ElementId;
+            return new
+            {
+                segment_index = segmentIndex,
+                boundary_element = FormatSingleElementIdForLookup(doc, elementId),
+                curve_type = curve != null ? curve.GetType().Name : null,
+                length = curve != null ? curve.Length : (double?)null,
+                start_point = GetCurveEndPoint(curve, 0),
+                end_point = GetCurveEndPoint(curve, 1)
+            };
+        }
+
+        private static object GetCurveEndPoint(Curve curve, int index)
+        {
+            if (curve == null)
+                return null;
+
+            try
+            {
+                return FormatXyz(curve.GetEndPoint(index));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static List<object> FormatElementIdCollectionForLookup(Document doc, IEnumerable<ElementId> elementIds)
+        {
+            var result = new List<object>();
+            if (elementIds == null)
+                return result;
+
+            foreach (ElementId elementId in elementIds)
+            {
+                result.Add(FormatSingleElementIdForLookup(doc, elementId));
+            }
+
+            return result;
+        }
+
+        private static object FormatSingleElementIdForLookup(Document doc, ElementId elementId)
+        {
+            Element element = elementId == null || elementId == ElementId.InvalidElementId
+                ? null
+                : doc.GetElement(elementId);
+
+            return new
+            {
+                id = elementId == null || elementId == ElementId.InvalidElementId ? (int?)null : IDHelper.ElIdInt(elementId),
+                is_valid = elementId != null && elementId != ElementId.InvalidElementId,
+                exists_in_current_document = element != null,
+                name = element != null ? element.Name : null,
+                category = element != null && element.Category != null ? element.Category.Name : null,
+                class_name = element != null ? element.GetType().FullName : null
+            };
+        }
+
+        private static object FormatBoundingBoxXyz(BoundingBoxXYZ boundingBox)
+        {
+            if (boundingBox == null)
+                return null;
+
+            return new
+            {
+                min = FormatXyz(boundingBox.Min),
+                max = FormatXyz(boundingBox.Max),
+                transform = FormatLookupValue(boundingBox.Transform),
+                enabled = boundingBox.Enabled
+            };
+        }
+
+        private static object FormatBoundingBoxUv(BoundingBoxUV boundingBox)
+        {
+            if (boundingBox == null)
+                return null;
+
+            return new
+            {
+                min = FormatUv(boundingBox.Min),
+                max = FormatUv(boundingBox.Max)
+            };
+        }
+
+        private static object FormatOutline(Outline outline)
+        {
+            if (outline == null)
+                return null;
+
+            return new
+            {
+                minimum_point = FormatXyz(outline.MinimumPoint),
+                maximum_point = FormatXyz(outline.MaximumPoint)
+            };
+        }
+
+        private static XYZ GetViewportLabelOffset(Viewport viewport)
+        {
+            object value = InvokeViewportMember(viewport, "GetLabelOffset", "LabelOffset");
+            return value as XYZ;
+        }
+
+        private static double? GetViewportLabelLineLength(Viewport viewport)
+        {
+            object value = InvokeViewportMember(viewport, "GetLabelLineLength", "LabelLineLength");
+            if (value == null)
+                return null;
+
+            try
+            {
+                return Convert.ToDouble(value, CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static object InvokeViewportMember(Viewport viewport, string methodName, string propertyName)
+        {
+            if (viewport == null)
+                return null;
+
+            Type viewportType = viewport.GetType();
+            MethodInfo method = viewportType.GetMethod(methodName, BindingFlags.Public | BindingFlags.Instance, null, Type.EmptyTypes, null);
+            if (method != null)
+                return method.Invoke(viewport, null);
+
+            PropertyInfo property = viewportType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (property != null && property.CanRead)
+                return property.GetValue(viewport, null);
+
+            return null;
+        }
+
+        private static object FormatXyz(XYZ point)
+        {
+            if (point == null)
+                return null;
+
+            return new
+            {
+                x = point.X,
+                y = point.Y,
+                z = point.Z
+            };
+        }
+
+        private static object FormatUv(UV point)
+        {
+            if (point == null)
+                return null;
+
+            return new
+            {
+                u = point.U,
+                v = point.V
+            };
+        }
+
+
+
+
 
 
         #endregion
@@ -3192,7 +3947,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #endregion
 
-        #region 32.1_get_all_filters_in_model
+        #region 32.1_get_all_parameter_filters_in_model
 
         /// <summary>
         /// Возвращает все фильтры видов (ParameterFilterElement) в модели Revit
@@ -4449,7 +5204,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             if (elem is TextNote textNote)
             {
                 string text = textNote.Text;
-                return string.IsNullOrEmpty(text) ? "Текст" : (text.Length > 50 ? text.Substring(0, 47) + "..." : text);
+                return string.IsNullOrEmpty(text) ? "Текст" : text;
             }
 
             // У размеров может быть значение
@@ -5550,12 +6305,22 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 // 9. Устанавливаем section box для вида
                 // Включаем секционный параллелепипед
-                //activeView.IsSectionBoxActive = true;
-                //activeView.SetSectionBox(sectionBox);
-
                 View3D active3DView = activeView as View3D;
-                active3DView.IsSectionBoxActive = true;
-                active3DView.SetSectionBox(sectionBox);
+
+                using (Transaction t = new Transaction(doc, "Подрезать 3D вид по элементам"))
+                {
+                    t.Start();
+
+                    active3DView.IsSectionBoxActive = true;
+                    active3DView.SetSectionBox(sectionBox);
+
+                    doc.Regenerate();
+
+                    t.Commit();
+                }
+
+                uiDoc.RefreshActiveView();
+
 
                 return new
                 {
