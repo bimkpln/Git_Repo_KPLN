@@ -1495,11 +1495,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 try
                 {
+                    var localTaggedInfo = GetTaggedLocalElementsForLookup(doc, tag);
                     specialProperties.Add(new
                     {
-                        name = "GetTaggedLocalElementIds",
-                        source = "IndependentTag.GetTaggedLocalElementIds()",
-                        value = tag.GetTaggedLocalElementIds()
+                        name = localTaggedInfo.name,
+                        source = localTaggedInfo.source,
+                        value = localTaggedInfo.value
                     });
                 }
                 catch (Exception ex)
@@ -1513,7 +1514,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         name = "GetTaggedElementIds",
                         source = "IndependentTag.GetTaggedElementIds()",
-                        value = tag.GetTaggedElementIds()
+                        value = InvokeIndependentTagMethodForLookup(doc, tag, "GetTaggedElementIds")
                     });
                 }
                 catch (Exception ex)
@@ -1972,8 +1973,62 @@ namespace KPLN_CoordiantorAI.ExternalModel
             };
         }
 
+        private static object InvokeIndependentTagMethodForLookup(Document doc, IndependentTag tag, string methodName)
+        {
+            MethodInfo method = typeof(IndependentTag).GetMethod(
+                methodName,
+                BindingFlags.Instance | BindingFlags.Public,
+                null,
+                Type.EmptyTypes,
+                null);
 
+            if (method == null)
+            {
+                return new
+                {
+                    is_available = false,
+                    message = "IndependentTag." + methodName + "() is not available in the current Revit API."
+                };
+            }
 
+            object value = method.Invoke(tag, null);
+
+            if (value is IEnumerable<ElementId> elementIds)
+            {
+                return FormatElementIdCollectionForLookup(doc, elementIds);
+            }
+
+            if (value is System.Collections.IEnumerable enumerable && !(value is string))
+            {
+                var result = new List<object>();
+                foreach (object item in enumerable)
+                {
+                    result.Add(FormatLookupValue(item));
+                }
+
+                return result;
+            }
+
+            return FormatLookupValue(value);
+        }
+
+        private static (string name, string source, object value) GetTaggedLocalElementsForLookup(Document doc, IndependentTag tag)
+        {
+            int revitVersion = GetRevitVersion(doc);
+            if (revitVersion > 0 && revitVersion <= 2020)
+            {
+                return (
+                    "GetTaggedLocalElement",
+                    "IndependentTag.GetTaggedLocalElement()",
+                    InvokeIndependentTagMethodForLookup(doc, tag, "GetTaggedLocalElement"));
+            }
+
+            object idsValue = InvokeIndependentTagMethodForLookup(doc, tag, "GetTaggedLocalElementIds");
+            return (
+                "GetTaggedLocalElementIds",
+                "IndependentTag.GetTaggedLocalElementIds()",
+                idsValue);
+        }
 
 
 
@@ -3824,8 +3879,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
                             ICollection<ElementId> categoryIds = filter.GetCategories();
                             var categoryIdList = categoryIds?.Select(IDHelper.ElIdInt).ToList() ?? new List<int>();
 
-                            // Получаем видимость фильтра в виде [citation:7]
+                            // Получаем видимость элементов попадющий под фильтр
                             bool isVisible = view.GetFilterVisibility(filterId);
+                            
+                            //получаем инфу включен ли фильтр у вида или нет
+                            var enabledInfo = GetFilterEnabledInfo(view, filterId);
 
                             // Получаем информацию о правилах фильтра (опционально)
                             var rulesInfo = GetFilterRulesInfo(filter);
@@ -3836,6 +3894,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                 filterName = filter.Name ?? "Unnamed",
                                 categories = categoryIdList,
                                 isVisible = isVisible,
+                                isEnabled = enabledInfo.isEnabled,
+                                isEnabledAvailable = enabledInfo.isAvailable,
+                                isEnabledError = enabledInfo.error,
                                 hasRules = rulesInfo.hasRules,
                                 ruleParameters = rulesInfo.parameters
                             });
@@ -3944,6 +4005,44 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             return (hasRules, parameters.Distinct().Take(10).ToList());
         }
+
+
+        private static (bool? isEnabled, bool isAvailable, string error) GetFilterEnabledInfo(View view, ElementId filterId)
+        {
+            try
+            {
+                MethodInfo method = typeof(View).GetMethod(
+                    "GetIsFilterEnabled",
+                    BindingFlags.Instance | BindingFlags.Public,
+                    null,
+                    new[] { typeof(ElementId) },
+                    null);
+
+                if (method == null)
+                {
+                    return (null, false, "Метод View.GetIsFilterEnabled(ElementId) недоступен в текущей версии Revit API.");
+                }
+
+                object value = method.Invoke(view, new object[] { filterId });
+                if (value is bool isEnabled)
+                {
+                    return (isEnabled, true, null);
+                }
+
+                return (null, false, "Метод View.GetIsFilterEnabled вернул значение неизвестного типа.");
+            }
+            catch (TargetInvocationException ex)
+            {
+                string message = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                return (null, false, message);
+            }
+            catch (Exception ex)
+            {
+                return (null, false, ex.Message);
+            }
+        }
+
+
 
         #endregion
 
