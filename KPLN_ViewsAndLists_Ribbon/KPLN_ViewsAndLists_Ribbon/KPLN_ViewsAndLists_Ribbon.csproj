@@ -137,6 +137,9 @@
     <Compile Include="Forms\ListRenumberForm.xaml.cs">
       <DependentUpon>ListRenumberForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\RevisionCloudSheetSelectionForm.xaml.cs">
+      <DependentUpon>RevisionCloudSheetSelectionForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ViewModels\DeleteUnusedViewsVM.cs" />
     <Compile Include="Forms\ViewModels\ListRenumberVM.cs" />
     <Compile Include="Forms\Commands\RelayCommand.cs" />
@@ -231,6 +234,10 @@
     <Page Include="Forms\ListRenumberForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\RevisionCloudSheetSelectionForm.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
