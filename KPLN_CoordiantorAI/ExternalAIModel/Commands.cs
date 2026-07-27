@@ -492,9 +492,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         {
             // Исключаем типы, которые не являются "семействами" в понимании пользователя
             if (elemType is DimensionType) return false;
-            if (elemType is Material) return false;
-            if (elemType is GraphicsStyle) return false;
-            if (elemType is FillPatternElement) return false;
+
 
             return true;
         }
