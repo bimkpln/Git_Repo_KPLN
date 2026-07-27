@@ -85,8 +85,6 @@ namespace KPLN_CommandsWheel.Services
             settings.WheelCommandIds = Clean(settings.WheelCommandIds, MaxWheelCommands);
             settings.RecentCommandIds = Clean(settings.RecentCommandIds, MaxRecentCommands);
             settings.WheelMode = NormalizeWheelMode(settings.WheelMode);
-            settings.CommandSearchHotkey = NormalizeHotkey(settings.CommandSearchHotkey);
-            settings.CommandsWheelHotkey = NormalizeHotkey(settings.CommandsWheelHotkey);
 
             if (string.Equals(settings.WheelMode, WheelModeNames.Pinned, StringComparison.OrdinalIgnoreCase))
             {
@@ -117,18 +115,6 @@ namespace KPLN_CommandsWheel.Services
             }
 
             return WheelModeNames.Unpinned;
-        }
-
-        private static HotkeyGesture NormalizeHotkey(HotkeyGesture hotkey)
-        {
-            if (hotkey == null)
-            {
-                return new HotkeyGesture();
-            }
-
-            hotkey.Keys = HotkeyGestureService.NormalizeKeys(hotkey.Keys).Take(3).ToList();
-
-            return hotkey;
         }
     }
 }

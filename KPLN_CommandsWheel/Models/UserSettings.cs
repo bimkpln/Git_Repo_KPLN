@@ -27,17 +27,5 @@ namespace KPLN_CommandsWheel.Models
         [DataMember]
         public bool IsWheelCloseButtonVisible { get; set; }
 
-        [DataMember]
-        public HotkeyGesture CommandSearchHotkey { get; set; } = new HotkeyGesture();
-
-        [DataMember]
-        public HotkeyGesture CommandsWheelHotkey { get; set; } = new HotkeyGesture();
-    }
-
-    [DataContract]
-    public class HotkeyGesture
-    {
-        [DataMember]
-        public List<string> Keys { get; set; } = new List<string>();
     }
 }

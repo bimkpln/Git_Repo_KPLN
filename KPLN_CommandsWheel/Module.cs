@@ -2,7 +2,6 @@
 using KPLN_CommandsWheel.Services;
 using KPLN_Loader.Common;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -12,21 +11,10 @@ namespace KPLN_CommandsWheel
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
-        private static UIControlledApplication _hotkeyApplication;
-        private static bool _hotkeyInitializationScheduled;
-        private static bool _hotkeyInitializationCompleted;
 
         public Result Close()
         {
-            try
-            {
-                HotkeyService.Shutdown();
-            }
-            finally
-            {
-                CommandWindowService.Shutdown();
-            }
-
+            CommandWindowService.Shutdown();
             return Result.Succeeded;
         }
 
@@ -35,7 +23,6 @@ namespace KPLN_CommandsWheel
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
-            ScheduleHotkeyInitialization(application);
 
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
@@ -45,7 +32,7 @@ namespace KPLN_CommandsWheel
                 "Штурвал",
                 "Открыть штурвал команд",
                 string.Format(
-                    "Открыть штурвал команд. Эту команду можно назначить на горячую клавишу в Revit.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Открыть штурвал команд.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -61,7 +48,7 @@ namespace KPLN_CommandsWheel
                 "Команды",
                 "Поиск команд и настройки штурвала",
                 string.Format(
-                    "Поиск команд на ленте Revit, избранное, последние команды, добавление в штурвал. Эту команду можно назначить на горячую клавишу в Revit.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    "Поиск команд на ленте Revit, избранное, последние команды, добавление в штурвал.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,
                     ModuleData.Version,
                     ModuleData.ModuleName
@@ -72,32 +59,7 @@ namespace KPLN_CommandsWheel
                 "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
-            HotkeyService.Initialize();
             return Result.Succeeded;
-        }
-
-        private static void ScheduleHotkeyInitialization(UIControlledApplication application)
-        {
-            if (_hotkeyInitializationScheduled || _hotkeyInitializationCompleted || application == null)
-            {
-                return;
-            }
-
-            _hotkeyApplication = application;
-            _hotkeyInitializationScheduled = true;
-            application.Idling += InitializeHotkeysOnIdle;
-        }
-
-        private static void InitializeHotkeysOnIdle(object sender, IdlingEventArgs args)
-        {
-            if (_hotkeyApplication != null)
-            {
-                _hotkeyApplication.Idling -= InitializeHotkeysOnIdle;
-            }
-
-            _hotkeyInitializationScheduled = false;
-            _hotkeyInitializationCompleted = true;
-            Services.HotkeyService.Initialize();
         }
 
         /// <summary>

@@ -2,55 +2,14 @@
 using KPLN_CommandsWheel.Services;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Threading;
 
 namespace KPLN_CommandsWheel.Forms
 {
-    /// <summary>
-    /// Класс-экстеншан для оформления текста
-    /// </summary>
-    internal static class InlineExtensions
-    {
-        public static InlineCollection Text(
-            this InlineCollection inlines,
-            string value)
-        {
-            inlines.Add(new Run(value));
-            return inlines;
-        }
-
-        public static InlineCollection Bold(
-            this InlineCollection inlines,
-            string value)
-        {
-            inlines.Add(new Run(value)
-            {
-                FontWeight = FontWeights.Bold
-            });
-
-            return inlines;
-        }
-
-        public static InlineCollection Italic(
-            this InlineCollection inlines,
-            string value)
-        {
-            inlines.Add(new Run(value)
-            {
-                FontStyle = FontStyles.Italic
-            });
-
-            return inlines;
-        }
-    }
-
     internal class CommandSearchWindow : Window
     {
         private static CommandSearchWindow _current;
@@ -61,28 +20,16 @@ namespace KPLN_CommandsWheel.Forms
         private readonly RevitCommandExecutor _executor;
         private readonly TextBox _searchBox;
         private readonly StackPanel _contentPanel;
-        private readonly HashSet<string> _capturedHotkeyKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private readonly HashSet<string> _pressedHotkeyKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private RadioButton _unpinnedWheelRadioButton;
         private RadioButton _pinnedWheelRadioButton;
         private CheckBox _wheelCloseButtonCheckBox;
-        private Button _commandSearchHotkeyButton;
-        private Button _commandsWheelHotkeyButton;
         private bool _isUpdatingSettingsControls;
-        private bool _isCapturingHotkey;
-        private HotkeyTarget _capturingHotkeyTarget;
 
         private enum CommandListKind
         {
             None,
             Wheel,
             Favorites
-        }
-
-        private enum HotkeyTarget
-        {
-            CommandSearch,
-            CommandsWheel
         }
 
         internal CommandSearchWindow(IEnumerable<RevitCommandInfo> commands, UserSettings settings, RevitCommandExecutor executor)
@@ -121,25 +68,10 @@ namespace KPLN_CommandsWheel.Forms
 
             PreviewKeyDown += delegate (object sender, KeyEventArgs args)
             {
-                if (_isCapturingHotkey)
-                {
-                    args.Handled = true;
-                    CaptureKeyboardHotkey(args);
-                    return;
-                }
-
                 if (args.Key == Key.Escape)
                 {
                     args.Handled = true;
                     Close();
-                }
-            };
-            PreviewKeyUp += delegate (object sender, KeyEventArgs args)
-            {
-                if (_isCapturingHotkey)
-                {
-                    args.Handled = true;
-                    ReleaseKeyboardHotkey(args);
                 }
             };
             Closed += delegate
@@ -147,14 +79,6 @@ namespace KPLN_CommandsWheel.Forms
                 if (ReferenceEquals(_current, this))
                 {
                     _current = null;
-                }
-
-                if (_isCapturingHotkey)
-                {
-                    _isCapturingHotkey = false;
-                    _capturedHotkeyKeys.Clear();
-                    _pressedHotkeyKeys.Clear();
-                    HotkeyService.ResumeHotkeys();
                 }
             };
 
@@ -288,11 +212,6 @@ namespace KPLN_CommandsWheel.Forms
             };
             panel.Children.Add(_wheelCloseButtonCheckBox);
 
-            panel.Children.Add(CreateSettingsHeader("Горячие клавиши"));
-            panel.Children.Add(CreateHotkeyRow("Окно Команды", HotkeyTarget.CommandSearch, out _commandSearchHotkeyButton));
-            panel.Children.Add(CreateHotkeyRow("Штурвал", HotkeyTarget.CommandsWheel, out _commandsWheelHotkeyButton));
-            panel.Children.Add(CreateHotkeyHelp());
-
             RefreshSettingsControls();
 
             return new ScrollViewer
@@ -312,89 +231,6 @@ namespace KPLN_CommandsWheel.Forms
                 Foreground = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
                 Margin = new Thickness(0, 0, 0, 8)
             };
-        }
-
-        private UIElement CreateHotkeyHelp()
-        {
-            Border border = new Border
-            {
-                Background = new SolidColorBrush(Color.FromRgb(248, 248, 248)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(226, 226, 226)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(12),
-                Margin = new Thickness(0, 10, 0, 0)
-            };
-
-            StackPanel stackPanel = new StackPanel();
-
-            TextBlock text = new TextBlock
-            {
-                Foreground = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
-                TextWrapping = TextWrapping.Wrap,
-                LineHeight = 18,
-                Margin = new Thickness(0, 0, 0, 10)
-            };
-
-            text.Inlines
-                .Text("Можно назначить от одной до трёх любых клавиш клавиатуры. ")
-                .Italic("Рекомендуется ")
-                .Text("применять сочетание клавиш \"Shift\" + \"Tab\".\n\n")
-                .Bold("ВАЖНО: ")
-                .Text("Для мыши доступны только боковые кнопки (ЛКМ, ПКМ и колесо не назначаются).\n")
-                .Italic("ВАЖНО: ")
-                .Text("Чтобы изменения гарантированно вступили в силу - стоит перезапустить Revit.");
-
-            stackPanel.Children.Add(text);
-            stackPanel.Children.Add(CreateMouseButtonsImage());
-
-            border.Child = stackPanel;
-            return border;
-        }
-
-        private UIElement CreateHotkeyRow(string title, HotkeyTarget target, out Button hotkeyButton)
-        {
-            Grid row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            row.Children.Add(new TextBlock
-            {
-                Text = title,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Brushes.Black
-            });
-
-            hotkeyButton = new Button
-            {
-                Height = 30,
-                Margin = new Thickness(0, 0, 6, 0),
-                HorizontalContentAlignment = HorizontalAlignment.Left,
-                Padding = new Thickness(10, 0, 10, 0)
-            };
-            hotkeyButton.Click += delegate
-            {
-                StartHotkeyCapture(target);
-            };
-            Grid.SetColumn(hotkeyButton, 1);
-            row.Children.Add(hotkeyButton);
-
-            Button clearButton = new Button
-            {
-                Content = "Очистить",
-                Height = 30,
-                MinWidth = 80,
-                Padding = new Thickness(10, 0, 10, 0)
-            };
-            clearButton.Click += delegate
-            {
-                ClearHotkey(target);
-            };
-            Grid.SetColumn(clearButton, 2);
-            row.Children.Add(clearButton);
-
-            return row;
         }
 
         private void RefreshSettingsControls()
@@ -418,151 +254,12 @@ namespace KPLN_CommandsWheel.Forms
                 _wheelCloseButtonCheckBox.IsChecked = isPinned || _settings.IsWheelCloseButtonVisible;
             }
 
-            if (_commandSearchHotkeyButton != null)
-            {
-                _commandSearchHotkeyButton.Content = GetHotkeyButtonText(HotkeyTarget.CommandSearch);
-            }
-
-            if (_commandsWheelHotkeyButton != null)
-            {
-                _commandsWheelHotkeyButton.Content = GetHotkeyButtonText(HotkeyTarget.CommandsWheel);
-            }
-
             _isUpdatingSettingsControls = false;
-        }
-
-        private string GetHotkeyButtonText(HotkeyTarget target)
-        {
-            if (_isCapturingHotkey && _capturingHotkeyTarget == target)
-            {
-                return "Нажмите сочетание...";
-            }
-
-            return HotkeyGestureService.ToDisplayText(GetHotkey(target));
-        }
-
-        private void StartHotkeyCapture(HotkeyTarget target)
-        {
-            _isCapturingHotkey = true;
-            _capturingHotkeyTarget = target;
-            _capturedHotkeyKeys.Clear();
-            _pressedHotkeyKeys.Clear();
-            HotkeyService.SuspendHotkeys();
-            RefreshSettingsControls();
-            Dispatcher.BeginInvoke(new Action(delegate
-            {
-                Focus();
-                Keyboard.Focus(this);
-            }), DispatcherPriority.Input);
-        }
-
-        private void StopHotkeyCapture()
-        {
-            _isCapturingHotkey = false;
-            _capturedHotkeyKeys.Clear();
-            _pressedHotkeyKeys.Clear();
-            HotkeyService.ResumeHotkeys();
-            RefreshSettingsControls();
-            _searchBox.Focus();
-            Keyboard.Focus(_searchBox);
-        }
-
-        private void CaptureKeyboardHotkey(KeyEventArgs args)
-        {
-            if (args.Key == Key.Escape)
-            {
-                StopHotkeyCapture();
-                return;
-            }
-
-            string keyName = HotkeyGestureService.GetKeyName(args);
-            if (string.IsNullOrWhiteSpace(keyName) || args.IsRepeat)
-            {
-                return;
-            }
-
-            _capturedHotkeyKeys.Add(keyName);
-            _pressedHotkeyKeys.Add(keyName);
-
-            if (_capturedHotkeyKeys.Count > 3)
-            {
-                MessageBox.Show(this, "В сочетании может быть не больше трёх клавиш клавиатуры.", "Горячие клавиши", MessageBoxButton.OK, MessageBoxImage.Information);
-                StopHotkeyCapture();
-            }
-        }
-
-        private void ReleaseKeyboardHotkey(KeyEventArgs args)
-        {
-            string keyName = HotkeyGestureService.GetKeyName(args);
-            if (!string.IsNullOrWhiteSpace(keyName))
-            {
-                _pressedHotkeyKeys.Remove(keyName);
-            }
-
-            if (_capturedHotkeyKeys.Count == 0 || _pressedHotkeyKeys.Count != 0)
-            {
-                return;
-            }
-
-            AssignHotkey(_capturingHotkeyTarget, new HotkeyGesture
-            {
-                Keys = HotkeyGestureService.NormalizeKeys(_capturedHotkeyKeys)
-            });
-        }
-
-        private void AssignHotkey(HotkeyTarget target, HotkeyGesture gesture)
-        {
-            if (gesture.Keys != null && gesture.Keys.Count > 3)
-            {
-                MessageBox.Show(this, "В сочетании может быть не больше трёх клавиш клавиатуры.", "Горячие клавиши", MessageBoxButton.OK, MessageBoxImage.Information);
-                StopHotkeyCapture();
-                return;
-            }
-
-            HotkeyTarget otherTarget = target == HotkeyTarget.CommandSearch
-                ? HotkeyTarget.CommandsWheel
-                : HotkeyTarget.CommandSearch;
-
-            if (!HotkeyGestureService.IsEmpty(gesture) && HotkeyGestureService.AreEqual(gesture, GetHotkey(otherTarget)))
-            {
-                MessageBox.Show(this, "Для окна Команды и Штурвала нужны разные сочетания.", "Горячие клавиши", MessageBoxButton.OK, MessageBoxImage.Information);
-                StopHotkeyCapture();
-                return;
-            }
-
-            SetHotkey(target, gesture);
-            SaveSettingsAndRefresh();
-            StopHotkeyCapture();
-        }
-
-        private void ClearHotkey(HotkeyTarget target)
-        {
-            SetHotkey(target, new HotkeyGesture());
-            SaveSettingsAndRefresh();
-        }
-
-        private HotkeyGesture GetHotkey(HotkeyTarget target)
-        {
-            return target == HotkeyTarget.CommandSearch
-                ? _settings.CommandSearchHotkey
-                : _settings.CommandsWheelHotkey;
-        }
-
-        private void SetHotkey(HotkeyTarget target, HotkeyGesture gesture)
-        {
-            if (target == HotkeyTarget.CommandSearch)
-            {
-                _settings.CommandSearchHotkey = gesture;
-                return;
-            }
-
-            _settings.CommandsWheelHotkey = gesture;
         }
 
         private void SaveSettingsAndRefresh()
         {
             UserSettingsService.Save(_settings);
-            HotkeyService.ReloadSettings(_settings);
             RefreshSettingsControls();
         }
 
