@@ -12,7 +12,30 @@ namespace KPLN_CommandsWheel.Services
 {
     internal static class RibbonCommandCollector
     {
-        internal static List<RevitCommandInfo> Collect(UIApplication uiapp)
+        private static List<RevitCommandInfo> _cachedCommands;
+
+        internal static List<RevitCommandInfo> Collect()
+        {
+            if (_cachedCommands != null)
+            {
+                return new List<RevitCommandInfo>(_cachedCommands);
+            }
+
+            List<RevitCommandInfo> commands = CollectCore();
+            if (commands.Count != 0)
+            {
+                _cachedCommands = commands;
+            }
+
+            return new List<RevitCommandInfo>(commands);
+        }
+
+        internal static void ClearCache()
+        {
+            _cachedCommands = null;
+        }
+
+        private static List<RevitCommandInfo> CollectCore()
         {
             List<RevitCommandInfo> commands = new List<RevitCommandInfo>();
             HashSet<string> seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -36,7 +59,7 @@ namespace KPLN_CommandsWheel.Services
                     object panelSource = GetPropertyValue(panel, "Source") ?? panel;
                     string panelName = FirstString(panelSource, "Title", "Text", "Name", "Id");
                     object items = GetPropertyValue(panelSource, "Items") ?? GetPropertyValue(panel, "Items");
-                    AddItems(items, tabName, panelName, uiapp, commands, seenIds, 0);
+                    AddItems(items, tabName, panelName, commands, seenIds, 0);
                 }
             }
 
@@ -51,7 +74,6 @@ namespace KPLN_CommandsWheel.Services
             object items,
             string tabName,
             string panelName,
-            UIApplication uiapp,
             List<RevitCommandInfo> commands,
             HashSet<string> seenIds,
             int depth)
@@ -63,19 +85,19 @@ namespace KPLN_CommandsWheel.Services
 
             foreach (object item in Enumerate(items))
             {
-                AddCommand(item, tabName, panelName, uiapp, commands, seenIds);
+                AddCommand(item, tabName, panelName, commands, seenIds);
 
                 object childItems = GetPropertyValue(item, "Items");
                 if (childItems != null)
                 {
-                    AddItems(childItems, tabName, panelName, uiapp, commands, seenIds, depth + 1);
+                    AddItems(childItems, tabName, panelName, commands, seenIds, depth + 1);
                 }
 
                 object source = GetPropertyValue(item, "Source");
                 object sourceItems = source == null ? null : GetPropertyValue(source, "Items");
                 if (sourceItems != null)
                 {
-                    AddItems(sourceItems, tabName, panelName, uiapp, commands, seenIds, depth + 1);
+                    AddItems(sourceItems, tabName, panelName, commands, seenIds, depth + 1);
                 }
             }
         }
@@ -84,7 +106,6 @@ namespace KPLN_CommandsWheel.Services
             object item,
             string tabName,
             string panelName,
-            UIApplication uiapp,
             List<RevitCommandInfo> commands,
             HashSet<string> seenIds)
         {
@@ -115,16 +136,6 @@ namespace KPLN_CommandsWheel.Services
                 return;
             }
 
-            bool canPost = false;
-            try
-            {
-                canPost = uiapp != null && uiapp.CanPostCommand(commandId);
-            }
-            catch
-            {
-                canPost = false;
-            }
-
             commands.Add(new RevitCommandInfo
             {
                 Id = id,
@@ -132,7 +143,6 @@ namespace KPLN_CommandsWheel.Services
                 TabName = Clean(tabName),
                 PanelName = Clean(panelName),
                 Tooltip = Clean(FirstString(item, "Description", "ToolTip", "HelpText")),
-                CanPost = canPost,
                 RibbonImage = GetImageSource(item)
             });
         }

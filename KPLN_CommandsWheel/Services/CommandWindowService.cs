@@ -9,17 +9,17 @@ namespace KPLN_CommandsWheel.Services
 {
     internal static class CommandWindowService
     {
+        private static RevitCommandExecutor _executor;
+
         internal static bool ShowCommandSearch(UIApplication uiapp)
         {
-            HotkeyService.Initialize();
-
             if (CommandSearchWindow.TryActivateExisting())
             {
                 return true;
             }
 
             UserSettings settings = UserSettingsService.Load();
-            List<RevitCommandInfo> commands = RibbonCommandCollector.Collect(uiapp);
+            List<RevitCommandInfo> commands = RibbonCommandCollector.Collect();
             SelectionCustomCommandService.AddCommands(commands);
 
             if (commands.Count == 0)
@@ -28,8 +28,7 @@ namespace KPLN_CommandsWheel.Services
                 return false;
             }
 
-            RevitCommandExecutor executor = new RevitCommandExecutor();
-            CommandSearchWindow window = new CommandSearchWindow(commands, settings, executor);
+            CommandSearchWindow window = new CommandSearchWindow(commands, settings, GetExecutor());
             WindowOwnerHelper.Apply(window);
             window.Show();
 
@@ -38,15 +37,13 @@ namespace KPLN_CommandsWheel.Services
 
         internal static bool ShowCommandsWheel(UIApplication uiapp)
         {
-            HotkeyService.Initialize();
-
             if (CommandsWheelWindow.TryActivateExisting())
             {
                 return true;
             }
 
             UserSettings settings = UserSettingsService.Load();
-            List<RevitCommandInfo> allCommands = RibbonCommandCollector.Collect(uiapp);
+            List<RevitCommandInfo> allCommands = RibbonCommandCollector.Collect();
             SelectionCustomCommandService.AddCommands(allCommands);
 
             Dictionary<string, RevitCommandInfo> commandsById = allCommands
@@ -69,13 +66,48 @@ namespace KPLN_CommandsWheel.Services
                 return false;
             }
 
-            RevitCommandExecutor executor = new RevitCommandExecutor();
-            CommandsWheelWindow window = new CommandsWheelWindow(wheelCommands, executor, settings);
+            CommandsWheelWindow window = new CommandsWheelWindow(wheelCommands, GetExecutor(), settings);
             WindowOwnerHelper.Apply(window);
             WindowPositionHelper.ShowCenteredOnCursor(window);
             window.Show();
 
             return true;
+        }
+
+        internal static void Shutdown()
+        {
+            RevitCommandExecutor executor = _executor;
+            _executor = null;
+
+            if (executor != null)
+            {
+                try
+                {
+                    executor.Dispose();
+                }
+                catch
+                {
+                    // Revit may already be releasing API resources during shutdown.
+                }
+                finally
+                {
+                    RibbonCommandCollector.ClearCache();
+                }
+
+                return;
+            }
+
+            RibbonCommandCollector.ClearCache();
+        }
+
+        private static RevitCommandExecutor GetExecutor()
+        {
+            if (_executor == null)
+            {
+                _executor = new RevitCommandExecutor();
+            }
+
+            return _executor;
         }
     }
 }

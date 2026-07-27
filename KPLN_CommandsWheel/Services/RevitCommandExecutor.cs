@@ -4,10 +4,11 @@ using System;
 
 namespace KPLN_CommandsWheel.Services
 {
-    internal class RevitCommandExecutor
+    internal sealed class RevitCommandExecutor : IDisposable
     {
         private readonly CommandRequestHandler _handler;
         private readonly ExternalEvent _externalEvent;
+        private bool _isDisposed;
 
         internal RevitCommandExecutor()
         {
@@ -17,7 +18,7 @@ namespace KPLN_CommandsWheel.Services
 
         internal void Run(RevitCommandInfo command)
         {
-            if (command == null || string.IsNullOrWhiteSpace(command.Id))
+            if (_isDisposed || command == null || string.IsNullOrWhiteSpace(command.Id))
             {
                 return;
             }
@@ -34,6 +35,18 @@ namespace KPLN_CommandsWheel.Services
             }
         }
 
+        public void Dispose()
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+
+            _isDisposed = true;
+            _handler.Clear();
+            _externalEvent.Dispose();
+        }
+
         private class CommandRequestHandler : IExternalEventHandler
         {
             private readonly object _sync = new object();
@@ -46,6 +59,15 @@ namespace KPLN_CommandsWheel.Services
                 {
                     _commandId = commandId;
                     _commandName = string.IsNullOrWhiteSpace(commandName) ? commandId : commandName;
+                }
+            }
+
+            internal void Clear()
+            {
+                lock (_sync)
+                {
+                    _commandId = null;
+                    _commandName = null;
                 }
             }
 

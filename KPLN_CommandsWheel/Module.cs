@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
+using KPLN_CommandsWheel.Services;
 using KPLN_Loader.Common;
 using System.IO;
 using System.Linq;
@@ -18,15 +18,15 @@ namespace KPLN_CommandsWheel
 
         public Result Close()
         {
-            if (_hotkeyInitializationScheduled && _hotkeyApplication != null)
+            try
             {
-                _hotkeyApplication.Idling -= InitializeHotkeysOnIdle;
+                HotkeyService.Shutdown();
+            }
+            finally
+            {
+                CommandWindowService.Shutdown();
             }
 
-            Services.HotkeyService.Shutdown();
-            _hotkeyApplication = null;
-            _hotkeyInitializationScheduled = false;
-            _hotkeyInitializationCompleted = false;
             return Result.Succeeded;
         }
 
@@ -72,6 +72,7 @@ namespace KPLN_CommandsWheel
                 "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
+            HotkeyService.Initialize();
             return Result.Succeeded;
         }
 

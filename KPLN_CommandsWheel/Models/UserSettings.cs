@@ -39,8 +39,5 @@ namespace KPLN_CommandsWheel.Models
     {
         [DataMember]
         public List<string> Keys { get; set; } = new List<string>();
-
-        [DataMember]
-        public string MouseButton { get; set; }
     }
 }

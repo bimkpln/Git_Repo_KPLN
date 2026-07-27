@@ -9,7 +9,6 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace KPLN_CommandsWheel.Forms
@@ -141,14 +140,6 @@ namespace KPLN_CommandsWheel.Forms
                 {
                     args.Handled = true;
                     ReleaseKeyboardHotkey(args);
-                }
-            };
-            PreviewMouseDown += delegate (object sender, MouseButtonEventArgs args)
-            {
-                if (_isCapturingHotkey)
-                {
-                    args.Handled = true;
-                    CaptureMouseHotkey(args);
                 }
             };
             Closed += delegate
@@ -361,41 +352,6 @@ namespace KPLN_CommandsWheel.Forms
             return border;
         }
 
-        private UIElement CreateMouseButtonsImage()
-        {
-            const string resourceName = "KPLN_CommandsWheel.Imagens.mouseSideButtons.png";
-
-            Stream stream = typeof(CommandSearchWindow).Assembly.GetManifestResourceStream(resourceName);
-            if (stream == null)
-            {
-                return new TextBlock
-                {
-                    Text = "XButton1 — верхняя боковая кнопка, XButton2 — нижняя боковая кнопка.",
-                    Foreground = new SolidColorBrush(Color.FromRgb(92, 92, 92)),
-                    TextWrapping = TextWrapping.Wrap
-                };
-            }
-
-            using (stream)
-            {
-                BitmapImage image = new BitmapImage();
-                image.BeginInit();
-                image.CacheOption = BitmapCacheOption.OnLoad;
-                image.StreamSource = stream;
-                image.EndInit();
-                image.Freeze();
-
-                return new Image
-                {
-                    Source = image,
-                    Width = 200,
-                    Stretch = Stretch.Uniform,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    Margin = new Thickness(0, 2, 0, 0)
-                };
-            }
-        }
-
         private UIElement CreateHotkeyRow(string title, HotkeyTarget target, out Button hotkeyButton)
         {
             Grid row = new Grid { Margin = new Thickness(0, 0, 0, 8) };
@@ -554,17 +510,6 @@ namespace KPLN_CommandsWheel.Forms
             });
         }
 
-        private void CaptureMouseHotkey(MouseButtonEventArgs args)
-        {
-            HotkeyGesture gesture = HotkeyGestureService.FromMouseEvent(args, _pressedHotkeyKeys);
-            if (HotkeyGestureService.IsEmpty(gesture))
-            {
-                return;
-            }
-
-            AssignHotkey(_capturingHotkeyTarget, gesture);
-        }
-
         private void AssignHotkey(HotkeyTarget target, HotkeyGesture gesture)
         {
             if (gesture.Keys != null && gesture.Keys.Count > 3)
@@ -617,6 +562,7 @@ namespace KPLN_CommandsWheel.Forms
         private void SaveSettingsAndRefresh()
         {
             UserSettingsService.Save(_settings);
+            HotkeyService.ReloadSettings(_settings);
             RefreshSettingsControls();
         }
 

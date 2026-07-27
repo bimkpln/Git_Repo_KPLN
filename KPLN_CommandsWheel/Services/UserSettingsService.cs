@@ -127,24 +127,8 @@ namespace KPLN_CommandsWheel.Services
             }
 
             hotkey.Keys = HotkeyGestureService.NormalizeKeys(hotkey.Keys).Take(3).ToList();
-            hotkey.MouseButton = NormalizeMouseButton(hotkey.MouseButton);
 
             return hotkey;
-        }
-
-        private static string NormalizeMouseButton(string value)
-        {
-            if (string.Equals(value, "XButton1", StringComparison.OrdinalIgnoreCase))
-            {
-                return "XButton1";
-            }
-
-            if (string.Equals(value, "XButton2", StringComparison.OrdinalIgnoreCase))
-            {
-                return "XButton2";
-            }
-
-            return null;
         }
     }
 }

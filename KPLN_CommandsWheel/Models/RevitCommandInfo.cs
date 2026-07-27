@@ -14,8 +14,6 @@ namespace KPLN_CommandsWheel.Models
 
         public string Tooltip { get; set; }
 
-        public bool CanPost { get; set; }
-
         public ImageSource RibbonImage { get; set; }
 
         public string SearchText
