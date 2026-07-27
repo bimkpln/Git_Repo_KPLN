@@ -12,11 +12,22 @@ namespace KPLN_UserDataAgent.Services
 
         public static string GetDatabasePath(string centralRootPath, string departmentKey, string recordTime)
         {
+            return GetDatabasePath(centralRootPath, departmentKey, recordTime, "KPLN_UserDataAgent");
+        }
+
+        public static string GetDatabasePath(
+            string centralRootPath,
+            string departmentKey,
+            string recordTime,
+            string databaseNamePrefix)
+        {
             string safeDepartmentKey = NormalizeDepartmentKey(departmentKey);
             string month = ParseRecordTime(recordTime).ToString("yyyy-MM", CultureInfo.InvariantCulture);
+            string safeDatabaseNamePrefix = NormalizeDatabaseNamePrefix(databaseNamePrefix);
             string fileName = string.Format(
                 CultureInfo.InvariantCulture,
-                "KPLN_UserDataAgent_{0}_{1}.db",
+                "{0}_{1}_{2}.db",
+                safeDatabaseNamePrefix,
                 safeDepartmentKey,
                 month);
 
@@ -48,6 +59,14 @@ namespace KPLN_UserDataAgent.Services
             return result.Length <= MaxDepartmentKeyLength
                 ? result
                 : result.Substring(0, MaxDepartmentKeyLength).Trim('_', '.', ' ');
+        }
+
+        public static string NormalizeDatabaseNamePrefix(string value)
+        {
+            string result = NormalizeDepartmentKey(value);
+            return string.Equals(result, UnknownDepartmentKey, StringComparison.OrdinalIgnoreCase)
+                ? "KPLN_UserDataAgent"
+                : result;
         }
 
         public static bool IsDatabaseFilePath(string path)

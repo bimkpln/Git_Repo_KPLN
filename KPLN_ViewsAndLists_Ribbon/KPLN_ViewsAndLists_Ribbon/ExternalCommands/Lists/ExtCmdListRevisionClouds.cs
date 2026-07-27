@@ -1,9 +1,11 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_ViewsAndLists_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Interop;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 {
@@ -37,6 +39,30 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 TaskDialog.Show("KPLN. Внимание", "В проекте нет ни одного листа.");
                 return Result.Cancelled;
             }
+
+            BrowserOrganization browserOrganization = null;
+
+            try
+            {
+                browserOrganization = BrowserOrganization.GetCurrentBrowserOrganizationForSheets(doc);
+            }
+            catch
+            {
+                // Если настройки Диспетчера проекта недоступны, листы будут показаны плоским списком.
+            }
+
+            RevisionCloudSheetSelectionForm selectionForm =
+                new RevisionCloudSheetSelectionForm(sheets, browserOrganization);
+
+            new WindowInteropHelper(selectionForm)
+            {
+                Owner = commandData.Application.MainWindowHandle
+            };
+
+            if (selectionForm.ShowDialog() != true)
+                return Result.Cancelled;
+
+            sheets = selectionForm.SelectedSheets.ToList();
 
             List<string> parameterProblems = GetRequiredParameterProblems(doc, sheets[0]);
 

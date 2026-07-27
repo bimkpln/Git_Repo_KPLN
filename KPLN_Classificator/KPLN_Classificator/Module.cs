@@ -1,5 +1,7 @@
 using Autodesk.Revit.UI;
 using KPLN_Classificator.ExecutableCommand;
+using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Classificator.Availability;
 using KPLN_Loader.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,7 +38,33 @@ namespace KPLN_Classificator
             else
                 panel = tryPanels.First();
 
-            AddPushButtonDataInPanel(
+
+            //Ищу  выпадающий список если нет - создаю
+            PulldownButton paramsPullDownBtn = null;
+            string paramsPullDownName = "Параметры";
+            IList<RibbonItem> tryParamsPullDownBtns = panel.GetItems();
+            RibbonItem rii = tryParamsPullDownBtns.FirstOrDefault(ri => ri.Name.Equals(paramsPullDownName));
+            if (rii == null)
+            {
+                PulldownButtonData paramsPullDownBtnData = new PulldownButtonData("Параметры", "Параметры")
+                {
+                    ToolTip = "Коллекция плагинов по работе с параметрами в проекте",
+                    LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, "mainParams", 32),
+                };
+                paramsPullDownBtn = panel.AddItem(paramsPullDownBtnData) as PulldownButton;
+
+                SetRIShowText(paramsPullDownBtn, false);
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+                // Регистрация кнопки для смены иконок
+                KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((paramsPullDownBtn, "mainParams", _assemblyName));
+#endif
+            }
+            else
+                paramsPullDownBtn = rii as PulldownButton;
+
+
+            AddPushButtonDataInPullDown(
                 "ClassificatorCompleteCommand",
                 "Заполнить\nпараметры",
                 "Параметризация элементов согласно заданным правилам.",
@@ -46,7 +74,7 @@ namespace KPLN_Classificator
                     "3. Сохранение конфигурационного файла с возможностью повторного использования.\n" +
                     $"\nДата сборки: {Date}\nНомер сборки: {Version}\nИмя модуля: {ModuleName}",
                 typeof(CommandOpenClassificatorForm).FullName,
-                panel,
+                paramsPullDownBtn,
                 "classificator",
                 "http://moodle.stinproject.local"
             );
@@ -56,32 +84,40 @@ namespace KPLN_Classificator
         }
 
         /// <summary>
-        /// Метод для добавления отдельной кнопки в панель
+        /// Метод для создания PushButtonData будущей кнопки
         /// </summary>
-        /// <param name="name">Внутреннее имя кнопки</param>
-        /// <param name="text">Имя, видимое пользователю</param>
-        /// <param name="shortDescription">Краткое описание, видимое пользователю</param>
-        /// <param name="longDescription">Полное описание, видимое пользователю при залержке курсора</param>
-        /// <param name="className">Имя класса, содержащего реализацию команды</param>
-        /// <param name="panel">Панель, в которую добавляем кнопку</param>
-        /// <param name="imageName">Имя иконки, как ресурса</param>
-        /// <param name="contextualHelp">Ссылка на web-страницу по клавише F1</param>
-        private void AddPushButtonDataInPanel(string name, string text, string shortDescription, string longDescription, string className, RibbonPanel panel, string imageName, string contextualHelp)
+        private void AddPushButtonDataInPullDown(
+            string name,
+            string text,
+            string shortDescription,
+            string longDescription,
+            string className,
+            PulldownButton pullDownButton,
+            string imageName,
+            string contextualHelp)
         {
             PushButtonData data = new PushButtonData(name, text, _assemblyPath, className);
-            PushButton button = panel.AddItem(data) as PushButton;
+            PushButton button = pullDownButton.AddPushButton(data) as PushButton;
             button.ToolTip = shortDescription;
             button.LongDescription = longDescription;
             button.ItemText = text;
             button.Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16);
             button.LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 32);
             button.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
-            button.AvailabilityClassName = typeof(Availability.StaticAvailable).FullName;
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
             // Регистрация кнопки для смены иконок
             KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
 #endif
+        }
+
+        /// <summary>
+        /// Тонкая настройка видимости текста RibbonItem
+        /// </summary>
+        private static void SetRIShowText(RibbonItem ri, bool showName)
+        {
+            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(ri.GetId());
+            revitRibbonItem.ShowText = showName;
         }
     }
 }

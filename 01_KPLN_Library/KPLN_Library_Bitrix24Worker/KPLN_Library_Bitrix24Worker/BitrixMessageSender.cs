@@ -122,7 +122,7 @@ namespace KPLN_Library_Bitrix24Worker
                 {
                     // Ищу чат
                     string chatID = string.Empty;
-                    HttpResponseMessage responseGetLastChats = await client.GetAsync($"{WebHookUrl}/im.recent.list");
+                    HttpResponseMessage responseGetLastChats = await client.GetAsync($"{WebHookUrl}/im.recent.list?LIMIT=200&SKIP_DIALOG=Y");
                     if (!responseGetLastChats.IsSuccessStatusCode)
                         throw new Exception("\n[KPLN]: Ошибка получения чатов из Bitrix\n\n");
 
@@ -134,7 +134,10 @@ namespace KPLN_Library_Bitrix24Worker
                     {
                         var itemTitle = item?.title;
                         if (itemTitle == chatTitle || itemTitle == chatTitleRev)
+                        {
                             chatID = item.id;
+                            break;
+                        }
                     }
 
 

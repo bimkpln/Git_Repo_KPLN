@@ -2,6 +2,7 @@
 using KPLN_CommandsWheel.Services;
 using KPLN_Loader.Common;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -11,6 +12,9 @@ namespace KPLN_CommandsWheel
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private static UIControlledApplication _hotkeyApplication;
+        private static bool _hotkeyInitializationScheduled;
+        private static bool _hotkeyInitializationCompleted;
 
         public Result Close()
         {
@@ -31,6 +35,7 @@ namespace KPLN_CommandsWheel
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+            ScheduleHotkeyInitialization(application);
 
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
@@ -69,6 +74,30 @@ namespace KPLN_CommandsWheel
 
             HotkeyService.Initialize();
             return Result.Succeeded;
+        }
+
+        private static void ScheduleHotkeyInitialization(UIControlledApplication application)
+        {
+            if (_hotkeyInitializationScheduled || _hotkeyInitializationCompleted || application == null)
+            {
+                return;
+            }
+
+            _hotkeyApplication = application;
+            _hotkeyInitializationScheduled = true;
+            application.Idling += InitializeHotkeysOnIdle;
+        }
+
+        private static void InitializeHotkeysOnIdle(object sender, IdlingEventArgs args)
+        {
+            if (_hotkeyApplication != null)
+            {
+                _hotkeyApplication.Idling -= InitializeHotkeysOnIdle;
+            }
+
+            _hotkeyInitializationScheduled = false;
+            _hotkeyInitializationCompleted = true;
+            Services.HotkeyService.Initialize();
         }
 
         /// <summary>

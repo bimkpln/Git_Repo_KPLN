@@ -1,14 +1,28 @@
 ﻿using KPLN_Loader.Common;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Windows.Forms;
 
 namespace KPLN_Tools
 {
+    internal sealed class WindowHandleWrapper : IWin32Window
+    {
+        public WindowHandleWrapper(IntPtr handle)
+        {
+            Handle = handle;
+        }
+
+        public IntPtr Handle { get; }
+    }
+
     internal static class ModuleData
     {
-        public static System.IntPtr MainWindowHandle { get; set; }
-        
+        public static IntPtr MainWindowHandle { get; set; }
+
+        internal static IWin32Window MainWindowOwner => new WindowHandleWrapper(MainWindowHandle);
+
         /// <summary>
         /// Версия сборки, отображаемая в Revit
         /// </summary>

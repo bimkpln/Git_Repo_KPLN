@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -52,13 +53,17 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 if (string.IsNullOrWhiteSpace(_logFilePath))
                     return;
 
-                string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+                DateTime timestamp = DateTime.Now;
 
                 StringBuilder logEntry = new StringBuilder();
-                logEntry.AppendLine("[" + timestamp + "]");
+
+                logEntry.AppendLine("[" + FormatLogDate(timestamp) + "]");
+                AppendRequestMetadata(logEntry, timestamp, timestamp, null, null);
+
                 logEntry.AppendLine("");
-                logEntry.AppendLine($"ВОПРОС: {question}");
-                logEntry.AppendLine($"ОТВЕТ: {answer}");
+                logEntry.AppendLine($"REQUEST: {question}");
+                logEntry.AppendLine($"RESPONSE: {answer}");
                 logEntry.AppendLine(_separator);
 
                 // Добавляем запись в конец файла (создаёт файл, если его нет)
@@ -72,6 +77,69 @@ namespace KPLN_CoordiantorAI.ExternalModel
         }
 
 
+
+        public void Log(
+            string question,
+            string answer,
+            DateTime requestTime,
+            DateTime responseTime,
+            string revitModelName,
+            string revitViewName,
+            IDictionary<string, int> toolAreaStats = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_logFilePath))
+                    return;
+
+                StringBuilder logEntry = new StringBuilder();
+                logEntry.AppendLine("[" + FormatLogDate(requestTime) + "]");
+                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName);
+                AppendToolAreaStats(logEntry, toolAreaStats);
+                logEntry.AppendLine("");
+                logEntry.AppendLine($"ВОПРОС: {question}");
+                logEntry.AppendLine($"ОТВЕТ: {answer}");
+                logEntry.AppendLine(_separator);
+
+                File.AppendAllText(_logFilePath, logEntry.ToString(), Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка записи лога: {ex.Message}");
+            }
+        }
+
+
+        public void LogWithTokens(
+            string question,
+            string answer,
+            int cacheHitTokens,
+            int cacheMissTokens,
+            int completionTokens,
+            int totalTokens,
+            double usdToRubRate = USD_TO_RUB_RATE)
+        {
+            DateTime timestamp = DateTime.Now;
+            LogWithTokens(
+                question,
+                answer,
+                cacheHitTokens,
+                cacheMissTokens,
+                completionTokens,
+                totalTokens,
+                timestamp,
+                timestamp,
+                null,
+                null,
+                null,
+                usdToRubRate);
+        }
+
+
+
+
+
+
         /// <summary>
         /// Логирует диалог с информацией о токенах
         /// </summary>
@@ -82,6 +150,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
             int cacheMissTokens,
             int completionTokens,
             int totalTokens,
+            DateTime requestTime,
+            DateTime responseTime,
+            string revitModelName,
+            string revitViewName,
+            IDictionary<string, int> toolAreaStats = null,
             double usdToRubRate = USD_TO_RUB_RATE)
         {
             try
@@ -89,7 +162,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 if (string.IsNullOrWhiteSpace(_logFilePath))
                     return;
 
-                string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+                string timestamp = FormatLogDate(requestTime);
 
                 // Расчёт стоимости
                 double costUSD = (cacheHitTokens * 0.0028 + cacheMissTokens * 0.14 + completionTokens * 0.28) / 1_000_000;
@@ -102,6 +176,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 StringBuilder logEntry = new StringBuilder();
                 logEntry.AppendLine("[" + timestamp + "]");
+                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName);
+                AppendToolAreaStats(logEntry, toolAreaStats);
                 logEntry.AppendLine("");
                 logEntry.AppendLine($"ВОПРОС: {question}");
                 logEntry.AppendLine($"ОТВЕТ: {answer}");
@@ -135,7 +211,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         {
             try
             {
-                string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                DateTime timestamp = DateTime.Now;
                 string logFilePath = customFilePath ?? _logFilePath;
                 if (string.IsNullOrWhiteSpace(logFilePath))
                     return;
@@ -148,7 +224,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 StringBuilder logEntry = new StringBuilder();
-                logEntry.AppendLine(timestamp);
+
+                logEntry.AppendLine(FormatLogDate(timestamp));
+                AppendRequestMetadata(logEntry, timestamp, timestamp, null, null);
                 logEntry.AppendLine($"ВОПРОС: {question}");
                 logEntry.AppendLine($"ОТВЕТ: {answer}");
                 logEntry.AppendLine(_separator);
@@ -159,6 +237,49 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 System.Diagnostics.Debug.WriteLine($"Ошибка записи лога: {ex.Message}");
             }
+        }
+
+        private static void AppendRequestMetadata(
+            StringBuilder logEntry,
+            DateTime requestTime,
+            DateTime responseTime,
+            string revitModelName,
+            string revitViewName)
+        {
+            logEntry.AppendLine("REQUEST_TIME: " + FormatLogDate(requestTime));
+            logEntry.AppendLine("RESPONSE_TIME: " + FormatLogDate(responseTime));
+
+            if (!string.IsNullOrWhiteSpace(revitModelName))
+                logEntry.AppendLine("REVIT_MODEL: " + revitModelName.Trim());
+
+            if (!string.IsNullOrWhiteSpace(revitViewName))
+                logEntry.AppendLine("REVIT_VIEW: " + revitViewName.Trim());
+        }
+
+        private static void AppendToolAreaStats(StringBuilder logEntry, IDictionary<string, int> toolAreaStats)
+        {
+            if (toolAreaStats == null || toolAreaStats.Count == 0)
+                return;
+
+            int totalToolCalls = 0;
+            logEntry.AppendLine("--- TOOL AREA STATS ---");
+            foreach (KeyValuePair<string, int> item in toolAreaStats)
+            {
+                if (item.Value <= 0)
+                    continue;
+
+                totalToolCalls += item.Value;
+                logEntry.AppendLine(item.Key + ": " + item.Value);
+            }
+
+            logEntry.AppendLine("TOTAL_TOOL_CALLS: " + totalToolCalls);
+        }
+
+
+
+        private static string FormatLogDate(DateTime value)
+        {
+            return value.ToString("yyyy-MM-dd HH:mm:ss.fff");
         }
     }
 }

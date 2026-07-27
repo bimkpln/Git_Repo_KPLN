@@ -112,7 +112,9 @@ namespace KPLN_Tools.ExternalCommands
                 _lastAlarmByModel.Add(modelKey_Title, now);
             else if (delayTime < (now - lastAlarm))
             {
-                // Обнуляю счётчик
+                // Обнуляю счётчик (при возникновении ошибок всё равно обнулится,
+                // это хорошо для стабильности, т.к. не уйдёт в бесконечный цикл,
+                // это плохо для качества, т.к. при ошибке шаг сохранения будет пропущен) 
                 _lastAlarmByModel[modelKey_Title] = now;
 
 
@@ -121,6 +123,7 @@ namespace KPLN_Tools.ExternalCommands
                 if (ASVModelInst.CurrentAutoSaveM.ShowWarningWindow)
                 {
                     var msgResult = MessageBox.Show(
+                        ModuleData.MainWindowOwner,
                         "Выполнить сохранение?",
                         $"KPLN_{PluginName} [{modelKey_Title}]",
                         MessageBoxButtons.YesNo,
@@ -140,6 +143,7 @@ namespace KPLN_Tools.ExternalCommands
                         if (string.IsNullOrEmpty(pathToSave))
                         {
                             MessageBox.Show(
+                                ModuleData.MainWindowOwner,
                                 "Ошибка, отправь разработчику! Не удалось определить путь к сохранению локальных копий.",
                                 $"KPLN_{PluginName} [{modelKey_Title}]",
                                 MessageBoxButtons.OK,
@@ -151,6 +155,7 @@ namespace KPLN_Tools.ExternalCommands
                         if (!Directory.Exists(pathToSave))
                         {
                             MessageBox.Show(
+                                ModuleData.MainWindowOwner,
                                 $"Ошибка, отправь разработчику! Путь для сохранения локальных копий - не существует: {pathToSave}",
                                 $"KPLN_{PluginName} [{modelKey_Title}]",
                                 MessageBoxButtons.OK,
@@ -167,7 +172,19 @@ namespace KPLN_Tools.ExternalCommands
                         }
                         catch (Exception ex)
                         {
+                            // Ошибка открытой транзакции (например при работе с группой) - предупреждаю пользователя
+                            if (ex.Message.Contains("Unable to close all open transaction phases!"))
+                            {
+                                // Переписываю значение, чтобы не удваивать шаг при такого типа ошибке,
+                                // а чтобы он сработал раньше - через 2 мин
+                                _lastAlarmByModel[modelKey_Title] = now - new TimeSpan(0, ASVModelInst.CurrentAutoSaveM.SelectedInterval, -120);
+
+                                return;
+                            }
+
+
                             MessageBox.Show(
+                                ModuleData.MainWindowOwner,
                                 $"Ошибка, отправь разработчику! Не удалось сохранить, ошибка:\n\n{ex.Message}. \n\nПуть к модели для сохранения: {fullPath}",
                                 $"KPLN_{PluginName} [{modelKey_Title}]",
                                 MessageBoxButtons.OK,
@@ -261,6 +278,7 @@ namespace KPLN_Tools.ExternalCommands
 
             if (clearTaskMsg != string.Empty)
                 MessageBox.Show(
+                    ModuleData.MainWindowOwner,
                     $"Отправь разработчику! Ошибка при очистке старых резервных копий: {clearTaskMsg}",
                     $"KPLN_{PluginName} [{modelKey_Title}]",
                     MessageBoxButtons.OK,

@@ -640,7 +640,8 @@
 
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{Binding PresetsVm.WorksetOptions}"
-                                              SelectedItem="{Binding PresetsVm.SelectedWallWorkset}"/>
+                                              SelectedItem="{Binding PresetsVm.SelectedWallWorkset}"
+                                              IsEnabled="{Binding PresetsVm.IsWorksetSelectionEnabled}"/>
                                 </Grid>
 
                                 <Grid Grid.Row="2">
@@ -657,7 +658,8 @@
 
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{Binding PresetsVm.WorksetOptions}"
-                                              SelectedItem="{Binding PresetsVm.SelectedDoorWorkset}"/>
+                                              SelectedItem="{Binding PresetsVm.SelectedDoorWorkset}"
+                                              IsEnabled="{Binding PresetsVm.IsWorksetSelectionEnabled}"/>
                                 </Grid>
 
                                 <Grid Grid.Row="4">
@@ -674,7 +676,8 @@
 
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{Binding PresetsVm.WorksetOptions}"
-                                              SelectedItem="{Binding PresetsVm.SelectedRoomWorkset}"/>
+                                              SelectedItem="{Binding PresetsVm.SelectedRoomWorkset}"
+                                              IsEnabled="{Binding PresetsVm.IsWorksetSelectionEnabled}"/>
                                 </Grid>
 
                                 <Grid Grid.Row="6">
@@ -691,7 +694,8 @@
 
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{Binding PresetsVm.WorksetOptions}"
-                                              SelectedItem="{Binding PresetsVm.SelectedFurnitureWorkset}"/>
+                                              SelectedItem="{Binding PresetsVm.SelectedFurnitureWorkset}"
+                                              IsEnabled="{Binding PresetsVm.IsWorksetSelectionEnabled}"/>
                                 </Grid>
 
                                 <Grid Grid.Row="8">
@@ -708,7 +712,8 @@
 
                                     <ComboBox Grid.Column="2"
                                               ItemsSource="{Binding PresetsVm.WorksetOptions}"
-                                              SelectedItem="{Binding PresetsVm.SelectedPlumbingWorkset}"/>
+                                              SelectedItem="{Binding PresetsVm.SelectedPlumbingWorkset}"
+                                              IsEnabled="{Binding PresetsVm.IsWorksetSelectionEnabled}"/>
                                 </Grid>
                             </Grid>
                         </GroupBox>

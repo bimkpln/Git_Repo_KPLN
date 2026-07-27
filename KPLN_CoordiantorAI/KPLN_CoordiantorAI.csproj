@@ -75,6 +75,7 @@
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
@@ -142,6 +143,8 @@
     <Compile Include="ExternalAIModel\ChatLogger.cs" />
     <Compile Include="ExternalAIModel\Commands.cs" />
     <Compile Include="ExternalAIModel\Connection.cs" />
+    <Compile Include="ExternalAIModel\DiagnosticLogger.cs" />
+    <Compile Include="ExternalAIModel\RevitApiExternalEventHandler.cs" />
     <Compile Include="ExternalCommands\SettingsAI.cs" />
     <Compile Include="ExternalCommands\StartAI.cs" />
     <Compile Include="Forms\ArticleAliasesWindow.xaml.cs">

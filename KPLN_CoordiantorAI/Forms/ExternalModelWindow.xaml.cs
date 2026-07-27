@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -23,20 +25,134 @@ using KPLN_CoordiantorAI.Common;
 using KPLN_CoordiantorAI.ExternalModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Windows.Controls.Primitives;
 using static KPLN_CoordiantorAI.ExternalModel.Commands;
+using WpfGrid = System.Windows.Controls.Grid;
+using WpfTextBox = System.Windows.Controls.TextBox;
+using Control = System.Windows.Controls.Control;
+using KPLN_CoordiantorAI.ExternalAIModel;
+using System.Threading;
 
 namespace KPLN_CoordiantorAI.Forms
 {
-    /// <summary>
-    /// Логика взаимодействия для ExternalModelWindow.xaml
-    /// </summary>
     public partial class ExternalModelWindow : Window
+    {
+        public ExternalModelWindow(
+            Autodesk.Revit.DB.Document document,
+            UIDocument uiDocument,
+            ConnectionType connectionType,
+            ExternalModelSettings settings)
+        {
+            if (document == null)
+                throw new ArgumentNullException(nameof(document));
+            if (uiDocument == null)
+                throw new ArgumentNullException(nameof(uiDocument));
+
+            InitializeComponent();
+
+            ExternalModelControl control = new ExternalModelControl(document, uiDocument, connectionType, settings);
+            ModelContent.Content = control;
+            Title = control.DisplayTitle;
+        }
+    }
+
+    /// <summary>
+    /// Рабочая область взаимодействия с внешней моделью.
+    /// </summary>
+    public class ExternalModelControl : UserControl
     {
         private Autodesk.Revit.DB.Document _doc;
         private UIDocument _uiDoc;
         private ChatLogger _logger;
+        private DiagnosticLogger _diagnosticLogger;
         private ConnectionType _connectionType;
         private ExternalModelSettings _settings;
+        private Window _hostWindow;
+        private string _currentDiagnosticRequestId;
+        private Stopwatch _currentRequestStopwatch;
+        private bool _isRequestInProgress;
+        private bool _isClosing;
+        private CancellationTokenSource _currentRequestCancellation;
+        private RevitApiExternalEventHandler _revitApiExternalEventHandler;
+
+
+        private enum ModelToolArea
+        {
+            ViewContext,
+            Visibility,
+            Categories,
+            Families,
+            Parameters,
+            Geometry,
+            ModelInfo,
+            Worksets,
+            Selection,
+            Schedules,
+            Journal,
+            Other
+        }
+
+        private static readonly Dictionary<string, ModelToolArea> ToolAreas = new Dictionary<string, ModelToolArea>
+        {
+            { "get_active_view_in_revit", ModelToolArea.ViewContext },
+            { "get_all_elements_shown_in_view", ModelToolArea.Visibility },
+
+            { "get_category_by_keyword", ModelToolArea.Categories },
+            { "get_elements_by_category", ModelToolArea.Categories },
+            { "get_model_categories", ModelToolArea.Categories },
+            { "get_categories_from_elementids", ModelToolArea.Categories },
+            { "get_object_classes_from_elementids", ModelToolArea.Categories },
+
+            { "get_element_types_for_elementids", ModelToolArea.Families },
+            { "get_all_elementids_for_specific_type_ids", ModelToolArea.Families },
+            { "get_all_used_families_in_model", ModelToolArea.Families },
+            { "get_all_used_families_of_category", ModelToolArea.Families },
+            { "get_all_used_types_of_a_family", ModelToolArea.Families },
+            { "get_all_elements_of_specific_families", ModelToolArea.Families },
+
+            { "get_parameters_from_elementid", ModelToolArea.Parameters },
+            { "get_parameter_value_for_element_ids", ModelToolArea.Parameters },
+            { "get_all_additional_properties_from_elementid", ModelToolArea.Parameters },
+            { "get_additional_property_for_all_elementids", ModelToolArea.Parameters },
+            { "get_revitlookup_like_properties", ModelToolArea.Parameters },
+
+            { "get_location_for_element_ids", ModelToolArea.Geometry },
+            { "get_boundingboxes_for_element_ids", ModelToolArea.Geometry },
+            { "get_boundary_lines", ModelToolArea.Geometry },
+            { "get_room_boundary_lines", ModelToolArea.Geometry },
+            { "get_host_id_for_element_ids", ModelToolArea.Geometry },
+            { "get_material_layers_from_types", ModelToolArea.Geometry },
+            { "set_view_section_box_to_elements", ModelToolArea.Geometry },
+
+            { "get_model_file_info", ModelToolArea.ModelInfo },
+            { "get_all_project_units", ModelToolArea.ModelInfo },
+            { "get_all_warnings_in_the_model", ModelToolArea.ModelInfo },
+
+            { "get_all_workset_information", ModelToolArea.Worksets },
+            { "get_worksets_from_elementids", ModelToolArea.Worksets },
+            { "get_worksharing_information_for_element_ids", ModelToolArea.Worksets },
+
+            { "get_user_selection_in_revit", ModelToolArea.Selection },
+            { "set_user_selection_in_revit", ModelToolArea.Selection },
+
+            { "get_graphic_overrides_for_element_ids_in_view", ModelToolArea.Visibility },
+            { "get_graphic_filters_applied_to_views", ModelToolArea.Visibility },
+            { "get_all_parameter_filters_in_model", ModelToolArea.Visibility },
+            { "get_graphic_overrides_view_filters", ModelToolArea.Visibility },
+            { "get_category_visibility_overrides_in_view", ModelToolArea.Visibility },
+            { "get_workset_visibility_in_view", ModelToolArea.Visibility },
+            { "get_link_graphics_overrides_in_view", ModelToolArea.Visibility },
+            { "get_if_elements_pass_filter", ModelToolArea.Visibility },
+
+            { "get_viewports_and_schedules_on_sheets", ModelToolArea.Schedules },
+            { "get_schedules_info_and_columns", ModelToolArea.Schedules },
+            { "get_schedule_sorting_info", ModelToolArea.Schedules },
+
+            { "get_journal_entries_since", ModelToolArea.Journal }
+        };
+
+
+
 
         private int _lastCacheHit = 0;
         private int _lastCacheMiss = 0;
@@ -45,45 +161,288 @@ namespace KPLN_CoordiantorAI.Forms
 
 
         private readonly HttpClient _httpClient = new HttpClient();
+        private readonly Dictionary<ModelToolArea, int> _currentToolAreaStats = new Dictionary<ModelToolArea, int>();
         public List<object> ChatHistoryMessages { get; } = new List<object>();
 
         private Border _typingIndicator;
         private DispatcherTimer _typingTimer;
+        private TextBlock TitleTextBlock;
+        private ScrollViewer ChatScrollViewer;
+        private StackPanel ChatHistory;
+        private WpfTextBox InputTextBox;
+        private Button SendButton;
 
+        public string DisplayTitle { get; private set; }
 
-        public ExternalModelWindow(
+        public ExternalModelControl(
             Autodesk.Revit.DB.Document document,
             UIDocument uiDocument,
             ConnectionType connectionType,
             ExternalModelSettings settings)
         {
-            InitializeComponent();
+            InitializeModelLayout();
             _doc = document;
             _uiDoc = uiDocument;
             _connectionType = connectionType;
             _settings = settings ?? new ExternalModelSettings();
+            _revitApiExternalEventHandler = new RevitApiExternalEventHandler();
+
 
             // Инициализация логгера
             _logger = new ChatLogger(_settings.LogFolder);
+            //Можно задать путь через настройки к логу-диганостики
+            _diagnosticLogger = new DiagnosticLogger(null);
 
             // Анимация точек
             _typingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
             _typingTimer.Tick += TypingTimer_Tick;
 
+            Loaded += OnExternalModelControlLoaded;
+            Unloaded += OnExternalModelControlUnloaded;
             SetupEventHandlers();
 
             // Показываем пользователю, какой режим активен
-            Title = GetWindowTitle();
+            DisplayTitle = GetModelTitle();
+            TitleTextBlock.Text = DisplayTitle;
         }
 
         // Показываем пользователю, какой режим активен
-        private string GetWindowTitle()
+        private string GetModelTitle()
         {
             string mode = _connectionType == ConnectionType.OnlineAPI
-                ? "Online (DeepSeek API)"
+                ? "Online (API key)"
                 : "Local (LM Studio)";
 
             return $"Работа с моделью - {_doc.Title} - {mode}";
+        }
+
+        private void OnExternalModelControlLoaded(object sender, RoutedEventArgs e)
+        {
+            _isClosing = false;
+            _hostWindow = Window.GetWindow(this);
+            if (_hostWindow == null)
+                return;
+
+            _hostWindow.Closing -= OnHostWindowClosing;
+            _hostWindow.Closed -= OnHostWindowClosed;
+            _hostWindow.Closing += OnHostWindowClosing;
+            _hostWindow.Closed += OnHostWindowClosed;
+
+            _diagnosticLogger.LogEvent(null, "WINDOW.LOADED", new Dictionary<string, object>
+            {
+                { "title", _hostWindow.Title },
+                { "model", GetCurrentRevitModelName() },
+                { "view", GetCurrentRevitViewName() }
+            });
+        }
+
+        private void OnExternalModelControlUnloaded(object sender, RoutedEventArgs e)
+        {
+            if (_hostWindow == null)
+                return;
+
+            _hostWindow.Closing -= OnHostWindowClosing;
+            _hostWindow.Closed -= OnHostWindowClosed;
+            _hostWindow = null;
+        }
+
+        private void OnHostWindowClosing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            _isClosing = true;
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "WINDOW.CLOSING", new Dictionary<string, object>
+            {
+                { "isRequestInProgress", _isRequestInProgress },
+                { "elapsedMs", GetCurrentRequestElapsedMs() }
+            });
+            CancelCurrentRequest("windowClosing");
+        }
+
+        private void OnHostWindowClosed(object sender, EventArgs e)
+        {
+            _isClosing = true;
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "WINDOW.CLOSED", new Dictionary<string, object>
+            {
+                { "isRequestInProgress", _isRequestInProgress },
+                { "elapsedMs", GetCurrentRequestElapsedMs() }
+            });
+            CancelCurrentRequest("windowClosed");
+        }
+
+        private void InitializeModelLayout()
+        {
+            MinHeight = 480;
+            MinWidth = 680;
+            Background = CreateBrush(32, 36, 45);
+            FontFamily = new FontFamily("Segoe UI");
+
+            WpfGrid root = new WpfGrid
+            {
+                Background = CreateBrush(32, 36, 45)
+            };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            Border header = new Border
+            {
+                Background = CreateBrush(38, 43, 53),
+                BorderBrush = CreateBrush(52, 59, 73),
+                BorderThickness = new Thickness(0, 0, 0, 1),
+                Padding = new Thickness(12, 10, 12, 10)
+            };
+            WpfGrid.SetRow(header, 0);
+
+            TitleTextBlock = new TextBlock
+            {
+                Text = "Работа с моделью",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = Brushes.White
+            };
+            header.Child = TitleTextBlock;
+            root.Children.Add(header);
+
+            ChatHistory = new StackPanel();
+            ChatScrollViewer = new ScrollViewer
+            {
+                Content = ChatHistory,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Margin = new Thickness(10)
+            };
+            WpfGrid.SetRow(ChatScrollViewer, 1);
+            root.Children.Add(ChatScrollViewer);
+
+            WpfGrid inputGrid = new WpfGrid
+            {
+                Margin = new Thickness(10, 0, 10, 10)
+            };
+            inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            inputGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            WpfGrid.SetRow(inputGrid, 2);
+
+
+
+            InputTextBox = new WpfTextBox
+            {
+                Language = XmlLanguage.GetLanguage("ru-RU"),
+
+                Margin = new Thickness(0, 0, 10, 0),
+                Padding = new Thickness(10, 8, 10, 8),
+
+                // Фиксированная высота. Поле больше не растёт вверх.
+                Height = 80,
+
+                // Текст внутри начинается сверху
+                VerticalContentAlignment = VerticalAlignment.Top,
+
+                // Многострочный ввод
+                AcceptsReturn = true,
+
+                // Перенос строк
+                TextWrapping = TextWrapping.Wrap,
+
+                // Горизонтальный скролл не нужен, вертикальный появляется при переполнении
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+
+                FontSize = 14,
+                Foreground = Brushes.White,
+                Background = CreateBrush(42, 48, 59),
+                BorderBrush = CreateBrush(75, 85, 104),
+                CaretBrush = Brushes.White
+            };
+            SpellCheck.SetIsEnabled(InputTextBox, true);
+
+
+            WpfGrid.SetColumn(InputTextBox, 0);
+            inputGrid.Children.Add(InputTextBox);
+
+            SendButton = new Button
+            {
+                Content = "Отправить",
+                Style = CreateSendButtonStyle(),
+                VerticalAlignment = VerticalAlignment.Bottom
+            };
+            WpfGrid.SetColumn(SendButton, 1);
+            inputGrid.Children.Add(SendButton);
+
+            root.Children.Add(inputGrid);
+            Content = root;
+        }
+
+        private static Brush CreateBrush(byte red, byte green, byte blue)
+        {
+            return new SolidColorBrush(System.Windows.Media.Color.FromRgb(red, green, blue));
+        }
+
+        private static Style CreateSendButtonStyle()
+        {
+            Style style = new Style(typeof(Button));
+
+            style.Setters.Add(new Setter(Control.MinHeightProperty, 30.0));
+            style.Setters.Add(new Setter(Control.MinWidthProperty, 92.0));
+            style.Setters.Add(new Setter(Control.PaddingProperty, new Thickness(15, 10, 15, 10)));
+            style.Setters.Add(new Setter(Control.BackgroundProperty, CreateBrush(44, 107, 237)));
+            style.Setters.Add(new Setter(Control.ForegroundProperty, Brushes.White));
+            style.Setters.Add(new Setter(Control.BorderBrushProperty, CreateBrush(44, 107, 237)));
+            style.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(1)));
+
+            FrameworkElementFactory borderFactory = new FrameworkElementFactory(typeof(Border));
+            borderFactory.Name = "ButtonBorder";
+            borderFactory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+            borderFactory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+            borderFactory.SetBinding(Border.BorderThicknessProperty, new System.Windows.Data.Binding("BorderThickness")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+            borderFactory.SetBinding(Border.PaddingProperty, new System.Windows.Data.Binding("Padding")
+            {
+                RelativeSource = RelativeSource.TemplatedParent
+            });
+
+            FrameworkElementFactory contentFactory = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentFactory.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentFactory.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            contentFactory.SetValue(ContentPresenter.RecognizesAccessKeyProperty, true);
+
+            borderFactory.AppendChild(contentFactory);
+
+            ControlTemplate template = new ControlTemplate(typeof(Button));
+            template.VisualTree = borderFactory;
+
+            Trigger hoverTrigger = new Trigger
+            {
+                Property = UIElement.IsMouseOverProperty,
+                Value = true
+            };
+            hoverTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.96, "ButtonBorder"));
+            template.Triggers.Add(hoverTrigger);
+
+            Trigger pressedTrigger = new Trigger
+            {
+                Property = ButtonBase.IsPressedProperty,
+                Value = true
+            };
+            pressedTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.86, "ButtonBorder"));
+            template.Triggers.Add(pressedTrigger);
+
+            Trigger disabledTrigger = new Trigger
+            {
+                Property = UIElement.IsEnabledProperty,
+                Value = false
+            };
+            disabledTrigger.Setters.Add(new Setter(UIElement.OpacityProperty, 0.55, "ButtonBorder"));
+            template.Triggers.Add(disabledTrigger);
+
+            style.Setters.Add(new Setter(Control.TemplateProperty, template));
+
+            return style;
         }
 
         //Задать текст под загрузку ИИ
@@ -178,6 +537,29 @@ namespace KPLN_CoordiantorAI.Forms
         {
             string userMessage = InputTextBox.Text.Trim();
             if (string.IsNullOrEmpty(userMessage)) return;
+            if (_isClosing) return;
+
+            DateTime requestTime = DateTime.Now;
+            string requestModelName = GetCurrentRevitModelName();
+            string requestViewName = GetCurrentRevitViewName();
+            _currentToolAreaStats.Clear();
+            string requestId = Guid.NewGuid().ToString("N");
+            _currentDiagnosticRequestId = requestId;
+            _currentRequestStopwatch = Stopwatch.StartNew();
+            _isRequestInProgress = true;
+            _currentRequestCancellation?.Dispose();
+            _currentRequestCancellation = new CancellationTokenSource();
+            CancellationTokenSource requestCancellation = _currentRequestCancellation;
+            CancellationToken cancellationToken = requestCancellation.Token;
+            _diagnosticLogger.LogEvent(requestId, "SendMessage.START", new Dictionary<string, object>
+            {
+                { "textLength", userMessage.Length },
+                { "textPreview", TrimForDiagnostics(userMessage, 300) },
+                { "model", requestModelName },
+                { "view", requestViewName },
+                { "connectionType", _connectionType },
+                { "messagesBeforeAdd", ChatHistoryMessages.Count }
+            });
 
             // Пользовательское сообщение
             var userMsg = new { role = "user", content = userMessage };
@@ -191,10 +573,27 @@ namespace KPLN_CoordiantorAI.Forms
             {
                 ShowTypingIndicator(); //начало анимации загрузки
 
-                string response = await SendToOpenRouter(ChatHistoryMessages);
+                _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.START", new Dictionary<string, object>
+                {
+                    { "phase", "initial" },
+                    { "messages", ChatHistoryMessages.Count },
+                    { "toolsEnabled", true }
+                });
+                string response = await SendToOpenRouter(ChatHistoryMessages, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (IsCloseOrCancellationRequested(cancellationToken)) return;
+                _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.END", new Dictionary<string, object>
+                {
+                    { "phase", "initial" },
+                    { "responseLength", response == null ? 0 : response.Length }
+                });
 
                 if (!response.TrimStart().StartsWith("{"))
                 {
+                    _diagnosticLogger.LogEvent(requestId, "AI_RESPONSE.NON_JSON", new Dictionary<string, object>
+                    {
+                        { "responsePreview", TrimForDiagnostics(response, 500) }
+                    });
                     ChatHistory.Children.Add(CreateMessageBlock($"❌ AI: {response}", false));
 
 
@@ -209,6 +608,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                 // Парсим ответ ИИ
                 var responseJObject = JObject.Parse(response);
+                _diagnosticLogger.LogEvent(requestId, "AI_RESPONSE.PARSED", GetResponseDiagnostics(responseJObject));
 
                 while (true)
                 {
@@ -222,14 +622,41 @@ namespace KPLN_CoordiantorAI.Forms
                     // Если есть tool_calls — выполняем
                     if (toolCalls != null && toolCalls.Count > 0)
                     {
+                        Stopwatch toolsBatchStopwatch = Stopwatch.StartNew();
+                        _diagnosticLogger.LogEvent(requestId, "TOOLS_BATCH.START", new Dictionary<string, object>
+                        {
+                            { "toolCalls", toolCalls.Count }
+                        });
                         foreach (JObject tc in toolCalls)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            if (IsCloseOrCancellationRequested(cancellationToken)) return;
                             await ProcessSingleToolCall(tc);
                         }
+                        toolsBatchStopwatch.Stop();
+                        _diagnosticLogger.LogEvent(requestId, "TOOLS_BATCH.END", new Dictionary<string, object>
+                        {
+                            { "toolCalls", toolCalls.Count },
+                            { "elapsedMs", toolsBatchStopwatch.ElapsedMilliseconds }
+                        });
 
                         // После всех tools → следующий запрос к ИИ
-                        response = await SendToOpenRouter(ChatHistoryMessages);
+                        _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.START", new Dictionary<string, object>
+                        {
+                            { "phase", "afterTools" },
+                            { "messages", ChatHistoryMessages.Count },
+                            { "toolsEnabled", true }
+                        });
+                        response = await SendToOpenRouter(ChatHistoryMessages, cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (IsCloseOrCancellationRequested(cancellationToken)) return;
+                        _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.END", new Dictionary<string, object>
+                        {
+                            { "phase", "afterTools" },
+                            { "responseLength", response == null ? 0 : response.Length }
+                        });
                         responseJObject = JObject.Parse(response);
+                        _diagnosticLogger.LogEvent(requestId, "AI_RESPONSE.PARSED", GetResponseDiagnostics(responseJObject));
 
                         if (!IsSuccessResponse(response))
                         {
@@ -252,7 +679,24 @@ namespace KPLN_CoordiantorAI.Forms
 
                         if (!string.IsNullOrEmpty(finalContent) && finalContent.Trim().Length > 10)
                         {
+                            DateTime responseTime = DateTime.Now;
+                            _diagnosticLogger.LogEvent(requestId, "FINAL_RESPONSE.READY", new Dictionary<string, object>
+                            {
+                                { "contentLength", finalContent.Length },
+                                { "elapsedMs", GetCurrentRequestElapsedMs() },
+                                { "toolAreaStats", FormatToolAreaStatsForDiagnostics() },
+                                { "cacheHitTokens", _lastCacheHit },
+                                { "cacheMissTokens", _lastCacheMiss },
+                                { "completionTokens", _lastCompletion },
+                                { "totalTokens", _lastTotal }
+                            });
+                            _diagnosticLogger.LogEvent(requestId, "UI_RENDER.START", new Dictionary<string, object>
+                            {
+                                { "contentLength", finalContent.Length }
+                            });
                             ChatHistory.Children.Add(CreateMessageBlock($"AI: {finalContent}", false));
+                            _diagnosticLogger.LogEvent(requestId, "UI_RENDER.END");
+
 
                             // Ищем и удаляем всю цепочку вызовов инструментов
                             for (int i = 0; i < ChatHistoryMessages.Count; i++)
@@ -274,488 +718,726 @@ namespace KPLN_CoordiantorAI.Forms
                                 }
                             }
 
-                            // Добавляем чистый ответ ассистента (без tool_calls)
+                            /// Добавляем чистый ответ ассистента (без tool_calls)
                             ChatHistoryMessages.Add(new { role = "assistant", content = finalContent });
 
-                            _logger.LogWithTokens(userMessage, finalContent, _lastCacheHit, _lastCacheMiss, _lastCompletion, _lastTotal);
+                            _diagnosticLogger.LogEvent(requestId, "CHAT_LOG.START");
+                            _logger.LogWithTokens(
+                                userMessage,
+                                finalContent,
+                                _lastCacheHit,
+                                _lastCacheMiss,
+                                _lastCompletion,
+                                _lastTotal,
+                                requestTime,
+                                responseTime,
+                                requestModelName,
+                                requestViewName,
+                                GetCurrentToolAreaStatsForLog());
+                            _diagnosticLogger.LogEvent(requestId, "CHAT_LOG.END");
                             break;
                         }
                     }
                 }
 
             }
+            catch (OperationCanceledException ex)
+            {
+                _diagnosticLogger.LogException(requestId, "SendMessage.CANCELED", ex, new Dictionary<string, object>
+                {
+                    { "elapsedMs", GetCurrentRequestElapsedMs() },
+                    { "isClosing", _isClosing }
+                });
+
+                if (!IsCloseOrCancellationRequested(cancellationToken))
+                    ChatHistory.Children.Add(CreateMessageBlock("Запрос отменен.", false));
+            }
             catch (Exception ex)
             {
-                ChatHistory.Children.Add(CreateMessageBlock($"Ошибка: {ex.Message}", false));
+                _diagnosticLogger.LogException(requestId, "SendMessage.ERROR", ex, new Dictionary<string, object>
+                {
+                    { "elapsedMs", GetCurrentRequestElapsedMs() }
+                });
+                if (!IsCloseOrCancellationRequested(cancellationToken))
+                    ChatHistory.Children.Add(CreateMessageBlock($"Ошибка: {ex.Message}", false));
                 // Логируем ошибку (вопрос пользователя и текст ошибки)
-                _logger.Log(userMessage, $"ОШИБКА: {ex.Message}");
+                _logger.Log(userMessage, $"ОШИБКА: {ex.Message}", requestTime, DateTime.Now, requestModelName, requestViewName, GetCurrentToolAreaStatsForLog());
             }
             finally
             {
-                HideTypingIndicator();  //конец анимации загрузки
-                SendButton.IsEnabled = true;
-                ChatScrollViewer.ScrollToEnd();
+                _diagnosticLogger.LogEvent(requestId, "SendMessage.FINALLY", new Dictionary<string, object>
+                {
+                    { "elapsedMs", GetCurrentRequestElapsedMs() },
+                    { "toolAreaStats", FormatToolAreaStatsForDiagnostics() }
+                });
+                _isRequestInProgress = false;
+                if (_currentRequestStopwatch != null)
+                    _currentRequestStopwatch.Stop();
+                if (ReferenceEquals(_currentRequestCancellation, requestCancellation))
+                {
+                    _currentRequestCancellation.Dispose();
+                    _currentRequestCancellation = null;
+                }
+
+                if (!IsCloseOrCancellationRequested(cancellationToken))
+                {
+                    HideTypingIndicator();  //конец анимации загрузки
+                    SendButton.IsEnabled = true;
+                    ChatScrollViewer.ScrollToEnd();
+                }
             }
         }
+
+
+
+        private string GetCurrentRevitModelName()
+        {
+            if (_doc == null)
+                return "Документ Revit не найден";
+
+            if (!string.IsNullOrWhiteSpace(_doc.Title))
+                return _doc.Title;
+
+            return string.IsNullOrWhiteSpace(_doc.PathName) ? "Без имени" : System.IO.Path.GetFileNameWithoutExtension(_doc.PathName);
+        }
+
+        private string GetCurrentRevitViewName()
+        {
+            Autodesk.Revit.DB.View activeView = _doc == null ? null : _doc.ActiveView;
+            return activeView == null || string.IsNullOrWhiteSpace(activeView.Name)
+                ? "Активный вид не найден"
+                : activeView.Name;
+        }
+
+        private long GetCurrentRequestElapsedMs()
+        {
+            return _currentRequestStopwatch == null ? 0 : _currentRequestStopwatch.ElapsedMilliseconds;
+        }
+
+        private bool IsCloseOrCancellationRequested(CancellationToken cancellationToken)
+        {
+            return _isClosing || cancellationToken.IsCancellationRequested || !IsLoaded;
+        }
+
+        private void CancelCurrentRequest(string reason)
+        {
+            CancellationTokenSource cancellation = _currentRequestCancellation;
+            if (cancellation == null || cancellation.IsCancellationRequested)
+                return;
+
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "REQUEST.CANCEL", new Dictionary<string, object>
+            {
+                { "reason", reason },
+                { "isRequestInProgress", _isRequestInProgress },
+                { "elapsedMs", GetCurrentRequestElapsedMs() }
+            });
+
+            try
+            {
+                cancellation.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
+
+        private static string TrimForDiagnostics(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            string normalized = value.Replace("\r", " ").Replace("\n", " ").Trim();
+            if (normalized.Length <= maxLength)
+                return normalized;
+
+            return normalized.Substring(0, maxLength) + "...";
+        }
+
+        private static Dictionary<string, object> GetResponseDiagnostics(JObject responseJObject)
+        {
+            JObject message = responseJObject?["choices"]?[0]?["message"] as JObject;
+            JArray toolCalls = message?["tool_calls"] as JArray;
+            string content = message?["content"]?.ToString() ?? string.Empty;
+
+            return new Dictionary<string, object>
+            {
+                { "hasChoices", responseJObject?["choices"] != null },
+                { "hasMessage", message != null },
+                { "toolCalls", toolCalls == null ? 0 : toolCalls.Count },
+                { "contentLength", content.Length }
+            };
+        }
+
+        private string FormatToolAreaStatsForDiagnostics()
+        {
+            Dictionary<string, int> stats = GetCurrentToolAreaStatsForLog();
+            if (stats.Count == 0)
+                return "";
+
+            return string.Join(",", stats.Select(i => i.Key + ":" + i.Value));
+        }
+
+        private void RegisterToolAreaCall(string toolName)
+        {
+            ModelToolArea area;
+            if (string.IsNullOrWhiteSpace(toolName) || !ToolAreas.TryGetValue(toolName, out area))
+                area = ModelToolArea.Other;
+
+            int currentCount;
+            _currentToolAreaStats.TryGetValue(area, out currentCount);
+            _currentToolAreaStats[area] = currentCount + 1;
+        }
+
+        private static string GetToolAreaName(string toolName)
+        {
+            ModelToolArea area;
+            if (string.IsNullOrWhiteSpace(toolName) || !ToolAreas.TryGetValue(toolName, out area))
+                area = ModelToolArea.Other;
+
+            return area.ToString();
+        }
+
+        private Dictionary<string, int> GetCurrentToolAreaStatsForLog()
+        {
+            Dictionary<string, int> stats = new Dictionary<string, int>();
+            foreach (ModelToolArea area in Enum.GetValues(typeof(ModelToolArea)))
+            {
+                int count;
+                if (_currentToolAreaStats.TryGetValue(area, out count) && count > 0)
+                    stats[area.ToString()] = count;
+            }
+
+            return stats;
+        }
+
+
+
 
 
         private async Task ProcessSingleToolCall(JObject toolCall)
         {
             string toolName = toolCall["function"]?["name"]?.ToString();
+            RegisterToolAreaCall(toolName);
             string toolCallId = toolCall["id"]?.ToString() ?? Guid.NewGuid().ToString();
 
             string toolResult = "";
             var argsJson = toolCall["function"]?["arguments"]?.ToString() ?? "{}";
             var argsObj = JObject.Parse(argsJson);  // ← ТУТ объявляем!
-
-            switch (toolName)
+            Stopwatch toolStopwatch = Stopwatch.StartNew();
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "TOOL.START", new Dictionary<string, object>
             {
-                case "get_active_view_in_revit":
-                    var viewInfo = Commands.GetActiveViewInfo(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(viewInfo);
-                    //ChatHistory.Children.Add(CreateMessageBlock($"✅ Активный вид: {viewInfo.ViewName} (ID: {viewInfo.ViewId}, Тип: {viewInfo.ViewType})", false));
-                    break;
+                { "toolName", toolName },
+                { "argsLength", argsJson.Length },
+                { "toolArea", GetToolAreaName(toolName) }
+            });
 
-                case "get_all_elements_shown_in_view":
-                    var viewIdParam = toolCall["function"]?["arguments"]?.ToString();
-                    var args = JObject.Parse(viewIdParam ?? "{}");
-                    int viewId = args["viewOrSheetId"]?.Value<int>() ?? IDHelper.ElIdInt(_doc.ActiveView.Id);
-                    var elementsResult = Commands.GetAllElementsShownInView(_doc, viewId);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementsResult);
+            try
+            {
 
-                    break;
+                switch (toolName)
+                {
+                    case "get_active_view_in_revit":
+                        var viewInfo = Commands.GetActiveViewInfo(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(viewInfo);
+                        //ChatHistory.Children.Add(CreateMessageBlock($"✅ Активный вид: {viewInfo.ViewName} (ID: {viewInfo.ViewId}, Тип: {viewInfo.ViewType})", false));
+                        break;
 
-                case "get_category_by_keyword":
-                    var keywordParam = toolCall["function"]?["arguments"]?.ToString();
-                    var keywordArgs = JObject.Parse(keywordParam ?? "{}");
-                    string keyword = keywordArgs["keyword"]?.Value<string>() ?? "";
-                    var categories = Commands.GetCategoryByKeyword(_doc, keyword);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(categories);
+                    case "get_all_elements_shown_in_view":
+                        var viewIdParam = toolCall["function"]?["arguments"]?.ToString();
+                        var args = JObject.Parse(viewIdParam ?? "{}");
+                        int viewId = args["viewOrSheetId"]?.Value<int>() ?? IDHelper.ElIdInt(_doc.ActiveView.Id);
+                        var elementsResult = Commands.GetAllElementsShownInView(_doc, viewId);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementsResult);
 
-                    //foreach (var cat in categories.Take(3))
-                    //    ChatHistory.Children.Add(CreateMessageBlock($"   • {cat.Name} (ID: {cat.Id})", false));
-                    break;
+                        break;
 
-                case "get_elements_by_category":
-                    var catParam = toolCall["function"]?["arguments"]?.ToString();
-                    var catArgs = JObject.Parse(catParam ?? "{}");
-                    int categoryId = catArgs["categoryId"]?.Value<int>() ?? 0;
-                    var elementIds = Commands.GetElementsByCategory(_doc, categoryId);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementIds);
+                    case "get_category_by_keyword":
+                        var keywordParam = toolCall["function"]?["arguments"]?.ToString();
+                        var keywordArgs = JObject.Parse(keywordParam ?? "{}");
+                        string keyword = keywordArgs["keyword"]?.Value<string>() ?? "";
+                        var categories = Commands.GetCategoryByKeyword(_doc, keyword);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(categories);
 
-                    break;
+                        //foreach (var cat in categories.Take(3))
+                        //    ChatHistory.Children.Add(CreateMessageBlock($"   • {cat.Name} (ID: {cat.Id})", false));
+                        break;
 
-                case "get_model_categories":
-                    var allCats = Commands.GetModelCategories(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(allCats);
-                    break;
+                    case "get_elements_by_category":
+                        var catParam = toolCall["function"]?["arguments"]?.ToString();
+                        var catArgs = JObject.Parse(catParam ?? "{}");
+                        int categoryId = catArgs["categoryId"]?.Value<int>() ?? 0;
+                        var elementIds = Commands.GetElementsByCategory(_doc, categoryId);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementIds);
 
-                case "get_categories_from_elementids":
-                    argsJson = toolCall["function"]?["arguments"]?.ToString();
-                    argsObj = JObject.Parse(argsJson ?? "{}");
-                    var idsToken = argsObj["list_elementIds"];
-                    var ids = new List<int>();
-                    if (idsToken is JArray arr)
-                        ids = arr.Select(t => t.Value<int>()).ToList();
-                    var catMap = Commands.GetCategoriesFromElementIds(_doc, ids);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(catMap);
-                    break;
+                        break;
 
-                case "get_element_types_for_elementids":
-                    var typeArgsJson = toolCall["function"]?["arguments"]?.ToString();
-                    var typeArgsObj = JObject.Parse(typeArgsJson ?? "{}");
-                    var typeIdsToken = typeArgsObj["list_elementIds"];
-                    ids = new List<int>();
-                    if (typeIdsToken is JArray typeArr)
-                        ids = typeArr.Select(t => t.Value<int>()).ToList();
-                    var result = Commands.GetElementTypesForElementIds(_doc, ids);
-                    var typeMap = result.GetType().GetProperty("type_ids")?.GetValue(result) as Dictionary<int, ElementTypeInfo>;
-                    int count = (int)(result.GetType().GetProperty("count")?.GetValue(result) ?? 0);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result);
-                    break;
+                    case "get_model_categories":
+                        var allCats = Commands.GetModelCategories(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(allCats);
+                        break;
 
-                case "get_all_elementids_for_specific_type_ids":
+                    case "get_categories_from_elementids":
+                        argsJson = toolCall["function"]?["arguments"]?.ToString();
+                        argsObj = JObject.Parse(argsJson ?? "{}");
+                        var idsToken = argsObj["list_elementIds"];
+                        var ids = new List<int>();
+                        if (idsToken is JArray arr)
+                            ids = arr.Select(t => t.Value<int>()).ToList();
+                        var catMap = Commands.GetCategoriesFromElementIds(_doc, ids);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(catMap);
+                        break;
 
-                    var typeIdsToken_8 = argsObj["list_typeIds"];
-                    var typeIds = new List<int>();
-                    if (typeIdsToken_8 is JArray typeArray)
-                        typeIds = typeArray.Select(t => t.Value<int>()).ToList();
-                    var result_8 = Commands.GetAllElementIdsForSpecificTypeIds(_doc, typeIds);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_8);
-                    break;
+                    case "get_element_types_for_elementids":
+                        var typeArgsJson = toolCall["function"]?["arguments"]?.ToString();
+                        var typeArgsObj = JObject.Parse(typeArgsJson ?? "{}");
+                        var typeIdsToken = typeArgsObj["list_elementIds"];
+                        ids = new List<int>();
+                        if (typeIdsToken is JArray typeArr)
+                            ids = typeArr.Select(t => t.Value<int>()).ToList();
+                        var result = Commands.GetElementTypesForElementIds(_doc, ids);
+                        var typeMap = result.GetType().GetProperty("type_ids")?.GetValue(result) as Dictionary<int, ElementTypeInfo>;
+                        int count = (int)(result.GetType().GetProperty("count")?.GetValue(result) ?? 0);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result);
+                        break;
 
-                case "get_all_used_families_in_model":
+                    case "get_all_elementids_for_specific_type_ids":
 
-                    var familyResult = Commands.GetAllUsedFamiliesInModel(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(familyResult);
-                    break;
+                        var typeIdsToken_8 = argsObj["list_typeIds"];
+                        var typeIds = new List<int>();
+                        if (typeIdsToken_8 is JArray typeArray)
+                            typeIds = typeArray.Select(t => t.Value<int>()).ToList();
+                        var result_8 = Commands.GetAllElementIdsForSpecificTypeIds(_doc, typeIds);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_8);
+                        break;
 
-                case "get_all_used_families_of_category":
+                    case "get_all_used_families_in_model":
 
-                    int categoryId_9 = argsObj["categoryId"]?.Value<int>() ?? 0;
-                    var familyResult_9 = Commands.GetAllUsedFamiliesOfCategory(_doc, categoryId_9);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(familyResult_9);
-                    break;
+                        var familyResult = Commands.GetAllUsedFamiliesInModel(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(familyResult);
+                        break;
 
-                case "get_all_used_types_of_a_family":
-                    string familyName = argsObj["familyName"]?.Value<string>() ?? "";
-                    var result_11 = Commands.GetAllUsedTypesOfAFamily(_doc, familyName);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_11);
-                    break;
+                    case "get_all_used_families_of_category":
 
-                case "get_all_elements_of_specific_families":
-                    var names = new List<string>();
-                    if (argsObj["familyNames"] is JArray famArr)
-                        names = famArr.Select(t => t.Value<string>()).ToList();
-                    var result_12 = Commands.GetAllElementsOfSpecificFamilies(_doc, names);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_12);
-                    break;
+                        int categoryId_9 = argsObj["categoryId"]?.Value<int>() ?? 0;
+                        var familyResult_9 = Commands.GetAllUsedFamiliesOfCategory(_doc, categoryId_9);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(familyResult_9);
+                        break;
 
-                case "get_parameters_from_elementid":
-                    int elementId = argsObj["elementId"]?.Value<int>() ?? 0;
-                    bool getIdValuesAsNames = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
-                    var result_13 = Commands.GetParametersFromElementId(_doc, elementId, getIdValuesAsNames);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_13);
-                    break;
+                    case "get_all_used_types_of_a_family":
+                        string familyName = argsObj["familyName"]?.Value<string>() ?? "";
+                        var result_11 = Commands.GetAllUsedTypesOfAFamily(_doc, familyName);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_11);
+                        break;
 
-                case "get_parameter_value_for_element_ids":
-                    var ids_14 = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_14)
-                        ids = arr_14.Select(t => t.Value<int>()).ToList();
-                    int idParameter = argsObj["idParameter"]?.Value<int>() ?? 0;
-                    bool getIdValuesAsNames_14 = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
-                    var result_14 = Commands.GetParameterValueForElementIds(_doc, ids_14, idParameter, getIdValuesAsNames_14);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_14);
-                    break;
+                    case "get_all_elements_of_specific_families":
+                        var names = new List<string>();
+                        if (argsObj["familyNames"] is JArray famArr)
+                            names = famArr.Select(t => t.Value<string>()).ToList();
+                        var result_12 = Commands.GetAllElementsOfSpecificFamilies(_doc, names);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_12);
+                        break;
 
-                case "get_all_additional_properties_from_elementid":
-                    int elementId_15 = argsObj["elementId"]?.Value<int>() ?? 0;
-                    var result_15 = Commands.GetAllAdditionalPropertiesFromElementId(_doc, elementId_15);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_15);
-                    break;
+                    case "get_parameters_from_elementid":
+                        int elementId = argsObj["elementId"]?.Value<int>() ?? 0;
+                        bool getIdValuesAsNames = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
+                        var result_13 = Commands.GetParametersFromElementId(_doc, elementId, getIdValuesAsNames);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_13);
+                        break;
 
-                case "get_additional_property_for_all_elementids":
-                    var ids_16 = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_16)
-                        ids = arr_16.Select(t => t.Value<int>()).ToList();
-                    string propertyName = argsObj["propertyName"]?.Value<string>() ?? "";
-                    var result_16 = Commands.GetAdditionalPropertyForAllElementIds(_doc, ids_16, propertyName);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_16);
-                    break;
+                    case "get_parameter_value_for_element_ids":
+                        var ids_14 = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_14)
+                            ids_14 = arr_14.Select(t => t.Value<int>()).ToList();
+                        int idParameter = argsObj["idParameter"]?.Value<int>() ?? 0;
+                        bool getIdValuesAsNames_14 = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
+                        var result_14 = Commands.GetParameterValueForElementIds(_doc, ids_14, idParameter, getIdValuesAsNames_14);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_14);
+                        break;
 
-                case "get_location_for_element_ids":
-                    var ids_17 = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_17)
-                        ids_17 = arr_17.Select(t => t.Value<int>()).ToList();
+                    case "get_all_additional_properties_from_elementid":
+                        int elementId_15 = argsObj["elementId"]?.Value<int>() ?? 0;
+                        var result_15 = Commands.GetAllAdditionalPropertiesFromElementId(_doc, elementId_15);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_15);
+                        break;
 
-                    var result_17 = Commands.GetLocationForElementIds(_doc, ids_17);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_17);
-                    break;
+                    case "get_additional_property_for_all_elementids":
+                        var ids_16 = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_16)
+                            ids_16 = arr_16.Select(t => t.Value<int>()).ToList();
+                        string propertyName = argsObj["propertyName"]?.Value<string>() ?? "";
+                        var result_16 = Commands.GetAdditionalPropertyForAllElementIds(_doc, ids_16, propertyName);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_16);
+                        break;
 
-                case "get_boundingboxes_for_element_ids":
-                    var ids_18 = new List<int>();
-                    int? idSheet = null;
-                    if (argsObj["list_elementIds"] is JArray arr_18)
-                        ids = arr_18.Select(t => t.Value<int>()).ToList();
+                    case "get_revitlookup_like_properties":
+                        int elementId_lookup = argsObj["elementId"]?.Value<int>() ?? 0;
+                        bool includeParameters_lookup = argsObj["includeParameters"]?.Value<bool>() ?? true;
+                        bool includeApiProperties_lookup = argsObj["includeApiProperties"]?.Value<bool>() ?? true;
+                        int maxValueLength_lookup = argsObj["maxValueLength"]?.Value<int>() ?? 1000;
+                        var result_lookup = Commands.GetRevitLookupLikeProperties(
+                            _doc,
+                            elementId_lookup,
+                            maxValueLength_lookup);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_lookup);
+                        break;
 
-                    if (argsObj["idSheet"] != null)
-                        idSheet = argsObj["idSheet"].Value<int?>();
+                    case "get_location_for_element_ids":
+                        var ids_17 = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_17)
+                            ids_17 = arr_17.Select(t => t.Value<int>()).ToList();
 
-                    var result_18 = Commands.GetBoundingBoxesForElementIds(_doc, ids_18, idSheet);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_18);
-                    break;
+                        var result_17 = Commands.GetLocationForElementIds(_doc, ids_17);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_17);
+                        break;
 
-                case "get_boundary_lines":
-                    var ids_19 = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_19)
-                        ids_19 = arr_19.Select(t => t.Value<int>()).ToList();
-                    var result_19 = Commands.GetBoundaryLines(_doc, ids_19);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_19);
-                    break;
+                    case "get_boundingboxes_for_element_ids":
+                        var ids_18 = new List<int>();
+                        int? idSheet = null;
+                        if (argsObj["list_elementIds"] is JArray arr_18)
+                            ids = arr_18.Select(t => t.Value<int>()).ToList();
 
-                case "get_room_boundary_lines":
-                    var ids_room = new List<int>();
-                    // Проверяем наличие параметра list_roomIds
-                    if (argsObj["list_roomIds"] is JArray arr_room)
-                        ids_room = arr_room.Select(t => t.Value<int>()).ToList();
-                    // Вызываем метод получения границ помещений
-                    var result_room = Commands.GetRoomBoundaryLines(_doc, ids_room);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_room);
-                    break;
+                        if (argsObj["idSheet"] != null)
+                            idSheet = argsObj["idSheet"].Value<int?>();
 
-                case "get_host_id_for_element_ids":
-                    var ids_20 = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_20)
-                        ids = arr_20.Select(t => t.Value<int>()).ToList();
-                    var result_20 = Commands.GetHostIdForElementIds(_doc, ids_20);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_20);
-                    break;
+                        var result_18 = Commands.GetBoundingBoxesForElementIds(_doc, ids_18, idSheet);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_18);
+                        break;
 
-                case "get_object_classes_from_elementids":
-                    var ids_21 = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_21)
-                        ids_21 = arr_21.Select(t => t.Value<int>()).ToList();
-                    var result_21 = Commands.GetObjectClassesFromElementIds(_doc, ids_21);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_21);
-                    break;
+                    case "get_boundary_lines":
+                        var ids_19 = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_19)
+                            ids_19 = arr_19.Select(t => t.Value<int>()).ToList();
+                        var result_19 = Commands.GetBoundaryLines(_doc, ids_19);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_19);
+                        break;
 
-                case "get_material_layers_from_types":
-                    var ids_22 = new List<int>();
+                    case "get_room_boundary_lines":
+                        var ids_room = new List<int>();
+                        // Проверяем наличие параметра list_roomIds
+                        if (argsObj["list_roomIds"] is JArray arr_room)
+                            ids_room = arr_room.Select(t => t.Value<int>()).ToList();
+                        // Вызываем метод получения границ помещений
+                        var result_room = Commands.GetRoomBoundaryLines(_doc, ids_room);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_room);
+                        break;
 
-                    if (argsObj["list_elementIds"] is JArray arr_22)
-                        ids_22 = arr_22.Select(t => t.Value<int>()).ToList();
+                    case "get_host_id_for_element_ids":
+                        var ids_20 = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_20)
+                            ids = arr_20.Select(t => t.Value<int>()).ToList();
+                        var result_20 = Commands.GetHostIdForElementIds(_doc, ids_20);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_20);
+                        break;
 
-                    var result_22 = Commands.GetMaterialLayersFromTypes(_doc, ids_22);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_22);
-                    break;
+                    case "get_object_classes_from_elementids":
+                        var ids_21 = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_21)
+                            ids_21 = arr_21.Select(t => t.Value<int>()).ToList();
+                        var result_21 = Commands.GetObjectClassesFromElementIds(_doc, ids_21);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_21);
+                        break;
 
-                case "get_model_file_info":
-                    var result_fileInfo = Commands.GetModelFileInfo(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_fileInfo);
-                    break;
+                    case "get_material_layers_from_types":
+                        var ids_22 = new List<int>();
+
+                        if (argsObj["list_elementIds"] is JArray arr_22)
+                            ids_22 = arr_22.Select(t => t.Value<int>()).ToList();
+
+                        var result_22 = Commands.GetMaterialLayersFromTypes(_doc, ids_22);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_22);
+                        break;
+
+                    case "get_model_file_info":
+                        var result_fileInfo = Commands.GetModelFileInfo(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_fileInfo);
+                        break;
 #if R2020
                 case "get_all_project_units":
                     var result_units = Commands.GetAllProjectUnits(_doc);
                     toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_units);
                     break;
 #endif
-                case "get_all_warnings_in_the_model":
-                    var result_warnings = Commands.GetAllWarningsInTheModel(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_warnings);
-                    break;
-
-                case "get_all_workset_information":
-                    var result_worksets = Commands.GetAllWorksetInformation(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_worksets);
-                    break;
-
-                case "get_worksets_from_elementids":
-                    var ids_workset = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_workset)
-                        ids_workset = arr_workset.Select(t => t.Value<int>()).ToList();
-
-                    var result_workset = Commands.GetWorksetsFromElementIds(_doc, ids_workset);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_workset);
-                    break;
-
-                case "get_worksharing_information_for_element_ids":
-                    var ids_worksharing = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_worksharing)
-                        ids_worksharing = arr_worksharing.Select(t => t.Value<int>()).ToList();
-
-                    var result_worksharing = Commands.GetWorksharingInformationForElementIds(_doc, ids_worksharing);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_worksharing);
-                    break;
-
-                case "get_user_selection_in_revit":
-                    var result_selection = Commands.GetUserSelectionInRevit(_doc, _uiDoc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_selection);
-                    break;
-
-                case "set_user_selection_in_revit":
-                    var ids_selection = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_selection)
-                        ids_selection = arr_selection.Select(t => t.Value<int>()).ToList();
-
-                    var result_selection_30 = Commands.SetUserSelectionInRevit(_doc, _uiDoc, ids_selection);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_selection_30);
-                    break;
-
-                case "get_graphic_overrides_for_element_ids_in_view":
-                    var ids_overrides = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_overrides)
-                        ids_overrides = arr_overrides.Select(t => t.Value<int>()).ToList();
-
-                    int viewId_31 = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                    if (viewId_31 == -1)
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                    case "get_all_warnings_in_the_model":
+                        var result_warnings = Commands.GetAllWarningsInTheModel(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_warnings);
                         break;
-                    }
 
-                    var result_overrides = Commands.GetGraphicOverridesForElementIdsInView(_doc, ids_overrides, viewId_31);
-                    toolResult = JsonConvert.SerializeObject(result_overrides);
-                    break;
-
-                case "get_graphic_filters_applied_to_views":
-                    var ids_filters = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_filters)
-                        ids_filters = arr_filters.Select(t => t.Value<int>()).ToList();
-
-                    var result_filters = Commands.GetGraphicFiltersAppliedToViews(_doc, ids_filters);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_filters);
-                    break;
-
-                case "get_all_parameter_filters_in_model":
-                    var result_allFilters = Commands.GetAllParameterFiltersInModel(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_allFilters);
-                    break;
-
-                case "get_graphic_overrides_view_filters":
-                    var ids_filterOverrides = new List<int>();
-                    if (argsObj["list_filterIds"] is JArray arr_filterOverrides)
-                        ids_filterOverrides = arr_filterOverrides.Select(t => t.Value<int>()).ToList();
-                    int viewIdFilter = argsObj["viewId"]?.Value<int>() ?? -1;
-                    if (viewIdFilter == -1)
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                    case "get_all_workset_information":
+                        var result_worksets = Commands.GetAllWorksetInformation(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_worksets);
                         break;
-                    }
-                    var result_filterOverrides = Commands.GetGraphicOverridesViewFilters(_doc, ids_filterOverrides, viewIdFilter);
-                    toolResult = JsonConvert.SerializeObject(result_filterOverrides);
-                    break;
 
-                case "get_category_visibility_overrides_in_view":
-                    int viewIdForCategory = argsObj["viewId"]?.Value<int>() ?? -1;
+                    case "get_worksets_from_elementids":
+                        var ids_workset = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_workset)
+                            ids_workset = arr_workset.Select(t => t.Value<int>()).ToList();
 
-                    if (viewIdForCategory == -1)
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                        var result_workset = Commands.GetWorksetsFromElementIds(_doc, ids_workset);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_workset);
                         break;
-                    }
 
-                    var result_categoryOverrides = Commands.GetCategoryVisibilityOverridesInView(_doc, viewIdForCategory);
-                    toolResult = JsonConvert.SerializeObject(result_categoryOverrides);
-                    break;
+                    case "get_worksharing_information_for_element_ids":
+                        var ids_worksharing = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_worksharing)
+                            ids_worksharing = arr_worksharing.Select(t => t.Value<int>()).ToList();
 
-                case "get_workset_visibility_in_view":
-                    int viewIdForWorkset = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                    if (viewIdForWorkset == -1)
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                        var result_worksharing = Commands.GetWorksharingInformationForElementIds(_doc, ids_worksharing);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_worksharing);
                         break;
-                    }
 
-                    var result_worksetVisibility = Commands.GetWorksetVisibilityInView(_doc, viewIdForWorkset);
-                    toolResult = JsonConvert.SerializeObject(result_worksetVisibility);
-                    break;
-
-                case "get_link_graphics_overrides_in_view":
-                    int viewIdForLink = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                    if (viewIdForLink == -1)
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                    case "get_user_selection_in_revit":
+                        var result_selection = Commands.GetUserSelectionInRevit(_doc, _uiDoc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_selection);
                         break;
-                    }
 
-                    var result_linkOverrides = Commands.GetLinkGraphicsOverridesInView(_doc, viewIdForLink);
-                    toolResult = JsonConvert.SerializeObject(result_linkOverrides);
-                    break;
+                    case "set_user_selection_in_revit":
+                        var ids_selection = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_selection)
+                            ids_selection = arr_selection.Select(t => t.Value<int>()).ToList();
 
-                case "get_viewports_and_schedules_on_sheets":
-                    var ids_sheets = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_sheets)
-                        ids_sheets = arr_sheets.Select(t => t.Value<int>()).ToList();
-
-                    var result_sheets = Commands.GetViewportsAndSchedulesOnSheets(_doc, ids_sheets);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sheets);
-                    break;
-
-                case "get_schedules_info_and_columns":
-                    var ids_schedules = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_schedules)
-                        ids_schedules = arr_schedules.Select(t => t.Value<int>()).ToList();
-
-                    var result_schedules = Commands.GetSchedulesInfoAndColumns(_doc, ids_schedules);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_schedules);
-                    break;
-
-                case "get_schedule_sorting_info":
-                    var ids_sorting = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_sorting)
-                        ids_sorting = arr_sorting.Select(t => t.Value<int>()).ToList();
-
-                    var result_sorting = Commands.GetScheduleSortingInfo(_doc, ids_sorting);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sorting);
-                    break;
-
-                //case "get_schedule_rows_with_elements":
-                //    int scheduleIdForRows = argsObj["scheduleId"]?.Value<int>() ?? -1;
-
-                //    if (scheduleIdForRows == -1)
-                //    {
-                //        toolResult = JsonConvert.SerializeObject(new { error = "Не указан scheduleId", success = false });
-                //        break;
-                //    }
-
-                //    var result_rows = Commands.GetScheduleRowsWithElements(_doc, scheduleIdForRows);
-                //    toolResult = JsonConvert.SerializeObject(result_rows);
-                //    break;
-
-
-                case "get_if_elements_pass_filter":
-                    int filterId = argsObj["filterId"]?.Value<int>() ?? -1;
-
-                    var ids_passFilter = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_passFilter)
-                        ids_passFilter = arr_passFilter.Select(t => t.Value<int>()).ToList();
-
-                    if (filterId == -1)
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указан filterId" });
+                        var result_selection_30 = Commands.SetUserSelectionInRevit(_doc, _uiDoc, ids_selection);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_selection_30);
                         break;
-                    }
 
-                    var result_passFilter = Commands.GetIfElementsPassFilter(_doc, filterId, ids_passFilter);
-                    toolResult = JsonConvert.SerializeObject(result_passFilter);
-                    break;
+                    case "get_graphic_overrides_for_element_ids_in_view":
+                        var ids_overrides = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_overrides)
+                            ids_overrides = arr_overrides.Select(t => t.Value<int>()).ToList();
 
-                case "set_view_section_box_to_elements":
-                    var ids_sectionBox = new List<int>();
-                    if (argsObj["list_elementIds"] is JArray arr_sectionBox)
-                        ids_sectionBox = arr_sectionBox.Select(t => t.Value<int>()).ToList();
+                        int viewId_31 = argsObj["viewId"]?.Value<int>() ?? -1;
 
-                    var result_sectionBox = Commands.SetViewSectionBoxToElements(_doc, _uiDoc, ids_sectionBox);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sectionBox);
-                    break;
+                        if (viewId_31 == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                            break;
+                        }
 
-                case "get_journal_entries_since":
-                    string dateTimeStr = argsObj["dateTime"]?.Value<string>() ?? "";
-
-                    if (string.IsNullOrEmpty(dateTimeStr))
-                    {
-                        toolResult = JsonConvert.SerializeObject(new { error = "Не указана дата", success = false });
+                        var result_overrides = Commands.GetGraphicOverridesForElementIdsInView(_doc, ids_overrides, viewId_31);
+                        toolResult = JsonConvert.SerializeObject(result_overrides);
                         break;
-                    }
 
-                    var result_journal = Commands.GetJournalEntriesSince(_doc, dateTimeStr);
-                    toolResult = JsonConvert.SerializeObject(result_journal);
-                    break;
+                    case "get_graphic_filters_applied_to_views":
+                        var ids_filters = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_filters)
+                            ids_filters = arr_filters.Select(t => t.Value<int>()).ToList();
+
+                        var result_filters = Commands.GetGraphicFiltersAppliedToViews(_doc, ids_filters);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_filters);
+                        break;
+
+                    case "get_all_parameter_filters_in_model":
+                        var result_allFilters = Commands.GetAllParameterFiltersInModel(_doc);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_allFilters);
+                        break;
+
+                    case "get_graphic_overrides_view_filters":
+                        var ids_filterOverrides = new List<int>();
+                        if (argsObj["list_filterIds"] is JArray arr_filterOverrides)
+                            ids_filterOverrides = arr_filterOverrides.Select(t => t.Value<int>()).ToList();
+                        int viewIdFilter = argsObj["viewId"]?.Value<int>() ?? -1;
+                        if (viewIdFilter == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                            break;
+                        }
+                        var result_filterOverrides = Commands.GetGraphicOverridesViewFilters(_doc, ids_filterOverrides, viewIdFilter);
+                        toolResult = JsonConvert.SerializeObject(result_filterOverrides);
+                        break;
+
+                    case "get_category_visibility_overrides_in_view":
+                        int viewIdForCategory = argsObj["viewId"]?.Value<int>() ?? -1;
+
+                        if (viewIdForCategory == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                            break;
+                        }
+
+                        var result_categoryOverrides = Commands.GetCategoryVisibilityOverridesInView(_doc, viewIdForCategory);
+                        toolResult = JsonConvert.SerializeObject(result_categoryOverrides);
+                        break;
+
+                    case "get_workset_visibility_in_view":
+                        int viewIdForWorkset = argsObj["viewId"]?.Value<int>() ?? -1;
+
+                        if (viewIdForWorkset == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                            break;
+                        }
+
+                        var result_worksetVisibility = Commands.GetWorksetVisibilityInView(_doc, viewIdForWorkset);
+                        toolResult = JsonConvert.SerializeObject(result_worksetVisibility);
+                        break;
+
+                    case "get_link_graphics_overrides_in_view":
+                        int viewIdForLink = argsObj["viewId"]?.Value<int>() ?? -1;
+
+                        if (viewIdForLink == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                            break;
+                        }
+
+                        var result_linkOverrides = Commands.GetLinkGraphicsOverridesInView(_doc, viewIdForLink);
+                        toolResult = JsonConvert.SerializeObject(result_linkOverrides);
+                        break;
+
+                    case "get_viewports_and_schedules_on_sheets":
+                        var ids_sheets = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_sheets)
+                            ids_sheets = arr_sheets.Select(t => t.Value<int>()).ToList();
+
+                        var result_sheets = Commands.GetViewportsAndSchedulesOnSheets(_doc, ids_sheets);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sheets);
+                        break;
+
+                    case "get_schedules_info_and_columns":
+                        var ids_schedules = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_schedules)
+                            ids_schedules = arr_schedules.Select(t => t.Value<int>()).ToList();
+
+                        var result_schedules = Commands.GetSchedulesInfoAndColumns(_doc, ids_schedules);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_schedules);
+                        break;
+
+                    case "get_schedule_sorting_info":
+                        var ids_sorting = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_sorting)
+                            ids_sorting = arr_sorting.Select(t => t.Value<int>()).ToList();
+
+                        var result_sorting = Commands.GetScheduleSortingInfo(_doc, ids_sorting);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sorting);
+                        break;
+
+                    //case "get_schedule_rows_with_elements":
+                    //    int scheduleIdForRows = argsObj["scheduleId"]?.Value<int>() ?? -1;
+
+                    //    if (scheduleIdForRows == -1)
+                    //    {
+                    //        toolResult = JsonConvert.SerializeObject(new { error = "Не указан scheduleId", success = false });
+                    //        break;
+                    //    }
+
+                    //    var result_rows = Commands.GetScheduleRowsWithElements(_doc, scheduleIdForRows);
+                    //    toolResult = JsonConvert.SerializeObject(result_rows);
+                    //    break;
 
 
-                //case "get_document_switched":
-                //    int linkElementId = argsObj["elementId"]?.Value<int>() ?? -1;
-                //    bool switchToMain = argsObj["switchMainDoc"]?.Value<bool>() ?? false;
+                    case "get_if_elements_pass_filter":
+                        int filterId = argsObj["filterId"]?.Value<int>() ?? -1;
 
-                //    var result_switch = Commands.GetDocumentSwitched(_doc, _uiDoc, linkElementId, switchToMain);
-                //    toolResult = JsonConvert.SerializeObject(result_switch);
-                //    break;
+                        var ids_passFilter = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_passFilter)
+                            ids_passFilter = arr_passFilter.Select(t => t.Value<int>()).ToList();
+
+                        if (filterId == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан filterId" });
+                            break;
+                        }
+
+                        var result_passFilter = Commands.GetIfElementsPassFilter(_doc, filterId, ids_passFilter);
+                        toolResult = JsonConvert.SerializeObject(result_passFilter);
+                        break;
+
+                    case "set_view_section_box_to_elements":
+                        var ids_sectionBox = new List<int>();
+                        if (argsObj["list_elementIds"] is JArray arr_sectionBox)
+                            ids_sectionBox = arr_sectionBox.Select(t => t.Value<int>()).ToList();
+
+                        var result_sectionBox = await _revitApiExternalEventHandler.SetViewSectionBoxToElementsAsync(_doc, _uiDoc, ids_sectionBox);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sectionBox);
+                        break;
+
+                    case "get_journal_entries_since":
+                        string dateTimeStr = argsObj["dateTime"]?.Value<string>() ?? "";
+
+                        if (string.IsNullOrEmpty(dateTimeStr))
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указана дата", success = false });
+                            break;
+                        }
+
+                        var result_journal = Commands.GetJournalEntriesSince(_doc, dateTimeStr);
+                        toolResult = JsonConvert.SerializeObject(result_journal);
+                        break;
+
+
+                    //case "get_document_switched":
+                    //    int linkElementId = argsObj["elementId"]?.Value<int>() ?? -1;
+                    //    bool switchToMain = argsObj["switchMainDoc"]?.Value<bool>() ?? false;
+
+                    //    var result_switch = Commands.GetDocumentSwitched(_doc, _uiDoc, linkElementId, switchToMain);
+                    //    toolResult = JsonConvert.SerializeObject(result_switch);
+                    //    break;
 
 
 
 
-                default:
-                    ChatHistory.Children.Add(CreateMessageBlock($"❓ Неизвестная команда: {toolName}", false));
-                    toolResult = "[]";
-                    break;
+                    default:
+                        ChatHistory.Children.Add(CreateMessageBlock($"❓ Неизвестная команда: {toolName}", false));
+                        toolResult = "[]";
+                        break;
+                }
+
+                // Добавляем результат в историю для ИИ
+                ChatHistoryMessages.Add(new
+                {
+                    role = "tool",
+                    tool_call_id = toolCallId,
+                    content = toolResult
+                });
+                toolStopwatch.Stop();
+                _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "TOOL.END", new Dictionary<string, object>
+                {
+                    { "toolName", toolName },
+                    { "resultLength", toolResult == null ? 0 : toolResult.Length },
+                    { "elapsedMs", toolStopwatch.ElapsedMilliseconds }
+                });
             }
-
-            // Добавляем результат в историю для ИИ
-            ChatHistoryMessages.Add(new
+            catch (Exception ex)
             {
-                role = "tool",
-                tool_call_id = toolCallId,
-                content = toolResult
-            });
+                toolStopwatch.Stop();
+                _diagnosticLogger.LogException(_currentDiagnosticRequestId, "TOOL.ERROR", ex, new Dictionary<string, object>
+                {
+                    { "toolName", toolName },
+                    { "elapsedMs", toolStopwatch.ElapsedMilliseconds }
+                });
+
+                toolResult = JsonConvert.SerializeObject(new
+                {
+                    success = false,
+                    error = ex.Message,
+                    exception_type = ex.GetType().FullName,
+                    tool_name = toolName
+                });
+
+                ChatHistoryMessages.Add(new
+                {
+                    role = "tool",
+                    tool_call_id = toolCallId,
+                    content = toolResult
+                });
+
+                _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "TOOL.ERROR_RESULT_ADDED", new Dictionary<string, object>
+                {
+                    { "toolName", toolName },
+                    { "toolCallId", toolCallId },
+                    { "resultLength", toolResult == null ? 0 : toolResult.Length }
+                });
+            }
         }
 
 
 
         private Border CreateMessageBlock(string text, bool isUser)
         {
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "CreateMessageBlock.START", new Dictionary<string, object>
+            {
+                { "isUser", isUser },
+                { "textLength", text == null ? 0 : text.Length }
+            });
             var border = new Border
             {
                 Margin = new Thickness(5, 5, 5, 5),                                                     // Внешние отступы со всех сторон по 5px
@@ -765,10 +1447,10 @@ namespace KPLN_CoordiantorAI.Forms
                     new SolidColorBrush(System.Windows.Media.Color.FromRgb(59, 130, 246)) :             // Синий (#3B82F6) для пользователя
                     new SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 229, 229)),             // Серый (#E5E5E5) для ИИ
                 HorizontalAlignment = isUser ? HorizontalAlignment.Right : HorizontalAlignment.Left,    // Выравнивание:  
-                MaxWidth = 450,                                                                         // Максимальная ширина (не растягивается бесконечно)
                 BorderBrush = new SolidColorBrush(Colors.Gray),                                         // Цвет рамки
                 BorderThickness = new Thickness(1)                                                      // Толщина рамки 1px
             };
+            BindBubbleWidth(border, text, isUser);
 
 
             if (isUser)
@@ -805,8 +1487,15 @@ namespace KPLN_CoordiantorAI.Forms
                     VerticalScrollBarVisibility = ScrollBarVisibility.Disabled                              // Отключаем вертикальную прокрутку
                 };
 
+
+                _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "MarkdownParse.START", new Dictionary<string, object>
+                {
+                    { "textLength", text == null ? 0 : text.Length }
+                });
                 // Парсим Markdown и заполняем RichTextBox
                 ParseMarkdownToRichTextBox(richTextBox, text);
+
+                _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "MarkdownParse.END");
                 border.Child = richTextBox;
             }
 
@@ -844,10 +1533,10 @@ namespace KPLN_CoordiantorAI.Forms
                 CornerRadius = new CornerRadius(12),
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 229, 229)),
                 HorizontalAlignment = HorizontalAlignment.Left,
-                MaxWidth = 450,
                 BorderBrush = new SolidColorBrush(Colors.Gray),
                 BorderThickness = new Thickness(1)
             };
+            BindBubbleWidth(border, "ИИ печатает", false);
 
             var richTextBox = new RichTextBox
             {
@@ -873,10 +1562,120 @@ namespace KPLN_CoordiantorAI.Forms
 
         }
 
-
-
-        private async Task<string> SendToOpenRouter(List<object> _messages)
+        private void BindBubbleWidth(Border border, string text, bool isUser)
         {
+            if (border == null || ChatScrollViewer == null)
+                return;
+
+            border.SetBinding(
+                FrameworkElement.WidthProperty,
+                new System.Windows.Data.Binding("ActualWidth")
+                {
+                    Source = ChatScrollViewer,
+                    Converter = new ModelBubbleWidthConverter(text, isUser),
+                    ConverterParameter = "0.65"
+                });
+        }
+
+
+        private class ModelBubbleWidthConverter : IValueConverter
+        {
+            private readonly string _text;
+            private readonly bool _isUser;
+
+            public ModelBubbleWidthConverter(string text, bool isUser)
+            {
+                _text = text ?? string.Empty;
+                _isUser = isUser;
+            }
+
+            public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            {
+                double chatWidth;
+
+                if (!(value is double) || (chatWidth = (double)value) <= 0)
+                    return DependencyProperty.UnsetValue;
+
+                double maxRatio = 0.65;
+
+                if (parameter != null)
+                {
+                    double parsedRatio;
+                    if (double.TryParse(
+                        parameter.ToString(),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out parsedRatio))
+                    {
+                        maxRatio = parsedRatio;
+                    }
+                }
+
+                double minWidth = _isUser ? 140 : 180;
+                double maxWidth = chatWidth * maxRatio;
+
+                string visibleText = NormalizeBubbleText(_text);
+                int longestLineLength = GetLongestLineLength(visibleText);
+
+                double charWidth = 7.2;
+                double calculatedWidth = longestLineLength * charWidth + 50;
+
+                if (calculatedWidth < minWidth)
+                    calculatedWidth = minWidth;
+
+                if (calculatedWidth > maxWidth)
+                    calculatedWidth = maxWidth;
+
+                return calculatedWidth;
+            }
+
+            public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            {
+                throw new NotSupportedException();
+            }
+
+            private static string NormalizeBubbleText(string text)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                    return string.Empty;
+
+                return text
+                    .Replace("\r\n", "\n")
+                    .Replace("\r", "\n")
+                    .Replace("**", "")
+                    .Replace("__", "")
+                    .Replace("`", "")
+                    .Replace("###", "")
+                    .Replace("##", "")
+                    .Replace("#", "")
+                    .Trim();
+            }
+
+            private static int GetLongestLineLength(string text)
+            {
+                if (string.IsNullOrWhiteSpace(text))
+                    return 0;
+
+                string[] lines = text.Split(new[] { '\n' }, StringSplitOptions.None);
+
+                int max = 0;
+
+                foreach (string line in lines)
+                {
+                    string trimmed = line == null ? string.Empty : line.Trim();
+
+                    if (trimmed.Length > max)
+                        max = trimmed.Length;
+                }
+
+                return max;
+            }
+        }
+
+
+        private async Task<string> SendToOpenRouter(List<object> _messages, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             _httpClient.DefaultRequestHeaders.Clear();
             // ⭐ ВЫБИРАЕМ URL И НАСТРОЙКИ В ЗАВИСИМОСТИ ОТ ТИПА ПОДКЛЮЧЕНИЯ ⭐
             string apiUrl;
@@ -1207,7 +2006,7 @@ namespace KPLN_CoordiantorAI.Forms
                         function = new
                         {
                             name = "get_parameters_from_elementid",
-                            description = "Возвращает ВСЕ параметры (по каждому парметру это: id параметра, имя, значение, storageType - типзначения, isReadOnly - только ли на чтение параметр (true) или нет(false)) одного конкретного элемента. Это основной инструмент для изучения доступных параметров. Рекомендуется вызывать первым перед массовым get_parameter_value_for_element_ids — чтобы узнать нужный idParameter. Обрати внимание что единица измерения в Revit не метры или миллиметры, а футы",
+                            description = "Возвращает ВСЕ параметры (по каждому парметру это: id параметра, имя, значение, storageType - типзначения, isReadOnly - только ли на чтение параметр (true) или нет(false)) одного конкретного элемента, parType - определяет какой это параметр (параметр экезмпляра или типоразмера). Это основной инструмент для изучения доступных параметров. Рекомендуется вызывать первым перед массовым get_parameter_value_for_element_ids — чтобы узнать нужный idParameter. Обрати внимание что единица измерения в Revit не метры или миллиметры, а футы",
                             parameters = new
                             {
                                 type = "object",
@@ -1314,6 +2113,43 @@ namespace KPLN_CoordiantorAI.Forms
                             }
                         }
                     },
+
+                    new
+                    {
+                        type = "function",
+                        function = new
+                        {
+                            name = "get_revitlookup_like_properties",
+                            description = "Возвращает RevitLookup-подобную информацию по одному элементу: публичные свойства Revit API класса элемента и специальные сложные свойства. " +
+                            "Для IndependentTag дополнительно возвращает GetTaggedLocalElementIds() и GetTaggedElementIds() с ElementId элементов которые туда попали. Для Dimension " +
+                            "дополнительно возвращает References (свойство показывает к каким элементам привязан размер) с ElementId элементов которые туда попали. " +
+                            "Для View3D возвращает GetSectionBox(). Для ViewSheet возвращает GetAllViewports(), GetAllPlacedViews() и Outline. " +
+                            "Для Viewport возвращает GetBoxCenter(), GetBoxOutline(), GetLabelOutline(), GetLabelOffset() и GetLabelLineLength(). " +
+                            "Для Room возвращает GetBoundarySegments(). Для Group и AssemblyInstance возвращает GetMemberIds(), " +
+                            "когда суммируешь количество элементов, полученных через это свойство, по категории, то делай это максимально точно, а не приблизительно" +
+                            "Используй, когда нужно понять, какие данные доступны у элемента через RevitLookup/API, или когда обычные параметры не дали нужное свойство. " +
+                            "Значения сложных объектов преобразуются в безопасный текст, длинные значения обрезаются по maxValueLength.",
+                            parameters = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    elementId = new
+                                    {
+                                        type = "integer",
+                                        description = "Element id элемента, который нужно исследовать."
+                                    },                                  
+                                    maxValueLength = new
+                                    {
+                                        type = "integer",
+                                        description = "Максимальная длина текстового значения одного свойства. По умолчанию 1000, допустимый диапазон в коде ограничен от 100 до 10000."
+                                    }
+                                },
+                                required = new[] { "elementId" }
+                            }
+                        }
+                    },
+
 
                     new
                     {
@@ -1831,15 +2667,14 @@ namespace KPLN_CoordiantorAI.Forms
                                           "- filterName: имя фильтра " +
                                           "- categories: список ID категорий, к которым применяется фильтр " +
                                           "- isFilterVisible: (bool) видимость элементов, прошедших фильтр (столбец 'Видимость'). Доступно для всех версий Revit 2014+. " +
+                                           "- isVisible: (bool) видимость элементов, прошедших фильтр (столбец 'Видимость'). " +
+                                          "- isEnabled: (bool|null) включён ли фильтр на виде (столбец 'Включить фильтр'), читается через View.GetIsFilterEnabled(filterId). " +
+                                          "- isEnabledAvailable: удалось ли получить статус включения фильтра через текущую версию Revit API. " +
+                                          "- isEnabledError: текст ошибки, если статус включения получить не удалось. " +
                                           "- hasRules: есть ли у фильтра правила " +
                                           "- ruleParameters: список ID параметров в правилах " +
                                           "- revitVersion: версия Revit " +
-                                          "ВАЖНОЕ ОГРАНИЧЕНИЕ API: " +
-                                          "Статус 'Включен/Выключен' фильтра (галочка в столбце 'Включить') НЕДОСТУПЕН через Revit API в версиях ниже 2025. " +
-                                          "Если пользователь спрашивает 'включён ли фильтр?' или 'активен ли фильтр?', вы должны ответить: " +
-                                          "\"В связи с ограничением Revit API я не могу получить информацию о том, включён ли этот фильтр на виде. " +
-                                          "Вы можете самостоятельно проверить это в настройках вида: Видимость/Графика → вкладка 'Фильтры' → столбец 'Включить фильтр'.\" " +
-                                          "НЕ ПЫТАЙТЕСЬ определить статус 'Включено' по isFilterVisible или другим полям — это разные понятия. " +
+                                          "Не путайте isEnabled и isVisible: isEnabled отвечает за галочку включения фильтра, isVisible — за видимость элементов, прошедших фильтр. " +
                                           "Полезно для: аудита настроек фильтров, проверки видимости элементов, анализа применённых фильтров.",
                             parameters = new
                             {
@@ -2468,9 +3303,10 @@ namespace KPLN_CoordiantorAI.Forms
 
 
 
+            string modelName = _connectionType == ConnectionType.OnlineAPI ? "deepseek-v4-flash" : "qwen3-8b";
             var requestBody = new
             {
-                model = _connectionType == ConnectionType.OnlineAPI ? "deepseek-v4-flash" : "qwen3-8b",
+                model = modelName,
                 messages = messagesWithSystem,
                 temperature = 0.7,
                 //max_tokens = 4000,
@@ -2480,8 +3316,54 @@ namespace KPLN_CoordiantorAI.Forms
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(requestBody);
             var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync(apiUrl, content);
-            var responseJson = await response.Content.ReadAsStringAsync();
+            Stopwatch httpStopwatch = Stopwatch.StartNew();
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "HTTP.START", new Dictionary<string, object>
+            {
+                { "apiUrl", apiUrl },
+                { "model", modelName },
+                { "connectionType", _connectionType },
+                { "jsonLength", json.Length },
+                { "messages", messagesWithSystem.Count },
+                { "tools", toolsArray.Length },
+                { "timeoutSeconds", _httpClient.Timeout.TotalSeconds }
+            });
+
+            HttpResponseMessage response = null;
+            string responseJson = string.Empty;
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                response = await _httpClient.PostAsync(apiUrl, content, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                responseJson = await response.Content.ReadAsStringAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                httpStopwatch.Stop();
+                _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "HTTP.END", new Dictionary<string, object>
+                {
+                    { "statusCode", (int)response.StatusCode },
+                    { "isSuccess", response.IsSuccessStatusCode },
+                    { "responseLength", responseJson == null ? 0 : responseJson.Length },
+                    { "elapsedMs", httpStopwatch.ElapsedMilliseconds }
+                });
+            }
+            catch (OperationCanceledException ex)
+            {
+                httpStopwatch.Stop();
+                _diagnosticLogger.LogException(_currentDiagnosticRequestId, "HTTP.CANCELED", ex, new Dictionary<string, object>
+                {
+                    { "elapsedMs", httpStopwatch.ElapsedMilliseconds }
+                });
+                throw;
+            }
+            catch (Exception ex)
+            {
+                httpStopwatch.Stop();
+                _diagnosticLogger.LogException(_currentDiagnosticRequestId, "HTTP.ERROR", ex, new Dictionary<string, object>
+                {
+                    { "elapsedMs", httpStopwatch.ElapsedMilliseconds }
+                });
+                throw;
+            }
 
 
             if (!response.IsSuccessStatusCode)
@@ -2513,21 +3395,41 @@ namespace KPLN_CoordiantorAI.Forms
 
                         // Сохраняем в логгер (нужно будет передать вопрос и ответ)
                         // Пока сохраняем в поле класса, чтобы использовать позже
-                        _lastCacheHit = cacheHit;
-                        _lastCacheMiss = cacheMiss;
-                        _lastCompletion = completion;
-                        _lastTotal = total;
+                        _lastCacheHit += cacheHit;
+                        _lastCacheMiss += cacheMiss;
+                        _lastCompletion += completion;
+                        _lastTotal += total;
+                        _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "USAGE.READ", new Dictionary<string, object>
+                        {
+                            { "cacheHit", cacheHit },
+                            { "cacheMiss", cacheMiss },
+                            { "completion", completion },
+                            { "total", total },
+                            { "accumulatedCacheHit", _lastCacheHit },
+                            { "accumulatedCacheMiss", _lastCacheMiss },
+                            { "accumulatedCompletion", _lastCompletion },
+                            { "accumulatedTotal", _lastTotal }
+                        });
+                    }
+                    else
+                    {
+                        _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "USAGE.MISSING");
                     }
                 }
                 catch (Exception ex)
                 {
+                    _diagnosticLogger.LogException(_currentDiagnosticRequestId, "USAGE.ERROR", ex);
                     System.Diagnostics.Debug.WriteLine($"Ошибка логирования токенов: {ex.Message}");
                 }
 
                 return responseJson;
             }
-            catch 
+            catch (Exception ex)
             {
+                _diagnosticLogger.LogException(_currentDiagnosticRequestId, "JSON_PARSE.ERROR", ex, new Dictionary<string, object>
+                {
+                    { "responsePreview", TrimForDiagnostics(responseJson, 500) }
+                });
                 return responseJson;  // Если не JSON — возвращаем как текст
             }
         }
@@ -2543,6 +3445,11 @@ namespace KPLN_CoordiantorAI.Forms
             if (string.IsNullOrEmpty(markdown))
                 return;
 
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "ParseMarkdownToRichTextBox.START", new Dictionary<string, object>
+            {
+                { "length", markdown.Length },
+                { "lines", markdown.Split('\n').Length }
+            });
             rtb.Document = new FlowDocument();
             var lines = markdown.Split('\n');
 
@@ -2606,6 +3513,10 @@ namespace KPLN_CoordiantorAI.Forms
             {
                 CreateTableInRichTextBox(rtb, tableRows, tableColumnCount);
             }
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "ParseMarkdownToRichTextBox.END", new Dictionary<string, object>
+            {
+                { "blocks", rtb.Document.Blocks.Count }
+            });
         }
 
         /// <summary>
@@ -2673,7 +3584,6 @@ namespace KPLN_CoordiantorAI.Forms
             var para = new Paragraph();
             para.Margin = new Thickness(0, 0, 0, 5);
 
-            // Заголовки
             if (line.StartsWith("### "))
             {
                 var run = new Run(line.Substring(4));
@@ -2704,7 +3614,6 @@ namespace KPLN_CoordiantorAI.Forms
                 return;
             }
 
-            // Разделитель
             if (line.Trim() == "---" || line.Trim() == "***")
             {
                 var separator = new Separator();
@@ -2713,7 +3622,6 @@ namespace KPLN_CoordiantorAI.Forms
                 return;
             }
 
-            // Обычный текст с форматированием
             ParseInlineMarkdown(para, line);
             rtb.Document.Blocks.Add(para);
         }
@@ -2723,17 +3631,23 @@ namespace KPLN_CoordiantorAI.Forms
         /// </summary>
         private void ParseInlineMarkdown(Paragraph paragraph, string text)
         {
+
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "ParseInlineMarkdown.START", new Dictionary<string, object>
+            {
+                { "length", text == null ? 0 : text.Length },
+                { "preview", TrimForDiagnostics(text, 160) }
+            });
             int pos = 0;
             int length = text.Length;
+            int previousPos = 0;
 
             while (pos < length)
             {
-                // Ищем маркеры
+                previousPos = pos;
                 int boldStart = text.IndexOf("**", pos);
                 int italicStart = text.IndexOf("*", pos);
                 int codeStart = text.IndexOf("`", pos);
 
-                // Находим ближайший маркер
                 int nextMarker = -1;
                 string markerType = null;
 
@@ -2742,7 +3656,6 @@ namespace KPLN_CoordiantorAI.Forms
                     nextMarker = boldStart;
                     markerType = "bold";
                 }
-                // Проверяем, что это не начало жирного (**)
                 if (italicStart != -1 && (nextMarker == -1 || italicStart < nextMarker))
                 {
                     if (italicStart + 1 < length && text[italicStart + 1] != '*')
@@ -2759,7 +3672,6 @@ namespace KPLN_CoordiantorAI.Forms
 
                 if (nextMarker == -1)
                 {
-                    // Добавляем оставшийся обычный текст
                     if (pos < length)
                     {
                         paragraph.Inlines.Add(new Run(text.Substring(pos)));
@@ -2767,7 +3679,7 @@ namespace KPLN_CoordiantorAI.Forms
                     break;
                 }
 
-                // Добавляем обычный текст до маркера
+
                 if (nextMarker > pos)
                 {
                     paragraph.Inlines.Add(new Run(text.Substring(pos, nextMarker - pos)));
@@ -2815,13 +3727,34 @@ namespace KPLN_CoordiantorAI.Forms
                         {
                             var run = new Run(text.Substring(pos + 1, codeEnd - pos - 1));
                             run.FontFamily = new System.Windows.Media.FontFamily("Consolas");
-                            run.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 112, 192)); // Насыщенный синий (как ссылка)
+                            run.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 112, 192));
                             paragraph.Inlines.Add(run);
                             pos = codeEnd + 1;
                         }
+                        else
+                        {
+                            paragraph.Inlines.Add(new Run(text.Substring(pos, 1)));
+                            pos++;
+                        }
                         break;
                 }
+
+                if (pos == previousPos)
+                {
+                    _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "ParseInlineMarkdown.NO_PROGRESS", new Dictionary<string, object>
+                    {
+                        { "position", pos },
+                        { "markerType", markerType },
+                        { "remainingPreview", TrimForDiagnostics(text.Substring(pos), 160) }
+                    });
+                    paragraph.Inlines.Add(new Run(text.Substring(pos, 1)));
+                    pos++;
+                }
             }
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "ParseInlineMarkdown.END", new Dictionary<string, object>
+            {
+                { "length", length }
+            });
         }
 
 

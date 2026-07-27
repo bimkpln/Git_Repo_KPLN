@@ -116,7 +116,7 @@ namespace KPLN_ViewsAndLists_Ribbon
             );
 
             AddPushButtonDataInPullDown(
-                "BatchDelete",
+                "BatchFilterDelete",
                 "Удалить\nфильтры",
                 "Удалить фильтры",
                 string.Format(
@@ -128,6 +128,22 @@ namespace KPLN_ViewsAndLists_Ribbon
                 typeof(ExternalCommands.Views.ExtCmdBatchDelete).FullName,
                 pullDown_Views,
                 "CommandBatchDelete",
+                "http://moodle/mod/book/view.php?id=502&chapterid=670"
+            );
+
+            AddPushButtonDataInPullDown(
+                "BatchViewDelete",
+                ExtCmdDeleteUnusedViews.PluginName,
+                ExtCmdDeleteUnusedViews.PluginName,
+                string.Format(
+                    "Пакетное удаления неразмещённых видов (планы, разрезы, 3D-виды, легенды, спецификации).\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(ExtCmdDeleteUnusedViews).FullName,
+                pullDown_Views,
+                "CmdDeleteViews",
                 "http://moodle/mod/book/view.php?id=502&chapterid=670"
             );
 

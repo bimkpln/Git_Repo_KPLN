@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -13,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -20,6 +22,154 @@ using System.Windows.Navigation;
 
 namespace KPLN_CoordiantorAI.Forms
 {
+
+
+    public class HalfWidthConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            double width;
+            if (!(value is double) || (width = (double)value) <= 0)
+                return DependencyProperty.UnsetValue;
+
+            return width * 0.65;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    public class BubbleWidthConverter : IMultiValueConverter
+    {
+        private static readonly Regex SourceAnchorRegex = new Regex(
+            "<\\s*a\\b(?=[^>]*\\bdata-source\\s*=\\s*([\"'])(true|1)\\1)[^>]*>.*?<\\s*/\\s*a\\s*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        private static readonly Regex HtmlBreakRegex = new Regex(
+            "<\\s*br\\s*/?\\s*>|<\\s*/\\s*(p|div|li|ul|ol)\\s*>|<\\s*li\\b[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        private static readonly Regex HtmlTagRegex = new Regex(
+            "<[^>]+>",
+            RegexOptions.Singleline);
+
+        private static readonly Regex MarkdownBoldRegex = new Regex(
+            "\\*\\*(?<text>.+?)\\*\\*",
+            RegexOptions.Singleline);
+
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (values == null || values.Length < 2)
+                return DependencyProperty.UnsetValue;
+
+            if (!(values[0] is double))
+                return DependencyProperty.UnsetValue;
+
+            double listWidth = (double)values[0];
+            if (listWidth <= 0)
+                return DependencyProperty.UnsetValue;
+
+            string html = values[1] as string;
+            if (html == null)
+                html = string.Empty;
+
+            bool isUserMessage = false;
+            if (values.Length > 2 && values[2] is bool)
+                isUserMessage = (bool)values[2];
+
+            double maxRatio = 0.65;
+            if (parameter != null)
+            {
+                double parsedRatio;
+                if (double.TryParse(
+                    parameter.ToString(),
+                    NumberStyles.Any,
+                    CultureInfo.InvariantCulture,
+                    out parsedRatio))
+                {
+                    maxRatio = parsedRatio;
+                }
+            }
+
+            double minWidth = isUserMessage ? 140 : 180;
+            double maxWidth = listWidth * maxRatio;
+
+            string text = ExtractVisibleText(html);
+            int longestLineLength = GetLongestLineLength(text);
+
+            // Примерная ширина символа при FontSize=13.
+            // Если будет всё ещё широко — уменьши 7.2 до 6.5.
+            // Если будет слишком узко — увеличь до 7.8.
+            double charWidth = 7.2;
+
+            // +40 — запас на Padding, время сообщения и особенности RichTextBox.
+            double calculatedWidth = longestLineLength * charWidth + 40;
+
+            if (calculatedWidth < minWidth)
+                calculatedWidth = minWidth;
+
+            if (calculatedWidth > maxWidth)
+                calculatedWidth = maxWidth;
+
+            return calculatedWidth;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            throw new NotSupportedException();
+        }
+
+        private static string ExtractVisibleText(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return string.Empty;
+
+            string text = html;
+
+            // Убираем скрытые ссылки-источники, потому что они отдельно рисуются кнопками.
+            text = SourceAnchorRegex.Replace(text, string.Empty);
+
+            // HTML-переносы превращаем в реальные переносы строк.
+            text = HtmlBreakRegex.Replace(text, "\n");
+
+            // Убираем остальные HTML-теги.
+            text = HtmlTagRegex.Replace(text, string.Empty);
+
+            // Убираем markdown-жирность, оставляем сам текст.
+            text = MarkdownBoldRegex.Replace(text, "${text}");
+
+            text = WebUtility.HtmlDecode(text);
+            if (text == null)
+                text = string.Empty;
+
+            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            return text.Trim();
+        }
+
+        private static int GetLongestLineLength(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return 0;
+
+            string[] lines = text.Split(new[] { '\n' }, StringSplitOptions.None);
+
+            int max = 0;
+            foreach (string line in lines)
+            {
+                string trimmed = line == null ? string.Empty : line.Trim();
+                if (trimmed.Length > max)
+                    max = trimmed.Length;
+            }
+
+            return max;
+        }
+    }
+
+
+
     public partial class ChatWindow : Window
     {
         private static readonly Regex SupportedHtmlTagRegex = new Regex(
@@ -103,6 +253,7 @@ namespace KPLN_CoordiantorAI.Forms
             _session = _sessions[0];
 
             InitializeComponent();
+            InitializeModelTab();
             SessionsListBox.ItemsSource = _sessions;
             SessionsListBox.SelectedItem = _session;
             BindSession(_session);
@@ -296,40 +447,76 @@ namespace KPLN_CoordiantorAI.Forms
             SaveSessionSafely();
         }
 
-        private void OnModelWorkClick(object sender, RoutedEventArgs e)
+        private void OnMainTabSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!ReferenceEquals(sender, MainTabControl))
+                return;
+
+            if (!_isWaitingForAnswer && RegulationsSearchTab != null && RegulationsSearchTab.IsSelected && MessageTextBox != null)
+                MessageTextBox.Focus();
+        }
+
+        private void InitializeModelTab()
+        {
+            ModelTabContent.Content = CreateModelTabContent();
+        }
+
+        private FrameworkElement CreateModelTabContent()
         {
             if (_revitDocument == null || _revitUiDocument == null)
-            {
-                MessageBox.Show(this, "Не найден активный документ Revit.", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("Не найден активный документ Revit.");
 
             ExternalModelSettings settings = _repository.LoadExternalModelSettings();
+            if (settings == null)
+                settings = new ExternalModelSettings();
+
             ConnectionType connectionType;
             if (!Enum.TryParse(settings.ConnectionTypeName, true, out connectionType))
-            {
-                MessageBox.Show(this, "В настройках не указан способ подключения внешней модели (conType).", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("В настройках не указан способ подключения внешней модели (conType).");
 
             if (connectionType == ConnectionType.OnlineAPI &&
                 (string.IsNullOrWhiteSpace(settings.OnlineServerUrl) || string.IsNullOrWhiteSpace(settings.ApiKey)))
-            {
-                MessageBox.Show(this, "Для OnlineAPI укажите ONLINE_SERVER_URL и API_KEY во вкладке \"Внешняя модель\".", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("Для OnlineAPI укажите ONLINE_SERVER_URL и API_KEY во вкладке \"Внешняя модель\".");
 
             if (connectionType == ConnectionType.LocalServer && string.IsNullOrWhiteSpace(settings.LocalServerUrl))
-            {
-                MessageBox.Show(this, "Для LocalServer укажите LOCAL_SERVER_URL во вкладке \"Внешняя модель\".", "Работа с моделью", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
+                return CreateModelUnavailableContent("Для LocalServer укажите LOCAL_SERVER_URL во вкладке \"Внешняя модель\".");
 
-            ExternalModelWindow modelWindow = new ExternalModelWindow(_revitDocument, _revitUiDocument, connectionType, settings)
+            return new ExternalModelControl(_revitDocument, _revitUiDocument, connectionType, settings);
+        }
+
+        private FrameworkElement CreateModelUnavailableContent(string message)
+        {
+            StackPanel panel = new StackPanel
             {
-                Owner = this
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                MaxWidth = 640
             };
-            modelWindow.Show();
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Работа с моделью недоступна",
+                Foreground = Brushes.White,
+                FontSize = 18,
+                FontWeight = FontWeights.SemiBold,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8)
+            });
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = message,
+                Foreground = CreateBrush(184, 192, 204),
+                FontSize = 13,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            return new Border
+            {
+                Background = CreateBrush(32, 36, 45),
+                Padding = new Thickness(24),
+                Child = panel
+            };
         }
 
         private void OnDeleteChatClick(object sender, RoutedEventArgs e)
@@ -1148,10 +1335,9 @@ namespace KPLN_CoordiantorAI.Forms
             SendButton.IsEnabled = !isWaiting;
             SessionsListBox.IsEnabled = !isWaiting;
             NewChatButton.IsEnabled = !isWaiting;
-            ModelWorkButton.IsEnabled = !isWaiting;
             StatusTextBlock.Text = isWaiting ? "Ожидание ответа ИИ..." : "Готово";
 
-            if (!isWaiting)
+            if (!isWaiting && RegulationsSearchTab != null && RegulationsSearchTab.IsSelected)
                 MessageTextBox.Focus();
         }
 

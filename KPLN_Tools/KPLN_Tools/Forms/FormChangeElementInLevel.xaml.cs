@@ -30,6 +30,9 @@ namespace KPLN_Tools.Forms
             BuiltInCategory.OST_PipeFitting,
             BuiltInCategory.OST_PlumbingFixtures,
             BuiltInCategory.OST_PipeAccessory,
+            BuiltInCategory.OST_DuctCurves,
+            BuiltInCategory.OST_DuctFitting,
+            BuiltInCategory.OST_DuctTerminal,
             BuiltInCategory.OST_MechanicalEquipment,
             BuiltInCategory.OST_Sprinklers,
             BuiltInCategory.OST_IOSModelGroups,
@@ -346,12 +349,13 @@ namespace KPLN_Tools.Forms
                 return false;
             }
 
-            if (bic == BuiltInCategory.OST_PipeCurves)
+            if (bic == BuiltInCategory.OST_PipeCurves
+                || bic == BuiltInCategory.OST_DuctCurves)
             {
-                MEPCurve pipe = element as MEPCurve;
-                if (pipe != null && pipe.ReferenceLevel != null)
+                MEPCurve mepCurve = element as MEPCurve;
+                if (mepCurve != null && mepCurve.ReferenceLevel != null)
                 {
-                    levelId = pipe.ReferenceLevel.Id;
+                    levelId = mepCurve.ReferenceLevel.Id;
                     return true;
                 }
 
@@ -781,7 +785,10 @@ namespace KPLN_Tools.Forms
 
             return bic == BuiltInCategory.OST_PipeCurves
                 || bic == BuiltInCategory.OST_PipeFitting
-                || bic == BuiltInCategory.OST_PipeAccessory;
+                || bic == BuiltInCategory.OST_PipeAccessory
+                || bic == BuiltInCategory.OST_DuctCurves
+                || bic == BuiltInCategory.OST_DuctFitting
+                || bic == BuiltInCategory.OST_DuctTerminal;
         }
 
         /// <summary>
@@ -2503,7 +2510,8 @@ namespace KPLN_Tools.Forms
                 hasBic = false;
             }
 
-            if (hasBic && bic == BuiltInCategory.OST_PipeCurves)
+            if (hasBic && (bic == BuiltInCategory.OST_PipeCurves
+                || bic == BuiltInCategory.OST_DuctCurves))
             {
                 list.Add(LevelParamCandidate.FromBuiltIn(BuiltInParameter.RBS_START_LEVEL_PARAM, "RBS_START_LEVEL_PARAM"));
                 list.Add(LevelParamCandidate.FromBuiltIn(BuiltInParameter.INSTANCE_REFERENCE_LEVEL_PARAM, "INSTANCE_REFERENCE_LEVEL_PARAM"));

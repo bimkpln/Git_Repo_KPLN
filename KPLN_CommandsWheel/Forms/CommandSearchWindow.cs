@@ -2,6 +2,7 @@
 using KPLN_CommandsWheel.Services;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -336,11 +337,16 @@ namespace KPLN_CommandsWheel.Forms
             };
 
             text.Inlines
-                .Text("Можно назначить от одной до трёх любых клавиш клавиатуры.\n")
-                .Italic("Рекомендуется назначать ")
-                .Text("\"Shift\" + \"Tab\".");
+                .Text("Можно назначить от одной до трёх любых клавиш клавиатуры. ")
+                .Italic("Рекомендуется ")
+                .Text("применять сочетание клавиш \"Shift\" + \"Tab\".\n\n")
+                .Bold("ВАЖНО: ")
+                .Text("Для мыши доступны только боковые кнопки (ЛКМ, ПКМ и колесо не назначаются).\n")
+                .Italic("ВАЖНО: ")
+                .Text("Чтобы изменения гарантированно вступили в силу - стоит перезапустить Revit.");
 
             stackPanel.Children.Add(text);
+            stackPanel.Children.Add(CreateMouseButtonsImage());
 
             border.Child = stackPanel;
             return border;

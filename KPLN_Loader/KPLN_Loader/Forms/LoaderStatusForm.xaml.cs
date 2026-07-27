@@ -67,12 +67,26 @@ namespace KPLN_Loader.Forms
                 _loaderDescription = loaderDescription;
                 tblInstruction.Text = _loaderDescription.Description;
 
+                
+                // Проверка наличия инструкции
+                bool hasDescription = 
+                    loaderDescription != null 
+                    && !string.IsNullOrWhiteSpace(loaderDescription.Description);
+                if (!hasDescription)
+                {
+                    tblInstruction.Text = "Инструкция отсутствует";
+                    SetRateBtnsEnabled(false);
+                    return;
+                }
+
                 string loaderDescriptionURL = _loaderDescription.InstructionURL;
                 if (!string.IsNullOrEmpty(loaderDescriptionURL))
                 {
                     tblInstruction.TextDecorations = TextDecorations.Underline;
                     tblInstruction.Foreground = new SolidColorBrush(Colors.Blue);
                 }
+
+                SetRateBtnsEnabled(true);
             });
         }
 
@@ -182,6 +196,19 @@ namespace KPLN_Loader.Forms
             btnLike.Foreground = Brushes.Gray;
             btnDislike.IsEnabled = false;
             btnDislike.Foreground = Brushes.Gray;
+        }
+
+        /// <summary>
+        /// Взвести кнопки рейтинга по наличию контента
+        /// </summary>
+        /// <param name="isEnabled"></param>
+        private void SetRateBtnsEnabled(bool isEnabled)
+        {
+            btnLike.IsEnabled = isEnabled;
+            btnLike.Foreground = isEnabled ? Brushes.Green : Brushes.Gray;
+
+            btnDislike.IsEnabled = isEnabled;
+            btnDislike.Foreground = isEnabled ? Brushes.Red : Brushes.Gray;
         }
     }
 }

@@ -1,0 +1,132 @@
+﻿<Window x:Class="KPLN_ViewsAndLists_Ribbon.Forms.DeleteUnusedViewsForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms"
+        xmlns:local2="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms.Entities"
+        mc:Ignorable="d"
+        Title="KPLN: Удаление неразмещённых видов"
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="Height"
+        Width="1000"
+        MinHeight="850"
+        MaxHeight="950"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition MinHeight="600" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- TreeView элементов -->
+        <TreeView 
+            Margin="5"
+            ItemsSource="{Binding CurrentDeleteUnusedViewsM.TreeElemEntities}">
+            <TreeView.Resources>
+                <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+                <HierarchicalDataTemplate 
+                        DataType="{x:Type local2:TreeElementEntity}"
+                        ItemsSource="{Binding TEE_ChildrenColl}">
+                    <StackPanel 
+                            Orientation="Horizontal" 
+                            VerticalAlignment="Center">
+                        <CheckBox 
+                            IsChecked="{Binding IsChecked, Mode=TwoWay}" 
+                            Click="TreeElementCheckBox_Click"
+                            Margin="3,0,5,0"/>
+                        <TextBlock 
+                            VerticalAlignment="Center">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0}{1}">
+                                    <Binding Path="TEE_Name"/>
+                                    <Binding Path="TEE_ChildrensCount"/>
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.Resources>
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                    <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
+                </Style>
+            </TreeView.ItemContainerStyle>
+        </TreeView>
+
+        <!-- Управление -->
+        <StackPanel Grid.Row="1">
+            <!-- Поиск-->
+            <DockPanel 
+                LastChildFill="False">
+                <TextBlock 
+                    Text="Поиск по имени:"
+                    Style="{StaticResource TXT}" 
+                    HorizontalAlignment="Left"/>
+                <TextBox 
+                    x:Name="tbUserInput"
+                    Style="{StaticResource TXB}"
+                    Height="34"
+                    Width="845"
+                    Foreground="Black"
+                    Text="{Binding CurrentDeleteUnusedViewsM.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip="Введи имя для поиска нужного вида"/>
+            </DockPanel>
+            
+            <!-- Кнопки -->
+            <StackPanel>
+                <Button 
+                    Style="{StaticResource BTN}"
+                    Content="Удалить выбранное" 
+                    Command="{Binding DeleteSelectedCmd}"  
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+                    ToolTip="Удаляет выбранные элементы в дереве"
+                    IsEnabled="{Binding CurrentDeleteUnusedViewsM.CanRun}" 
+                    Height="30"
+                    Background ="Orange"/>
+                <DockPanel 
+                    LastChildFill="False">
+                    <Button 
+                        Style="{StaticResource BTN}"
+                        Content="Выбрать все" 
+                        Command="{Binding SelectAllCmd}"  
+                        ToolTip="Выбирает все элементы дерева"
+                        Height="30"
+                        Width="320"/>
+                    <Button 
+                        Style="{StaticResource BTN}"
+                        Content="Отменить выбор" 
+                        Command="{Binding DeselectAllCmd}"  
+                        ToolTip="Снимает выбор с элементов дерева"
+                        Height="30"
+                        Width="320"/>
+                    <Button 
+                        Style="{StaticResource BTN}"
+                        Content="Реверсировать выбор" 
+                        Command="{Binding ReverseCmd}"  
+                        ToolTip="Реверсирует выбор элементов дерева, т.е. где была галка - снимет, где галки не было - поставит"
+                        Height="30"
+                        Width="320"/>
+                </DockPanel>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -12,6 +12,8 @@ namespace KPLN_ExtraFilter.Forms
 {
     public partial class SelectionByModel : Window
     {
+        private static SelectionByModel _currentInstance;
+
         private readonly ExternalEvent _viewExtEv;
         private ViewActivatedHandler _viewHandler;
 
@@ -59,6 +61,37 @@ namespace KPLN_ExtraFilter.Forms
 #endif
             }
             #endregion
+
+            _currentInstance = this;
+            Closed += (sender, args) =>
+            {
+                if (ReferenceEquals(_currentInstance, this))
+                    _currentInstance = null;
+            };
+        }
+
+        /// <summary>
+        /// Активировать уже открытое окно
+        /// </summary>
+        /// <returns>True, если открытое окно найдено</returns>
+        public static bool TryActivateExisting()
+        {
+            if (_currentInstance == null || !_currentInstance.IsLoaded)
+            {
+                _currentInstance = null;
+                return false;
+            }
+
+            if (_currentInstance.WindowState == WindowState.Minimized)
+                _currentInstance.WindowState = WindowState.Normal;
+
+            if (!_currentInstance.IsVisible)
+                _currentInstance.Show();
+
+            _currentInstance.Activate();
+            _currentInstance.Focus();
+
+            return true;
         }
 
         /// <summary>

@@ -88,7 +88,16 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             foreach (Revision revision in revisions)
             {
                 string approvedFor = GetRevisionApprovedForDisplay(revision);
-                string displayName = "Строка " + revision.SequenceNumber.ToString(CultureInfo.InvariantCulture) + ": ИЗМ № " + approvedFor;
+                string documentNumber = GetRevisionDocumentNumberForDisplay(revision);
+
+                string displayName = "Строка "
+                    + revision.SequenceNumber.ToString(CultureInfo.InvariantCulture)
+                    + ": ИЗМ № "
+                    + approvedFor;
+
+                if (!string.IsNullOrWhiteSpace(documentNumber))
+                    displayName += " [" + documentNumber + "]";
+
                 RevisionItems.Add(new RevisionComboItem(revision.Id, displayName, revision.SequenceNumber));
             }
         }
@@ -162,6 +171,30 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 return revision.Description;
 
             return "(без значения)";
+        }
+
+        private string GetRevisionDocumentNumberForDisplay(Revision revision)
+        {
+            if (revision == null)
+                return string.Empty;
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(revision.IssuedBy))
+                    return revision.IssuedBy;
+            }
+            catch
+            {
+            }
+
+            return GetParameterString(
+                revision,
+                "Утвердил",
+                "Issued By",
+                "Approved By",
+                "ApprovedBy",
+                "Кем утвержден",
+                "Кто утвердил");
         }
 
         private void FillStatusItems()

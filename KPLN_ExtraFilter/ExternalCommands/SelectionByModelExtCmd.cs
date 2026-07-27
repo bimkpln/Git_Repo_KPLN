@@ -30,6 +30,9 @@ namespace KPLN_ExtraFilter.ExternalCommands
         {
             try
             {
+                if (SelectionByModel.TryActivateExisting())
+                    return Result.Succeeded;
+
                 SelectionByModel mainForm = new SelectionByModel(uiapp, viewFilterMode, isUpdateble);
                 WindowHandleSearch.MainWindowHandle.SetAsOwner(mainForm);
 
