@@ -254,8 +254,5 @@
   <ItemGroup>
     <EmbeddedResource Include="Imagens\settingsWheels.png" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Imagens\mouseSideButtons.png" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

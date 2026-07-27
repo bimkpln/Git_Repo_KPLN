@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_CommandsWheel.Services;
 using KPLN_Loader.Common;
 using System.IO;
 using System.Reflection;
@@ -11,7 +12,19 @@ namespace KPLN_CommandsWheel
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-        public Result Close() => Result.Succeeded;
+        public Result Close()
+        {
+            try
+            {
+                HotkeyService.Shutdown();
+            }
+            finally
+            {
+                CommandWindowService.Shutdown();
+            }
+
+            return Result.Succeeded;
+        }
 
         public Result Execute(UIControlledApplication application, string tabName)
         {

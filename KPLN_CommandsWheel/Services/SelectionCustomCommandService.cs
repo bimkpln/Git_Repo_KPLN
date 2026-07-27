@@ -74,8 +74,7 @@ namespace KPLN_CommandsWheel.Services
                 Name = name,
                 TabName = "KPLN",
                 PanelName = "Выбор",
-                Tooltip = tooltip,
-                CanPost = true
+                Tooltip = tooltip
             };
         }
 
