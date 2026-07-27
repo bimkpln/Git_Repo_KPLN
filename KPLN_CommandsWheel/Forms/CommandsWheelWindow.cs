@@ -1,7 +1,5 @@
-﻿using KPLN_CommandsWheel.ExternalCommands;
-using KPLN_CommandsWheel.Models;
+﻿using KPLN_CommandsWheel.Models;
 using KPLN_CommandsWheel.Services;
-using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,14 +19,23 @@ namespace KPLN_CommandsWheel.Forms
         private readonly List<RevitCommandInfo> _commands;
         private readonly RevitCommandExecutor _executor;
         private readonly List<Path> _slices = new List<Path>();
+        private readonly bool _isPinned;
+        private readonly bool _showCloseButton;
         private bool _canCloseOnDeactivate;
         private bool _isClosing;
+        private bool _isCommandPressActive;
+        private bool _isWindowDragActive;
+        private Point _commandPressPoint;
+        private RevitCommandInfo _pressedCommand;
+        private UIElement _pressedElement;
         private int _selectedIndex = -1;
 
-        internal CommandsWheelWindow(IEnumerable<RevitCommandInfo> commands, RevitCommandExecutor executor)
+        internal CommandsWheelWindow(IEnumerable<RevitCommandInfo> commands, RevitCommandExecutor executor, UserSettings settings)
         {
             _commands = commands.Take(8).ToList();
             _executor = executor;
+            _isPinned = settings != null && string.Equals(settings.WheelMode, WheelModeNames.Pinned, StringComparison.OrdinalIgnoreCase);
+            _showCloseButton = _isPinned || (settings != null && settings.IsWheelCloseButtonVisible);
             _current = this;
 
             Title = "\u0428\u0442\u0443\u0440\u0432\u0430\u043b \u043a\u043e\u043c\u0430\u043d\u0434";
@@ -66,15 +73,21 @@ namespace KPLN_CommandsWheel.Forms
             };
             Deactivated += delegate
             {
-                if (_canCloseOnDeactivate && !_isClosing)
+                if (!_isPinned && _canCloseOnDeactivate && !_isClosing)
+                {
                     CloseWheel();
+                }
             };
             KeyDown += delegate (object sender, KeyEventArgs args)
             {
                 if (args.Key == Key.Escape)
                 {
                     args.Handled = true;
-                    CloseWheel();
+                    if (!_isPinned)
+                    {
+                        CloseWheel();
+                    }
+
                     return;
                 }
 
@@ -105,10 +118,14 @@ namespace KPLN_CommandsWheel.Forms
         internal static bool TryActivateExisting()
         {
             if (_current == null || !_current.IsVisible)
+            {
                 return false;
+            }
 
             if (_current.WindowState == WindowState.Minimized)
+            {
                 _current.WindowState = WindowState.Normal;
+            }
 
             _current.Activate();
             return true;
@@ -137,8 +154,8 @@ namespace KPLN_CommandsWheel.Forms
             {
                 Width = plateRadius * 2,
                 Height = plateRadius * 2,
-                Fill = new SolidColorBrush(Color.FromArgb(16, 24, 28, 34)),
-                Stroke = new SolidColorBrush(Color.FromArgb(38, 210, 220, 230)),
+                Fill = new SolidColorBrush(Color.FromArgb(18, 140, 140, 140)),
+                Stroke = new SolidColorBrush(Color.FromArgb(32, 180, 180, 180)),
                 StrokeThickness = 1,
                 Cursor = Cursors.SizeAll,
                 ToolTip = "\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u044c"
@@ -185,6 +202,19 @@ namespace KPLN_CommandsWheel.Forms
                 RefreshSliceStates();
             }
 
+            if (_showCloseButton)
+            {
+                Border closeButton = CreateCloseButton(innerRadius * 2);
+                Canvas.SetLeft(closeButton, center - closeButton.Width / 2);
+                Canvas.SetTop(closeButton, center - closeButton.Height / 2);
+                canvas.Children.Add(closeButton);
+            }
+
+            Border dragHandle = CreateDragHandle();
+            Canvas.SetLeft(dragHandle, center - dragHandle.Width / 2);
+            Canvas.SetTop(dragHandle, 7);
+            canvas.Children.Add(dragHandle);
+
             root.Children.Add(canvas);
             return root;
         }
@@ -201,10 +231,8 @@ namespace KPLN_CommandsWheel.Forms
             Path slice = new Path
             {
                 Data = CreateSliceGeometry(center, innerRadius, outerRadius, startAngle, endAngle),
-                Fill = command.CanPost
-                    ? new SolidColorBrush(Color.FromArgb(224, 38, 111, 166))
-                    : new SolidColorBrush(Color.FromArgb(224, 88, 88, 88)),
-                Stroke = new SolidColorBrush(Color.FromArgb(150, 230, 235, 240)),
+                Fill = new SolidColorBrush(Color.FromArgb(42, 145, 145, 145)),
+                Stroke = new SolidColorBrush(Color.FromArgb(88, 235, 235, 235)),
                 StrokeThickness = 1,
                 ToolTip = command.Name,
                 Cursor = Cursors.Hand
@@ -213,6 +241,17 @@ namespace KPLN_CommandsWheel.Forms
             slice.MouseLeftButtonDown += delegate (object sender, MouseButtonEventArgs args)
             {
                 args.Handled = true;
+                if (_isPinned)
+                {
+                    BeginCommandPress(command, slice, args);
+                }
+            };
+            slice.MouseMove += delegate (object sender, MouseEventArgs args)
+            {
+                if (_isPinned)
+                {
+                    TrackCommandDrag(slice, args);
+                }
             };
             slice.MouseEnter += delegate
             {
@@ -226,6 +265,12 @@ namespace KPLN_CommandsWheel.Forms
             slice.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
             {
                 args.Handled = true;
+                if (_isPinned)
+                {
+                    CompleteCommandPress(command);
+                    return;
+                }
+
                 RunAndClose(command);
             };
 
@@ -271,22 +316,103 @@ namespace KPLN_CommandsWheel.Forms
             return host;
         }
 
+        private Border CreateCloseButton(double size)
+        {
+            Border button = new Border
+            {
+                Width = size,
+                Height = size,
+                CornerRadius = new CornerRadius(size / 2),
+                Background = new SolidColorBrush(Color.FromRgb(190, 45, 58)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(238, 160, 168)),
+                BorderThickness = new Thickness(1),
+                ToolTip = "Закрыть",
+                Cursor = Cursors.Hand,
+                Child = new TextBlock
+                {
+                    Text = "\u00D7",
+                    FontSize = 30,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(0, -4, 0, 0)
+                }
+            };
+
+            button.MouseLeftButtonDown += delegate (object sender, MouseButtonEventArgs args)
+            {
+                args.Handled = true;
+            };
+            button.MouseEnter += delegate
+            {
+                button.Background = new SolidColorBrush(Color.FromRgb(215, 58, 72));
+            };
+            button.MouseLeave += delegate
+            {
+                button.Background = new SolidColorBrush(Color.FromRgb(190, 45, 58));
+            };
+            button.MouseLeftButtonUp += delegate (object sender, MouseButtonEventArgs args)
+            {
+                args.Handled = true;
+                CloseWheel();
+            };
+
+            return button;
+        }
+
+        private Border CreateDragHandle()
+        {
+            Grid grip = new Grid();
+            grip.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grip.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grip.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            for (int index = 0; index < 3; index++)
+            {
+                Border line = new Border
+                {
+                    Height = 1,
+                    Margin = new Thickness(7, 0, 7, 0),
+                    Background = new SolidColorBrush(Color.FromArgb(135, 245, 245, 245)),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+                Grid.SetRow(line, index);
+                grip.Children.Add(line);
+            }
+
+            Border handle = new Border
+            {
+                Width = 40,
+                Height = 14,
+                CornerRadius = new CornerRadius(4),
+                Background = new SolidColorBrush(Color.FromArgb(175, 42, 42, 42)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(90, 255, 255, 255)),
+                BorderThickness = new Thickness(1),
+                Cursor = Cursors.SizeAll,
+                ToolTip = "\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u044c",
+                Child = grip
+            };
+
+            handle.MouseLeftButtonDown += delegate (object sender, MouseButtonEventArgs args)
+            {
+                StartDrag(args);
+            };
+
+            return handle;
+        }
+
         private void ApplySliceState(Path slice, RevitCommandInfo command, bool isSelected)
         {
             if (isSelected)
             {
-                slice.Fill = command.CanPost
-                    ? new SolidColorBrush(Color.FromArgb(246, 62, 144, 207))
-                    : new SolidColorBrush(Color.FromArgb(246, 110, 110, 110));
+                slice.Fill = new SolidColorBrush(Color.FromArgb(104, 118, 118, 118));
                 slice.Stroke = Brushes.White;
                 slice.StrokeThickness = 2.2;
                 return;
             }
 
-            slice.Fill = command.CanPost
-                ? new SolidColorBrush(Color.FromArgb(224, 38, 111, 166))
-                : new SolidColorBrush(Color.FromArgb(224, 88, 88, 88));
-            slice.Stroke = new SolidColorBrush(Color.FromArgb(150, 230, 235, 240));
+            slice.Fill = new SolidColorBrush(Color.FromArgb(42, 145, 145, 145));
+            slice.Stroke = new SolidColorBrush(Color.FromArgb(88, 235, 235, 235));
             slice.StrokeThickness = 1;
         }
 
@@ -327,19 +453,79 @@ namespace KPLN_CommandsWheel.Forms
             RunAndClose(_commands[_selectedIndex]);
         }
 
+        private void BeginCommandPress(RevitCommandInfo command, UIElement element, MouseButtonEventArgs args)
+        {
+            if (args.ChangedButton != MouseButton.Left)
+            {
+                return;
+            }
+
+            _pressedCommand = command;
+            _pressedElement = element;
+            _commandPressPoint = args.GetPosition(this);
+            _isCommandPressActive = true;
+            _isWindowDragActive = false;
+            element.CaptureMouse();
+        }
+
+        private void TrackCommandDrag(UIElement element, MouseEventArgs args)
+        {
+            if (!_isCommandPressActive || args.LeftButton != MouseButtonState.Pressed)
+            {
+                return;
+            }
+
+            Point currentPoint = args.GetPosition(this);
+            if (Math.Abs(currentPoint.X - _commandPressPoint.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(currentPoint.Y - _commandPressPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+
+            _isWindowDragActive = true;
+            _isCommandPressActive = false;
+            element.ReleaseMouseCapture();
+            DragWindow();
+        }
+
+        private void CompleteCommandPress(RevitCommandInfo command)
+        {
+            if (_pressedElement != null)
+            {
+                _pressedElement.ReleaseMouseCapture();
+            }
+
+            bool shouldRun = _isCommandPressActive
+                && !_isWindowDragActive
+                && ReferenceEquals(_pressedCommand, command);
+
+            _pressedCommand = null;
+            _pressedElement = null;
+            _isCommandPressActive = false;
+            _isWindowDragActive = false;
+
+            if (shouldRun)
+            {
+                RunAndClose(command);
+            }
+        }
+
         private void RunAndClose(RevitCommandInfo command)
         {
             _executor.Run(command);
-            
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandsWheel.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
-            CloseWheel();
+            if (!_isPinned)
+            {
+                CloseWheel();
+            }
         }
 
         private void CloseWheel()
         {
             if (_isClosing)
+            {
                 return;
+            }
 
             _isClosing = true;
             _canCloseOnDeactivate = false;
@@ -384,9 +570,16 @@ namespace KPLN_CommandsWheel.Forms
         private void StartDrag(MouseButtonEventArgs args)
         {
             if (args.ChangedButton != MouseButton.Left)
+            {
                 return;
+            }
 
             args.Handled = true;
+            DragWindow();
+        }
+
+        private void DragWindow()
+        {
             try
             {
                 DragMove();

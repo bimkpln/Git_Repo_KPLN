@@ -17,6 +17,16 @@ namespace KPLN_CommandsWheel.Services
             };
         }
 
+        public static void ShowCenteredOnCursor(Window window)
+        {
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+
+            window.SourceInitialized += (sender, args) =>
+            {
+                MoveCenteredOnCursor(window);
+            };
+        }
+
         private static void MoveNearCursor(Window window, double offsetX, double offsetY)
         {
             var cursorPosition = WinForms.Cursor.Position;
@@ -36,6 +46,29 @@ namespace KPLN_CommandsWheel.Services
 
             window.Left = cursorPoint.X + offsetX;
             window.Top = cursorPoint.Y + offsetY;
+        }
+
+        private static void MoveCenteredOnCursor(Window window)
+        {
+            var cursorPosition = WinForms.Cursor.Position;
+            double width = window.ActualWidth > 0 ? window.ActualWidth : window.Width;
+            double height = window.ActualHeight > 0 ? window.ActualHeight : window.Height;
+
+            PresentationSource source = PresentationSource.FromVisual(window);
+
+            if (source?.CompositionTarget == null)
+            {
+                window.Left = cursorPosition.X - width / 2;
+                window.Top = cursorPosition.Y - height / 2;
+                return;
+            }
+
+            Point cursorPoint = source.CompositionTarget.TransformFromDevice.Transform(
+                new Point(cursorPosition.X, cursorPosition.Y)
+            );
+
+            window.Left = cursorPoint.X - width / 2;
+            window.Top = cursorPoint.Y - height / 2;
         }
     }
 }

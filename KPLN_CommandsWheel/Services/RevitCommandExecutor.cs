@@ -67,6 +67,11 @@ namespace KPLN_CommandsWheel.Services
                     return;
                 }
 
+                if (SelectionCustomCommandService.TryExecute(app, commandId))
+                {
+                    return;
+                }
+
                 RevitCommandId revitCommandId = null;
                 try
                 {
