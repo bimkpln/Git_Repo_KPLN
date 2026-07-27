@@ -13,8 +13,6 @@ namespace KPLN_CommandsWheel.Services
 
         internal static bool ShowCommandSearch(UIApplication uiapp)
         {
-            HotkeyService.Initialize();
-
             if (CommandSearchWindow.TryActivateExisting())
             {
                 return true;
@@ -39,8 +37,6 @@ namespace KPLN_CommandsWheel.Services
 
         internal static bool ShowCommandsWheel(UIApplication uiapp)
         {
-            HotkeyService.Initialize();
-
             if (CommandsWheelWindow.TryActivateExisting())
             {
                 return true;

@@ -67,6 +67,7 @@ namespace KPLN_CommandsWheel
                 "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
+            HotkeyService.Initialize();
             return Result.Succeeded;
         }
 
