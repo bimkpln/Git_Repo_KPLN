@@ -23,6 +23,11 @@ namespace KPLN_CommandsWheel.Forms
         private RadioButton _unpinnedWheelRadioButton;
         private RadioButton _pinnedWheelRadioButton;
         private CheckBox _wheelCloseButtonCheckBox;
+        private TextBox _wheelShortcutTextBox;
+        private TextBox _commandSearchShortcutTextBox;
+        private TextBlock _wheelShortcutLayoutHintTextBlock;
+        private TextBlock _commandSearchShortcutLayoutHintTextBlock;
+        private TextBlock _shortcutStatusTextBlock;
         private bool _isUpdatingSettingsControls;
 
         private enum CommandListKind
@@ -212,6 +217,102 @@ namespace KPLN_CommandsWheel.Forms
             };
             panel.Children.Add(_wheelCloseButtonCheckBox);
 
+            panel.Children.Add(new Border
+            {
+                BorderBrush = new SolidColorBrush(Color.FromRgb(224, 224, 224)),
+                BorderThickness = new Thickness(0, 1, 0, 0),
+                Margin = new Thickness(0, 0, 0, 16)
+            });
+
+            panel.Children.Add(CreateSettingsHeader("Горячие клавиши"));
+
+            string displayedWheelShortcut;
+            string displayedSearchShortcut;
+            GetDisplayedShortcutValues(
+                out displayedWheelShortcut,
+                out displayedSearchShortcut);
+
+            Grid shortcutsRow = new Grid
+            {
+                Margin = new Thickness(0, 2, 0, 10)
+            };
+            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            TextBlock wheelShortcutLabel = new TextBlock
+            {
+                Text = "Штурвал",
+                Foreground = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(wheelShortcutLabel, 0);
+            shortcutsRow.Children.Add(wheelShortcutLabel);
+
+            Grid wheelShortcutEditor = CreateShortcutEditor(
+                displayedWheelShortcut,
+                out _wheelShortcutTextBox,
+                out _wheelShortcutLayoutHintTextBlock);
+            wheelShortcutEditor.Margin = new Thickness(0, 0, 18, 0);
+            Grid.SetColumn(wheelShortcutEditor, 1);
+            shortcutsRow.Children.Add(wheelShortcutEditor);
+
+            TextBlock searchShortcutLabel = new TextBlock
+            {
+                Text = "Команды",
+                Foreground = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(searchShortcutLabel, 2);
+            shortcutsRow.Children.Add(searchShortcutLabel);
+
+            Grid commandSearchShortcutEditor = CreateShortcutEditor(
+                displayedSearchShortcut,
+                out _commandSearchShortcutTextBox,
+                out _commandSearchShortcutLayoutHintTextBlock);
+            Grid.SetColumn(commandSearchShortcutEditor, 3);
+            shortcutsRow.Children.Add(commandSearchShortcutEditor);
+            RefreshShortcutToolTips();
+
+            panel.Children.Add(shortcutsRow);
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Перезаписывает/дополняет XML файл с настройками для всех имеющихся на ПК версий Revit.\nАвтоматически записываются английская раскладка в верхнем регистре и русская в верхнем и нижнем.",
+                Foreground = new SolidColorBrush(Color.FromRgb(120, 120, 120)),
+                Margin = new Thickness(0, 0, 0, 10),
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Чтобы изменения вступили в силу, необходимо перезагрузить Revit.",
+                Foreground = new SolidColorBrush(Color.FromRgb(95, 95, 95)),
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, 0, 10),
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            Button applyShortcutsButton = new Button
+            {
+                Content = "Сохранить горячие клавиши",
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(14, 6, 14, 6),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            applyShortcutsButton.Click += delegate { ApplyKeyboardShortcuts(); };
+            panel.Children.Add(applyShortcutsButton);
+
+            _shortcutStatusTextBlock = new TextBlock
+            {
+                Foreground = new SolidColorBrush(Color.FromRgb(55, 105, 65)),
+                TextWrapping = TextWrapping.Wrap
+            };
+            panel.Children.Add(_shortcutStatusTextBlock);
+
             RefreshSettingsControls();
 
             return new ScrollViewer
@@ -231,6 +332,250 @@ namespace KPLN_CommandsWheel.Forms
                 Foreground = new SolidColorBrush(Color.FromRgb(70, 70, 70)),
                 Margin = new Thickness(0, 0, 0, 8)
             };
+        }
+
+        private Grid CreateShortcutEditor(
+            string value,
+            out TextBox textBox,
+            out TextBlock layoutHintTextBlock)
+        {
+            Grid editor = new Grid();
+            textBox = CreateShortcutTextBox(value);
+            layoutHintTextBlock = new TextBlock
+            {
+                Foreground = new SolidColorBrush(Color.FromRgb(155, 155, 155)),
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 0),
+                IsHitTestVisible = false
+            };
+
+            editor.Children.Add(textBox);
+            editor.Children.Add(layoutHintTextBlock);
+            return editor;
+        }
+
+        private TextBox CreateShortcutTextBox(string value)
+        {
+            TextBox textBox = new TextBox
+            {
+                Text = value ?? string.Empty,
+                MinWidth = 120,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Padding = new Thickness(7, 5, 72, 5),
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+
+            textBox.TextChanged += delegate { RefreshShortcutToolTips(); };
+            ToolTipService.SetInitialShowDelay(textBox, 150);
+            ToolTipService.SetShowDuration(textBox, 60000);
+            return textBox;
+        }
+
+        private void RefreshShortcutToolTips()
+        {
+            UpdateShortcutToolTip(
+                _wheelShortcutTextBox,
+                _wheelShortcutLayoutHintTextBlock);
+            UpdateShortcutToolTip(
+                _commandSearchShortcutTextBox,
+                _commandSearchShortcutLayoutHintTextBlock);
+        }
+
+        private static void UpdateShortcutToolTip(
+            TextBox textBox,
+            TextBlock layoutHintTextBlock)
+        {
+            if (textBox == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                textBox.ToolTip = "Горячие клавиши не назначены.";
+                if (layoutHintTextBlock != null)
+                {
+                    layoutHintTextBlock.Text = string.Empty;
+                }
+                return;
+            }
+
+            string preview;
+            string englishUpper;
+            string russianUpper;
+            string error;
+            if (!KeyboardShortcutService.TryBuildShortcutPreview(
+                textBox.Text,
+                out preview,
+                out error))
+            {
+                textBox.ToolTip = "Значение недопустимо.\n" + error;
+                if (layoutHintTextBlock != null)
+                {
+                    layoutHintTextBlock.Text = string.Empty;
+                }
+                return;
+            }
+
+            KeyboardShortcutService.TryNormalizeShortcutInput(
+                textBox.Text,
+                out englishUpper,
+                out russianUpper,
+                out error);
+            if (layoutHintTextBlock != null)
+            {
+                layoutHintTextBlock.Text = russianUpper;
+            }
+            textBox.ToolTip = "Будут назначены: " + preview;
+        }
+
+        private void GetDisplayedShortcutValues(
+            out string wheelShortcut,
+            out string searchShortcut)
+        {
+            wheelShortcut = _settings.WheelShortcut ?? string.Empty;
+            searchShortcut = _settings.CommandSearchShortcut ?? string.Empty;
+
+            string wheelCommandId = KeyboardShortcutService.FindCommandId(
+                _commands,
+                typeof(ExternalCommands.CommandsWheel));
+            string searchCommandId = KeyboardShortcutService.FindCommandId(
+                _commands,
+                typeof(ExternalCommands.CommandSearch));
+            string storedWheelShortcut;
+            string storedSearchShortcut;
+
+            if (KeyboardShortcutService.TryReadCurrentShortcuts(
+                ModuleData.RevitVersion,
+                ModuleData.RevitVersionName,
+                wheelCommandId,
+                searchCommandId,
+                out storedWheelShortcut,
+                out storedSearchShortcut))
+            {
+                if (storedWheelShortcut != null)
+                {
+                    wheelShortcut = storedWheelShortcut;
+                }
+
+                if (storedSearchShortcut != null)
+                {
+                    searchShortcut = storedSearchShortcut;
+                }
+            }
+
+            wheelShortcut = NormalizeShortcutForDisplay(wheelShortcut);
+            searchShortcut = NormalizeShortcutForDisplay(searchShortcut);
+        }
+
+        private static string NormalizeShortcutForDisplay(string value)
+        {
+            string englishUpper;
+            string russianUpper;
+            string error;
+            return KeyboardShortcutService.TryNormalizeShortcutInput(
+                value,
+                out englishUpper,
+                out russianUpper,
+                out error)
+                ? englishUpper
+                : value;
+        }
+
+        private void ApplyKeyboardShortcuts()
+        {
+            string wheelInput = (_wheelShortcutTextBox.Text ?? string.Empty).Trim();
+            string searchInput = (_commandSearchShortcutTextBox.Text ?? string.Empty).Trim();
+            string wheelShortcut;
+            string searchShortcut;
+            string russianUpper;
+            string error;
+
+            if (!KeyboardShortcutService.TryNormalizeShortcutInput(
+                wheelInput,
+                out wheelShortcut,
+                out russianUpper,
+                out error))
+            {
+                _wheelShortcutTextBox.Focus();
+                MessageBox.Show(
+                    this,
+                    "Штурвал: " + error,
+                    "Горячие клавиши Revit",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!KeyboardShortcutService.TryNormalizeShortcutInput(
+                searchInput,
+                out searchShortcut,
+                out russianUpper,
+                out error))
+            {
+                _commandSearchShortcutTextBox.Focus();
+                MessageBox.Show(
+                    this,
+                    "Команды: " + error,
+                    "Горячие клавиши Revit",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            string wheelCommandId = KeyboardShortcutService.FindCommandId(
+                _commands,
+                typeof(ExternalCommands.CommandsWheel));
+            string searchCommandId = KeyboardShortcutService.FindCommandId(
+                _commands,
+                typeof(ExternalCommands.CommandSearch));
+
+            KeyboardShortcutApplyResult result = KeyboardShortcutService.ApplyToAllInstalledVersions(
+                ModuleData.RevitVersion,
+                ModuleData.RevitVersionName,
+                ModuleData.RibbonTabName,
+                wheelShortcut,
+                searchShortcut,
+                wheelCommandId,
+                searchCommandId);
+
+            if (!result.Success)
+            {
+                _shortcutStatusTextBlock.Text = string.Empty;
+                MessageBox.Show(
+                    this,
+                    result.ErrorMessage,
+                    "Горячие клавиши Revit",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            _settings.WheelShortcut = wheelShortcut;
+            _settings.CommandSearchShortcut = searchShortcut;
+            _settings.AreKeyboardShortcutsConfigured = true;
+            UserSettingsService.Save(_settings);
+            _wheelShortcutTextBox.Text = wheelShortcut;
+            _commandSearchShortcutTextBox.Text = searchShortcut;
+
+            string versions = string.Join(
+                ", ",
+                result.AppliedVersions.Select(version => "Revit " + version).ToArray());
+            _shortcutStatusTextBlock.Text = result.Changed
+                ? "XML обновлён для: " + versions + "."
+                : "В XML уже записаны эти сочетания для: " + versions + ".";
+            _shortcutStatusTextBlock.ToolTip = result.FilePath;
+
+            if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+            {
+                MessageBox.Show(
+                    this,
+                    "Часть версий обновить не удалось:\n\n" + result.ErrorMessage,
+                    "Горячие клавиши Revit",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private void RefreshSettingsControls()
