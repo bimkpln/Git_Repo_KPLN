@@ -27,5 +27,14 @@ namespace KPLN_CommandsWheel.Models
         [DataMember]
         public bool IsWheelCloseButtonVisible { get; set; }
 
+        [DataMember]
+        public string WheelShortcut { get; set; } = string.Empty;
+
+        [DataMember]
+        public string CommandSearchShortcut { get; set; } = string.Empty;
+
+        [DataMember]
+        public bool AreKeyboardShortcutsConfigured { get; set; }
+
     }
 }

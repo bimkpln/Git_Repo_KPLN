@@ -230,6 +230,7 @@
     <Compile Include="Services\CommandWindowService.cs" />
     <Compile Include="Services\IconSourceLoader.cs" />
     <Compile Include="Services\JsonSerialization.cs" />
+    <Compile Include="Services\KeyboardShortcutService.cs" />
     <Compile Include="Services\RevitCommandExecutor.cs" />
     <Compile Include="Services\RibbonCommandCollector.cs" />
     <Compile Include="Services\SelectionCustomCommandService.cs" />

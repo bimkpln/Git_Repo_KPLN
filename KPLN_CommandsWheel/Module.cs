@@ -23,12 +23,14 @@ namespace KPLN_CommandsWheel
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+            ModuleData.RevitVersionName = application.ControlledApplication.VersionName;
+            ModuleData.RibbonTabName = tabName;
 
             //Добавляю панель
             RibbonPanel wheelsCommandsPanel = application.CreateRibbonPanel(tabName, "Штурвал команд");
 
             AddPushButtonDataInPanel(
-                "KPLNCommandsWheelRun",
+                KeyboardShortcutService.WheelCommandInternalName,
                 "Штурвал",
                 "Открыть штурвал команд",
                 string.Format(
@@ -44,7 +46,7 @@ namespace KPLN_CommandsWheel
             );
 
             AddPushButtonDataInPanel(
-                "KPLNCommandsWheelSearch",
+                KeyboardShortcutService.SearchCommandInternalName,
                 "Команды",
                 "Поиск команд и настройки штурвала",
                 string.Format(
@@ -59,7 +61,25 @@ namespace KPLN_CommandsWheel
                 "http://moodle/mod/book/view.php?id=502&chapterid=1359"
             );
 
+            ApplyConfiguredKeyboardShortcuts();
+
             return Result.Succeeded;
+        }
+
+        private void ApplyConfiguredKeyboardShortcuts()
+        {
+            Models.UserSettings settings = UserSettingsService.Load();
+            if (!settings.AreKeyboardShortcutsConfigured)
+            {
+                return;
+            }
+
+            KeyboardShortcutService.ApplyToAllInstalledVersions(
+                ModuleData.RevitVersion,
+                ModuleData.RevitVersionName,
+                ModuleData.RibbonTabName,
+                settings.WheelShortcut,
+                settings.CommandSearchShortcut);
         }
 
         /// <summary>

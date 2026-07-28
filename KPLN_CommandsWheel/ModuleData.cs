@@ -29,6 +29,16 @@ namespace KPLN_CommandsWheel
         public static int RevitVersion { get; set; }
 
         /// <summary>
+        /// Полное имя текущей версии Revit, совпадающее с именем папки профиля
+        /// </summary>
+        public static string RevitVersionName { get; set; }
+
+        /// <summary>
+        /// Имя вкладки, в которую загрузчик добавил модуль
+        /// </summary>
+        public static string RibbonTabName { get; set; }
+
+        /// <summary>
         /// Ссылка на основное окно Revit 
         /// </summary>
         public static System.IntPtr RevitMainWindowHandle { get; set; }
