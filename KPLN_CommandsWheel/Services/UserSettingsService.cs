@@ -85,6 +85,14 @@ namespace KPLN_CommandsWheel.Services
             settings.WheelCommandIds = Clean(settings.WheelCommandIds, MaxWheelCommands);
             settings.RecentCommandIds = Clean(settings.RecentCommandIds, MaxRecentCommands);
             settings.WheelMode = NormalizeWheelMode(settings.WheelMode);
+            settings.WheelShortcut = (settings.WheelShortcut ?? string.Empty).Trim();
+            settings.CommandSearchShortcut = (settings.CommandSearchShortcut ?? string.Empty).Trim();
+            settings.KeyboardShortcutMigrationStatus =
+                NormalizeKeyboardShortcutMigrationStatus(settings);
+            settings.KeyboardShortcutMigrationMessage =
+                string.IsNullOrWhiteSpace(settings.KeyboardShortcutMigrationMessage)
+                    ? null
+                    : settings.KeyboardShortcutMigrationMessage.Trim();
 
             if (string.Equals(settings.WheelMode, WheelModeNames.Pinned, StringComparison.OrdinalIgnoreCase))
             {
@@ -115,6 +123,25 @@ namespace KPLN_CommandsWheel.Services
             }
 
             return WheelModeNames.Unpinned;
+        }
+
+        private static string NormalizeKeyboardShortcutMigrationStatus(
+            UserSettings settings)
+        {
+            string value = (settings.KeyboardShortcutMigrationStatus ?? string.Empty).Trim();
+            if (value.Length != 0)
+            {
+                return value;
+            }
+
+            if (!settings.LegacyHotkeyMigrationAttempted)
+            {
+                return "Pending";
+            }
+
+            return settings.LegacyHotkeyMigrationNoticeShown
+                ? "Completed"
+                : "Failed";
         }
     }
 }

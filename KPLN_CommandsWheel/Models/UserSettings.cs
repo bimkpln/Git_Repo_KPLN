@@ -36,5 +36,32 @@ namespace KPLN_CommandsWheel.Models
         [DataMember]
         public bool AreKeyboardShortcutsConfigured { get; set; }
 
+        [DataMember]
+        public LegacyHotkeyGesture CommandSearchHotkey { get; set; }
+
+        [DataMember]
+        public LegacyHotkeyGesture CommandsWheelHotkey { get; set; }
+
+        [DataMember]
+        public bool LegacyHotkeyMigrationAttempted { get; set; }
+
+        [DataMember]
+        public bool LegacyHotkeyMigrationNoticeShown { get; set; }
+
+        [DataMember]
+        public string KeyboardShortcutMigrationStatus { get; set; } = "Pending";
+
+        [DataMember]
+        public string KeyboardShortcutMigrationMessage { get; set; }
+    }
+
+    [DataContract]
+    public class LegacyHotkeyGesture
+    {
+        [DataMember]
+        public List<string> Keys { get; set; } = new List<string>();
+
+        [DataMember]
+        public string MouseButton { get; set; }
     }
 }
