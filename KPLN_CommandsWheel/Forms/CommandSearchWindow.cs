@@ -27,14 +27,27 @@ namespace KPLN_CommandsWheel.Forms
         private TextBox _commandSearchShortcutTextBox;
         private TextBlock _wheelShortcutLayoutHintTextBlock;
         private TextBlock _commandSearchShortcutLayoutHintTextBlock;
+        private Button _wheelShortcutCaptureButton;
+        private Button _commandSearchShortcutCaptureButton;
         private TextBlock _shortcutStatusTextBlock;
         private bool _isUpdatingSettingsControls;
+        private ShortcutCaptureTarget _shortcutCaptureTarget;
+        private readonly HashSet<string> _capturedShortcutModifiers =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<char> _capturedShortcutKeys = new List<char>();
 
         private enum CommandListKind
         {
             None,
             Wheel,
             Favorites
+        }
+
+        private enum ShortcutCaptureTarget
+        {
+            None,
+            Wheel,
+            CommandSearch
         }
 
         internal CommandSearchWindow(IEnumerable<RevitCommandInfo> commands, UserSettings settings, RevitCommandExecutor executor)
@@ -73,6 +86,12 @@ namespace KPLN_CommandsWheel.Forms
 
             PreviewKeyDown += delegate (object sender, KeyEventArgs args)
             {
+                if (_shortcutCaptureTarget != ShortcutCaptureTarget.None)
+                {
+                    HandleShortcutCaptureKeyDown(args);
+                    return;
+                }
+
                 if (args.Key == Key.Escape)
                 {
                     args.Handled = true;
@@ -232,14 +251,26 @@ namespace KPLN_CommandsWheel.Forms
                 out displayedWheelShortcut,
                 out displayedSearchShortcut);
 
-            Grid shortcutsRow = new Grid
+            Grid shortcutsGrid = new Grid
             {
                 Margin = new Thickness(0, 2, 0, 10)
             };
-            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            shortcutsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            shortcutsGrid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = GridLength.Auto
+            });
+            shortcutsGrid.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(1, GridUnitType.Star)
+            });
+            shortcutsGrid.RowDefinitions.Add(new RowDefinition
+            {
+                Height = GridLength.Auto
+            });
+            shortcutsGrid.RowDefinitions.Add(new RowDefinition
+            {
+                Height = GridLength.Auto
+            });
 
             TextBlock wheelShortcutLabel = new TextBlock
             {
@@ -249,15 +280,19 @@ namespace KPLN_CommandsWheel.Forms
                 VerticalAlignment = VerticalAlignment.Center
             };
             Grid.SetColumn(wheelShortcutLabel, 0);
-            shortcutsRow.Children.Add(wheelShortcutLabel);
+            Grid.SetRow(wheelShortcutLabel, 0);
+            shortcutsGrid.Children.Add(wheelShortcutLabel);
 
             Grid wheelShortcutEditor = CreateShortcutEditor(
                 displayedWheelShortcut,
+                ShortcutCaptureTarget.Wheel,
                 out _wheelShortcutTextBox,
-                out _wheelShortcutLayoutHintTextBlock);
-            wheelShortcutEditor.Margin = new Thickness(0, 0, 18, 0);
+                out _wheelShortcutLayoutHintTextBlock,
+                out _wheelShortcutCaptureButton);
+            wheelShortcutEditor.Margin = new Thickness(0, 0, 0, 8);
             Grid.SetColumn(wheelShortcutEditor, 1);
-            shortcutsRow.Children.Add(wheelShortcutEditor);
+            Grid.SetRow(wheelShortcutEditor, 0);
+            shortcutsGrid.Children.Add(wheelShortcutEditor);
 
             TextBlock searchShortcutLabel = new TextBlock
             {
@@ -266,18 +301,22 @@ namespace KPLN_CommandsWheel.Forms
                 Margin = new Thickness(0, 0, 8, 0),
                 VerticalAlignment = VerticalAlignment.Center
             };
-            Grid.SetColumn(searchShortcutLabel, 2);
-            shortcutsRow.Children.Add(searchShortcutLabel);
+            Grid.SetColumn(searchShortcutLabel, 0);
+            Grid.SetRow(searchShortcutLabel, 1);
+            shortcutsGrid.Children.Add(searchShortcutLabel);
 
             Grid commandSearchShortcutEditor = CreateShortcutEditor(
                 displayedSearchShortcut,
+                ShortcutCaptureTarget.CommandSearch,
                 out _commandSearchShortcutTextBox,
-                out _commandSearchShortcutLayoutHintTextBlock);
-            Grid.SetColumn(commandSearchShortcutEditor, 3);
-            shortcutsRow.Children.Add(commandSearchShortcutEditor);
+                out _commandSearchShortcutLayoutHintTextBlock,
+                out _commandSearchShortcutCaptureButton);
+            Grid.SetColumn(commandSearchShortcutEditor, 1);
+            Grid.SetRow(commandSearchShortcutEditor, 1);
+            shortcutsGrid.Children.Add(commandSearchShortcutEditor);
             RefreshShortcutToolTips();
 
-            panel.Children.Add(shortcutsRow);
+            panel.Children.Add(shortcutsGrid);
 
             panel.Children.Add(new TextBlock
             {
@@ -295,16 +334,6 @@ namespace KPLN_CommandsWheel.Forms
                 Margin = new Thickness(0, 0, 0, 10),
                 TextWrapping = TextWrapping.Wrap
             });
-
-            Button applyShortcutsButton = new Button
-            {
-                Content = "Сохранить горячие клавиши",
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Padding = new Thickness(14, 6, 14, 6),
-                Margin = new Thickness(0, 0, 0, 8)
-            };
-            applyShortcutsButton.Click += delegate { ApplyKeyboardShortcuts(); };
-            panel.Children.Add(applyShortcutsButton);
 
             _shortcutStatusTextBlock = new TextBlock
             {
@@ -336,10 +365,22 @@ namespace KPLN_CommandsWheel.Forms
 
         private Grid CreateShortcutEditor(
             string value,
+            ShortcutCaptureTarget captureTarget,
             out TextBox textBox,
-            out TextBlock layoutHintTextBlock)
+            out TextBlock layoutHintTextBlock,
+            out Button captureButton)
         {
             Grid editor = new Grid();
+            editor.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = new GridLength(1, GridUnitType.Star)
+            });
+            editor.ColumnDefinitions.Add(new ColumnDefinition
+            {
+                Width = GridLength.Auto
+            });
+
+            Grid inputArea = new Grid();
             textBox = CreateShortcutTextBox(value);
             layoutHintTextBlock = new TextBlock
             {
@@ -350,8 +391,25 @@ namespace KPLN_CommandsWheel.Forms
                 IsHitTestVisible = false
             };
 
-            editor.Children.Add(textBox);
-            editor.Children.Add(layoutHintTextBlock);
+            inputArea.Children.Add(textBox);
+            inputArea.Children.Add(layoutHintTextBlock);
+            Grid.SetColumn(inputArea, 0);
+            editor.Children.Add(inputArea);
+
+            captureButton = new Button
+            {
+                Content = "Записать",
+                Padding = new Thickness(8, 4, 8, 4),
+                Margin = new Thickness(5, 0, 0, 0),
+                Tag = captureTarget,
+                MinWidth = 66
+            };
+            captureButton.Click += delegate
+            {
+                ToggleShortcutCapture(captureTarget);
+            };
+            Grid.SetColumn(captureButton, 1);
+            editor.Children.Add(captureButton);
             return editor;
         }
 
@@ -360,7 +418,8 @@ namespace KPLN_CommandsWheel.Forms
             TextBox textBox = new TextBox
             {
                 Text = value ?? string.Empty,
-                MinWidth = 120,
+                MinWidth = 105,
+                IsReadOnly = true,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 Padding = new Thickness(7, 5, 72, 5),
                 VerticalContentAlignment = VerticalAlignment.Center
@@ -370,6 +429,296 @@ namespace KPLN_CommandsWheel.Forms
             ToolTipService.SetInitialShowDelay(textBox, 150);
             ToolTipService.SetShowDuration(textBox, 60000);
             return textBox;
+        }
+
+        private void ToggleShortcutCapture(ShortcutCaptureTarget target)
+        {
+            if (_shortcutCaptureTarget == target)
+            {
+                FinishShortcutCapture();
+                return;
+            }
+
+            StartShortcutCapture(target);
+        }
+
+        private void StartShortcutCapture(ShortcutCaptureTarget target)
+        {
+            _shortcutCaptureTarget = target;
+            _capturedShortcutModifiers.Clear();
+            _capturedShortcutKeys.Clear();
+
+            if (_wheelShortcutCaptureButton != null)
+            {
+                _wheelShortcutCaptureButton.Content =
+                    target == ShortcutCaptureTarget.Wheel ? "Стоп" : "Записать";
+                _wheelShortcutCaptureButton.IsEnabled =
+                    target == ShortcutCaptureTarget.Wheel;
+            }
+
+            if (_commandSearchShortcutCaptureButton != null)
+            {
+                _commandSearchShortcutCaptureButton.Content =
+                    target == ShortcutCaptureTarget.CommandSearch ? "Стоп" : "Записать";
+                _commandSearchShortcutCaptureButton.IsEnabled =
+                    target == ShortcutCaptureTarget.CommandSearch;
+            }
+
+            SetNonCaptureControlsEnabled(false);
+            if (_shortcutStatusTextBlock != null)
+            {
+                _shortcutStatusTextBlock.Foreground =
+                    new SolidColorBrush(Color.FromRgb(70, 90, 135));
+                _shortcutStatusTextBlock.Text = "Записывается: …";
+            }
+
+            Focus();
+            Keyboard.Focus(this);
+        }
+
+        private void HandleShortcutCaptureKeyDown(KeyEventArgs args)
+        {
+            args.Handled = true;
+            Key key = args.Key == Key.System ? args.SystemKey : args.Key;
+
+            if (key == Key.Escape)
+            {
+                EndShortcutCapture("Запись сочетания отменена.");
+                return;
+            }
+
+            if (key == Key.Back)
+            {
+                if (_capturedShortcutKeys.Count != 0)
+                {
+                    _capturedShortcutKeys.RemoveAt(_capturedShortcutKeys.Count - 1);
+                }
+                UpdateShortcutCaptureStatus(null);
+                return;
+            }
+
+            string modifier = GetModifierName(key);
+            if (modifier != null)
+            {
+                _capturedShortcutModifiers.Add(modifier);
+                UpdateShortcutCaptureStatus(null);
+                return;
+            }
+
+            AddCurrentKeyboardModifiers();
+
+            char alphaNumeric;
+            if (!TryGetAlphaNumericKey(key, out alphaNumeric))
+            {
+                UpdateShortcutCaptureStatus(
+                    "Эта клавиша недопустима для горячих клавиш Revit.");
+                return;
+            }
+
+            if (_capturedShortcutModifiers.Count != 0)
+            {
+                _capturedShortcutKeys.Clear();
+                _capturedShortcutKeys.Add(alphaNumeric);
+            }
+            else if (!_capturedShortcutKeys.Contains(alphaNumeric)
+                && _capturedShortcutKeys.Count < 5)
+            {
+                _capturedShortcutKeys.Add(alphaNumeric);
+            }
+
+            UpdateShortcutCaptureStatus(null);
+        }
+
+        private void AddCurrentKeyboardModifiers()
+        {
+            ModifierKeys currentModifiers = Keyboard.Modifiers;
+            if ((currentModifiers & ModifierKeys.Control) != 0)
+            {
+                _capturedShortcutModifiers.Add("Ctrl");
+            }
+            if ((currentModifiers & ModifierKeys.Shift) != 0)
+            {
+                _capturedShortcutModifiers.Add("Shift");
+            }
+            if ((currentModifiers & ModifierKeys.Alt) != 0)
+            {
+                _capturedShortcutModifiers.Add("Alt");
+            }
+        }
+
+        private void FinishShortcutCapture()
+        {
+            string candidate = BuildCapturedShortcut();
+            string englishUpper;
+            string singleRussianUpper;
+            string singleRussianLower;
+            string error;
+            if (!KeyboardShortcutService.TryNormalizeSingleShortcutInput(
+                candidate,
+                out englishUpper,
+                out singleRussianUpper,
+                out singleRussianLower,
+                out error))
+            {
+                EndShortcutCapture("Значение недопустимо: " + error);
+                return;
+            }
+
+            TextBox targetTextBox = _shortcutCaptureTarget == ShortcutCaptureTarget.Wheel
+                ? _wheelShortcutTextBox
+                : _commandSearchShortcutTextBox;
+            string normalizedConfiguration;
+            string russianConfiguration;
+            if (!KeyboardShortcutService.TryNormalizeShortcutInput(
+                englishUpper,
+                out normalizedConfiguration,
+                out russianConfiguration,
+                out error))
+            {
+                EndShortcutCapture("Значение недопустимо: " + error);
+                return;
+            }
+
+            targetTextBox.Text = normalizedConfiguration;
+            EndShortcutCapture(string.Empty);
+            ApplyKeyboardShortcuts();
+        }
+
+        private string BuildCapturedShortcut()
+        {
+            List<string> parts = new List<string>();
+            if (_capturedShortcutModifiers.Contains("Ctrl"))
+            {
+                parts.Add("Ctrl");
+            }
+            if (_capturedShortcutModifiers.Contains("Shift"))
+            {
+                parts.Add("Shift");
+            }
+            if (_capturedShortcutModifiers.Contains("Alt"))
+            {
+                parts.Add("Alt");
+            }
+
+            string keySequence = new string(_capturedShortcutKeys.ToArray());
+            if (parts.Count == 0)
+            {
+                return keySequence;
+            }
+
+            return string.Join("+", parts.ToArray()) + "+" + keySequence;
+        }
+
+        private void UpdateShortcutCaptureStatus(string error)
+        {
+            if (_shortcutStatusTextBlock == null)
+            {
+                return;
+            }
+
+            string candidate = BuildCapturedShortcut();
+            _shortcutStatusTextBlock.Foreground = error == null
+                ? new SolidColorBrush(Color.FromRgb(70, 90, 135))
+                : new SolidColorBrush(Color.FromRgb(160, 70, 55));
+            _shortcutStatusTextBlock.Text = string.IsNullOrWhiteSpace(error)
+                ? "Записывается: " + (candidate.Length == 0 ? "…" : candidate)
+                    + ". Нажмите «Стоп», когда закончите."
+                : error;
+        }
+
+        private void EndShortcutCapture(string message)
+        {
+            _shortcutCaptureTarget = ShortcutCaptureTarget.None;
+            _capturedShortcutModifiers.Clear();
+            _capturedShortcutKeys.Clear();
+
+            if (_wheelShortcutCaptureButton != null)
+            {
+                _wheelShortcutCaptureButton.Content = "Записать";
+                _wheelShortcutCaptureButton.IsEnabled = true;
+            }
+            if (_commandSearchShortcutCaptureButton != null)
+            {
+                _commandSearchShortcutCaptureButton.Content = "Записать";
+                _commandSearchShortcutCaptureButton.IsEnabled = true;
+            }
+
+            SetNonCaptureControlsEnabled(true);
+            if (_shortcutStatusTextBlock != null)
+            {
+                bool isError = !string.IsNullOrWhiteSpace(message)
+                    && message.StartsWith(
+                        "Значение недопустимо",
+                        StringComparison.OrdinalIgnoreCase);
+                _shortcutStatusTextBlock.Foreground = isError
+                    ? new SolidColorBrush(Color.FromRgb(160, 70, 55))
+                    : new SolidColorBrush(Color.FromRgb(55, 105, 65));
+                _shortcutStatusTextBlock.Text = message ?? string.Empty;
+            }
+
+            RefreshShortcutToolTips();
+        }
+
+        private void SetNonCaptureControlsEnabled(bool isEnabled)
+        {
+            if (_wheelShortcutTextBox != null)
+            {
+                _wheelShortcutTextBox.IsEnabled = isEnabled;
+            }
+            if (_commandSearchShortcutTextBox != null)
+            {
+                _commandSearchShortcutTextBox.IsEnabled = isEnabled;
+            }
+            if (_unpinnedWheelRadioButton != null)
+            {
+                _unpinnedWheelRadioButton.IsEnabled = isEnabled;
+            }
+            if (_pinnedWheelRadioButton != null)
+            {
+                _pinnedWheelRadioButton.IsEnabled = isEnabled;
+            }
+            if (_wheelCloseButtonCheckBox != null)
+            {
+                bool isPinned = _pinnedWheelRadioButton != null
+                    && _pinnedWheelRadioButton.IsChecked == true;
+                _wheelCloseButtonCheckBox.IsEnabled = isEnabled && isPinned;
+            }
+        }
+
+        private static string GetModifierName(Key key)
+        {
+            if (key == Key.LeftCtrl || key == Key.RightCtrl)
+            {
+                return "Ctrl";
+            }
+            if (key == Key.LeftShift || key == Key.RightShift)
+            {
+                return "Shift";
+            }
+            if (key == Key.LeftAlt || key == Key.RightAlt)
+            {
+                return "Alt";
+            }
+
+            return null;
+        }
+
+        private static bool TryGetAlphaNumericKey(Key key, out char value)
+        {
+            if (key >= Key.A && key <= Key.Z)
+            {
+                value = (char)('A' + ((int)key - (int)Key.A));
+                return true;
+            }
+
+            if (key >= Key.D0 && key <= Key.D9)
+            {
+                value = (char)('0' + ((int)key - (int)Key.D0));
+                return true;
+            }
+
+            value = '\0';
+            return false;
         }
 
         private void RefreshShortcutToolTips()

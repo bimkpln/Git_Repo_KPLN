@@ -167,12 +167,12 @@ namespace KPLN_CommandsWheel.Services
             try
             {
                 XDocument document = LoadOrCreateDocument(filePath);
-                wheelShortcut = ReadFirstShortcut(
+                wheelShortcut = ReadConfiguredShortcuts(
                     document,
                     wheelCommandId,
                     WheelCommandInternalName,
                     typeof(CommandsWheel).FullName);
-                searchShortcut = ReadFirstShortcut(
+                searchShortcut = ReadConfiguredShortcuts(
                     document,
                     searchCommandId,
                     SearchCommandInternalName,
@@ -217,9 +217,14 @@ namespace KPLN_CommandsWheel.Services
                     return result;
                 }
 
-                if (HaveCommonShortcut(wheelVariants, searchVariants))
+                string commonShortcut = FindCommonShortcut(
+                    wheelVariants,
+                    searchVariants);
+                if (commonShortcut != null)
                 {
-                    result.ErrorMessage = "Для «Штурвала» и «Команд» нельзя назначить одинаковое сочетание.";
+                    result.ErrorMessage = string.Format(
+                        "Сочетание «{0}» одновременно назначено командам «Штурвал» и «Команды».",
+                        commonShortcut);
                     return result;
                 }
 
@@ -355,21 +360,139 @@ namespace KPLN_CommandsWheel.Services
             out string russianUpper,
             out string error)
         {
-            string variants = BuildShortcutVariants(value, out error);
+            error = null;
+            string[] configuredShortcuts = SplitConfiguredShortcuts(value).ToArray();
+            if (configuredShortcuts.Length == 0)
+            {
+                englishUpper = string.Empty;
+                russianUpper = string.Empty;
+                return true;
+            }
+
+            if (configuredShortcuts.Length > 1)
+            {
+                englishUpper = null;
+                russianUpper = null;
+                error = "можно назначить только одно сочетание или одну последовательность клавиш.";
+                return false;
+            }
+
+            string russianLower;
+            return TryNormalizeSingleShortcutInput(
+                configuredShortcuts[0],
+                out englishUpper,
+                out russianUpper,
+                out russianLower,
+                out error);
+        }
+
+        internal static bool TryNormalizeSingleShortcutInput(
+            string value,
+            out string englishUpper,
+            out string russianUpper,
+            out string russianLower,
+            out string error)
+        {
+            string variants = BuildSingleShortcutVariants(value, out error);
             if (error != null)
             {
                 englishUpper = null;
                 russianUpper = null;
+                russianLower = null;
                 return false;
             }
 
             string[] values = SplitShortcuts(variants).ToArray();
             englishUpper = values.FirstOrDefault() ?? string.Empty;
             russianUpper = values.Length > 1 ? values[1] : string.Empty;
+            russianLower = values.Length > 2 ? values[2] : russianUpper.ToLowerInvariant();
             return true;
         }
 
+        internal static bool TryConvertLegacyGesture(
+            Models.LegacyHotkeyGesture gesture,
+            out string shortcut,
+            out string error)
+        {
+            shortcut = string.Empty;
+            error = null;
+
+            if (gesture == null
+                || ((gesture.Keys == null || gesture.Keys.Count == 0)
+                    && string.IsNullOrWhiteSpace(gesture.MouseButton)))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(gesture.MouseButton))
+            {
+                error = "старое назначение использовало кнопку мыши.";
+                return false;
+            }
+
+            List<string> modifiers = new List<string>();
+            List<string> keys = new List<string>();
+            foreach (string rawKey in gesture.Keys ?? new List<string>())
+            {
+                string modifier = NormalizeLegacyModifier(rawKey);
+                if (modifier != null)
+                {
+                    if (!modifiers.Contains(modifier, StringComparer.OrdinalIgnoreCase))
+                    {
+                        modifiers.Add(modifier);
+                    }
+                    continue;
+                }
+
+                string key;
+                if (!TryNormalizeLegacyAlphaNumericKey(rawKey, out key))
+                {
+                    error = "старое назначение содержит неподдерживаемую специальную клавишу.";
+                    return false;
+                }
+
+                if (!keys.Contains(key, StringComparer.OrdinalIgnoreCase))
+                {
+                    keys.Add(key);
+                }
+            }
+
+            if (modifiers.Count == 0 || keys.Count != 1)
+            {
+                error = "старое назначение нельзя однозначно перенести.";
+                return false;
+            }
+
+            string candidate = BuildModifierPrefix(modifiers) + keys[0];
+            string russianUpper;
+            string russianLower;
+            return TryNormalizeSingleShortcutInput(
+                candidate,
+                out shortcut,
+                out russianUpper,
+                out russianLower,
+                out error);
+        }
+
         private static string BuildShortcutVariants(string value, out string error)
+        {
+            error = null;
+            string[] configuredShortcuts = SplitConfiguredShortcuts(value).ToArray();
+            if (configuredShortcuts.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            if (configuredShortcuts.Length > 1)
+            {
+                error = "можно назначить только одно сочетание или одну последовательность клавиш.";
+                return null;
+            }
+
+            return BuildSingleShortcutVariants(configuredShortcuts[0], out error);
+        }
+
+        private static string BuildSingleShortcutVariants(string value, out string error)
         {
             error = null;
             string compact = (value ?? string.Empty).Replace(" ", string.Empty).Trim();
@@ -610,7 +733,7 @@ namespace KPLN_CommandsWheel.Services
                 new XElement("Shortcuts"));
         }
 
-        private static string ReadFirstShortcut(
+        private static string ReadConfiguredShortcuts(
             XDocument document,
             string commandId,
             string internalCommandName,
@@ -627,17 +750,26 @@ namespace KPLN_CommandsWheel.Services
                 return null;
             }
 
-            string storedShortcut = SplitShortcuts(GetAttributeValue(item, "Shortcuts"))
-                .FirstOrDefault() ?? string.Empty;
-            string error;
-            string normalizedVariants = BuildShortcutVariants(storedShortcut, out error);
-
-            if (error != null)
+            foreach (string storedShortcut in SplitShortcuts(GetAttributeValue(item, "Shortcuts")))
             {
-                return storedShortcut.ToUpperInvariant();
+                string englishUpper;
+                string russianUpper;
+                string russianLower;
+                string error;
+                if (!TryNormalizeSingleShortcutInput(
+                    storedShortcut,
+                    out englishUpper,
+                    out russianUpper,
+                    out russianLower,
+                    out error))
+                {
+                    continue;
+                }
+
+                return englishUpper;
             }
 
-            return SplitShortcuts(normalizedVariants).FirstOrDefault() ?? string.Empty;
+            return string.Empty;
         }
 
         private static string SaveWithBackup(XDocument document, string filePath)
@@ -953,6 +1085,58 @@ namespace KPLN_CommandsWheel.Services
             return null;
         }
 
+        private static string NormalizeLegacyModifier(string value)
+        {
+            string normalized = (value ?? string.Empty).Trim();
+            if (string.Equals(normalized, "Ctrl", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "Control", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "LeftCtrl", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "RightCtrl", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Ctrl";
+            }
+
+            if (string.Equals(normalized, "Shift", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "LeftShift", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "RightShift", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Shift";
+            }
+
+            if (string.Equals(normalized, "Alt", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "Menu", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "LeftAlt", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(normalized, "RightAlt", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Alt";
+            }
+
+            return null;
+        }
+
+        private static bool TryNormalizeLegacyAlphaNumericKey(
+            string value,
+            out string key)
+        {
+            key = null;
+            string normalized = (value ?? string.Empty).Trim();
+            if (normalized.Length == 1 && IsSupportedAlphaNumeric(normalized[0]))
+            {
+                key = normalized.ToUpperInvariant();
+                return true;
+            }
+
+            if (normalized.Length == 2
+                && (normalized[0] == 'D' || normalized[0] == 'd')
+                && char.IsDigit(normalized[1]))
+            {
+                key = normalized[1].ToString();
+                return true;
+            }
+
+            return false;
+        }
+
         private static string BuildModifierPrefix(IEnumerable<string> modifiers)
         {
             List<string> ordered = new List<string>();
@@ -1006,19 +1190,27 @@ namespace KPLN_CommandsWheel.Services
             return result.ToString();
         }
 
-        private static bool HaveCommonShortcut(string first, string second)
+        private static string FindCommonShortcut(string first, string second)
         {
             HashSet<string> values = new HashSet<string>(
                 SplitShortcuts(first),
                 StringComparer.OrdinalIgnoreCase);
             values.RemoveWhere(string.IsNullOrWhiteSpace);
-            return SplitShortcuts(second).Any(values.Contains);
+            return SplitShortcuts(second).FirstOrDefault(values.Contains);
         }
 
         private static IEnumerable<string> SplitShortcuts(string value)
         {
             return (value ?? string.Empty)
                 .Split(new[] { '#' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(item => item.Trim())
+                .Where(item => item.Length != 0);
+        }
+
+        private static IEnumerable<string> SplitConfiguredShortcuts(string value)
+        {
+            return (value ?? string.Empty)
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(item => item.Trim())
                 .Where(item => item.Length != 0);
         }
