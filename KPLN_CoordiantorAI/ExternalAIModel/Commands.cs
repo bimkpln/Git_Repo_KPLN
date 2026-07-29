@@ -6770,6 +6770,437 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #endregion
 
+        #region 39_get_revit_links_in_model
+
+        public static object GetRevitLinksInModel(Document doc)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        links = new List<object>(),
+                        count = 0
+                    };
+                }
+
+                List<object> links = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Cast<RevitLinkInstance>()
+                    .OrderBy(link => IDHelper.ElIdInt(link.Id))
+                    .Select(linkInstance =>
+                    {
+                        RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                        Document linkedDoc = linkInstance.GetLinkDocument();
+                        bool isLoaded = linkedDoc != null;
+                        Transform transform = linkInstance.GetTotalTransform();
+
+                        return new
+                        {
+                            link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                            link_type_id = linkType != null ? (int?)IDHelper.ElIdInt(linkType.Id) : null,
+                            link_instance_name = linkInstance.Name,
+                            link_type_name = linkType != null ? linkType.Name : null,
+                            linked_document_title = linkedDoc != null ? linkedDoc.Title : null,
+                            linked_document_path = linkedDoc != null ? linkedDoc.PathName : null,
+                            is_loaded = isLoaded,
+                            transform = FormatTransformForLink(transform)
+                        };
+                    })
+                    .ToList<object>();
+
+                return new
+                {
+                    success = true,
+                    links = links,
+                    count = links.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting Revit links: {ex.Message}",
+                    links = new List<object>(),
+                    count = 0
+                };
+            }
+        }
+
+        private static object FormatTransformForLink(Transform transform)
+        {
+            if (transform == null)
+                return null;
+
+            return new
+            {
+                origin = FormatXyz(transform.Origin),
+                basisX = FormatXyz(transform.BasisX),
+                basisY = FormatXyz(transform.BasisY),
+                basisZ = FormatXyz(transform.BasisZ)
+            };
+        }
+
+        #endregion
+
+        #region 40_get_revit_link_elements
+
+        public static object GetRevitLinkElements(Document doc, int linkInstanceId, int limit = 300, int offset = 0)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                if (limit <= 0)
+                    limit = 300;
+
+                if (limit > 300)
+                    limit = 300;
+
+                if (offset < 0)
+                    offset = 0;
+
+                ElementId linkElemId = IDHelper.ToElementId(linkInstanceId);
+                RevitLinkInstance linkInstance = doc.GetElement(linkElemId) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                    return new
+                    {
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_name = linkType?.Name ?? linkInstance.Name,
+                        linked_document_title = (string)null,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                List<Element> linkedElements = new FilteredElementCollector(linkedDoc)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e != null)
+                    .OrderBy(e => IDHelper.ElIdInt(e.Id))
+                    .ToList();
+
+                int totalCount = linkedElements.Count;
+                List<object> pageElements = linkedElements
+                    .Skip(offset)
+                    .Take(limit)
+                    .Select(e => FormatLinkedElementSummary(e))
+                    .ToList();
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = linkedDoc.Title,
+                    elements = pageElements,
+                    total_count = totalCount,
+                    limit = limit,
+                    offset = offset,
+                    has_more = offset + pageElements.Count < totalCount
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting linked elements: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = (string)null,
+                    elements = new List<object>(),
+                    total_count = 0,
+                    returned_count = 0,
+                    limit = limit,
+                    offset = offset
+                };
+            }
+        }
+
+        private static object FormatLinkedElementSummary(Element element)
+        {
+            ElementId typeId = ElementId.InvalidElementId;
+            try
+            {
+                typeId = element.GetTypeId();
+            }
+            catch
+            {
+            }
+
+            return new
+            {
+                linked_element_id = IDHelper.ElIdInt(element.Id),
+                name = element.Name,
+                category = element.Category != null ? element.Category.Name : null,
+                class_name = element.GetType().FullName,
+                type_id = typeId != null && typeId != ElementId.InvalidElementId ? (int?)IDHelper.ElIdInt(typeId) : null
+            };
+        }
+
+        #endregion
+
+        #region 41_get_revit_link_categories
+
+        public static object GetRevitLinkCategories(Document doc, int linkInstanceId)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        categories = new List<object>(),
+                        count = 0,
+                        total_elements_count = 0
+                    };
+                }
+
+                ElementId linkElemId = IDHelper.ToElementId(linkInstanceId);
+                RevitLinkInstance linkInstance = doc.GetElement(linkElemId) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        categories = new List<object>(),
+                        count = 0,
+                        total_elements_count = 0
+                    };
+                }
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                    return new
+                    {
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_name = linkType?.Name ?? linkInstance.Name,
+                        linked_document_title = (string)null,
+                        categories = new List<object>(),
+                        count = 0,
+                        total_elements_count = 0
+                    };
+                }
+
+                List<Element> linkedElements = new FilteredElementCollector(linkedDoc)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e != null && e.Category != null)
+                    .ToList();
+
+                List<object> categories = linkedElements
+                    .GroupBy(e => IDHelper.ElIdInt(e.Category.Id))
+                    .Select(g =>
+                    {
+                        Category category = g.First().Category;
+                        return new
+                        {
+                            category_id = g.Key,
+                            category_name = category != null ? category.Name : null,
+                            count = g.Count()
+                        };
+                    })
+                    .OrderByDescending(c => c.count)
+                    .ThenBy(c => c.category_name)
+                    .ToList<object>();
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = linkedDoc.Title,
+                    categories = categories,
+                    count = categories.Count,
+                    total_elements_count = linkedElements.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting linked categories: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = (string)null,
+                    categories = new List<object>(),
+                    count = 0,
+                    total_elements_count = 0
+                };
+            }
+        }
+
+        #endregion
+
+        #region 42_get_revit_link_elements_by_category
+
+        public static object GetRevitLinkElementsByCategory(Document doc, int linkInstanceId, int categoryId, string categoryName = null, int limit = 300, int offset = 0)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        category_id = categoryId == 0 ? (int?)null : categoryId,
+                        category_name = categoryName,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                if (limit <= 0)
+                    limit = 300;
+
+                if (limit > 300)
+                    limit = 300;
+
+                if (offset < 0)
+                    offset = 0;
+
+                ElementId linkElemId = IDHelper.ToElementId(linkInstanceId);
+                RevitLinkInstance linkInstance = doc.GetElement(linkElemId) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        category_id = categoryId == 0 ? (int?)null : categoryId,
+                        category_name = categoryName,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                    return new
+                    {
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_name = linkType?.Name ?? linkInstance.Name,
+                        linked_document_title = (string)null,
+                        category_id = categoryId == 0 ? (int?)null : categoryId,
+                        category_name = categoryName,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                List<Element> linkedElements = new FilteredElementCollector(linkedDoc)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e != null && e.Category != null)
+                    .Where(e =>
+                    {
+                        if (categoryId != 0)
+                            return IDHelper.ElIdInt(e.Category.Id) == categoryId;
+
+                        return !string.IsNullOrWhiteSpace(categoryName)
+                            && string.Equals(e.Category.Name, categoryName, StringComparison.CurrentCultureIgnoreCase);
+                    })
+                    .OrderBy(e => IDHelper.ElIdInt(e.Id))
+                    .ToList();
+
+                Category category = linkedElements.Count > 0 ? linkedElements[0].Category : null;
+                int? resultCategoryId = category != null ? (int?)IDHelper.ElIdInt(category.Id) : (categoryId == 0 ? (int?)null : categoryId);
+                string resultCategoryName = category != null ? category.Name : categoryName;
+
+                List<object> pageElements = linkedElements
+                    .Skip(offset)
+                    .Take(limit)
+                    .Select(e => FormatLinkedElementSummary(e))
+                    .ToList();
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = linkedDoc.Title,
+                    category_id = resultCategoryId,
+                    category_name = resultCategoryName,
+                    elements = pageElements,
+                    total_count = linkedElements.Count,
+                    returned_count = pageElements.Count,
+                    limit = limit,
+                    offset = offset,
+                    has_more = offset + pageElements.Count < linkedElements.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting linked elements by category: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = (string)null,
+                    category_id = categoryId == 0 ? (int?)null : categoryId,
+                    category_name = categoryName,
+                    elements = new List<object>(),
+                    total_count = 0,
+                    returned_count = 0,
+                    limit = limit,
+                    offset = offset
+                };
+            }
+        }
+
+        #endregion
+
         #region 99_get_document_switched
 
         //public static object GetDocumentSwitched(Document mainDoc, UIDocument uiDoc, int elementId = -1, bool switchMainDoc = false)
