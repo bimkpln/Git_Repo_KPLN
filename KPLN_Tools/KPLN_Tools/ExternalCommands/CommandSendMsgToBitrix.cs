@@ -33,7 +33,10 @@ namespace KPLN_Tools.ExternalCommands
             UIApplication uiapp = commandData.Application;
             UIDocument uidoc = uiapp.ActiveUIDocument;
             Document doc = uidoc.Document;
+            
+            
             Selection selection = uidoc.Selection;
+            Autodesk.Revit.DB.View activeView = doc.ActiveView;
 
             bool checkLinkElem = false;
 #if Revit2020 || Debug2020
@@ -47,7 +50,13 @@ namespace KPLN_Tools.ExternalCommands
                 else
                     selectedIds.Add(elementId.ToString());
             }
+
             selectedDoc = doc;
+
+            if (activeView is ViewSheet vsh)
+                selectedDocActiveViewName = $"Лист: {vsh.SheetNumber} - {vsh.Name}";
+            else
+                selectedDocActiveViewName = $"Вид: {activeView.Name}";
 #else
             ElementId elementId = null;
             bool checkDoubleLinkElem = false;
@@ -76,13 +85,12 @@ namespace KPLN_Tools.ExternalCommands
                     elementId = selElem.Id;
                     selectedDoc = doc;
 
-                    Autodesk.Revit.DB.View activeView = doc.ActiveView;
                     if (activeView == null)
                         selectedDocActiveViewName = "Не удалось определить активный вид";
                     else if (activeView is ViewSheet vsh)
                         selectedDocActiveViewName = $"Лист: {vsh.SheetNumber} - {vsh.Name}";
                     else
-                        selectedDocActiveViewName = $"Вид: {doc.ActiveView.Name}";
+                        selectedDocActiveViewName = $"Вид: {activeView.Name}";
 
                     checkDocElem = true;
                 }
