@@ -1,0 +1,127 @@
+﻿<Window x:Class="KPLN_Tools.ExternalCommands.UI.EvacuationRoutesResizeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Изменить габариты пути эвакуации"
+        Width="610"
+        Height="390"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F6F8FB"
+        FontFamily="Century Gothic">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="White"
+                BorderBrush="#E0E5EC"
+                BorderThickness="0,0,0,1"
+                Padding="14,12,14,10">
+            <StackPanel>
+                <TextBlock x:Name="TbRouteTitle"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="#18202C"
+                           Text="Путь эвакуации"/>
+                <TextBlock Margin="0,3,0,0"
+                           Foreground="#64748B"
+                           Text="Изменение габаритов без перестроения формы"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                Margin="14"
+                Padding="14"
+                Background="White"
+                BorderBrush="#E0E5EC"
+                BorderThickness="1"
+                CornerRadius="6">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="190"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="0"
+                               Grid.ColumnSpan="2"
+                               Margin="0,0,0,8"
+                               FontWeight="Bold"
+                               Foreground="#2D3748"
+                               Text="Габариты"/>
+                    <TextBlock Grid.Row="0"
+                               Grid.Column="3"
+                               Margin="0,0,0,8"
+                               FontWeight="Bold"
+                               Foreground="#2D3748"
+                               Text="Изменять"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Длина, мм"/>
+                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="TbLengthMm" Height="26" Margin="0,0,8,6" VerticalContentAlignment="Center"/>
+                    <ComboBox Grid.Row="1" Grid.Column="3" x:Name="CmbLengthDirection" Height="26" Margin="0,0,0,6" SelectedIndex="0" VerticalContentAlignment="Center">
+                        <ComboBoxItem Content="Обе торцевые грани"/>
+                        <ComboBoxItem Content="Меньшая торцевая грань"/>
+                        <ComboBoxItem Content="Большая торцевая грань"/>
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Ширина, мм"/>
+                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="TbWidthMm" Height="26" Margin="0,0,8,6" VerticalContentAlignment="Center"/>
+                    <ComboBox Grid.Row="2" Grid.Column="3" x:Name="CmbWidthDirection" Height="26" Margin="0,0,0,6" SelectedIndex="0" VerticalContentAlignment="Center">
+                        <ComboBoxItem Content="Обе боковые грани"/>
+                        <ComboBoxItem Content="Меньшая боковая грань"/>
+                        <ComboBoxItem Content="Большая боковая грань"/>
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,0,8,6" VerticalAlignment="Center" Text="Высота, мм"/>
+                    <TextBox Grid.Row="3" Grid.Column="1" x:Name="TbHeightMm" Height="26" Margin="0,0,8,6" VerticalContentAlignment="Center"/>
+                </Grid>
+
+                <Border Margin="0,12,0,0"
+                        Padding="10,8"
+                        Background="#EFF6FF"
+                        BorderBrush="#BFDBFE"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <TextBlock Foreground="#465467" TextWrapping="Wrap">
+                        <Run Text="Меньшая/большая грань считается по локальной оси пути."/>
+                        <LineBreak/>
+                        <Run Text="При выборе «обе» центр остаётся на месте."/>
+                    </TextBlock>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="2"
+                Background="White"
+                BorderBrush="#E0E5EC"
+                BorderThickness="0,1,0,0">
+            <StackPanel Margin="14,10"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right">
+                <Button Width="96"
+                        Height="30"
+                        Margin="0,0,8,0"
+                        IsDefault="True"
+                        Content="Изменить"
+                        Click="Apply_Click"/>
+                <Button Width="86"
+                        Height="30"
+                        IsCancel="True"
+                        Content="Отмена"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

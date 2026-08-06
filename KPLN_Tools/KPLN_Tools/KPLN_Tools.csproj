@@ -240,6 +240,12 @@
     <Compile Include="Forms\EvacuationRoutesDialog.xaml.cs">
       <DependentUpon>EvacuationRoutesDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\EvacuationRoutesReportDialog.xaml.cs">
+      <DependentUpon>EvacuationRoutesReportDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\EvacuationRoutesResizeDialog.xaml.cs">
+      <DependentUpon>EvacuationRoutesResizeDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormChangeElementInLevel.xaml.cs">
       <DependentUpon>FormChangeElementInLevel.xaml</DependentUpon>
     </Compile>
@@ -464,6 +470,14 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\EvacuationRoutesReportDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\EvacuationRoutesResizeDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
