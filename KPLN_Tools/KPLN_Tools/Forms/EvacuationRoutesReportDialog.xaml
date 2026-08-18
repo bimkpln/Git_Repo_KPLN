@@ -1,0 +1,95 @@
+﻿<Window x:Class="KPLN_Tools.ExternalCommands.UI.EvacuationRoutesReportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Отчёт по маршрутам эвакуации"
+        Width="980"
+        Height="600"
+        MinWidth="760"
+        MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="#F5F7FA"
+        FontFamily="Century Gothic">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   x:Name="TbHeader"
+                   FontSize="17"
+                   FontWeight="SemiBold"
+                   Foreground="#202936"
+                   Text="Отчёт по лестницам"/>
+
+        <DataGrid Grid.Row="2"
+                  x:Name="DgStairs"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  SelectionUnit="FullRow"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  Background="White"
+                  SelectionChanged="DgStairs_SelectionChanged">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Статус"
+                                    Binding="{Binding StatusText}"
+                                    Width="190"/>
+                <DataGridTextColumn Header="ID"
+                                    Binding="{Binding ElementId}"
+                                    Width="100"/>
+                <DataGridTextColumn Header="Тип лестницы"
+                                    Binding="{Binding TypeName}"
+                                    Width="*"/>
+                <DataGridTextColumn Header="Рабочий набор"
+                                    Binding="{Binding WorksetName}"
+                                    Width="230"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock Grid.Row="4"
+                   x:Name="TbStatus"
+                   Foreground="#667085"
+                   Text="Выберите строку для перехода к лестнице в Revit."
+                   TextWrapping="Wrap"/>
+
+        <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    x:Name="BtnSaveReport"
+                    Width="145"
+                    Height="32"
+                    Content="Сохранить лог"
+                    Click="SaveReport_Click"/>
+
+            <Button Grid.Column="2"
+                    x:Name="BtnEditor"
+                    Width="155"
+                    Height="32"
+                    Content="Редактор форм"
+                    Click="Editor_Click"/>
+
+            <Button Grid.Column="4"
+                    Width="100"
+                    Height="32"
+                    Content="Закрыть"
+                    Click="Close_Click"/>
+        </Grid>
+    </Grid>
+</Window>
