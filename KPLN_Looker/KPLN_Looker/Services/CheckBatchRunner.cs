@@ -56,13 +56,13 @@ namespace KPLN_Looker.Services
 
             cmd.ExecuteByUIApp<TCheck>(
                 uiapp: uiapp,
+                config: null,
                 onlyErrorType: true,
                 setPluginActivity: false,
                 setLastRun: false,
                 showMainForm: false,
                 showSuccsessText: false);
 
-            // ДОСТУП да вынікаў праз generic-static (асобнае статычнае поле на кожны closed generic T)
             // ВАЖНО: Если будет ПАКЕТНАЯ проверка между файлами - нужны копии результатов таких проверок,
             // т.к. инстанс AbstrCommand один, результаты просто перетираются при запуске на новом файле
             var entities = cmd.CommandCheck.CheckerEntitiesColl;
