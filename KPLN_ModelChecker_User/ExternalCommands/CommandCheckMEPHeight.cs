@@ -22,7 +22,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckMEPHeight().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            CheckResultStatus checkResultStatus = ExecuteByUIApp<CheckMEPHeight>(uiapp, false, true, true, true, true);
+            CheckResultStatus checkResultStatus = ExecuteByUIApp<CheckMEPHeight>(uiapp);
             switch (checkResultStatus)
             {
                 case (CheckResultStatus.Succeeded):

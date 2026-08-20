@@ -1,10 +1,12 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_ConfigWorker.Core;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Core;
+using KPLN_ModelChecker_User.Common;
 using KPLN_ModelChecker_User.ExecutableCommand;
 using KPLN_ModelChecker_User.Forms;
 using KPLN_ModelChecker_User.WPFItems;
@@ -34,7 +36,14 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// <summary>
         /// Спец. метод для вызова данного класса из кнопки WPF: https://thebuildingcoder.typepad.com/blog/2016/11/using-other-events-to-execute-add-in-code.html#:~:text=anything%20with%20documents.-,Here%20is%20an%20example%20code%20snippet%3A,-public%C2%A0class
         /// </summary>
-        public virtual CheckResultStatus ExecuteByUIApp<T>(UIApplication uiapp, bool onlyErrorType = false, bool setPluginActivity = false, bool showMainForm = false, bool setLastRun = false, bool showSuccsessText = false) 
+        public virtual CheckResultStatus ExecuteByUIApp<T>(
+            UIApplication uiapp,
+            IJsonSerializable config = null, 
+            bool onlyErrorType = false, 
+            bool setPluginActivity = true, 
+            bool showMainForm = true, 
+            bool setLastRun = true, 
+            bool showSuccsessText = true) 
             where T : AbstrCheck, new()
         {
             try
@@ -57,7 +66,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     && showMainForm)
                 {
                     if (CommandCheck.OnlyElemsInModel)
-                        SelectElemsInModelResult<T>(uiapp);
+                        SelectElemsInModelByConfigResult<T>(uiapp, config);
                     else if (CommandCheck.WarningIfNoElemsOnModel)
                         ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
                 }
@@ -65,7 +74,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 {
                     // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
                     if (showMainForm)
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
 
                     // Выводим, что всё ок
                     if (checkResultStatus == CheckResultStatus.Succeeded && CommandCheck.CheckerEntitiesColl.Length == 0)
@@ -111,14 +120,29 @@ namespace KPLN_ModelChecker_User.ExternalCommands
         /// </summary>
         /// <param name="uiapp">Revit-UIApplication</param>
         /// <returns>Окно для вывода пользователю</returns>
-        public void SelectElemsInModelResult<T>(UIApplication uiapp) where T : AbstrCheck, new()
+        public void SelectElemsInModelByConfigResult<T>(UIApplication uiapp, IJsonSerializable config) where T : AbstrCheck, new()
         {
-            TaskDialog.Show($"Результат [{CommandCheck.ESEntity.CheckName}]", 
-                $"Выделены элементы ошибок проверки. Количество - {CommandCheck.CheckerEntitiesColl.Sum(ce => ce.ElementIdCollection.Count())}", 
-                TaskDialogCommonButtons.Ok);
+            // Обработка конфига для выделения элементов в модели
+            string highlightOrSelectionResult = string.Empty;
+            switch (config)
+            {
+                case CheckListAnnotationsSettingsM selConfig:
+                    highlightOrSelectionResult = CheckListAnnotationsService.ApplyHighlightOrSelection(selConfig, uiapp, CommandCheck);
+                    break;
+                default:
+                    TaskDialog.Show($"Ошибка [{CommandCheck.ESEntity.CheckName}]",
+                        $"При попытке поиска типа конфигурации - произошёл сбой",
+                        TaskDialogCommonButtons.Ok);
+                    break;
+            }
 
-            // Выделяю элементы в модели
-            uiapp.ActiveUIDocument.Selection.SetElementIds(CommandCheck.CheckerEntitiesColl.SelectMany(ent => ent.ElementIdCollection).ToList());
+
+            // Отчёт пользователю
+            if (!string.IsNullOrEmpty(highlightOrSelectionResult))
+                TaskDialog.Show($"Результат [{CommandCheck.ESEntity.CheckName}]",
+                    $"Найдены элементы ошибок проверки. " +
+                    $"\nОтчёт - {highlightOrSelectionResult}",
+                    TaskDialogCommonButtons.Ok);
         }
 
         /// <summary>

@@ -40,7 +40,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            ExecuteByUIApp<CheckLinks>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckLinks>(uiapp);
 
             return Result.Succeeded;
         }

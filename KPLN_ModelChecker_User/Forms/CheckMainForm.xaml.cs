@@ -150,7 +150,7 @@ namespace KPLN_ModelChecker_User.Forms
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_setLastRun)
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdWPFEntity_SetTimeRunLog(_esBuilderRun, DateTime.Now));
         }
 
         private void OnSelectClicked(object sender, RoutedEventArgs e)
@@ -158,9 +158,9 @@ namespace KPLN_ModelChecker_User.Forms
             if ((sender as Button).DataContext is WPFEntity wpfEntity)
             {
                 if (wpfEntity.Element != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSelectElements(new List<Element>(1) { wpfEntity.Element }));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdSelectElements(new List<Element>(1) { wpfEntity.Element }));
                 else
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSelectElements(wpfEntity.ElementCollection));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdSelectElements(wpfEntity.ElementCollection));
             }
         }
 
@@ -197,10 +197,10 @@ namespace KPLN_ModelChecker_User.Forms
                         else if (wpfEntity.Element is ViewSchedule)
                             CheckSchedules_OpenView.OpenViewForViewSchedules(_application, wpfEntity.Element);
                         else 
-                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(new List<Element>(1) { wpfEntity.Element }));
+                            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdShowElement(new List<Element>(1) { wpfEntity.Element }));
                     }
                     else
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(wpfEntity.ElementCollection));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdShowElement(wpfEntity.ElementCollection));
                 }
             }
         }
@@ -213,7 +213,7 @@ namespace KPLN_ModelChecker_User.Forms
                 {
                     UserTextInput userTextInput = new UserTextInput("Опиши причину");
                     if ((bool)userTextInput.ShowDialog())
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
+                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdWPFEntity_SetApprComm(wpfEntity, _esBuilderUserText, userTextInput.UserInput));
                 }
             }
         }

@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckFlatsAreaCompare().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            ExecuteByUIApp<CheckFlatsAreaCompare>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckFlatsAreaCompare>(uiapp);
 
             return Result.Succeeded;
         }

@@ -180,7 +180,8 @@ namespace KPLN_ModelChecker_User
                     "\n2. Элементы узлов;" +
                     "\n3. Текст;" +
                     "\n4. Типовые аннотации;" +
-                    "\n5. Изображения.",
+                    "\n5. Изображения." +
+                "\nВАЖНО: Нажми Ctrl + клик, чтобы открыть окно настроек отображения результата.",
                 $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
                 typeof(CommandCheckListAnnotations).FullName,
                 pullDown,

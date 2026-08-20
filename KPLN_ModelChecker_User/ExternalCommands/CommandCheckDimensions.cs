@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckDimensions().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            ExecuteByUIApp<CheckDimensions>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckDimensions>(uiapp);
 
             return Result.Succeeded;
         }

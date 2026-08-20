@@ -18,7 +18,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckSchedules().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            ExecuteByUIApp<CheckSchedules>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckSchedules>(uiapp);
 
             return Result.Succeeded;
         }

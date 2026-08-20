@@ -6,22 +6,21 @@ using System.Linq;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
 {
-    internal class CommandShowElement : IExecutableCommand
+    internal class ExcCmdSelectElements : IExecutableCommand
     {
         private readonly IEnumerable<Element> _elementCollection;
 
-        public CommandShowElement(IEnumerable<Element> elemColl)
+        public ExcCmdSelectElements(IEnumerable<Element> elemColl)
         {
             _elementCollection = elemColl.Where(el => el.IsValidObject);
         }
 
         public Result Execute(UIApplication app)
         {
-            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Демонстрация"))
+            using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Выделить"))
             {
                 t.Start();
 
-                app.ActiveUIDocument.ShowElements(_elementCollection.FirstOrDefault());
                 app.ActiveUIDocument.Selection.SetElementIds(_elementCollection.Select(e => e.Id).ToList());
 
                 t.Commit();

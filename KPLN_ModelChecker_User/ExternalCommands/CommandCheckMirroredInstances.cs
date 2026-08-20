@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckMirroredInstances().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            ExecuteByUIApp<CheckMirroredInstances>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckMirroredInstances>(uiapp);
 
             return Result.Succeeded;
         }

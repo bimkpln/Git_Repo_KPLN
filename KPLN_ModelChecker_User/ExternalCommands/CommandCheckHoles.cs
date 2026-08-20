@@ -21,7 +21,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckHoles().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            ExecuteByUIApp<CheckHoles>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckHoles>(uiapp);
 
             return Result.Succeeded;
         }

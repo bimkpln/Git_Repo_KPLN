@@ -53,7 +53,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 }
             }
 
-            ExecuteByUIApp<CheckWorksets>(uiapp, false, true, true, true, true);
+            ExecuteByUIApp<CheckWorksets>(uiapp);
 
             return Result.Succeeded;
         }

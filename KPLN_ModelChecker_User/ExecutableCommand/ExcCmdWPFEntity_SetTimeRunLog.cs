@@ -9,13 +9,13 @@ using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
 {
-    internal class CommandWPFEntity_SetTimeRunLog : IExecutableCommand
+    internal class ExcCmdWPFEntity_SetTimeRunLog : IExecutableCommand
     {
         private readonly DateTime _closeTime;
         private readonly ExtensibleStorageBuilder _esBuilderRun;
 
 
-        public CommandWPFEntity_SetTimeRunLog(ExtensibleStorageBuilder esBuilderRun, DateTime closeTime)
+        public ExcCmdWPFEntity_SetTimeRunLog(ExtensibleStorageBuilder esBuilderRun, DateTime closeTime)
         {
             _esBuilderRun = esBuilderRun;
             _closeTime = closeTime;

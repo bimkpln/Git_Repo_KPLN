@@ -7,13 +7,13 @@ using KPLN_ModelChecker_User.WPFItems;
 
 namespace KPLN_ModelChecker_User.ExecutableCommand
 {
-    internal class CommandWPFEntity_SetApprComm : IExecutableCommand
+    internal class ExcCmdWPFEntity_SetApprComm : IExecutableCommand
     {
         private readonly WPFEntity _wpfEntity;
         private readonly ExtensibleStorageBuilder _esText;
         private readonly string _description;
 
-        public CommandWPFEntity_SetApprComm(WPFEntity wpfEntity, ExtensibleStorageBuilder esText, string description)
+        public ExcCmdWPFEntity_SetApprComm(WPFEntity wpfEntity, ExtensibleStorageBuilder esText, string description)
         {
             _wpfEntity = wpfEntity;
             _esText = esText;

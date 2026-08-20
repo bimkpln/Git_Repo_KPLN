@@ -50,7 +50,7 @@ namespace KPLN_ModelChecker_User.Common
                 elemToSelec = firstDim;
             }
 
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSelectElements(new List<Element>(1) { elemToSelec }));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdSelectElements(new List<Element>(1) { elemToSelec }));
         }
     }
 }

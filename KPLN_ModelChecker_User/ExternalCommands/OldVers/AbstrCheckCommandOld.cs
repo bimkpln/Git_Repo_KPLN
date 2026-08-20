@@ -305,7 +305,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                 Print($"[{ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
 
             // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdWPFEntity_SetTimeRunLog(ESEntity.ESBuilderRun, DateTime.Now));
 
             return result;
         }
