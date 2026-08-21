@@ -143,9 +143,11 @@ namespace KPLN_CoordiantorAI.Forms
             { "get_category_visibility_overrides_in_view", ModelToolArea.Visibility },
             { "get_workset_visibility_in_view", ModelToolArea.Visibility },
             { "get_link_graphics_overrides_in_view", ModelToolArea.Visibility },
+            { "get_detailed_link_graphics_overrides_in_view", ModelToolArea.Visibility },
             { "get_if_elements_pass_filter", ModelToolArea.Visibility },
 
             { "get_viewports_and_schedules_on_sheets", ModelToolArea.Schedules },
+            { "get_titleblock_family_parameters_description", ModelToolArea.Parameters },
             { "get_schedules_info_and_columns", ModelToolArea.Schedules },
             { "get_schedule_sorting_info", ModelToolArea.Schedules },
 
@@ -154,7 +156,9 @@ namespace KPLN_CoordiantorAI.Forms
             { "get_revit_links_in_model", ModelToolArea.Links },
             { "get_revit_link_elements", ModelToolArea.Links },
             { "get_revit_link_categories", ModelToolArea.Links },
-            { "get_revit_link_elements_by_category", ModelToolArea.Links }
+            { "get_revit_link_elements_by_category", ModelToolArea.Links },
+            { "get_selected_revit_link_element_id", ModelToolArea.Links },
+            { "get_revit_link_element_properties", ModelToolArea.Links }
         };
 
 
@@ -1289,6 +1293,20 @@ namespace KPLN_CoordiantorAI.Forms
                         toolResult = JsonConvert.SerializeObject(result_linkOverrides);
                         break;
 
+                    case "get_detailed_link_graphics_overrides_in_view":
+                        int viewIdForDetailedLink = argsObj["viewId"]?.Value<int>() ?? -1;
+
+                        if (viewIdForDetailedLink == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
+                            break;
+                        }
+
+                        var result_detailedLinkOverrides = Commands.GetDetailedLinkGraphicsOverridesInView(_doc, viewIdForDetailedLink);
+                        toolResult = JsonConvert.SerializeObject(result_detailedLinkOverrides);
+                        break;
+
+
                     case "get_viewports_and_schedules_on_sheets":
                         var ids_sheets = new List<int>();
                         if (argsObj["list_elementIds"] is JArray arr_sheets)
@@ -1296,7 +1314,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                         var result_sheets = Commands.GetViewportsAndSchedulesOnSheets(_doc, ids_sheets);
                         toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sheets);
-                        break;
+                        break;                   
 
                     case "get_schedules_info_and_columns":
                         var ids_schedules = new List<int>();
@@ -1424,6 +1442,56 @@ namespace KPLN_CoordiantorAI.Forms
                         var result_linkElementsByCategory = Commands.GetRevitLinkElementsByCategory(_doc, linkInstanceIdForCategoryElements, linkedCategoryId, linkedCategoryName, categoryLimit, categoryOffset);
                         toolResult = JsonConvert.SerializeObject(result_linkElementsByCategory);
                         break;
+
+                    case "get_selected_revit_link_element_id":
+                        UIElement linkedSelectionPrompt = CreateMessageBlock("AI: Выберите один или несколько элементов внутри связанного файла в окне Revit. Завершите выбор кнопкой Готово, после этого я продолжу обработку.", false);
+                        ChatHistory.Children.Add(linkedSelectionPrompt);
+                        ChatScrollViewer.ScrollToEnd();
+                        Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
+
+                        try
+                        {
+                            var result_linkedSelection = Commands.GetSelectedRevitLinkElementId(_doc, _uiDoc);
+                            toolResult = JsonConvert.SerializeObject(result_linkedSelection);
+                        }
+                        finally
+                        {
+                            ChatHistory.Children.Remove(linkedSelectionPrompt);
+                            ChatScrollViewer.ScrollToEnd();
+                            Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
+                        }
+                        break;
+
+                    case "get_revit_link_element_properties":
+                        int linkInstanceIdForProperties = argsObj["linkInstanceId"]?.Value<int>() ?? -1;
+                        int linkedElementIdForProperties = argsObj["linkedElementId"]?.Value<int>() ?? -1;
+                        bool linkedGetIdValuesAsNames = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
+                        int linkedMaxValueLength = argsObj["maxValueLength"]?.Value<int>() ?? 1000;
+                        int linkedParameterId = argsObj["parameterId"]?.Value<int>() ?? 0;
+                        string linkedAdditionalPropertyName = argsObj["additionalPropertyName"]?.Value<string>() ?? "";
+
+                        if (linkInstanceIdForProperties == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkInstanceId" });
+                            break;
+                        }
+
+                        if (linkedElementIdForProperties == -1)
+                        {
+                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkedElementId" });
+                            break;
+                        }
+
+                        var result_linkElementProperties = Commands.GetRevitLinkElementProperties(_doc, linkInstanceIdForProperties, linkedElementIdForProperties, linkedGetIdValuesAsNames, linkedMaxValueLength, linkedParameterId, linkedAdditionalPropertyName);
+                        toolResult = JsonConvert.SerializeObject(result_linkElementProperties);
+                        break;
+
+                    case "get_titleblock_family_parameters_description":
+                        var result_titleBlockDescription = Commands.GetTitleBlockFamilyParametersDescription(_settings.TitleBlockParametersDescription);
+                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_titleBlockDescription);
+                        break;
+
+
 
                     //case "get_document_switched":
                     //    int linkElementId = argsObj["elementId"]?.Value<int>() ?? -1;
@@ -1801,6 +1869,7 @@ namespace KPLN_CoordiantorAI.Forms
                             }
                         }
                     },
+                   
 
                     new
                     {
@@ -2843,6 +2912,7 @@ namespace KPLN_CoordiantorAI.Forms
                             description = "Возвращает переопределения видимости по категориям на указанном виде Revit. " +
                                           "Позволяет получить информацию о том, какие категории скрыты на виде, а также их графические переопределения " +
                                           "(цвета линий, паттерны заливки, вес линий, прозрачность и т.д.). " +
+                                          "Для категорий импорта/DWG/CAD-подложек команда также проверяет подкатегории: category — это строка DWG/CAD-подложки или 'Импорт в семействах', а подкатегории — это слои внутри файла. " +
                                           "Выходные данные: " +
                                           "- categories_overrides: словарь, где ключ - ID категории, значение - информация о категории: " +
                                           "    • category_id: ID категории " +
@@ -2963,6 +3033,53 @@ namespace KPLN_CoordiantorAI.Forms
                         }
                     },
 
+                    new
+                    {
+                        type = "function",
+                        function = new
+                        {
+                            name = "get_detailed_link_graphics_overrides_in_view",
+                            description = "Возвращает только дополнительные подробные данные о настройках отображения связанных файлов (RevitLinkInstance) " +
+                                          "на указанном виде Revit, не дублируя данные из get_link_graphics_overrides_in_view. " +
+                                          "Эта команда является дополнением к get_link_graphics_overrides_in_view: базовая команда возвращает краткую информацию о связи и " +
+                                          "режиме отображения, а эта команда возвращает только подробные настройки фактически используемого вида. " +
+                                          "Команда доступна ТОЛЬКО для Revit 2024 и выше. Для более старых версий возвращается сообщение о недоступности. " +
+                                          "Команда внутри определяет режим отображения связи, но не возвращает его повторно, потому что это уже есть в get_link_graphics_overrides_in_view. " +
+                                          "Если режим отображения по связанному виду или пользовательский и задан LinkedViewId, команда получает linkedDoc через RevitLinkInstance.GetLinkDocument() " +
+                                          "и читает настройки выбранного linked view внутри linkedDoc. " +
+                                          "Для каждого связанного файла возвращается только: " +
+                                          "- link_instance_id: ID экземпляра связанного файла для сопоставления с результатом get_link_graphics_overrides_in_view " +
+                                          "- link_type_id: ID типа связанного файла " +
+                                          "- details_key: ключ для получения подробных данных из общего блока details_by_key; одинаковые details не дублируются для каждой связи " +
+                                          "- details_source: источник детальных данных (host_view, linked_view или not_available) " +
+                                          "- api_limitations: ограничения Revit API или причины, почему часть деталей недоступна. " +
+                                          "Подробные настройки фактически используемых видов возвращаются один раз в корневом блоке details_by_key. " +
+                                           "В каждом объекте details_by_key возвращаются: " +
+                                           "- view: информация о виде-источнике " +
+                                           "- changed_model_categories: только скрытые категории модели или категории модели с графическими переопределениями; отсутствующая категория считается видимой без переопределений " +
+                                           "- changed_annotation_categories: только скрытые категории аннотаций или категории аннотаций с графическими переопределениями; отсутствующая категория считается видимой без переопределений " +
+                                           "- changed_analytical_categories: только скрытые категории аналитической модели или категории аналитической модели с графическими переопределениями; отсутствующая категория считается видимой без переопределений " +
+                                           "- changed_import_categories: только скрытые категории импорта/DWG/CAD-подложек или категории импорта/DWG/CAD-подложек с графическими переопределениями; category — это строка DWG/CAD-подложки, subcategories — это слои внутри этого файла " +
+                                           "- filters: фильтры вида, их видимость, включенность, категории, правила и компактные графические переопределения " +
+                                           "- worksets: рабочие наборы, режим видимости и фактическая видимость. " +
+                                          "Важно: Revit API 2024 напрямую раскрывает только LinkVisibilityType и LinkedViewId для связи. Внутренние вкладки окна пользовательской " +
+                                          "настройки связи не раскрываются напрямую, поэтому для режима Пользовательский команда возвращает доступный верхний уровень и реконструкцию " +
+                                          "по linked view, если он задан.",
+                            parameters = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    viewId = new
+                                    {
+                                        type = "integer",
+                                        description = "Element id вида, для которого нужно получить подробные настройки отображения связанных файлов"
+                                    }
+                                },
+                                required = new[] { "viewId" }
+                            }
+                        }
+                    },
 
                     new
                     {
@@ -3334,7 +3451,7 @@ namespace KPLN_CoordiantorAI.Forms
                             description = "Возвращает элементы внутри указанного связанного файла RevitLinkInstance. " +
                                           "Команда работает с элементами связанного документа, поэтому ID элементов из ответа являются linked_element_id, а не ID элементов основной модели. " +
                                           "Используйте пагинацию: limit по умолчанию 300 и не может быть больше 300, offset задает смещение. " +
-                                          "Выходные данные: link_instance_id, linked_document_title, total_count, limit, offset, has_more, elements. " +
+                                         "Выходные данные: link_instance_id, linked_document_title, total_count, returned_count, limit, offset, has_more, elements. " +
                                           "Для каждого элемента в elements возвращается: linked_element_id, name, category, class_name, type_id. " +
                                           "Если has_more = true, для следующей страницы вызовите команду с offset = offset + returned_count.",
                             parameters = new
@@ -3434,6 +3551,98 @@ namespace KPLN_CoordiantorAI.Forms
                                     }
                                 },
                                 required = new[] { "linkInstanceId" }
+                            }
+                        }
+                    },
+
+                    new
+                    {
+                        type = "function",
+                        function = new
+                        {
+                            name = "get_selected_revit_link_element_id",
+                           description = "Запускает интерактивный выбор одного или нескольких элементов внутри связанного файла Revit. " +
+                                          "Важно: обычное текущее выделение Revit через Selection.GetElementIds() не дает надежно ID элементов внутри связи, поэтому команда использует Selection.PickObjects(ObjectType.LinkedElement). " +
+                                          "После вызова пользователь должен выбрать элементы внутри связи в Revit и нажать Готово. " +
+                                          "Выходные данные: selected_linked_elements и count. Для совместимости link_instance_id и linked_element_id содержат первый выбранный элемент. " +
+                                          "Каждый объект в selected_linked_elements содержит: link_instance_id, link_type_id, link_instance_name, link_type_name, linked_document_title, linked_document_path, is_loaded, linked_element_id, linked_element. " +
+                                          "linked_element содержит linked_element_id, name, category, class_name, type_id, если связанный документ загружен.",
+                            parameters = new
+                            {
+                                type = "object",
+                                properties = new { },
+                                required = new string[] { }
+                            }
+                        }
+                    },
+
+                    new
+                    {
+                        type = "function",
+                        function = new
+                        {
+                            name = "get_revit_link_element_properties",
+                            description = "Возвращает объединенные свойства элемента внутри связанного файла Revit. " +
+                                          "Используйте эту команду для linked-элементов вместо get_parameters_from_elementid, get_parameter_value_for_element_ids, " +
+                                          "get_all_additional_properties_from_elementid, get_additional_property_for_all_elementids и get_revitlookup_like_properties. " +
+                                          "Команда принимает пару linkInstanceId + linkedElementId, получает linkedDoc через RevitLinkInstance.GetLinkDocument(), " +
+                                          "а затем читает параметры, дополнительные свойства и RevitLookup-like свойства уже из linkedDoc. " +
+                                          "Выходные данные: контекст связи, linked_element, parameters, additional_properties, revitlookup_like_properties. " +
+                                          "Если указан parameterId, дополнительно вернется parameter_value. Если указан additionalPropertyName, дополнительно вернется additional_property_value.",
+                            parameters = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    linkInstanceId = new
+                                    {
+                                        type = "integer",
+                                        description = "Element id экземпляра связи RevitLinkInstance в основной модели"
+                                    },
+                                    linkedElementId = new
+                                    {
+                                        type = "integer",
+                                        description = "Element id элемента внутри связанного документа"
+                                    },
+                                    getIdValuesAsNames = new
+                                    {
+                                        type = "boolean",
+                                        description = "Если true, ElementId-значения параметров по возможности преобразуются в имена элементов внутри linkedDoc"
+                                    },
+                                    maxValueLength = new
+                                    {
+                                        type = "integer",
+                                        description = "Максимальная длина значения для RevitLookup-like свойств. По умолчанию 1000, максимум 10000."
+                                    },
+                                    parameterId = new
+                                    {
+                                        type = "integer",
+                                        description = "Опционально: ID конкретного параметра для точечного чтения значения"
+                                    },
+                                    additionalPropertyName = new
+                                    {
+                                        type = "string",
+                                        description = "Опционально: имя конкретного дополнительного свойства для точечного чтения значения"
+                                    }
+                                },
+                                required = new[] { "linkInstanceId", "linkedElementId" }
+                            }
+                        }
+                    },
+
+                    new
+                    {
+                        type = "function",
+                        function = new
+                        {
+                            name = "get_titleblock_family_parameters_description",
+                            description = "Возвращает статический справочный текст с описанием параметров семейства основной надписи. " +
+                                          "Используйте эту команду, когда пользователь спрашивает про параметры основной надписи/штампа листа. " +
+                                          "Команда ничего не вычисляет в Revit и не требует входных параметров: она возвращает заранее подготовленное описание, на основе которого нужно ответить пользователю.",
+                            parameters = new
+                            {
+                                type = "object",
+                                 properties = new { }
                             }
                         }
                     }

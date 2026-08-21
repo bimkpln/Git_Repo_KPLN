@@ -122,6 +122,7 @@ namespace KPLN_CoordiantorAI.Common
                 settings.SystemPrompt = GetSetting(connection, "ExternalModel.SystemPrompt", string.Empty);
                 settings.ConnectionTypeName = GetSetting(connection, "ExternalModel.ConnectionTypeName", string.Empty);
                 settings.LocalServerUrl = GetSetting(connection, "ExternalModel.LocalServerUrl", string.Empty);
+                settings.TitleBlockParametersDescription = GetSetting(connection, "ExternalModel.TitleBlockParametersDescription", string.Empty);
             }
 
             return settings;
@@ -144,6 +145,7 @@ namespace KPLN_CoordiantorAI.Common
                     SetSetting(connection, transaction, "ExternalModel.SystemPrompt", settings.SystemPrompt);
                     SetSetting(connection, transaction, "ExternalModel.ConnectionTypeName", settings.ConnectionTypeName);
                     SetSetting(connection, transaction, "ExternalModel.LocalServerUrl", settings.LocalServerUrl);
+                    SetSetting(connection, transaction, "ExternalModel.TitleBlockParametersDescription", settings.TitleBlockParametersDescription);
                     transaction.Commit();
                 }
             }

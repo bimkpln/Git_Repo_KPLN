@@ -156,6 +156,9 @@
     <Compile Include="Forms\ChatWindow.xaml.cs">
       <DependentUpon>ChatWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ExternalModelDescriptionsWindow.xaml.cs">
+      <DependentUpon>ExternalModelDescriptionsWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ExternalModelWindow.xaml.cs">
       <DependentUpon>ExternalModelWindow.xaml</DependentUpon>
     </Compile>
@@ -196,6 +199,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\ChatWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ExternalModelDescriptionsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
