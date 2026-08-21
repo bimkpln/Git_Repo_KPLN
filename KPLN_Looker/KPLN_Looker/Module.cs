@@ -261,21 +261,34 @@ namespace KPLN_Looker
 
 
             #region Обработка работы в архивных копиях
-            if (fileFullName.ToLower().Contains("архив"))
+            string fileFullNameLower = fileFullName.ToLower();
+            if (fileFullNameLower.Contains("архив"))
             {
-                MessageBox.Show(
-                    "Вы открыли АРХИВНЫЙ проект. Работа в нём запрещена, только просмотр!\n" +
-                    "\nИНФО: Если попытаетесь что-то синхронизировать - проект закроется",
-                    "KPLN: Архивный проект",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                // Обработка проекта измл23 - там по причине субчика нужно работать именно в этих моделях сотрудникам бим-отдела
+                if (fileFullNameLower.Contains("измл23_") && KPLN_Loader.Application.CurrentSubDepartment.Id == 8 && fileFullNameLower.Contains("архив от субчика"))
+                {
+                    MessageBox.Show(
+                        "Вы открыли АРХИВНЫЙ проект. Работа в нём может быть утрачена, при обновлении моделей от субчика",
+                        "KPLN: Архивный проект от субчика",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "Вы открыли АРХИВНЫЙ проект. Работа в нём запрещена, только просмотр!\n" +
+                        "\nИНФО: Если попытаетесь что-то синхронизировать - проект закроется",
+                        "KPLN: Архивный проект",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
 
-                #region Извещение в чат bim-отдела
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name} из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Статус допуска: Сотрудник открыл АРХИВНЫЙ проект\n" +
-                    $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
-                    $"Путь к модели: [b]{fileFullName}[/b].");
+                    #region Извещение в чат bim-отдела
+                    BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name} из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Статус допуска: Сотрудник открыл АРХИВНЫЙ проект\n" +
+                        $"Действие: Открыл файл [b]{doc.Title}[/b].\n" +
+                        $"Путь к модели: [b]{fileFullName}[/b].");
+                }
                 #endregion
             }
             #endregion
@@ -396,6 +409,12 @@ namespace KPLN_Looker
                     return;
 #endif
 
+                // Игнор моделей авторского надзора
+                if (fileFullNameLower.Contains("авторский_надзор"))
+                    return;
+                
+
+                // Опопвещение в бим-отдел
                 BitrixMessageSender.SendMsg_ToBIMChat(
                         $"Сотрудник: {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name} " +
                         $"из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n" +
@@ -573,20 +592,33 @@ namespace KPLN_Looker
             CheckAndSendError_RoomDeleted(doc, fileFullName);
 
             #region Обработка работы в архивных копиях
-            if (fileFullName.ToLower().Contains("архив"))
+            string fileFullNameLower = fileFullName.ToLower();
+            if (fileFullNameLower.Contains("архив"))
             {
-                BitrixMessageSender.SendMsg_ToBIMChat(
-                    $"Сотрудник: {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name} из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Статус допуска: Сотрудник засинхронизировал АРХИВНЫЙ проект\n" +
-                    $"Действие: Произвел синхронизацию в {doc.Title}.");
+                // Обработка проекта измл23 - там по причине субчика нужно работать именно в этих моделях сотрудникам бим-отдела
+                if (fileFullNameLower.Contains("измл23_") && KPLN_Loader.Application.CurrentSubDepartment.Id == 8 && fileFullNameLower.Contains("архив от субчика"))
+                {
+                    MessageBox.Show(
+                        "Вы засинхронизировали АРХИВНЫЙ проект. Работа в нём может быть утрачена, при обновлении моделей от субчика",
+                        "KPLN: Архивный проект от субчика",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
+                }
+                else
+                {
+                    BitrixMessageSender.SendMsg_ToBIMChat(
+                        $"Сотрудник: {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name} из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n" +
+                        $"Статус допуска: Сотрудник засинхронизировал АРХИВНЫЙ проект\n" +
+                        $"Действие: Произвел синхронизацию в {doc.Title}.");
 
-                MessageBox.Show(
-                    $"Вы произвели синхронизацию АРХИВНОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
-                    "KPLN: Ошибка",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                    MessageBox.Show(
+                        $"Вы произвели синхронизацию АРХИВНОГО проекта с диска Y:\\. Данные переданы в BIM-отдел. Файл будет ЗАКРЫТ.",
+                        "KPLN: Ошибка",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
 
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(SQLiteMainService.CurrentDBUser, doc));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new DocCloser(SQLiteMainService.CurrentDBUser, doc));
+                }
             }
             #endregion
 
