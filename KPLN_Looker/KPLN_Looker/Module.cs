@@ -687,7 +687,7 @@ namespace KPLN_Looker
                 }
 
                 // Проект Сочи гостиница Москва
-                bool isSGM = doc.PathName.Contains("СГМ_РД");
+                bool isSGM = doc.PathName.Contains("СГМ_");
                 if (isSGM && doc.PathName.Contains("_АР_"))
                     RSBackupFile(doc, "Y:\\Общественные здания\\Сочи гостиница Москва\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
             }
