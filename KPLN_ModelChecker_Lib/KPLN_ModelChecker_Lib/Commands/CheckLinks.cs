@@ -189,11 +189,12 @@ namespace KPLN_ModelChecker_Lib.Commands
                 else
                     lDocPath = linkDoc.PathName;
 
-                if (lDocPath.ToLower().Contains("архив"))
+                if (lDocPath.ToLower().Contains("архив") 
+                    && !lDocPath.ToLower().Contains("01_архив для связи"))
                     result.Add(new CheckerEntity(
                         link,
                         "Подозрительный путь",
-                        $"Большая вероятность, что связь случайно выбрана из архива, т.к. путь: {lDocPath}",
+                        $"Большая вероятность, что связь случайно выбрана из архива, т.к. путь: \n\"{lDocPath}\"",
                         $"Ошибка может быть ложной, если на данном проекте принято такое решение. Перед заменой - ПРОКОНСУЛЬТИРУЙСЯ в BIM-отделе")
                         .Set_Status(ErrorStatus.Warning));
             }
