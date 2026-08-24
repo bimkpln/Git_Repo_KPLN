@@ -102,7 +102,63 @@ namespace KPLN_Parameters_Ribbon
                 "http://moodle/mod/book/view.php?id=502&chapterid=992#:~:text=%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%9E%D0%94%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%22-,%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%97%D0%90%D0%A5%D0%92%D0%90%D0%A2%D0%9E%D0%9A%22,-%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%9F%D0%90%D0%A0%D0%90%D0%9C%D0%95%D0%A2%D0%A0%D0%AB%20%D0%9F%D0%A0%D0%9E%D0%95%D0%9A%D0%A2%D0%90");
             #endregion
 
+
+            AddPushButtonDataInPanel(
+                "Сумма значений параметров",
+                "Сумма\nпараметров",
+                "Собирает суммы по всем параметрам, значения которых можно привести к числу",
+                string.Format(
+                    "Суммирует числовые параметры модели и строки, начинающиеся с числа.\n\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName),
+                typeof(ExternalCommands.CommandSumParameters).FullName,
+                panel,
+                "totalParams",
+                "totalParams",
+                "http://moodle/mod/book/view.php?id=502&chapterid=992",
+                false);
+
+
             return Result.Succeeded;
+        }
+
+        /// <summary>
+        /// Метод для добавления отдельной кнопки в панель
+        /// </summary>
+        private void AddPushButtonDataInPanel(
+            string name, 
+            string text, 
+            string shortDescription, 
+            string longDescription, 
+            string className,
+            RibbonPanel panel,
+            string imageName, 
+            string bigImageName, 
+            string contextualHelp,
+            bool showText)
+        {
+            PushButtonData data = new PushButtonData(name, text, _assemblyPath, className)
+            {
+                ToolTip = shortDescription,
+                LongDescription = shortDescription,
+                Text = text,
+                Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, imageName, 16),
+                LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, bigImageName, 32),
+                
+
+            };
+            data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
+
+            PushButton button = panel.AddItem(data) as PushButton;
+            
+            SetRIShowText(button, showText);
+
+#if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023
+            // Регистрация кнопки для смены иконок
+            KPLN_Loader.Application.KPLNButtonsForImageReverse.Add((button, imageName, Assembly.GetExecutingAssembly().GetName().Name));
+#endif
         }
 
         /// <summary>

@@ -145,6 +145,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Command\CommandUpdateParameterSums.cs" />
     <Compile Include="Command\CommandWriteValues.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\CheckParam\Builder\AbstrAuditBuilder.cs" />
@@ -163,8 +164,18 @@
     <Compile Include="ExternalCommands\CommandCopyElemParamData.cs" />
     <Compile Include="ExternalCommands\CommandCopyProjectParams.cs" />
     <Compile Include="ExternalCommands\CommandGripParam.cs" />
+    <Compile Include="ExternalCommands\CommandSumParameters.cs" />
+    <Compile Include="ExternalEventHandler\SelectionChangedHandler.cs" />
+    <Compile Include="ExternalEventHandler\UnsubSelectionChangedHandler.cs" />
+    <Compile Include="Forms\Commands\RelayCommand.cs" />
+    <Compile Include="Forms\Common\FormEventSubscriptionHelper.cs" />
     <Compile Include="Forms\EnsureDialog.xaml.cs">
       <DependentUpon>EnsureDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\Entities\SumParameterResultM.cs" />
+    <Compile Include="Forms\Entities\SumParametersM.cs" />
+    <Compile Include="Forms\SumParameters.xaml.cs">
+      <DependentUpon>SumParameters.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Progress_Single.cs">
       <SubType>Form</SubType>
@@ -175,6 +186,7 @@
     <Compile Include="Forms\ParamSetter.xaml.cs">
       <DependentUpon>ParamSetter.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ViewModels\SumParametersVM.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -207,6 +219,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Forms\SumParameters.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Forms\ParamSetter.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -227,5 +243,18 @@
     <Resource Include="Imagens\mainParams32.png" />
     <Resource Include="Imagens\mainParams32_dark.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\totalParams16.png" />
+    <Resource Include="Imagens\totalParams16_dark.png" />
+    <Resource Include="Imagens\totalParams32.png" />
+    <Resource Include="Imagens\totalParams32_dark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Forms\Styles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
