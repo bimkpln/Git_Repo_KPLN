@@ -329,8 +329,24 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.evacuationRoutesSmall.png",
                     "http://moodle/mod/book/view.php?id=502&chapterid=1350");
 
+                PushButtonData Furniture3DFrom2D = CreateBtnData(
+                    "Мебель 2D <-> 3D",
+                    "Мебель 2D <-> 3D",
+                    "Преобразование мебели из 2D в 3D и наоборот",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_AR_Furniture3DFrom2D).FullName,
+                    "KPLN_Tools.Imagens.furniture2DFrom3DBig.png",
+                    "KPLN_Tools.Imagens.furniture2DFrom3DSmall.png",
+                    "http://moodle/mod/book/view.php?id=502&chapterid=1350");
+
 
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
+                arToolsPullDownBtn.AddPushButton(Furniture3DFrom2D);
 #if Debug2023 || Revit2023
                 arToolsPullDownBtn.AddPushButton(arPyatnGraph);
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
