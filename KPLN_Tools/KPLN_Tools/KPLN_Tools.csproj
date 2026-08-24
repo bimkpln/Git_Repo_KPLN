@@ -214,6 +214,7 @@
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
+    <Compile Include="ExternalCommands\Command_AR_Furniture3DFrom2D.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
@@ -239,6 +240,9 @@
     </Compile>
     <Compile Include="Forms\FormChangeElementInLevel.xaml.cs">
       <DependentUpon>FormChangeElementInLevel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\Furniture2DFrom3D.xaml.cs">
+      <DependentUpon>Furniture2DFrom3D.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\HiddenElementsFilterWindow.xaml.cs">
       <DependentUpon>HiddenElementsFilterWindow.xaml</DependentUpon>
@@ -468,6 +472,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\Furniture2DFrom3D.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\HiddenElementsFilterWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -523,6 +531,10 @@
     <EmbeddedResource Include="Imagens\diskBig.png" />
     <EmbeddedResource Include="Imagens\auptTagBig.png" />
     <EmbeddedResource Include="Imagens\auptTagSmall.png" />
+    <EmbeddedResource Include="Imagens\furniture2DFrom3DBig.png" />
+    <EmbeddedResource Include="Imagens\furniture2DFrom3DBig_dark.png" />
+    <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall.png" />
+    <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall_dark.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

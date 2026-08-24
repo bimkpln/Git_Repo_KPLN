@@ -1,0 +1,217 @@
+﻿<Window x:Class="KPLN_Tools.Forms.Furniture2DFrom3D"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:local="clr-namespace:KPLN_Tools.Forms"
+        mc:Ignorable="d"
+        Title="Результат замены семейств"
+        Width="1100"
+        Height="600"
+        MinWidth="820"
+        MinHeight="420"
+        Background="#FFF4F5F7"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <Style x:Key="GridCellStyle" TargetType="DataGridCell">
+            <Setter Property="Padding" Value="12,7" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#FF242833" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="#FF242833" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="GridHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Background" Value="#FF343A46" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="#FF4A5160" />
+            <Setter Property="BorderThickness" Value="0,0,1,0" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Margin="2,0,0,14">
+            <TextBlock FontSize="20"
+                       FontWeight="SemiBold"
+                       Foreground="#FF242833"
+                       Text="Результат замены семейств" />
+            <TextBlock Margin="0,5,0,0"
+                       FontSize="12"
+                       Foreground="#FF707684"
+                       Text="Нажмите на строку, чтобы выбрать соответствующий элемент в Revit." />
+        </StackPanel>
+
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="#FFD8DBE2"
+                BorderThickness="1"
+                CornerRadius="4">
+            <DataGrid x:Name="ResultGrid"
+                      ItemsSource="{Binding Results}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserReorderColumns="False"
+                      CanUserResizeRows="False"
+                      CanUserSortColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#FFE2E4E9"
+                      VerticalGridLinesBrush="Transparent"
+                      HeadersVisibility="Column"
+                      RowHeaderWidth="0"
+                      RowHeight="46"
+                      SelectionMode="Single"
+                      SelectionUnit="FullRow"
+                      CellStyle="{StaticResource GridCellStyle}"
+                      ColumnHeaderStyle="{StaticResource GridHeaderStyle}"
+                      SelectionChanged="ResultGrid_SelectionChanged">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="Background" Value="#FFF0FAF2" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="3,0,0,0" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Status}"
+                                         Value="{x:Static local:FurnitureReplacementStatus.Failed}">
+                                <Setter Property="Background" Value="#FFFFEEEE" />
+                                <Setter Property="BorderBrush" Value="#FFD95C5C" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Status}"
+                                         Value="{x:Static local:FurnitureReplacementStatus.Warning}">
+                                <Setter Property="Background" Value="#FFFFF8E5" />
+                                <Setter Property="BorderBrush" Value="#FFE1A72C" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding Status}"
+                                         Value="{x:Static local:FurnitureReplacementStatus.Success}">
+                                <Setter Property="BorderBrush" Value="#FF55A96B" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="BorderThickness" Value="5,0,0,0" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="СТАТУС" Width="155">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border x:Name="StatusBadge"
+                                        Padding="7,5"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        Background="#FFE1F3E5"
+                                        CornerRadius="3">
+                                    <TextBlock x:Name="StatusText"
+                                               FontSize="10"
+                                               FontWeight="Bold"
+                                               Foreground="#FF367A47"
+                                               Text="{Binding StatusText}" />
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Status}"
+                                                 Value="{x:Static local:FurnitureReplacementStatus.Failed}">
+                                        <Setter TargetName="StatusBadge" Property="Background" Value="#FFFFDCDC" />
+                                        <Setter TargetName="StatusText" Property="Foreground" Value="#FFA52E2E" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Status}"
+                                                 Value="{x:Static local:FurnitureReplacementStatus.Warning}">
+                                        <Setter TargetName="StatusBadge" Property="Background" Value="#FFFFEDBC" />
+                                        <Setter TargetName="StatusText" Property="Foreground" Value="#FF8A6410" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="ID"
+                                        Binding="{Binding Id}"
+                                        Width="70">
+                        <DataGridTextColumn.HeaderStyle>
+                            <Style TargetType="DataGridColumnHeader"
+                                   BasedOn="{StaticResource GridHeaderStyle}">
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.HeaderStyle>
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                                <Setter Property="TextAlignment" Value="Center" />
+                                <Setter Property="Foreground" Value="#FF242833" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="ИМЯ"
+                                        Binding="{Binding Name}"
+                                        Width="350">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                                <Setter Property="Foreground" Value="#FF242833" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="РАСШИФРОВКА"
+                                        Binding="{Binding Error}"
+                                        Width="3*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                                <Setter Property="Foreground" Value="#FF4B505B" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <StackPanel Grid.Row="2"
+                    Margin="0,14,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+            <Button Width="164"
+                    Height="34"
+                    Margin="0,0,10,0"
+                    Background="White"
+                    Foreground="#FF343A46"
+                    BorderBrush="#FFBFC3CB"
+                    BorderThickness="1"
+                    FontWeight="SemiBold"
+                    Content="Сохранить отчёт"
+                    Click="SaveReport_Click" />
+            <Button Width="116"
+                    Height="34"
+                    Background="#FF343A46"
+                    Foreground="White"
+                    BorderThickness="0"
+                    FontWeight="SemiBold"
+                    IsDefault="True"
+                    Content="Закрыть"
+                    Click="Close_Click" />
+        </StackPanel>
+    </Grid>
+</Window>
