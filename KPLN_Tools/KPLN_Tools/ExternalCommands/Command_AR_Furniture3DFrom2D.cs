@@ -144,8 +144,15 @@ namespace KPLN_Tools.ExternalCommands
                             doc.Regenerate();
                         }
 
-                        XYZ point = sourceLocation.Point;
-                        double rotation = sourceLocation.Rotation;
+                        PlacementSnapshot placement = new PlacementSnapshot(
+                            sourceLocation.Point,
+                            sourceLocation.Rotation,
+                            source.HandOrientation,
+                            source.FacingOrientation,
+                            source.HandFlipped,
+                            source.FacingFlipped,
+                            source.Mirrored,
+                            ReadPlanFootprint(source, doc.ActiveView));
                         ElementId sourceId = source.Id;
 
                         using (SubTransaction itemTransaction = new SubTransaction(doc))
@@ -155,26 +162,65 @@ namespace KPLN_Tools.ExternalCommands
                             {
                                 doc.Delete(sourceId);
                                 FamilyInstance created = doc.Create.NewFamilyInstance(
-                                    point,
+                                    placement.Point,
                                     match.Symbol,
                                     StructuralType.NonStructural);
 
-                                RotateAtPoint(doc, created, point, rotation);
+                                // В исходном скрипте запасной типоразмер получал
+                                // только тот же Location.Rotation. Не добавляем к
+                                // нему неподтверждённые поправки на 90° или 180°.
+                                if (!match.ExactTypeMatch)
+                                {
+                                    RotateAtPoint(
+                                        doc,
+                                        created,
+                                        placement.Point,
+                                        placement.Rotation);
+                                }
+
                                 RestoreParameters(created, savedParameters[sourceId]);
                                 doc.Regenerate();
                                 RestoreNestedParameters(
                                     doc,
                                     created,
                                     savedNestedParameters[sourceId]);
+                                doc.Regenerate();
+
+                                bool fallbackMirroringRestored = true;
+                                if (match.ExactTypeMatch)
+                                {
+                                    RestorePlacement(doc, created, placement);
+                                }
+                                else
+                                {
+                                    RestoreLocationPoint(doc, created, placement.Point);
+                                    fallbackMirroringRestored = RestoreFallbackMirroring(
+                                        doc,
+                                        created,
+                                        placement);
+                                }
 
                                 replacementIds[sourceId.IntegerValue] = created.Id;
                                 row.Id = created.Id.IntegerValue;
 
                                 if (!match.ExactTypeMatch)
                                 {
-                                    row.MarkWarning("Исходный типоразмер \"" + sourceTypeName +
+                                    string warning = "Исходный типоразмер \"" + sourceTypeName +
                                         "\" не найден; использован \"" +
-                                        GetTypeName(match.Symbol) + "\".");
+                                        GetTypeName(match.Symbol) + "\".";
+
+                                    warning += GetFallbackPlacementDiagnostics(
+                                        created,
+                                        placement,
+                                        doc.ActiveView);
+
+                                    if (!fallbackMirroringRestored)
+                                    {
+                                        warning += " Исходное отражение восстановить " +
+                                            "не удалось.";
+                                    }
+
+                                    row.MarkWarning(warning);
                                 }
                                 else
                                 {
@@ -468,6 +514,251 @@ namespace KPLN_Tools.ExternalCommands
             ElementTransformUtils.RotateElement(doc, instance.Id, axis, angle);
         }
 
+        private static void RestorePlacement(
+            Document doc,
+            FamilyInstance instance,
+            PlacementSnapshot placement)
+        {
+            RestoreFlipState(instance, placement);
+            doc.Regenerate();
+
+            LocationPoint location = instance.Location as LocationPoint;
+            if (location == null)
+                throw new InvalidOperationException(
+                    "Созданное семейство не поддерживает точечное размещение.");
+
+            XYZ currentDirection = GetPlanDirection(instance.HandOrientation);
+            XYZ targetDirection = GetPlanDirection(placement.HandOrientation);
+
+            if (currentDirection == null || targetDirection == null)
+            {
+                currentDirection = GetPlanDirection(instance.FacingOrientation);
+                targetDirection = GetPlanDirection(placement.FacingOrientation);
+            }
+
+            double rotation = currentDirection != null && targetDirection != null
+                ? GetSignedPlanAngle(currentDirection, targetDirection)
+                : placement.Rotation - location.Rotation;
+
+            RotateAtPoint(doc, instance, location.Point, rotation);
+            doc.Regenerate();
+
+            location = instance.Location as LocationPoint;
+            if (location == null)
+                throw new InvalidOperationException(
+                    "Не удалось определить точку размещения созданного семейства.");
+
+            XYZ translation = placement.Point - location.Point;
+            if (translation.GetLength() > 1e-9)
+                ElementTransformUtils.MoveElement(doc, instance.Id, translation);
+        }
+
+        private static void RestoreLocationPoint(
+            Document doc,
+            FamilyInstance instance,
+            XYZ targetPoint)
+        {
+            LocationPoint location = instance.Location as LocationPoint;
+            if (location == null)
+                throw new InvalidOperationException(
+                    "Не удалось определить точку размещения созданного семейства.");
+
+            XYZ translation = targetPoint - location.Point;
+            if (translation.GetLength() > 1e-9)
+                ElementTransformUtils.MoveElement(doc, instance.Id, translation);
+        }
+
+        private static bool RestoreFallbackMirroring(
+            Document doc,
+            FamilyInstance instance,
+            PlacementSnapshot placement)
+        {
+            if (instance.Mirrored == placement.Mirrored)
+                return true;
+
+            if (!ElementTransformUtils.CanMirrorElement(doc, instance.Id))
+                return false;
+
+            LocationPoint location = instance.Location as LocationPoint;
+            if (location == null)
+                return false;
+
+            bool facingMustChange =
+                instance.FacingFlipped != placement.FacingFlipped;
+            bool handMustChange =
+                instance.HandFlipped != placement.HandFlipped;
+
+            // Плоскость с нормалью вдоль FacingOrientation отражает лицевую
+            // ось, сохраняя HandOrientation. Для HandFlipped — наоборот.
+            XYZ mirrorNormal;
+            if (facingMustChange && !handMustChange)
+                mirrorNormal = GetPlanDirection(instance.FacingOrientation);
+            else if (handMustChange && !facingMustChange)
+                mirrorNormal = GetPlanDirection(instance.HandOrientation);
+            else
+                mirrorNormal = GetPlanDirection(instance.FacingOrientation);
+
+            if (mirrorNormal == null)
+                return false;
+
+            Plane mirrorPlane = Plane.CreateByNormalAndOrigin(
+                mirrorNormal,
+                location.Point);
+
+            ElementTransformUtils.MirrorElements(
+                doc,
+                new List<ElementId> { instance.Id },
+                mirrorPlane,
+                false);
+            doc.Regenerate();
+            RestoreLocationPoint(doc, instance, placement.Point);
+
+            return instance.Mirrored == placement.Mirrored;
+        }
+
+        private static PlanFootprint ReadPlanFootprint(
+            FamilyInstance instance,
+            View view)
+        {
+            // Берём именно видимый на текущем плане отпечаток: у 2D-семейств
+            // символические линии могут отсутствовать в модельном bounding box.
+            BoundingBoxXYZ bounds = instance.get_BoundingBox(view);
+            if (bounds == null)
+                return null;
+
+            Transform transform = bounds.Transform;
+            double minX = double.MaxValue;
+            double minY = double.MaxValue;
+            double maxX = double.MinValue;
+            double maxY = double.MinValue;
+
+            for (int x = 0; x < 2; x++)
+            {
+                for (int y = 0; y < 2; y++)
+                {
+                    for (int z = 0; z < 2; z++)
+                    {
+                        XYZ corner = new XYZ(
+                            x == 0 ? bounds.Min.X : bounds.Max.X,
+                            y == 0 ? bounds.Min.Y : bounds.Max.Y,
+                            z == 0 ? bounds.Min.Z : bounds.Max.Z);
+                        XYZ worldCorner = transform.OfPoint(corner);
+
+                        minX = Math.Min(minX, worldCorner.X);
+                        minY = Math.Min(minY, worldCorner.Y);
+                        maxX = Math.Max(maxX, worldCorner.X);
+                        maxY = Math.Max(maxY, worldCorner.Y);
+                    }
+                }
+            }
+
+            return new PlanFootprint(
+                new XYZ((minX + maxX) * 0.5, (minY + maxY) * 0.5, 0.0),
+                maxX - minX,
+                maxY - minY);
+        }
+
+        private static string GetFallbackPlacementDiagnostics(
+            FamilyInstance instance,
+            PlacementSnapshot placement,
+            View view)
+        {
+            LocationPoint location = instance.Location as LocationPoint;
+            double resultingRotation = location != null
+                ? location.Rotation
+                : double.NaN;
+
+            string text = " Диагностика положения: угол " +
+                FormatAngleDegrees(placement.Rotation) + " -> " +
+                FormatAngleDegrees(resultingRotation) +
+                "; отражение " + FormatBoolean(placement.Mirrored) +
+                " -> " + FormatBoolean(instance.Mirrored) +
+                "; H/F " + FormatBoolean(placement.HandFlipped) + "/" +
+                FormatBoolean(placement.FacingFlipped) + " -> " +
+                FormatBoolean(instance.HandFlipped) + "/" +
+                FormatBoolean(instance.FacingFlipped) + ".";
+
+            PlanFootprint createdFootprint = ReadPlanFootprint(instance, view);
+            if (placement.Footprint != null && createdFootprint != null)
+            {
+                text += " Отпечаток X/Y: " +
+                    FormatLengthMillimeters(placement.Footprint.SizeX) + "x" +
+                    FormatLengthMillimeters(placement.Footprint.SizeY) + " -> " +
+                    FormatLengthMillimeters(createdFootprint.SizeX) + "x" +
+                    FormatLengthMillimeters(createdFootprint.SizeY) + " мм.";
+            }
+
+            return text;
+        }
+
+        private static string FormatAngleDegrees(double angle)
+        {
+            if (double.IsNaN(angle))
+                return "не определён";
+
+            double degrees = angle * 180.0 / Math.PI;
+            degrees %= 360.0;
+            if (degrees < 0.0)
+                degrees += 360.0;
+
+            return degrees.ToString("0.#") + "°";
+        }
+
+        private static string FormatBoolean(bool value)
+        {
+            return value ? "да" : "нет";
+        }
+
+        private static string FormatLengthMillimeters(double internalLength)
+        {
+            return Math.Round(internalLength * 304.8).ToString("0");
+        }
+
+        private static void RestoreFlipState(
+            FamilyInstance instance,
+            PlacementSnapshot placement)
+        {
+            // У разных семейств начальное состояние разворота может отличаться.
+            // После каждой операции повторно проверяем оба признака: у некоторых
+            // семейств один flip одновременно изменяет HandFlipped и FacingFlipped.
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                if (instance.HandFlipped != placement.HandFlipped &&
+                    instance.CanFlipHand)
+                {
+                    instance.flipHand();
+                }
+
+                if (instance.FacingFlipped != placement.FacingFlipped &&
+                    instance.CanFlipFacing)
+                {
+                    instance.flipFacing();
+                }
+
+                if (instance.HandFlipped == placement.HandFlipped &&
+                    instance.FacingFlipped == placement.FacingFlipped)
+                {
+                    break;
+                }
+            }
+        }
+
+        private static XYZ GetPlanDirection(XYZ direction)
+        {
+            if (direction == null)
+                return null;
+
+            XYZ projected = new XYZ(direction.X, direction.Y, 0.0);
+            return projected.GetLength() > 1e-9 ? projected.Normalize() : null;
+        }
+
+        private static double GetSignedPlanAngle(XYZ from, XYZ to)
+        {
+            double dot = from.X * to.X + from.Y * to.Y;
+            double crossZ = from.X * to.Y - from.Y * to.X;
+            return Math.Atan2(crossZ, dot);
+        }
+
         private static string GetTypeName(FamilySymbol symbol)
         {
             Parameter parameter = symbol.get_Parameter(BuiltInParameter.SYMBOL_NAME_PARAM);
@@ -680,6 +971,52 @@ namespace KPLN_Tools.ExternalCommands
             public StorageType StorageType { get; private set; }
             public double DoubleValue { get; private set; }
             public int IntegerValue { get; private set; }
+        }
+
+        private sealed class PlacementSnapshot
+        {
+            public PlacementSnapshot(
+                XYZ point,
+                double rotation,
+                XYZ handOrientation,
+                XYZ facingOrientation,
+                bool handFlipped,
+                bool facingFlipped,
+                bool mirrored,
+                PlanFootprint footprint)
+            {
+                Point = point;
+                Rotation = rotation;
+                HandOrientation = handOrientation;
+                FacingOrientation = facingOrientation;
+                HandFlipped = handFlipped;
+                FacingFlipped = facingFlipped;
+                Mirrored = mirrored;
+                Footprint = footprint;
+            }
+
+            public XYZ Point { get; private set; }
+            public double Rotation { get; private set; }
+            public XYZ HandOrientation { get; private set; }
+            public XYZ FacingOrientation { get; private set; }
+            public bool HandFlipped { get; private set; }
+            public bool FacingFlipped { get; private set; }
+            public bool Mirrored { get; private set; }
+            public PlanFootprint Footprint { get; private set; }
+        }
+
+        private sealed class PlanFootprint
+        {
+            public PlanFootprint(XYZ center, double sizeX, double sizeY)
+            {
+                Center = center;
+                SizeX = sizeX;
+                SizeY = sizeY;
+            }
+
+            public XYZ Center { get; private set; }
+            public double SizeX { get; private set; }
+            public double SizeY { get; private set; }
         }
 
         private sealed class NestedInstanceSnapshot
