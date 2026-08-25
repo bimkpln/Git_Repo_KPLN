@@ -1,0 +1,122 @@
+﻿<Window x:Class="KPLN_CoordiantorAI.Forms.ExternalModelDescriptionsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN. Описания внешней модели"
+        Height="420"
+        Width="820"
+        ResizeMode="CanResize"
+        MinHeight="320"
+        MinWidth="640"
+        WindowStartupLocation="CenterOwner"
+        Background="#FF20242D"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FFD8DEE9"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Background" Value="#FF2A303B"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="CaretBrush" Value="White"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="MinHeight" Value="30"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#FF333B49"/>
+                    <Setter Property="BorderBrush" Value="#FF718096"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.82"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#FF20242D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+            <Setter Property="GridLinesVisibility" Value="All"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="VerticalGridLinesBrush" Value="#FF343B49"/>
+            <Setter Property="RowBackground" Value="#FF262B35"/>
+            <Setter Property="AlternatingRowBackground" Value="#FF2A303B"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#FF2F3542"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF4B5568"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF343B49"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0"
+                   FontSize="12"
+                   LineHeight="18"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,10"
+                   Text="Здесь настраиваются справочные тексты, которые внешняя модель использует при ответах на вопросы пользователя."/>
+        <DataGrid x:Name="DescriptionsDataGrid"
+                  Grid.Row="1"
+                  Margin="0,0,0,14"
+                  CanUserSortColumns="False"
+                  RowHeight="240"
+                  SelectionUnit="FullRow">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Настройка"
+                                    Binding="{Binding Name}"
+                                    IsReadOnly="True"
+                                    Width="220">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="White"/>
+                            <Setter Property="TextWrapping" Value="Wrap"/>
+                            <Setter Property="Padding" Value="8,5"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTemplateColumn Header="Текст" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Disabled"
+                                     VerticalContentAlignment="Top"
+                                     Height="226"
+                                     MinHeight="226"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Отмена" Click="OnCancelClick"/>
+            <Button Content="Сохранить" Background="#FF2C6BED" BorderBrush="#FF2C6BED" Click="OnSaveClick"/>
+        </StackPanel>
+    </Grid>
+</Window>

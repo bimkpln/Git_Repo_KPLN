@@ -28,6 +28,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
         //private static Document _currentLinkedDoc = null;
         //private static Document _mainDoc = null;
 
+        #region =============================================НАЧАЛО КОМАНД=============================================================
+
+        #endregion
+
         #region 1_get_active_view_in_revit
 
         public class ViewInfo
@@ -1322,7 +1326,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #endregion
 
-        #region 16_1_get_revitlookup_like_properties
+        #region 16.1_get_revitlookup_like_properties
 
         public static object GetRevitLookupLikeProperties(
             Document doc,
@@ -4496,8 +4500,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
 
 
-                // Получаем все категории, доступные в документе
-                var allCategories = GetCategories(doc);
+                // Получаем все категории, доступные в документе.
+                // Для DWG/CAD-импорта дополнительно добавляем подкатегории-слои.
+                var allCategories = GetCategoriesIncludingImportSubcategories(doc);
 
 
                 foreach (var cat in allCategories)
@@ -4595,6 +4600,50 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             return categories.OrderBy(c => c.Name).ToList();
         }
+
+        private static List<Category> GetCategoriesIncludingImportSubcategories(Document doc)
+        {
+            var categories = new List<Category>();
+            var addedCategoryIds = new HashSet<int>();
+
+            foreach (Category cat in GetCategories(doc))
+            {
+                AddCategoryIfNotAdded(categories, addedCategoryIds, cat);
+
+                if (IsImportCategoryForSubcategoryScan(cat))
+                    AddSubcategoriesRecursive(categories, addedCategoryIds, cat);
+            }
+
+            return categories.OrderBy(c => c.Name).ToList();
+        }
+
+        private static bool IsImportCategoryForSubcategoryScan(Category cat)
+        {
+            if (cat == null)
+                return false;
+
+            if (IDHelper.ElIdInt(cat.Id) == (int)BuiltInCategory.OST_ImportObjectStyles)
+                return true;
+
+            string categoryName = cat.Name ?? string.Empty;
+            if (categoryName.Equals("Импорт в семействах", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            return categoryName.EndsWith(".dwg", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void AddSubcategoriesRecursive(List<Category> categories, HashSet<int> addedCategoryIds, Category category)
+        {
+            if (category == null)
+                return;
+
+            foreach (Category subCategory in category.SubCategories)
+            {
+                AddCategoryIfNotAdded(categories, addedCategoryIds, subCategory);
+                AddSubcategoriesRecursive(categories, addedCategoryIds, subCategory);
+            }
+        }
+
         #endregion
 
         #region 33.2_get_workset_visibility_in_view
@@ -4769,7 +4818,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             }
             else
             {
-#if R2020 || R2023
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
                 return new
                 {
                     error = $"Не удалось получить версию ревит. На данный момент получена версия: {revitVersion}",
@@ -4783,7 +4832,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
 
 
-#if R2024
+#if Revit2024 || Debug2024
             try
             {
 
@@ -4827,10 +4876,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     try
                     {
                         RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                        Document linkedDoc = linkInstance.GetLinkDocument();
                         string linkName = linkType?.Name ?? linkInstance.Name ?? "Unnamed";
 
-                       
-                        RevitLinkGraphicsSettings graphicsSettings = view.GetLinkOverrides(linkInstance.Id);
+                        
 
                         bool isHidden = linkInstance.IsHidden(view);
 
@@ -4844,8 +4893,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         catch { }
 
                         // Тип отображения
+                        RevitLinkGraphicsSettings graphicsSettings = view.GetLinkOverrides(linkInstance.Id);
                         LinkVisibility visibilityType = graphicsSettings?.LinkVisibilityType ?? LinkVisibility.ByHostView;
                         ElementId linkedViewId = graphicsSettings?.LinkedViewId ?? ElementId.InvalidElementId;
+
 
                         string displaySetting;
                         object linkedViewInfo = null;
@@ -4864,7 +4915,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                     {
                                         linkedViewInfo = new
                                         {
-                                            view_id = linkedView.Id.IntegerValue,
+                                            view_id = IDHelper.ElIdInt(linkedView.Id),
                                             view_name = linkedView.Name ?? "Unnamed",
                                             view_type = linkedView.ViewType.ToString()
                                         };
@@ -4882,8 +4933,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                         result.Add(new
                         {
-                            link_instance_id = linkInstance.Id.IntegerValue,
-                            link_type_id = linkType?.Id.IntegerValue,
+                            link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                            link_type_id = linkType != null ? IDHelper.ElIdInt(linkType.Id) : (int?)null,
                             link_name = linkName,
                             is_hidden = isHidden,
                             is_halftone = isHalftone,
@@ -4895,7 +4946,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         result.Add(new
                         {
-                            link_instance_id = linkInstance.Id.IntegerValue,
+                            link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
                             link_name = linkInstance.Name ?? "Unnamed",
                             error = $"Ошибка: {ex.Message}"
                         });
@@ -4922,8 +4973,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     count = 0
                 };
             }
-#endif
-
+#elif !(Revit2020 || Debug2020 || Revit2023 || Debug2023)
             return new
             {
                 error = "Link graphics overrides are available only in Revit 2024 configuration.",
@@ -4932,6 +4982,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 revit_version = revitVersion,
                 min_supported_version = 2024
             };
+#endif
 
         }
 
@@ -4966,18 +5017,23 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 // Получаем версию через Application
                 string versionName = doc.Application.VersionName;
 
-                // Примеры: "2024", "2023", "2022" и т.д.
-                if (int.TryParse(versionName, out int version))
-                {
-                    return version;
-                }
 
+
+                
                 // Альтернативный способ: через VersionNumber
                 string versionNumber = doc.Application.VersionNumber;
                 if (int.TryParse(versionNumber, out int versionNum))
                 {
                     return versionNum;
                 }
+
+                // Примеры: "2024", "2023", "2022" и т.д.
+                if (int.TryParse(versionName, out int version))
+                {
+                    return version;
+                }
+
+                
 
                 return 0;
             }
@@ -4987,6 +5043,665 @@ namespace KPLN_CoordiantorAI.ExternalModel
             }
         }
 
+
+        #endregion
+
+        #region 33.4_get_detailed_link_graphics_overrides_in_view
+
+        public static object GetDetailedLinkGraphicsOverridesInView(Document doc, int viewId)
+        {
+            int revitVersion = GetRevitVersion(doc);
+
+            if (revitVersion < 2024)
+            {
+                return new
+                {
+                    error = $"Detailed link graphics overrides are available only in Revit 2024 and newer. Current Revit version: {revitVersion}.",
+                    link_overrides = new List<object>(),
+                    count = 0,
+                    revit_version = revitVersion,
+                    min_supported_version = 2024
+                };
+            }
+
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+            return new
+            {
+                error = $"Detailed link graphics overrides are not available in this build configuration. Current Revit version: {revitVersion}.",
+                link_overrides = new List<object>(),
+                count = 0,
+                revit_version = revitVersion,
+                min_supported_version = 2024
+            };
+#endif
+
+#if Revit2024 || Debug2024
+            try
+            {
+                ElementId viewElemId = IDHelper.ToElementId(viewId);
+                View view = doc.GetElement(viewElemId) as View;
+
+                if (view == null)
+                {
+                    return new
+                    {
+                        error = $"View with ID {viewId} was not found.",
+                        link_overrides = new List<object>(),
+                        count = 0
+                    };
+                }
+
+                if (!SupportsLinkOverrides(view))
+                {
+                    return new
+                    {
+                        error = $"View type '{view.ViewType}' does not support link graphics overrides.",
+                        link_overrides = new List<object>(),
+                        count = 0
+                    };
+                }
+
+                var linkInstances = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Cast<RevitLinkInstance>()
+                    .ToList();
+
+                var result = new List<object>();
+                var detailsByKey = new Dictionary<string, object>();
+
+                foreach (var linkInstance in linkInstances)
+                {
+                    try
+                    {
+                        Document linkedDoc = linkInstance.GetLinkDocument();
+                        RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+
+                        if (linkType == null)
+                        {
+                            result.Add(new
+                            {
+                                link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                                link_type_id = (int?)null,
+                                details_key = (string)null,
+                                details_source = "not_available",
+                                api_limitations = new List<string>
+                                {
+                                    "RevitLinkType was not found for this RevitLinkInstance."
+                                }
+                            });
+
+                            continue;
+                        }
+
+                        RevitLinkGraphicsSettings graphicsSettings = view.GetLinkOverrides(linkType.Id);
+
+                        if (graphicsSettings == null)
+                        {
+                            result.Add(new
+                            {
+                                link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                                link_type_id = linkType != null ? IDHelper.ElIdInt(linkType.Id) : (int?)null,
+                                details_key = (string)null,
+                                details_source = "not_available",
+                                api_limitations = new List<string>
+                                {
+                                    "view.GetLinkOverrides(linkType.Id) returned null. VisibilityType was not read from Revit API."
+                                }
+                            });
+
+                            continue;
+                        }
+
+
+                        LinkVisibility visibilityType = graphicsSettings?.LinkVisibilityType ?? LinkVisibility.ByHostView;
+                        ElementId linkedViewId = graphicsSettings?.LinkedViewId ?? ElementId.InvalidElementId;                     
+
+                        View linkedView = null;
+                        var limitations = new List<string>();
+
+                        if (linkedDoc == null)
+                        {
+                            limitations.Add("Linked document is not loaded, so linked-view details are unavailable.");
+                        }
+
+                        if (linkedDoc != null && linkedViewId != null && linkedViewId != ElementId.InvalidElementId)
+                        {
+                            linkedView = linkedDoc.GetElement(linkedViewId) as View;
+                            if (linkedView == null)
+                            {                              
+                                limitations.Add($"LinkedViewId {IDHelper.ElIdInt(linkedViewId)} was not found in linked document.");
+                            }
+                        }
+
+
+                        string detailsKey = null;
+                        string detailsSource = "not_available";
+
+                        if (visibilityType == LinkVisibility.ByHostView)
+                        {
+                            detailsKey = $"host_view:{IDHelper.ElIdInt(view.Id)}";
+                            if (!detailsByKey.ContainsKey(detailsKey))
+                                detailsByKey[detailsKey] = BuildLinkVisibilityViewDetails(doc, view, "host_view");
+                            detailsSource = "host_view";
+                        }
+                        else if ((visibilityType == LinkVisibility.ByLinkView || visibilityType == LinkVisibility.Custom) && linkedView != null)
+                        {
+                            detailsKey = $"linked_view:{IDHelper.ElIdInt(linkType.Id)}:{IDHelper.ElIdInt(linkedView.Id)}";
+                            if (!detailsByKey.ContainsKey(detailsKey))
+                                detailsByKey[detailsKey] = BuildLinkVisibilityViewDetails(linkedDoc, linkedView, "linked_view");
+                            detailsSource = "linked_view";
+                        }
+                        else if (visibilityType == LinkVisibility.Custom)
+                        {
+                            limitations.Add("Revit API exposes LinkVisibilityType and LinkedViewId, but does not directly expose every tab of the Custom link display dialog. Details can be reconstructed only when a linked view is available.");
+                        }
+
+                        result.Add(new
+                        {
+                            link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                            link_type_id = IDHelper.ElIdInt(linkType.Id),
+                            details_key = detailsKey,
+                            details_source = detailsSource,
+                            api_limitations = limitations
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Add(new
+                        {
+                            link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                            error = $"Error: {ex.Message}"
+                        });
+                    }
+                }
+
+                return new
+                {
+                    success = true,
+                    revit_version = revitVersion,
+                    view_id = viewId,
+                    view_name = view.Name,
+                    view_type = view.ViewType.ToString(),
+                    link_overrides = result,
+                    details_by_key = detailsByKey,
+                    count = result.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while reading detailed link graphics overrides: {ex.Message}",
+                    link_overrides = new List<object>(),
+                    count = 0
+                };
+            }
+
+#elif !(Revit2020 || Debug2020 || Revit2023 || Debug2023)
+            return new
+            {
+                error = "Detailed link graphics overrides are available only in Revit 2024 configuration.",
+                link_overrides = new List<object>(),
+                count = 0,
+                revit_version = revitVersion,
+                min_supported_version = 2024
+            };
+#endif
+        }
+
+        private static object BuildViewInfo(View view)
+        {
+            if (view == null) return null;
+
+            return new
+            {
+                view_id = IDHelper.ElIdInt(view.Id),
+                view_name = view.Name ?? "Unnamed",
+                view_type = view.ViewType.ToString(),
+                scale = view.Scale,
+                detail_level = view.DetailLevel.ToString(),
+                display_style = view.DisplayStyle.ToString()
+            };
+      
+        }
+
+        private static object BuildLinkVisibilityViewDetails(Document sourceDoc, View sourceView, string sourceKind)
+        {
+            return new
+            {
+                source = sourceKind,
+                view = BuildViewInfo(sourceView),
+                changed_model_categories = GetChangedCategoriesVisibilityForLinkDetails(sourceDoc, sourceView, CategoryType.Model),
+                changed_annotation_categories = GetChangedCategoriesVisibilityForLinkDetails(sourceDoc, sourceView, CategoryType.Annotation),
+                changed_analytical_categories = GetChangedCategoriesVisibilityForLinkDetails(sourceDoc, sourceView, CategoryType.AnalyticalModel),
+                changed_import_categories = GetChangedImportCategoriesVisibilityForLinkDetails(sourceDoc, sourceView),
+                filters = GetFiltersForLinkDetails(sourceDoc, sourceView),
+                worksets = GetWorksetsForLinkDetails(sourceDoc, sourceView)
+            };
+        }
+
+        //*****  Получение списка переопределений по категориям
+        private static List<object> GetChangedCategoriesVisibilityForLinkDetails(Document sourceDoc, View sourceView, CategoryType categoryType)
+        {
+            var result = new List<object>();
+
+            foreach (Category cat in GetCategories(sourceDoc).Where(c => c.CategoryType == categoryType))
+            {
+                try
+                {
+                    if (!cat.get_AllowsVisibilityControl(sourceView)) continue;
+
+                    object categoryInfo = BuildCompactCategoryVisibilityInfo(sourceView, cat);
+                    if (categoryInfo != null)
+                        result.Add(categoryInfo);
+                }
+                catch { }
+            }
+
+            return result;
+        }
+        //*****************************************************
+
+        //*****  Получения списка переопредления для всех dwg подложек
+        private static List<object> GetChangedImportCategoriesVisibilityForLinkDetails(Document sourceDoc, View sourceView)
+        {
+            var result = new List<object>();
+            var processedCategoryIds = new HashSet<int>();
+
+            foreach (Category importRootCategory in GetImportRootCategories(sourceDoc))
+            {
+                try
+                {
+                    if (importRootCategory == null)
+                        continue;
+
+                    int importRootCategoryId = IDHelper.ElIdInt(importRootCategory.Id);
+                    if (processedCategoryIds.Contains(importRootCategoryId))
+                        continue;
+
+                    processedCategoryIds.Add(importRootCategoryId);
+
+                    object importCategoryInfo = BuildChangedImportCategoryNode(sourceView, importRootCategory, new HashSet<int>());
+                    if (importCategoryInfo != null)
+                        result.Add(importCategoryInfo);
+                }
+                catch { }
+            }
+            return result;
+        }
+
+        private static List<Category> GetImportRootCategories(Document sourceDoc)
+        {
+            var result = new List<Category>();
+            var addedCategoryIds = new HashSet<int>();
+            var allCategories = GetCategories(sourceDoc);
+
+            foreach (Category cat in allCategories)
+            {
+                try
+                {
+                    if (IDHelper.ElIdInt(cat.Id) == (int)BuiltInCategory.OST_ImportObjectStyles)
+                        AddCategoryIfNotAdded(result, addedCategoryIds, cat);
+                }
+                catch { }
+            }
+            try
+            {
+                var importInstances = new FilteredElementCollector(sourceDoc)
+                    .OfClass(typeof(ImportInstance))
+                    .Cast<ImportInstance>()
+                    .ToList();
+
+                foreach (ImportInstance importInstance in importInstances)
+                {
+                    try
+                    {
+                        AddCategoryIfNotAdded(result, addedCategoryIds, importInstance.Category);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            foreach (Category cat in allCategories)
+            {
+                try
+                {
+                    if (cat.Parent != null &&
+                        IDHelper.ElIdInt(cat.Parent.Id) == (int)BuiltInCategory.OST_ImportObjectStyles)
+                    {
+                        AddCategoryIfNotAdded(result, addedCategoryIds, cat.Parent);
+                    }
+                }
+                catch { }
+            }
+
+            return result;
+        }
+
+        private static void AddCategoryIfNotAdded(List<Category> categories, HashSet<int> addedCategoryIds, Category category)
+        {
+            if (category == null)
+                return;
+
+            int categoryId = IDHelper.ElIdInt(category.Id);
+            if (addedCategoryIds.Contains(categoryId))
+                return;
+
+            addedCategoryIds.Add(categoryId);
+            categories.Add(category);
+        }
+
+        private static object BuildChangedImportCategoryNode(View sourceView, Category importCategory, HashSet<int> visitedCategoryIds)
+        {
+            if (importCategory == null)
+                return null;
+
+            int categoryId = IDHelper.ElIdInt(importCategory.Id);
+            if (visitedCategoryIds.Contains(categoryId))
+                return null;
+
+            visitedCategoryIds.Add(categoryId);
+
+            object changedCategoryInfo = null;
+            try
+            {
+                if (importCategory.get_AllowsVisibilityControl(sourceView))
+                    changedCategoryInfo = BuildCompactCategoryVisibilityInfo(sourceView, importCategory);
+            }
+            catch { }
+
+            var changedLayers = new List<object>();
+            foreach (Category layerCategory in GetImportLayerCategories(importCategory))
+            {
+                object layerInfo = BuildChangedImportCategoryNode(sourceView, layerCategory, visitedCategoryIds);
+                if (layerInfo != null)
+                    changedLayers.Add(layerInfo);
+            }
+
+            visitedCategoryIds.Remove(categoryId);
+
+            if (changedCategoryInfo == null && changedLayers.Count == 0)
+                return null;
+
+            return new
+            {
+                category = changedCategoryInfo ?? BuildImportCategoryContextInfo(importCategory),
+                subcategories = changedLayers
+            };
+        }
+
+        private static List<Category> GetImportLayerCategories(Category importCategory)
+        {
+            var result = new List<Category>();
+
+            foreach (Category subCat in importCategory.SubCategories)
+            {
+                try
+                {
+                    if (subCat != null)
+                        result.Add(subCat);
+                }
+                catch { }
+            }
+
+            return result;
+        }
+
+        private static object BuildImportCategoryContextInfo(Category cat)
+        {
+            return new
+            {
+                category_id = IDHelper.ElIdInt(cat.Id),
+                category_name = cat.Name,
+                category_type = cat.CategoryType.ToString(),
+                is_hidden = false,
+                overrides = (object)null,
+                context_only = true
+            };
+        }
+
+        //*****************************************************  
+
+        //*****  Получение переопредления графики вида в рамках одной категории
+        private static object BuildCompactCategoryVisibilityInfo(View sourceView, Category cat)
+        {
+            OverrideGraphicSettings overrides = null;
+            bool isHidden = false;
+
+            try
+            {
+                isHidden = sourceView.GetCategoryHidden(cat.Id);
+                overrides = sourceView.GetCategoryOverrides(cat.Id);
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    category_id = IDHelper.ElIdInt(cat.Id),
+                    category_name = cat.Name,
+                    category_type = cat.CategoryType.ToString(),
+                    error = ex.Message
+                };
+            }
+
+            bool hasOverrides = HasAnyOverrideBool(overrides);
+            if (!isHidden && !hasOverrides)
+                return null;
+
+            return new
+            {
+                category_id = IDHelper.ElIdInt(cat.Id),
+                category_name = cat.Name,
+                category_type = cat.CategoryType.ToString(),
+                is_hidden = isHidden,
+                overrides = hasOverrides ? ExtractCompactOverrideInfo(overrides) : null
+            };
+        }
+        //*****************************************************
+
+
+        //*****  Проверка на то есть ли переопределния у категории
+        private static bool HasAnyOverrideBool(OverrideGraphicSettings overrides)
+        {
+            if (overrides == null)
+                return false;
+
+            return
+                overrides.ProjectionLineColor != null && overrides.ProjectionLineColor.IsValid ||
+                overrides.CutLineColor != null && overrides.CutLineColor.IsValid ||
+                overrides.ProjectionLineWeight > 0 ||
+                overrides.CutLineWeight > 0 ||
+                overrides.ProjectionLinePatternId != null && IDHelper.ElIdInt(overrides.ProjectionLinePatternId) > 0 ||
+                overrides.CutLinePatternId != null && IDHelper.ElIdInt(overrides.CutLinePatternId) > 0 ||
+                overrides.SurfaceForegroundPatternColor != null && overrides.SurfaceForegroundPatternColor.IsValid ||
+                overrides.SurfaceBackgroundPatternColor != null && overrides.SurfaceBackgroundPatternColor.IsValid ||
+                overrides.CutForegroundPatternColor != null && overrides.CutForegroundPatternColor.IsValid ||
+                overrides.CutBackgroundPatternColor != null && overrides.CutBackgroundPatternColor.IsValid ||
+                overrides.SurfaceForegroundPatternId != null && IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId) > 0 ||
+                overrides.SurfaceBackgroundPatternId != null && IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId) > 0 ||
+                overrides.CutForegroundPatternId != null && IDHelper.ElIdInt(overrides.CutForegroundPatternId) > 0 ||
+                overrides.CutBackgroundPatternId != null && IDHelper.ElIdInt(overrides.CutBackgroundPatternId) > 0 ||
+                !overrides.IsSurfaceForegroundPatternVisible ||
+                !overrides.IsSurfaceBackgroundPatternVisible ||
+                !overrides.IsCutForegroundPatternVisible ||
+                !overrides.IsCutBackgroundPatternVisible ||
+                overrides.Halftone ||
+                overrides.Transparency != 0;
+        }
+        //*****************************************************
+
+        //*****  Изъятия каждого вида переопределния (линии, плоскости, прозрачность и пр.)
+        private static object ExtractCompactOverrideInfo(OverrideGraphicSettings overrides)
+        {
+            if (overrides == null)
+                return null;
+
+            var result = new Dictionary<string, object>();
+
+            if (overrides.ProjectionLineColor != null && overrides.ProjectionLineColor.IsValid)
+                result["projection_line_color"] = GetColorInfo(overrides.ProjectionLineColor);
+            if (overrides.ProjectionLineWeight > 0)
+                result["projection_line_weight"] = overrides.ProjectionLineWeight;
+            if (overrides.ProjectionLinePatternId != null && IDHelper.ElIdInt(overrides.ProjectionLinePatternId) > 0)
+                result["projection_line_pattern_id"] = IDHelper.ElIdInt(overrides.ProjectionLinePatternId);
+
+            if (overrides.CutLineColor != null && overrides.CutLineColor.IsValid)
+                result["cut_line_color"] = GetColorInfo(overrides.CutLineColor);
+            if (overrides.CutLineWeight > 0)
+                result["cut_line_weight"] = overrides.CutLineWeight;
+            if (overrides.CutLinePatternId != null && IDHelper.ElIdInt(overrides.CutLinePatternId) > 0)
+                result["cut_line_pattern_id"] = IDHelper.ElIdInt(overrides.CutLinePatternId);
+
+            if (overrides.SurfaceForegroundPatternId != null && IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId) > 0)
+                result["surface_foreground_pattern_id"] = IDHelper.ElIdInt(overrides.SurfaceForegroundPatternId);
+            if (overrides.SurfaceForegroundPatternColor != null && overrides.SurfaceForegroundPatternColor.IsValid)
+                result["surface_foreground_pattern_color"] = GetColorInfo(overrides.SurfaceForegroundPatternColor);
+            if (!overrides.IsSurfaceForegroundPatternVisible)
+                result["surface_foreground_pattern_visible"] = false;
+
+            if (overrides.SurfaceBackgroundPatternId != null && IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId) > 0)
+                result["surface_background_pattern_id"] = IDHelper.ElIdInt(overrides.SurfaceBackgroundPatternId);
+            if (overrides.SurfaceBackgroundPatternColor != null && overrides.SurfaceBackgroundPatternColor.IsValid)
+                result["surface_background_pattern_color"] = GetColorInfo(overrides.SurfaceBackgroundPatternColor);
+            if (!overrides.IsSurfaceBackgroundPatternVisible)
+                result["surface_background_pattern_visible"] = false;
+
+            if (overrides.CutForegroundPatternId != null && IDHelper.ElIdInt(overrides.CutForegroundPatternId) > 0)
+                result["cut_foreground_pattern_id"] = IDHelper.ElIdInt(overrides.CutForegroundPatternId);
+            if (overrides.CutForegroundPatternColor != null && overrides.CutForegroundPatternColor.IsValid)
+                result["cut_foreground_pattern_color"] = GetColorInfo(overrides.CutForegroundPatternColor);
+            if (!overrides.IsCutForegroundPatternVisible)
+                result["cut_foreground_pattern_visible"] = false;
+
+            if (overrides.CutBackgroundPatternId != null && IDHelper.ElIdInt(overrides.CutBackgroundPatternId) > 0)
+                result["cut_background_pattern_id"] = IDHelper.ElIdInt(overrides.CutBackgroundPatternId);
+            if (overrides.CutBackgroundPatternColor != null && overrides.CutBackgroundPatternColor.IsValid)
+                result["cut_background_pattern_color"] = GetColorInfo(overrides.CutBackgroundPatternColor);
+            if (!overrides.IsCutBackgroundPatternVisible)
+                result["cut_background_pattern_visible"] = false;
+
+            if (overrides.Halftone)
+                result["halftone"] = true;
+            if (overrides.Transparency != 0)
+                result["transparency"] = overrides.Transparency;
+
+            return result;
+        }
+        //*****************************************************
+
+
+        //*****  Получение переопределений по фильтрам
+        private static List<object> GetFiltersForLinkDetails(Document sourceDoc, View sourceView)
+        {
+            var result = new List<object>();
+
+            try
+            {
+                foreach (ElementId filterId in sourceView.GetFilters())
+                {
+                    try
+                    {
+                        Element filterElement = sourceDoc.GetElement(filterId);
+                        ParameterFilterElement parameterFilter = filterElement as ParameterFilterElement;
+                        OverrideGraphicSettings overrides = sourceView.GetFilterOverrides(filterId);
+                        var enabledInfo = GetFilterEnabledInfo(sourceView, filterId);
+                        var rulesInfo = parameterFilter != null ? GetFilterRulesInfo(parameterFilter) : (false, new List<string>());
+
+                        result.Add(new
+                        {
+                            filter_id = IDHelper.ElIdInt(filterId),
+                            filter_name = filterElement?.Name ?? "Unnamed",
+                            filter_class = filterElement?.GetType().Name,
+                            is_visible = sourceView.GetFilterVisibility(filterId),
+                            is_enabled = enabledInfo.isEnabled,
+                            is_enabled_available = enabledInfo.isAvailable,
+                            is_enabled_error = enabledInfo.error,
+                            category_ids = parameterFilter != null ? parameterFilter.GetCategories().Select(IDHelper.ElIdInt).ToList() : new List<int>(),
+                            has_rules = rulesInfo.Item1,
+                            rule_parameters = rulesInfo.Item2,
+                            overrides = HasAnyOverrideBool(overrides) ? ExtractCompactOverrideInfo(overrides) : null
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Add(new
+                        {
+                            filter_id = IDHelper.ElIdInt(filterId),
+                            error = ex.Message
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Add(new { error = ex.Message });
+            }
+
+            return result;
+        }
+        //*****************************************************
+
+
+
+        private static List<object> GetWorksetsForLinkDetails(Document sourceDoc, View sourceView)
+        {
+            var result = new List<object>();
+
+            try
+            {
+                if (!sourceDoc.IsWorkshared)
+                    return result;
+
+                foreach (Workset workset in GetAllWorksets(sourceDoc))
+                {
+                    try
+                    {
+                        WorksetVisibility visibility = sourceView.GetWorksetVisibility(workset.Id);
+                        result.Add(new
+                        {
+                            workset_id = workset.Id.IntegerValue,
+                            workset_name = workset.Name ?? "Unnamed",
+                            visibility_status = visibility.ToString(),
+                            visibility_status_ru = GetWorksetVisibilityRu(visibility, workset.IsVisibleByDefault),
+                            globally_visible = workset.IsVisibleByDefault
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Add(new
+                        {
+                            workset_id = workset.Id.IntegerValue,
+                            workset_name = workset.Name ?? "Unnamed",
+                            error = ex.Message
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                result.Add(new { error = ex.Message });
+            }
+
+            return result;
+        }
+
+        private static string GetWorksetVisibilityRu(WorksetVisibility visibility, bool isVisibleByDefault)
+        {
+            switch (visibility)
+            {
+                case WorksetVisibility.Visible:
+                    return "показать";
+                case WorksetVisibility.Hidden:
+                    return "скрыть";
+                case WorksetVisibility.UseGlobalSetting:
+                    return isVisibleByDefault
+                        ? "использовать глобальную настройку видимости (видимый)"
+                        : "использовать глобальную настройку видимости (невидимый)";
+                default:
+                    return visibility.ToString();
+            }
+        }
 
         #endregion
 
@@ -5976,150 +6691,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             }
         }
 
-        #endregion
-
-        //#region 35.2_get_schedule_rows_with_elements
-
-        //public static object GetScheduleRowsWithElements(Document doc, int scheduleId)
-        //{
-        //    try
-        //    {
-        //        Element element = doc.GetElement(new ElementId(scheduleId));
-        //        if (element == null)
-        //        {
-        //            return new { error = $"Спецификация с ID {scheduleId} не найдена", success = false };
-        //        }
-
-        //        ViewSchedule schedule = element as ViewSchedule;
-        //        if (schedule == null)
-        //        {
-        //            return new { error = "Элемент не является спецификацией", success = false };
-        //        }
-
-        //        TableData tableData = schedule.GetTableData();
-        //        if (tableData == null)
-        //        {
-        //            return new { error = "Не удалось получить данные таблицы", success = false };
-        //        }
-
-        //        TableSectionData bodySection = tableData.GetSectionData(SectionType.Body);
-        //        if (bodySection == null)
-        //        {
-        //            return new { error = "Не удалось получить секцию Body", success = false };
-        //        }
-
-
-        //        ScheduleDefinition definition = schedule.Definition;
-        //        if (definition == null)
-        //        {
-        //            return new { error = "Не удалось получить определение спецификации", success = false };
-        //        }
-
-        //        // ========== 1. ПОЛУЧАЕМ ИНДЕКСЫ ВИДИМЫХ СТОЛБЦОВ ==========
-        //        IList<ScheduleFieldId> fieldOrder = definition.GetFieldOrder();
-        //        var visibleColumnIndices = new List<int>();      // Реальные индексы видимых столбцов
-        //        var visibleFieldIds = new List<int>();           // ID полей для информации
-
-        //        for (int i = 0; i < fieldOrder.Count; i++)
-        //        {
-        //            ScheduleField field = definition.GetField(fieldOrder[i]);
-        //            if (field != null && !field.IsHidden)
-        //            {
-        //                visibleColumnIndices.Add(i);              // Сохраняем РЕАЛЬНЫЙ индекс
-        //                visibleFieldIds.Add(fieldOrder[i].IntegerValue);
-        //            }
-        //        }
-
-        //        // ========== 2. ПОЛУЧАЕМ ЗАГОЛОВКИ ДЛЯ ВИДИМЫХ СТОЛБЦОВ ==========
-        //        var headers = new List<string>();
-        //        foreach (int realColIndex in visibleColumnIndices)
-        //        {
-        //            string header = schedule.GetCellText(SectionType.Header, 0, realColIndex);
-        //            headers.Add(string.IsNullOrEmpty(header) ? $"Column_{realColIndex}" : header);
-        //        }
-
-
-
-        //        //=====================================
-        //        int rowCount = bodySection.NumberOfRows;
-        //        int visibleColumnCount = visibleColumnIndices.Count;
-
-
-        //        // Получаем все элементы, связанные со спецификацией
-        //        var allElementsInSchedule = new FilteredElementCollector(doc, schedule.Id)
-        //            .WhereElementIsNotElementType()
-        //            .ToElementIds()
-        //            .ToList();
-
-
-        //        //// Определяем, сгруппирована ли спецификация
-        //        //bool isItemized = schedule.Definition?.IsItemized ?? true;
-
-        //        var rows = new List<object>();
-        //        for (int row = 0; row < rowCount; row++)
-        //        {
-        //            var rowValues = new Dictionary<string, string>();
-
-        //            // Используем реальные индексы столбцов!
-        //            for (int colIdx = 0; colIdx < visibleColumnCount; colIdx++)
-        //            {
-        //                int realColIndex = visibleColumnIndices[colIdx];
-
-        //                CellType cellType = bodySection.GetCellType(row, realColIndex);
-        //                switch (cellType)
-        //                {
-        //                    case CellType.Text:
-        //                    case CellType.ParameterText:
-        //                        // Работает GetCellText
-        //                        string textValue = schedule.GetCellText(SectionType.Body, row, realColIndex);
-        //                        break;
-
-        //                    //case CellType.Parameter:
-        //                    //    // Для числовых параметров используем GetCellValue
-        //                    //    object numericValue = schedule.GetCellValue(SectionType.Body, row, realColIndex);
-        //                    //    break;
-
-        //                    case CellType.CalculatedValue:
-        //                        // Для вычисляемых полей
-        //                        string calcValue = schedule.GetCalculatedValueText(SectionType.Body, row, realColIndex);
-        //                        break;
-        //                }
-
-
-
-        //                string cellValue = schedule.GetCellText(SectionType.Body, row, realColIndex);
-        //                rowValues[headers[colIdx]] = cellValue ?? "";
-        //            }
-
-        //            rows.Add(new
-        //            {
-        //                row_index = row,
-        //                values = rowValues
-        //            });
-        //        }
-
-
-        //        return new
-        //        {
-        //            schedule_id = schedule.Id.IntegerValue,
-        //            schedule_name = schedule.Name ?? "Unnamed",
-        //            is_itemized = definition.IsItemized,
-        //            row_count = rowCount,
-        //            column_count = visibleColumnCount,
-        //            total_columns = fieldOrder.Count,
-        //            hidden_columns_count = fieldOrder.Count - visibleColumnCount,
-        //            headers = headers,
-        //            rows = rows,
-        //            element_ids = allElementsInSchedule
-        //        };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return new { error = ex.Message, success = false };
-        //    }
-        //}
-
-        //#endregion
+        #endregion    
 
         #region 36_get_if_elements_pass_filter   
 
@@ -6767,6 +7339,856 @@ namespace KPLN_CoordiantorAI.ExternalModel
             };
             return months.ContainsKey(monthShort) ? months[monthShort] : 0;
         }
+
+        #endregion
+
+        #region 39_get_revit_links_in_model
+
+        public static object GetRevitLinksInModel(Document doc)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        links = new List<object>(),
+                        count = 0
+                    };
+                }
+
+                List<object> links = new FilteredElementCollector(doc)
+                    .OfClass(typeof(RevitLinkInstance))
+                    .Cast<RevitLinkInstance>()
+                    .OrderBy(link => IDHelper.ElIdInt(link.Id))
+                    .Select(linkInstance =>
+                    {
+                        RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                        Document linkedDoc = linkInstance.GetLinkDocument();
+                        bool isLoaded = linkedDoc != null;
+                        Transform transform = linkInstance.GetTotalTransform();
+
+                        return new
+                        {
+                            link_instance_id = IDHelper.ElIdInt(linkInstance.Id),
+                            link_type_id = linkType != null ? (int?)IDHelper.ElIdInt(linkType.Id) : null,
+                            link_instance_name = linkInstance.Name,
+                            link_type_name = linkType != null ? linkType.Name : null,
+                            linked_document_title = linkedDoc != null ? linkedDoc.Title : null,
+                            linked_document_path = linkedDoc != null ? linkedDoc.PathName : null,
+                            is_loaded = isLoaded,
+                            transform = FormatTransformForLink(transform)
+                        };
+                    })
+                    .ToList<object>();
+
+                return new
+                {
+                    success = true,
+                    links = links,
+                    count = links.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting Revit links: {ex.Message}",
+                    links = new List<object>(),
+                    count = 0
+                };
+            }
+        }
+
+        private static object FormatTransformForLink(Transform transform)
+        {
+            if (transform == null)
+                return null;
+
+            return new
+            {
+                origin = FormatXyz(transform.Origin),
+                basisX = FormatXyz(transform.BasisX),
+                basisY = FormatXyz(transform.BasisY),
+                basisZ = FormatXyz(transform.BasisZ)
+            };
+        }
+
+        #endregion
+
+        #region 40_get_revit_link_elements
+
+        public static object GetRevitLinkElements(Document doc, int linkInstanceId, int limit = 300, int offset = 0)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                if (limit <= 0)
+                    limit = 300;
+
+                if (limit > 300)
+                    limit = 300;
+
+                if (offset < 0)
+                    offset = 0;
+
+                ElementId linkElemId = IDHelper.ToElementId(linkInstanceId);
+                RevitLinkInstance linkInstance = doc.GetElement(linkElemId) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                    return new
+                    {
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_name = linkType?.Name ?? linkInstance.Name,
+                        linked_document_title = (string)null,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                List<Element> linkedElements = new FilteredElementCollector(linkedDoc)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e != null)
+                    .OrderBy(e => IDHelper.ElIdInt(e.Id))
+                    .ToList();
+
+                int totalCount = linkedElements.Count;
+                List<object> pageElements = linkedElements
+                    .Skip(offset)
+                    .Take(limit)
+                    .Select(e => FormatLinkedElementSummary(e))
+                    .ToList();
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = linkedDoc.Title,
+                    elements = pageElements,
+                    total_count = totalCount,
+                    returned_count = pageElements.Count,
+                    limit = limit,
+                    offset = offset,
+                    has_more = offset + pageElements.Count < totalCount
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting linked elements: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = (string)null,
+                    elements = new List<object>(),
+                    total_count = 0,
+                    returned_count = 0,
+                    limit = limit,
+                    offset = offset
+                };
+            }
+        }
+
+        private static object FormatLinkedElementSummary(Element element)
+        {
+            ElementId typeId = ElementId.InvalidElementId;
+            try
+            {
+                typeId = element.GetTypeId();
+            }
+            catch
+            {
+            }
+
+            return new
+            {
+                linked_element_id = IDHelper.ElIdInt(element.Id),
+                name = element.Name,
+                category = element.Category != null ? element.Category.Name : null,
+                class_name = element.GetType().FullName,
+                type_id = typeId != null && typeId != ElementId.InvalidElementId ? (int?)IDHelper.ElIdInt(typeId) : null
+            };
+        }
+
+        #endregion
+
+        #region 41_get_revit_link_categories
+
+        public static object GetRevitLinkCategories(Document doc, int linkInstanceId)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        categories = new List<object>(),
+                        count = 0,
+                        total_elements_count = 0
+                    };
+                }
+
+                ElementId linkElemId = IDHelper.ToElementId(linkInstanceId);
+                RevitLinkInstance linkInstance = doc.GetElement(linkElemId) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        categories = new List<object>(),
+                        count = 0,
+                        total_elements_count = 0
+                    };
+                }
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                    return new
+                    {
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_name = linkType?.Name ?? linkInstance.Name,
+                        linked_document_title = (string)null,
+                        categories = new List<object>(),
+                        count = 0,
+                        total_elements_count = 0
+                    };
+                }
+
+                List<Element> linkedElements = new FilteredElementCollector(linkedDoc)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e != null && e.Category != null)
+                    .ToList();
+
+                List<object> categories = linkedElements
+                    .GroupBy(e => IDHelper.ElIdInt(e.Category.Id))
+                    .Select(g =>
+                    {
+                        Category category = g.First().Category;
+                        return new
+                        {
+                            category_id = g.Key,
+                            category_name = category != null ? category.Name : null,
+                            count = g.Count()
+                        };
+                    })
+                    .OrderByDescending(c => c.count)
+                    .ThenBy(c => c.category_name)
+                    .ToList<object>();
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = linkedDoc.Title,
+                    categories = categories,
+                    count = categories.Count,
+                    total_elements_count = linkedElements.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting linked categories: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = (string)null,
+                    categories = new List<object>(),
+                    count = 0,
+                    total_elements_count = 0
+                };
+            }
+        }
+
+        #endregion
+
+        #region 42_get_revit_link_elements_by_category
+
+        public static object GetRevitLinkElementsByCategory(Document doc, int linkInstanceId, int categoryId, string categoryName = null, int limit = 300, int offset = 0)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        category_id = categoryId == 0 ? (int?)null : categoryId,
+                        category_name = categoryName,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                if (limit <= 0)
+                    limit = 300;
+
+                if (limit > 300)
+                    limit = 300;
+
+                if (offset < 0)
+                    offset = 0;
+
+                ElementId linkElemId = IDHelper.ToElementId(linkInstanceId);
+                RevitLinkInstance linkInstance = doc.GetElement(linkElemId) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_document_title = (string)null,
+                        category_id = categoryId == 0 ? (int?)null : categoryId,
+                        category_name = categoryName,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                    return new
+                    {
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_name = linkType?.Name ?? linkInstance.Name,
+                        linked_document_title = (string)null,
+                        category_id = categoryId == 0 ? (int?)null : categoryId,
+                        category_name = categoryName,
+                        elements = new List<object>(),
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset
+                    };
+                }
+
+                List<Element> linkedElements = new FilteredElementCollector(linkedDoc)
+                    .WhereElementIsNotElementType()
+                    .Where(e => e != null && e.Category != null)
+                    .Where(e =>
+                    {
+                        if (categoryId != 0)
+                            return IDHelper.ElIdInt(e.Category.Id) == categoryId;
+
+                        return !string.IsNullOrWhiteSpace(categoryName)
+                            && string.Equals(e.Category.Name, categoryName, StringComparison.CurrentCultureIgnoreCase);
+                    })
+                    .OrderBy(e => IDHelper.ElIdInt(e.Id))
+                    .ToList();
+
+                Category category = linkedElements.Count > 0 ? linkedElements[0].Category : null;
+                int? resultCategoryId = category != null ? (int?)IDHelper.ElIdInt(category.Id) : (categoryId == 0 ? (int?)null : categoryId);
+                string resultCategoryName = category != null ? category.Name : categoryName;
+
+                List<object> pageElements = linkedElements
+                    .Skip(offset)
+                    .Take(limit)
+                    .Select(e => FormatLinkedElementSummary(e))
+                    .ToList();
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = linkedDoc.Title,
+                    category_id = resultCategoryId,
+                    category_name = resultCategoryName,
+                    elements = pageElements,
+                    total_count = linkedElements.Count,
+                    returned_count = pageElements.Count,
+                    limit = limit,
+                    offset = offset,
+                    has_more = offset + pageElements.Count < linkedElements.Count
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    error = $"Error while getting linked elements by category: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_document_title = (string)null,
+                    category_id = categoryId == 0 ? (int?)null : categoryId,
+                    category_name = categoryName,
+                    elements = new List<object>(),
+                    total_count = 0,
+                    returned_count = 0,
+                    limit = limit,
+                    offset = offset
+                };
+            }
+        }
+
+        #endregion
+
+        #region 43_get_selected_revit_link_element_id
+
+        public static object GetSelectedRevitLinkElementId(Document doc, UIDocument uiDoc)
+        {
+            try
+            {
+                if (doc == null || uiDoc == null)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "Active Revit document is not available.",
+                        link_instance_id = (int?)null,
+                        linked_element_id = (int?)null,
+                        selected_linked_elements = new List<object>(),
+                        count = 0
+                    };
+                }
+
+                IList<Reference> pickedReferences = uiDoc.Selection.PickObjects(
+                    Autodesk.Revit.UI.Selection.ObjectType.LinkedElement,
+                    "Select one or more elements inside a Revit linked file, then click Finish.");
+
+                if (pickedReferences == null || pickedReferences.Count == 0)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "Linked elements were not selected.",
+                        link_instance_id = (int?)null,
+                        linked_element_id = (int?)null,
+                        selected_linked_elements = new List<object>(),
+                        count = 0
+                    };
+                }
+
+                List<object> selectedLinkedElements = pickedReferences
+                    .Where(r => r != null && r.ElementId != null && r.LinkedElementId != null)
+                    .Select(r => FormatPickedLinkedElementReference(doc, r))
+                    .ToList();
+
+                Reference firstReference = pickedReferences.FirstOrDefault(r => r != null && r.ElementId != null && r.LinkedElementId != null);
+
+                return new
+                {
+                    success = selectedLinkedElements.Count > 0,
+                    link_instance_id = firstReference != null ? (int?)IDHelper.ElIdInt(firstReference.ElementId) : null,
+                    linked_element_id = firstReference != null ? (int?)IDHelper.ElIdInt(firstReference.LinkedElementId) : null,
+                    selected_linked_elements = selectedLinkedElements,
+                    count = selectedLinkedElements.Count,
+                    message = $"Selected {selectedLinkedElements.Count} linked element(s)."
+                };
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return new
+                {
+                    success = false,
+                    cancelled = true,
+                    error = "Linked element selection was cancelled.",
+                    link_instance_id = (int?)null,
+                    linked_element_id = (int?)null,
+                    selected_linked_elements = new List<object>(),
+                    count = 0
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Error while picking linked elements: {ex.Message}",
+                    link_instance_id = (int?)null,
+                    linked_element_id = (int?)null,
+                    selected_linked_elements = new List<object>(),
+                    count = 0
+                };
+            }
+        }
+
+        private static object FormatPickedLinkedElementReference(Document doc, Reference pickedReference)
+        {
+            RevitLinkInstance linkInstance = doc.GetElement(pickedReference.ElementId) as RevitLinkInstance;
+            RevitLinkType linkType = linkInstance != null ? doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType : null;
+            Document linkedDoc = linkInstance != null ? linkInstance.GetLinkDocument() : null;
+            Element linkedElement = linkedDoc != null ? linkedDoc.GetElement(pickedReference.LinkedElementId) : null;
+            ElementId linkedTypeId = ElementId.InvalidElementId;
+
+            if (linkedElement != null)
+            {
+                try
+                {
+                    linkedTypeId = linkedElement.GetTypeId();
+                }
+                catch
+                {
+                }
+            }
+
+            return new
+            {
+                link_instance_id = IDHelper.ElIdInt(pickedReference.ElementId),
+                link_type_id = linkType != null ? (int?)IDHelper.ElIdInt(linkType.Id) : null,
+                link_instance_name = linkInstance != null ? linkInstance.Name : null,
+                link_type_name = linkType != null ? linkType.Name : null,
+                linked_document_title = linkedDoc != null ? linkedDoc.Title : null,
+                linked_document_path = linkedDoc != null ? linkedDoc.PathName : null,
+                is_loaded = linkedDoc != null,
+                linked_element_id = IDHelper.ElIdInt(pickedReference.LinkedElementId),
+                linked_element = linkedElement != null ? new
+                {
+                    linked_element_id = IDHelper.ElIdInt(linkedElement.Id),
+                    name = linkedElement.Name,
+                    category = linkedElement.Category != null ? linkedElement.Category.Name : null,
+                    class_name = linkedElement.GetType().FullName,
+                    type_id = linkedTypeId != null && linkedTypeId != ElementId.InvalidElementId ? (int?)IDHelper.ElIdInt(linkedTypeId) : null
+                } : null,
+                error = linkInstance == null ? "Selected reference does not belong to a RevitLinkInstance." : null
+            };
+        }
+
+        #endregion
+
+        #region 44_get_revit_link_element_properties
+
+        public static object GetRevitLinkElementProperties(
+            Document doc,
+            int linkInstanceId,
+            int linkedElementId,
+            bool getIdValuesAsNames = false,
+            int maxValueLength = 1000,
+            int parameterId = 0,
+            string additionalPropertyName = null)
+        {
+            try
+            {
+                if (doc == null)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "Document is null",
+                        link_instance_id = linkInstanceId,
+                        linked_element_id = linkedElementId
+                    };
+                }
+
+                RevitLinkInstance linkInstance = doc.GetElement(IDHelper.ToElementId(linkInstanceId)) as RevitLinkInstance;
+                if (linkInstance == null)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = $"Element with ID {linkInstanceId} is not a RevitLinkInstance.",
+                        link_instance_id = linkInstanceId,
+                        linked_element_id = linkedElementId
+                    };
+                }
+
+                RevitLinkType linkType = doc.GetElement(linkInstance.GetTypeId()) as RevitLinkType;
+                Document linkedDoc = linkInstance.GetLinkDocument();
+                if (linkedDoc == null)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "Linked document is not loaded or is unavailable.",
+                        link_instance_id = linkInstanceId,
+                        link_type_id = linkType != null ? (int?)IDHelper.ElIdInt(linkType.Id) : null,
+                        link_instance_name = linkInstance.Name,
+                        link_type_name = linkType != null ? linkType.Name : null,
+                        linked_element_id = linkedElementId,
+                        is_loaded = false
+                    };
+                }
+
+                Element linkedElement = linkedDoc.GetElement(IDHelper.ToElementId(linkedElementId));
+                if (linkedElement == null)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = $"Linked element with ID {linkedElementId} was not found in linked document.",
+                        link_instance_id = linkInstanceId,
+                        link_type_id = linkType != null ? (int?)IDHelper.ElIdInt(linkType.Id) : null,
+                        link_instance_name = linkInstance.Name,
+                        link_type_name = linkType != null ? linkType.Name : null,
+                        linked_document_title = linkedDoc.Title,
+                        linked_document_path = linkedDoc.PathName,
+                        linked_element_id = linkedElementId,
+                        is_loaded = true
+                    };
+                }
+
+                int safeMaxValueLength = Math.Max(100, Math.Min(maxValueLength, 10000));
+                object parameters = GetParametersFromElementId(linkedDoc, linkedElementId, getIdValuesAsNames);
+                object additionalProperties = GetAllAdditionalPropertiesFromElementId(linkedDoc, linkedElementId);
+                object revitLookupLikeProperties = GetRevitLookupLikeProperties(linkedDoc, linkedElementId, safeMaxValueLength);
+
+                object parameterValue = null;
+                if (parameterId != 0)
+                {
+                    parameterValue = GetParameterValueForElementIds(
+                        linkedDoc,
+                        new List<int> { linkedElementId },
+                        parameterId,
+                        getIdValuesAsNames);
+                }
+
+                object additionalPropertyValue = null;
+                if (!string.IsNullOrWhiteSpace(additionalPropertyName))
+                {
+                    additionalPropertyValue = GetAdditionalPropertyForAllElementIds(
+                        linkedDoc,
+                        new List<int> { linkedElementId },
+                        additionalPropertyName);
+                }
+
+                return new
+                {
+                    success = true,
+                    link_instance_id = linkInstanceId,
+                    link_type_id = linkType != null ? (int?)IDHelper.ElIdInt(linkType.Id) : null,
+                    link_instance_name = linkInstance.Name,
+                    link_type_name = linkType != null ? linkType.Name : null,
+                    linked_document_title = linkedDoc.Title,
+                    linked_document_path = linkedDoc.PathName,
+                    is_loaded = true,
+                    linked_element_id = linkedElementId,
+                    linked_element = FormatLinkedElementSummary(linkedElement),
+                    parameters = parameters,
+                    additional_properties = additionalProperties,
+                    revitlookup_like_properties = revitLookupLikeProperties,
+                    parameter_value = parameterValue,
+                    additional_property_value = additionalPropertyValue
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    success = false,
+                    error = $"Error while getting linked element properties: {ex.Message}",
+                    link_instance_id = linkInstanceId,
+                    linked_element_id = linkedElementId
+                };
+            }
+        }
+
+        #endregion
+
+        #region 45_get_titleblock_family_parameters_description
+
+        public static object GetTitleBlockFamilyParametersDescription(string description)
+        {
+            string def = "\"Ниже представлены параметры основной надписи в формате <имя параметра>-<описание параметра>:\r\nА - Определяет формат листа на котором семейство расположено. Если значение 3 то и лист А3, если 4, то лист А4 и т.д.\r\nВысота - Высота листа на котором семейство расположено\r\nВысота листа - Высота листа на котором семейство расположено\r\nЖук_Сверху рамки - Если значение 1/true, то ЖУК отображется над штампа, в обратном случае (0/false ЖУК помещается над штампом\r\nЖук_Системный_Смещение_X - Расчетный параметр отвечающий за горизонтальное значение, используется для промежуточного вычисления смещения. Пользователем напрямую значение не задается\r\nЖук_Системный_Смещение_Y - Расчетный параметр отвечающий за вертикальное значение, используется для промежуточного вычисления смещения. Пользователем напрямую значение не задается\r\nЖук_Слева рамки - Если значение 1/true, то ЖУК отображется слева от штампа, в обратном случае (0/false) ЖУК помещается над штампом\r\nЖук_Смещение_X - Параметр отвечает за горизонтальное смещение ЖУКа. Допустимый диапазон смещения от 0 до 30 мм, все значения которые выходят за диапазон будут обнуляться\r\nЖук_Смещение_Y - Параметр отвечает за вертикальное смещение ЖУКа. Допустимый диапазон смещения от 0 до 30 мм, все значения которые выходят за диапазон будут обнуляться\r\nИзм1 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №1 (еще назвается Изм 1)\r\nИзм2 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №2 (еще назвается Изм 1)\r\nИзм3 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №3 (еще назвается Изм 1)\r\nИзм4 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №4 (еще назвается Изм 1)\r\nИмя листа - Параметр отображет имя листа\r\nКнижный - Определяет геометрическое расположение листа, если значение 0, то у листа оринетация Альбомный, если 1, то Книжный\r\nКолво листов - Данный параметр определяет какое суммарное количество листов комплекта/тома будет отображаться на штампе/основной надписи\r\nКолво штампов согласования - Устанавливает количество \"\"Штампов согласования\"\" (от 1 до 3). Все что за пределеами от 1 до 3, семейством не учитываются\r\nКП_Ш_Эквивалент формата_А4 - Показывает какому количеству листов А4 эквивалентен по размерам текущий лист\r\nКПЛН_Допустимые форматы - Параметр содержит в себе ссылку на статью, где описываются допустимые форматы листа\r\nНомер листа - Номер листа в копмлекте тома. Также это номер листа в подгруппе в диспетчере прокта\r\nНомер листа вручную - Параметр используется как источник данных для поля на штампе \"\"Лист\"\", если включен режим вручную (подробности описаны в описании параметра \"\" Номер листа вручную вкл\"\")\r\nНомер листа вручную вкл - Позволяет управлять источником данных для поля \"\"Лист\"\" в штампе. Если значение равно 0/false, значит значение берется автоматически либо из параметра листа либо из \"\"Номер листа\"\" (если параметр \"\"Вкл Номер листа стандартный\"\" равен 1/true), либо из \"\"КП_Ш_номер листа\"\" (если параметр \"\"Вкл Номер листа стандартный\"\" равен 0/false), если значение равно 1/true, то значение для поля \"\"Лист\"\" берется из параметра \"\"Номер листа вручную\"\"\r\nНомер листа КП_Ш_Номер листа - Расчетный параметр, используется для определения источника данных для поля \"\"Лист\"\" в штампе\r\nНомер листа стандартный - Расчетный параметр, используется для определения источника данных для поля \"\"Лист\"\" в штампе\r\nПодпись 1 не переопределять - Обратное значение параметра \"\"Подпись 1 переопределить\"\"\r\nПодпись 1 переопределить - Определяет источник данных для подписи в первой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 1 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 1 по листу\"\"\r\nПодпись 1 по листу - Содержит в себе семейство подписи человека, которая может ставится на первую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 1 переопределить\"\"\r\nПодпись 2 не переопределять - Обратное значение параметра \"\"Подпись 2 переопределить\"\"\r\nПодпись 2 переопределить - Определяет источник данных для семейства подписи во второй строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 2 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 2 по листу\"\"\r\nПодпись 2 по листу - Содержит в себе подпись человека, которая может ставится на вторую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 2 переопределить\"\"\r\nПодпись 3 не переопределять - Обратное значение параметра \"\"Подпись 3 переопределить\"\"\r\nПодпись 3 переопределить - Определяет источник данных для семейства подписи в третей строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 3 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 3 по листу\"\"\r\nПодпись 3 по листу - Содержит в себе семейство подписи человека, которая может ставится на третью строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 3 переопределить\"\"\r\nПодпись 4 не переопределять - Обратное значение параметра \"\"Подпись 4 переопределить\"\"\r\nПодпись 4 переопределить - Определяет источник данных для семейства подписи в четвертой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 4 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 4 по листу\"\"\r\nПодпись 4 по листу - Содержит в себе подпись человека, которая может ставится на третью строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 3 переопределить\"\"\r\nПодпись 5 не переопределять - Обратное значение параметра \"\"Подпись 5 переопределить\"\"\r\nПодпись 5 переопределить - Определяет источник данных для семейства подписи в пятой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 5 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 5 по листу\"\"\r\nПодпись 5 по листу - Содержит в себе семейство подписи человека, которая может ставится на пятую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 5 переопределить\"\"\r\nПодпись 6 не переопределять - Обратное значение параметра \"\"Подпись 6 переопределить\"\"\r\nПодпись 6 переопределить - Определяет источник данных для семейства подписи в шестой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 6 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 6 по листу\"\"\r\nПодпись 6 по листу - Содержит в себе семейство подписи человека, которая может ставится на пятую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 6 переопределить\"\"\r\nСдвиг штампа согласования 2 - Расчетный параметр, который сдвигает второй \"\"Штмап согласования\"\" для корректного отображения, если он включен. Включен или нет можно определить по параметру \"\"Колво штампов согласования\"\"\r\nСдвиг штампа согласования 3 - Расчетный параметр, который сдвигает третий \"\"Штмап согласования\"\" для корректного отображения, если он включен. Включен или нет можно определить по параметру \"\"Колво штампов согласования\"\"\r\nСогласовано1 - Содержит в себе семейство подписи для первой строки первого \"\"Штампа согалсования\"\"\r\nСогласовано2 - Содержит в себе семейство подписи для второй строки первого \"\"Штампа согалсования\"\"\r\nСогласовано3 - Содержит в себе семейство подписи для первой строки второго \"\"Штампа согалсования\"\"\r\nСогласовано4 - Содержит в себе семейство подписи для второй строки второго \"\"Штампа согалсования\"\"\r\nСогласовано5 - Содержит в себе семейство подписи для первой строки третьего \"\"Штампа согалсования\"\"\r\nСогласовано6 - Содержит в себе семейство подписи для второй строки третьего \"\"Штампа согалсования\"\"\r\nУменьшить текст Имя листа - Если значение 1/true, то уменьшает текст в поле штампа \"\"Имя листа\"\"\r\nх - Определяет множитель формата листа. Если лист А4, а множитель 1, то это лист А4х1, если множитель 2, то А4х2 и т.д.\r\nШ.Схема здания для комплекта - Параметр который отвечает за то, какой типоразмер ЖУКа будет виден на листе. Тем самым можно управлять какой блок/секций/корпус будет штриховать ЖУК\r\nШирина - Ширина листа на котором семейство расположено\r\nШирина листа - Ширина листа на котором семейство расположено\r\nШтамп согласования 2 - Расчетный параметр, который показывает включен ли второй \"\"Штамп согласования\"\". Если значение равно 1/true, то второй \"\"Штамп согласования\"\" включен\r\nШтамп согласования 3 - Расчетный параметр, который показывает включен ли третий \"\"Штамп согласования\"\". Если значение равно 1/true, то третий \"\"Штамп согласования\"\" включен\r\nКатегория - Показывает категорию семейства штампа\"";
+
+            return string.IsNullOrWhiteSpace(description)
+                ? def
+                : description;
+        }
+
+        //public static object GetTitleBlockFamilyParametersDescription()
+        //{
+        //    string def = "\"Ниже представлены параметры основной надписи в формате <имя параметра>-<описание параметра>:\r\nА - Определяет формат листа на котором семейство расположено. Если значение 3 то и лист А3, если 4, то лист А4 и т.д.\r\nВысота - Высота листа на котором семейство расположено\r\nВысота листа - Высота листа на котором семейство расположено\r\nЖук_Сверху рамки - Если значение 1/true, то ЖУК отображется над штампа, в обратном случае (0/false ЖУК помещается над штампом\r\nЖук_Системный_Смещение_X - Расчетный параметр отвечающий за горизонтальное значение, используется для промежуточного вычисления смещения. Пользователем напрямую значение не задается\r\nЖук_Системный_Смещение_Y - Расчетный параметр отвечающий за вертикальное значение, используется для промежуточного вычисления смещения. Пользователем напрямую значение не задается\r\nЖук_Слева рамки - Если значение 1/true, то ЖУК отображется слева от штампа, в обратном случае (0/false) ЖУК помещается над штампом\r\nЖук_Смещение_X - Параметр отвечает за горизонтальное смещение ЖУКа. Допустимый диапазон смещения от 0 до 30 мм, все значения которые выходят за диапазон будут обнуляться\r\nЖук_Смещение_Y - Параметр отвечает за вертикальное смещение ЖУКа. Допустимый диапазон смещения от 0 до 30 мм, все значения которые выходят за диапазон будут обнуляться\r\nИзм1 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №1 (еще назвается Изм 1)\r\nИзм2 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №2 (еще назвается Изм 1)\r\nИзм3 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №3 (еще назвается Изм 1)\r\nИзм4 подпись - В данном параметре выбирается человек, подпись которого, отправится на штамп для подписания изменения №4 (еще назвается Изм 1)\r\nИмя листа - Параметр отображет имя листа\r\nКнижный - Определяет геометрическое расположение листа, если значение 0, то у листа оринетация Альбомный, если 1, то Книжный\r\nКолво листов - Данный параметр определяет какое суммарное количество листов комплекта/тома будет отображаться на штампе/основной надписи\r\nКолво штампов согласования - Устанавливает количество \"\"Штампов согласования\"\" (от 1 до 3). Все что за пределеами от 1 до 3, семейством не учитываются\r\nКП_Ш_Эквивалент формата_А4 - Показывает какому количеству листов А4 эквивалентен по размерам текущий лист\r\nКПЛН_Допустимые форматы - Параметр содержит в себе ссылку на статью, где описываются допустимые форматы листа\r\nНомер листа - Номер листа в копмлекте тома. Также это номер листа в подгруппе в диспетчере прокта\r\nНомер листа вручную - Параметр используется как источник данных для поля на штампе \"\"Лист\"\", если включен режим вручную (подробности описаны в описании параметра \"\" Номер листа вручную вкл\"\")\r\nНомер листа вручную вкл - Позволяет управлять источником данных для поля \"\"Лист\"\" в штампе. Если значение равно 0/false, значит значение берется автоматически либо из параметра листа либо из \"\"Номер листа\"\" (если параметр \"\"Вкл Номер листа стандартный\"\" равен 1/true), либо из \"\"КП_Ш_номер листа\"\" (если параметр \"\"Вкл Номер листа стандартный\"\" равен 0/false), если значение равно 1/true, то значение для поля \"\"Лист\"\" берется из параметра \"\"Номер листа вручную\"\"\r\nНомер листа КП_Ш_Номер листа - Расчетный параметр, используется для определения источника данных для поля \"\"Лист\"\" в штампе\r\nНомер листа стандартный - Расчетный параметр, используется для определения источника данных для поля \"\"Лист\"\" в штампе\r\nПодпись 1 не переопределять - Обратное значение параметра \"\"Подпись 1 переопределить\"\"\r\nПодпись 1 переопределить - Определяет источник данных для подписи в первой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 1 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 1 по листу\"\"\r\nПодпись 1 по листу - Содержит в себе семейство подписи человека, которая может ставится на первую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 1 переопределить\"\"\r\nПодпись 2 не переопределять - Обратное значение параметра \"\"Подпись 2 переопределить\"\"\r\nПодпись 2 переопределить - Определяет источник данных для семейства подписи во второй строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 2 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 2 по листу\"\"\r\nПодпись 2 по листу - Содержит в себе подпись человека, которая может ставится на вторую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 2 переопределить\"\"\r\nПодпись 3 не переопределять - Обратное значение параметра \"\"Подпись 3 переопределить\"\"\r\nПодпись 3 переопределить - Определяет источник данных для семейства подписи в третей строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 3 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 3 по листу\"\"\r\nПодпись 3 по листу - Содержит в себе семейство подписи человека, которая может ставится на третью строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 3 переопределить\"\"\r\nПодпись 4 не переопределять - Обратное значение параметра \"\"Подпись 4 переопределить\"\"\r\nПодпись 4 переопределить - Определяет источник данных для семейства подписи в четвертой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 4 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 4 по листу\"\"\r\nПодпись 4 по листу - Содержит в себе подпись человека, которая может ставится на третью строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 3 переопределить\"\"\r\nПодпись 5 не переопределять - Обратное значение параметра \"\"Подпись 5 переопределить\"\"\r\nПодпись 5 переопределить - Определяет источник данных для семейства подписи в пятой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 5 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 5 по листу\"\"\r\nПодпись 5 по листу - Содержит в себе семейство подписи человека, которая может ставится на пятую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 5 переопределить\"\"\r\nПодпись 6 не переопределять - Обратное значение параметра \"\"Подпись 6 переопределить\"\"\r\nПодпись 6 переопределить - Определяет источник данных для семейства подписи в шестой строчке. Если значение равно 0/false, то на штамп попадает семейство подписи из параметра \"\"Подпись 6 по комплекту\"\", если значение равно 1/true, то на штамп попадает семейство подписи из параметра \"\"Подпись 6 по листу\"\"\r\nПодпись 6 по листу - Содержит в себе семейство подписи человека, которая может ставится на пятую строку конкретного листа. Будет ставится или нет, можно узнать по параметра \"\"Подпись 6 переопределить\"\"\r\nСдвиг штампа согласования 2 - Расчетный параметр, который сдвигает второй \"\"Штмап согласования\"\" для корректного отображения, если он включен. Включен или нет можно определить по параметру \"\"Колво штампов согласования\"\"\r\nСдвиг штампа согласования 3 - Расчетный параметр, который сдвигает третий \"\"Штмап согласования\"\" для корректного отображения, если он включен. Включен или нет можно определить по параметру \"\"Колво штампов согласования\"\"\r\nСогласовано1 - Содержит в себе семейство подписи для первой строки первого \"\"Штампа согалсования\"\"\r\nСогласовано2 - Содержит в себе семейство подписи для второй строки первого \"\"Штампа согалсования\"\"\r\nСогласовано3 - Содержит в себе семейство подписи для первой строки второго \"\"Штампа согалсования\"\"\r\nСогласовано4 - Содержит в себе семейство подписи для второй строки второго \"\"Штампа согалсования\"\"\r\nСогласовано5 - Содержит в себе семейство подписи для первой строки третьего \"\"Штампа согалсования\"\"\r\nСогласовано6 - Содержит в себе семейство подписи для второй строки третьего \"\"Штампа согалсования\"\"\r\nУменьшить текст Имя листа - Если значение 1/true, то уменьшает текст в поле штампа \"\"Имя листа\"\"\r\nх - Определяет множитель формата листа. Если лист А4, а множитель 1, то это лист А4х1, если множитель 2, то А4х2 и т.д.\r\nШ.Схема здания для комплекта - Параметр который отвечает за то, какой типоразмер ЖУКа будет виден на листе. Тем самым можно управлять какой блок/секций/корпус будет штриховать ЖУК\r\nШирина - Ширина листа на котором семейство расположено\r\nШирина листа - Ширина листа на котором семейство расположено\r\nШтамп согласования 2 - Расчетный параметр, который показывает включен ли второй \"\"Штамп согласования\"\". Если значение равно 1/true, то второй \"\"Штамп согласования\"\" включен\r\nШтамп согласования 3 - Расчетный параметр, который показывает включен ли третий \"\"Штамп согласования\"\". Если значение равно 1/true, то третий \"\"Штамп согласования\"\" включен\r\nКатегория - Показывает категорию семейства штампа\"";
+        //    return def;
+        //}
+
+        #endregion
+
+
+        #region =============================================КОНЕЦ КОМАНД=============================================================
+
+        #endregion
+
+        #region 35.2_get_schedule_rows_with_elements
+
+        //public static object GetScheduleRowsWithElements(Document doc, int scheduleId)
+        //{
+        //    try
+        //    {
+        //        Element element = doc.GetElement(new ElementId(scheduleId));
+        //        if (element == null)
+        //        {
+        //            return new { error = $"Спецификация с ID {scheduleId} не найдена", success = false };
+        //        }
+
+        //        ViewSchedule schedule = element as ViewSchedule;
+        //        if (schedule == null)
+        //        {
+        //            return new { error = "Элемент не является спецификацией", success = false };
+        //        }
+
+        //        TableData tableData = schedule.GetTableData();
+        //        if (tableData == null)
+        //        {
+        //            return new { error = "Не удалось получить данные таблицы", success = false };
+        //        }
+
+        //        TableSectionData bodySection = tableData.GetSectionData(SectionType.Body);
+        //        if (bodySection == null)
+        //        {
+        //            return new { error = "Не удалось получить секцию Body", success = false };
+        //        }
+
+
+        //        ScheduleDefinition definition = schedule.Definition;
+        //        if (definition == null)
+        //        {
+        //            return new { error = "Не удалось получить определение спецификации", success = false };
+        //        }
+
+        //        // ========== 1. ПОЛУЧАЕМ ИНДЕКСЫ ВИДИМЫХ СТОЛБЦОВ ==========
+        //        IList<ScheduleFieldId> fieldOrder = definition.GetFieldOrder();
+        //        var visibleColumnIndices = new List<int>();      // Реальные индексы видимых столбцов
+        //        var visibleFieldIds = new List<int>();           // ID полей для информации
+
+        //        for (int i = 0; i < fieldOrder.Count; i++)
+        //        {
+        //            ScheduleField field = definition.GetField(fieldOrder[i]);
+        //            if (field != null && !field.IsHidden)
+        //            {
+        //                visibleColumnIndices.Add(i);              // Сохраняем РЕАЛЬНЫЙ индекс
+        //                visibleFieldIds.Add(fieldOrder[i].IntegerValue);
+        //            }
+        //        }
+
+        //        // ========== 2. ПОЛУЧАЕМ ЗАГОЛОВКИ ДЛЯ ВИДИМЫХ СТОЛБЦОВ ==========
+        //        var headers = new List<string>();
+        //        foreach (int realColIndex in visibleColumnIndices)
+        //        {
+        //            string header = schedule.GetCellText(SectionType.Header, 0, realColIndex);
+        //            headers.Add(string.IsNullOrEmpty(header) ? $"Column_{realColIndex}" : header);
+        //        }
+
+
+
+        //        //=====================================
+        //        int rowCount = bodySection.NumberOfRows;
+        //        int visibleColumnCount = visibleColumnIndices.Count;
+
+
+        //        // Получаем все элементы, связанные со спецификацией
+        //        var allElementsInSchedule = new FilteredElementCollector(doc, schedule.Id)
+        //            .WhereElementIsNotElementType()
+        //            .ToElementIds()
+        //            .ToList();
+
+
+        //        //// Определяем, сгруппирована ли спецификация
+        //        //bool isItemized = schedule.Definition?.IsItemized ?? true;
+
+        //        var rows = new List<object>();
+        //        for (int row = 0; row < rowCount; row++)
+        //        {
+        //            var rowValues = new Dictionary<string, string>();
+
+        //            // Используем реальные индексы столбцов!
+        //            for (int colIdx = 0; colIdx < visibleColumnCount; colIdx++)
+        //            {
+        //                int realColIndex = visibleColumnIndices[colIdx];
+
+        //                CellType cellType = bodySection.GetCellType(row, realColIndex);
+        //                switch (cellType)
+        //                {
+        //                    case CellType.Text:
+        //                    case CellType.ParameterText:
+        //                        // Работает GetCellText
+        //                        string textValue = schedule.GetCellText(SectionType.Body, row, realColIndex);
+        //                        break;
+
+        //                    //case CellType.Parameter:
+        //                    //    // Для числовых параметров используем GetCellValue
+        //                    //    object numericValue = schedule.GetCellValue(SectionType.Body, row, realColIndex);
+        //                    //    break;
+
+        //                    case CellType.CalculatedValue:
+        //                        // Для вычисляемых полей
+        //                        string calcValue = schedule.GetCalculatedValueText(SectionType.Body, row, realColIndex);
+        //                        break;
+        //                }
+
+
+
+        //                string cellValue = schedule.GetCellText(SectionType.Body, row, realColIndex);
+        //                rowValues[headers[colIdx]] = cellValue ?? "";
+        //            }
+
+        //            rows.Add(new
+        //            {
+        //                row_index = row,
+        //                values = rowValues
+        //            });
+        //        }
+
+
+        //        return new
+        //        {
+        //            schedule_id = schedule.Id.IntegerValue,
+        //            schedule_name = schedule.Name ?? "Unnamed",
+        //            is_itemized = definition.IsItemized,
+        //            row_count = rowCount,
+        //            column_count = visibleColumnCount,
+        //            total_columns = fieldOrder.Count,
+        //            hidden_columns_count = fieldOrder.Count - visibleColumnCount,
+        //            headers = headers,
+        //            rows = rows,
+        //            element_ids = allElementsInSchedule
+        //        };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return new { error = ex.Message, success = false };
+        //    }
+        //}
 
         #endregion
 

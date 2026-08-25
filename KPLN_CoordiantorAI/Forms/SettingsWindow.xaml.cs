@@ -14,6 +14,8 @@ namespace KPLN_CoordiantorAI.Forms
         private readonly CoordinatorAiRepository _repository;
         private Bitrix24Settings _bitrix24Settings;
         private string _articleAliasesJson;
+        private string _titleBlockParametersDescription;
+
 
         public SettingsWindow()
         {
@@ -64,6 +66,7 @@ namespace KPLN_CoordiantorAI.Forms
             ExternalModelLogFolderTextBox.Text = settings.LogFolder;
             ExternalModelSystemPromptTextBox.Text = settings.SystemPrompt;
             ExternalModelLocalUrlTextBox.Text = settings.LocalServerUrl;
+            _titleBlockParametersDescription = settings.TitleBlockParametersDescription ?? string.Empty;
             SelectExternalModelConnectionType(settings.ConnectionTypeName);
         }
 
@@ -122,7 +125,8 @@ namespace KPLN_CoordiantorAI.Forms
                  !string.IsNullOrWhiteSpace(settings.LogFolder) ||
                  !string.IsNullOrWhiteSpace(settings.SystemPrompt) ||
                  !string.IsNullOrWhiteSpace(settings.ConnectionTypeName) ||
-                 !string.IsNullOrWhiteSpace(settings.LocalServerUrl));
+                 !string.IsNullOrWhiteSpace(settings.LocalServerUrl) ||
+                 !string.IsNullOrWhiteSpace(settings.TitleBlockParametersDescription));
         }
 
         private void OnCreateDatabaseClick(object sender, RoutedEventArgs e)
@@ -175,7 +179,8 @@ namespace KPLN_CoordiantorAI.Forms
                     LogFolder = ExternalModelLogFolderTextBox.Text,
                     SystemPrompt = ExternalModelSystemPromptTextBox.Text,
                     ConnectionTypeName = GetSelectedExternalModelConnectionType(),
-                    LocalServerUrl = ExternalModelLocalUrlTextBox.Text
+                    LocalServerUrl = ExternalModelLocalUrlTextBox.Text,
+                    TitleBlockParametersDescription = _titleBlockParametersDescription
                 };
                 if (HasExternalModelSettingsValue(externalModelSettings) || _repository.HasExternalModelSettings())
                     _repository.SaveExternalModelSettings(externalModelSettings);
@@ -317,6 +322,24 @@ namespace KPLN_CoordiantorAI.Forms
             catch (Exception ex)
             {
                 MessageBox.Show(this, ex.ToString(), "Ошибка настройки алиасов", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OnConfigureExternalModelDescriptionsClick(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ExternalModelDescriptionsWindow dialog = new ExternalModelDescriptionsWindow(_titleBlockParametersDescription)
+                {
+                    Owner = this
+                };
+
+                if (dialog.ShowDialog() == true)
+                    _titleBlockParametersDescription = dialog.TitleBlockParametersDescription;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.ToString(), "Ошибка настройки описаний внешней модели", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

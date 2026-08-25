@@ -220,6 +220,8 @@ namespace KPLN_CoordiantorAI.Common
         public string ConnectionTypeName { get; set; }
 
         public string LocalServerUrl { get; set; }
+
+        public string TitleBlockParametersDescription { get; set; }
     }
 
     public sealed class SubDepartmentInfo
