@@ -220,7 +220,7 @@ namespace KPLN_CoordiantorAI.Forms
         private string GetModelTitle()
         {
             string mode = _connectionType == ConnectionType.OnlineAPI
-                ? "Online11 (API key)"
+                ? "Online (API key)"
                 : "Local (LM Studio)";
 
             return $"Работа с моделью - {_doc.Title} - {mode}";
@@ -1161,12 +1161,12 @@ namespace KPLN_CoordiantorAI.Forms
                         var result_fileInfo = Commands.GetModelFileInfo(_doc);
                         toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_fileInfo);
                         break;
-#if R2020
+
                 case "get_all_project_units":
                     var result_units = Commands.GetAllProjectUnits(_doc);
                     toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_units);
                     break;
-#endif
+
                     case "get_all_warnings_in_the_model":
                         var result_warnings = Commands.GetAllWarningsInTheModel(_doc);
                         toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_warnings);
@@ -1376,6 +1376,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                     case "get_journal_entries_since":
                         string dateTimeStr = argsObj["dateTime"]?.Value<string>() ?? "";
+                        string endDateTimeStr = argsObj["endDateTime"]?.Value<string>() ?? "";
 
                         if (string.IsNullOrEmpty(dateTimeStr))
                         {
@@ -1383,7 +1384,7 @@ namespace KPLN_CoordiantorAI.Forms
                             break;
                         }
 
-                        var result_journal = Commands.GetJournalEntriesSince(_doc, dateTimeStr);
+                        var result_journal = Commands.GetJournalEntriesSince(_doc, dateTimeStr, endDateTimeStr);
                         toolResult = JsonConvert.SerializeObject(result_journal);
                         break;
 
@@ -1860,7 +1861,9 @@ namespace KPLN_CoordiantorAI.Forms
                         function = new
                         {
                             name = "get_active_view_in_revit",
-                            description = "Возвращает название и ID текущего активного вида (или листа), открытого в Revit на момент вызова. Нет входных параметров.",
+                            description = "Возвращает название, ID и тип текущего активного вида (или листа), открытого в Revit на момент вызова. " +
+                                          "Для видов-планов дополнительно возвращает view_range — секущий диапазон вида: верхняя граница, секущая плоскость, нижняя граница и глубина вида. " +
+                                          "Для каждой плоскости секущего диапазона возвращаются level_id, level_name, offset_feet и offset_mm. Нет входных параметров.",
                             parameters = new
                             {
                                 type = "object",
@@ -2578,6 +2581,7 @@ namespace KPLN_CoordiantorAI.Forms
                                           "Помогает правильно интерпретировать числовые значения параметров, так как Revit может " +
                                           "использовать разные системы единиц (метрическую или имперскую). " +
                                           "Возвращает для каждого типа: название типа, символ единицы и тип отображения. " +
+                                          "Для Revit 2023/2024 дополнительно возвращает технические идентификаторы нового API единиц: specTypeId, unitTypeId и symbolTypeId. " +
                                           "Используйте эту команду перед анализом числовых параметров, чтобы понять, " +
                                           "в каких единицах получены значения (например, при получении длины стены или площади помещения).",
                             parameters = new
@@ -3371,11 +3375,14 @@ namespace KPLN_CoordiantorAI.Forms
                         function = new
                         {
                             name = "get_journal_entries_since",
-                            description = "Извлекает записи из журнала Revit начиная с указанной даты/времени. " +
+                            description = "Извлекает записи из журналов Revit за заданный диапазон времени. " +
                                           "Журналы Revit хранятся в %LOCALAPPDATA%\\Autodesk\\Revit\\<версия>\\Journals\\ " +
-                                          "Команда автоматически находит самый свежий журнал и извлекает все записи от указанной даты до конца файла. " +
+                                          "Команда просматривает последние 10 журналов от самого свежего к предыдущим и возвращает данные только из тех журналов, где есть записи в указанном диапазоне. " +
+                                          "Если endDateTime указан, возвращаются только записи от dateTime до endDateTime включительно. Если endDateTime не указан, возвращаются записи от dateTime до конца доступных журналов. " +
+                                          "Чтобы не перегружать контекст ИИ, поле entries ограничено по размеру и при необходимости содержит последние найденные записи с пометкой об обрезке. " +
                                           "Входные параметры: " +
-                                          "- dateTime: дата и время в формате (день.месяц.год час:минута). " +
+                                          "- dateTime: дата и время начала в формате (день.месяц.год час:минута). " +
+                                          "- endDateTime: необязательная дата и время конца диапазона в таком же формате. " +
                                           "  Поддерживаемые форматы: " +
                                           "  • '26 марта' или '26 марта 2026' (время = 00:00) " +
                                           "  • '26.03.2026' или '26.03.2026 14:30' " +
@@ -3383,13 +3390,17 @@ namespace KPLN_CoordiantorAI.Forms
                                           "Если время не указано, используется время 00:00 сегодняшнего числа. " +
                                           "Возвращает: " +
                                           "- success: успешность выполнения " +
-                                          "- journal_file: путь к файлу журнала " +
-                                          "- journal_date: дата последнего изменения журнала " +
-                                          "- target_date: обработанная целевая дата " +
-                                          "- entries: текст журнала начиная с указанной даты " +
+                                          "- journal_files: список просмотренных файлов журнала с диагностикой по каждому файлу " +
+                                           "- target_date: обработанная дата начала " +
+                                          "- end_date: обработанная дата конца или null, если конец не задан " +
+                                          "- entries: текст журналов в заданном диапазоне, ограниченный по размеру " +
                                           "- entry_count: количество найденных записей " +
-                                          "- total_size_bytes: размер извлечённого текста в байтах " +
-                                          "- debug_info: ДИАГНОСТИЧЕСКАЯ ИНФОРМАЦИЯ (для отладки). Содержит: " +
+                                          "- total_size_bytes: полный размер найденного текста в байтах до обрезки " +
+                                          "- scanned_journal_count: количество просмотренных файлов " +
+                                          "- matched_journal_count: количество журналов, в которых найдены записи диапазона " +
+                                          "- entries_truncated: был ли текст entries обрезан из-за лимита контекста " +
+                                          "- max_entries_chars: лимит символов для entries " +
+                                          "- journal_files[].debug_info: ДИАГНОСТИЧЕСКАЯ ИНФОРМАЦИЯ (для отладки). Содержит: " +
                                           "    • Всего строк с датами в журнале " +
                                           "    • Первую дату в журнале " +
                                           "    • Последнюю дату в журнале " +
@@ -3412,6 +3423,11 @@ namespace KPLN_CoordiantorAI.Forms
                                     {
                                         type = "string",
                                         description = "Дата и время начала извлечения. Примеры: '26 марта', '26.03.2026 14:30'"
+                                    },
+                                    endDateTime = new
+                                    {
+                                        type = "string",
+                                        description = "Необязательная дата и время конца извлечения. Примеры: '26.03.2026 14:45'. Если не указано, чтение идет до конца доступных журналов."
                                     }
                                 },
                                 required = new[] { "dateTime" }

@@ -15,10 +15,8 @@ using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-#if R2023 || R2024
-using static Autodesk.Revit.DB.SpecTypeId;
-#endif
+using System.Threading.Tasks;  
+
 namespace KPLN_CoordiantorAI.ExternalModel
 {
     internal class Commands
@@ -40,6 +38,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             public string ViewName { get; set; }
             public string ViewType { get; set; }
             public bool IsSheet { get; set; }
+            public object ViewRange { get; set; }
         }
 
         public static ViewInfo GetActiveViewInfo(Autodesk.Revit.DB.Document doc)
@@ -51,9 +50,85 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 ViewId = IDHelper.ElIdInt(activeView.Id),
                 ViewName = activeView.Name,
                 ViewType = activeView.ViewType.ToString(),
-                IsSheet = activeView is ViewSheet
+                IsSheet = activeView is ViewSheet,
+                ViewRange = GetViewRangeInfo(doc, activeView)
             };
         }
+
+        private static object GetViewRangeInfo(Document doc, View view)
+        {
+            ViewPlan viewPlan = view as ViewPlan;
+            if (viewPlan == null)
+            {
+                return new
+                {
+                    is_available = false,
+                    reason = "Секущий диапазон доступен только для видов-планов (ViewPlan)."
+                };
+            }
+
+            try
+            {
+                PlanViewRange range = viewPlan.GetViewRange();
+                if (range == null)
+                {
+                    return new
+                    {
+                        is_available = false,
+                        reason = "ViewPlan.GetViewRange() вернул null."
+                    };
+                }
+
+                return new
+                {
+                    is_available = true,
+                    top_clip_plane = BuildViewRangePlaneInfo(doc, range, PlanViewPlane.TopClipPlane),
+                    cut_plane = BuildViewRangePlaneInfo(doc, range, PlanViewPlane.CutPlane),
+                    bottom_clip_plane = BuildViewRangePlaneInfo(doc, range, PlanViewPlane.BottomClipPlane),
+                    view_depth_plane = BuildViewRangePlaneInfo(doc, range, PlanViewPlane.ViewDepthPlane)
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    is_available = false,
+                    reason = ex.Message
+                };
+            }
+        }
+
+        private static object BuildViewRangePlaneInfo(Document doc, PlanViewRange range, PlanViewPlane plane)
+        {
+            ElementId levelId = ElementId.InvalidElementId;
+            double offsetFeet = 0;
+
+            try
+            {
+                levelId = range.GetLevelId(plane);
+            }
+            catch { }
+
+            try
+            {
+                offsetFeet = range.GetOffset(plane);
+            }
+            catch { }
+
+            Element level = levelId != null && levelId != ElementId.InvalidElementId
+                ? doc.GetElement(levelId)
+                : null;
+
+            return new
+            {
+                plane = plane.ToString(),
+                level_id = levelId != null && levelId != ElementId.InvalidElementId ? (int?)IDHelper.ElIdInt(levelId) : null,
+                level_name = level != null ? level.Name : null,
+                offset_feet = Math.Round(offsetFeet, 6),
+                offset_mm = Math.Round(offsetFeet * 304.8, 1)
+            };
+        }
+
         #endregion
 
         #region 2_get_all_elements_shown_in_view
@@ -2778,7 +2853,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         #endregion
 
         #region 24_get_all_project_units
-#if R2020
+//#if Revit2020 || Debug2020
         public static object GetAllProjectUnits(Document doc)
         {
             try
@@ -2787,6 +2862,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 var result = new List<object>();
 
                 // Ключевые типы единиц, которые чаще всего нужны
+#if Debug2020 || Revit2020
                 var unitTypesToCheck = new Dictionary<UnitType, string>
                 {
                     { UnitType.UT_Length, "Length" },
@@ -2826,10 +2902,68 @@ namespace KPLN_CoordiantorAI.ExternalModel
                             project_units = result,
                             count = result.Count
                         };
-                    }
-                    catch (Exception ex)
+#elif Debug2023 || Revit2023 || Debug2024 || Revit2024
+                var unitTypesToCheck = new Dictionary<string, string>
+                {
+                    { "Length", "Length" },
+                    { "Area", "Area" },
+                    { "Volume", "Volume" },
+                    { "Angle", "Angle" },
+                    { "Mass", "Mass" },
+                    { "Currency", "Cost" },
+                    { "Cost", "Cost" },
+                    { "Time", "Time" }
+                };
+
+                foreach (var kvp in unitTypesToCheck)
+                {
+                    try
                     {
-                        return new { error = ex.Message, project_units = new List<object>() };
+                        ForgeTypeId specTypeId = GetSpecTypeIdByName(kvp.Key);
+                        if (specTypeId == null || string.IsNullOrWhiteSpace(specTypeId.TypeId))
+                            continue;
+
+                        FormatOptions formatOpt = units.GetFormatOptions(specTypeId);
+                        if (formatOpt != null)
+                        {
+                            ForgeTypeId unitTypeId = formatOpt.GetUnitTypeId();
+                            ForgeTypeId symbolTypeId = formatOpt.GetSymbolTypeId();
+                            string unitLabel = GetForgeTypeLabel("GetLabelForUnit", unitTypeId);
+                            string symbol = GetUnitSymbol(symbolTypeId, unitTypeId);
+
+                            result.Add(new
+                            {
+                                unitType = kvp.Value,
+                                specTypeId = specTypeId.TypeId,
+                                specName = GetForgeTypeLabel("GetLabelForSpec", specTypeId),
+                                unitSymbol = symbol,
+                                unitTypeId = unitTypeId != null ? unitTypeId.TypeId : null,
+                                displayUnitType = !string.IsNullOrWhiteSpace(unitLabel) ? unitLabel : GetForgeTypeShortName(unitTypeId),
+                                symbolTypeId = symbolTypeId != null ? symbolTypeId.TypeId : null,
+                                format = formatOpt.GetType().Name
+                            });
+                        }
+                    }
+                    catch { }
+                }
+
+                return new
+                {
+                    project_units = result,
+                    count = result.Count
+                };
+#else
+                return new
+                {
+                    project_units = result,
+                    count = result.Count,
+                    warning = "Конфигурация Revit не распознана. Добавьте условную компиляцию для этой версии."
+                };
+#endif
+            }
+            catch (Exception ex)
+            {
+                return new { error = ex.Message, project_units = new List<object>() };
                     }
                 }
 
@@ -2870,6 +3004,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     if (symbols.ContainsKey(displayUnit))
                         return symbols[displayUnit];
 
+#if Debug2020 || Revit2020
                     // 2. Пробуем получить локализованное название через LabelUtils
                     try
                     {
@@ -2892,10 +3027,78 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         }
                     }
                     catch { /* Игнорируем ошибки */ }
+#endif
 
-                    // 3. Запасной вариант: убираем префикс DUT_
-                    return displayUnit.Replace("DUT_", "");
-                }
+            // 3. Запасной вариант: убираем префикс DUT_
+            return displayUnit.Replace("DUT_", "");
+        }
+
+#if Debug2023 || Revit2023 || Debug2024 || Revit2024
+        private static ForgeTypeId GetSpecTypeIdByName(string propertyName)
+        {
+            try
+            {
+                PropertyInfo property = typeof(SpecTypeId).GetProperty(propertyName, BindingFlags.Public | BindingFlags.Static);
+                return property != null ? property.GetValue(null, null) as ForgeTypeId : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetUnitSymbol(ForgeTypeId symbolTypeId, ForgeTypeId unitTypeId)
+        {
+            string symbolLabel = GetForgeTypeLabel("GetLabelForSymbol", symbolTypeId);
+            if (!string.IsNullOrWhiteSpace(symbolLabel))
+                return symbolLabel;
+
+            string unitLabel = GetForgeTypeLabel("GetLabelForUnit", unitTypeId);
+            if (!string.IsNullOrWhiteSpace(unitLabel))
+                return unitLabel;
+
+            return GetForgeTypeShortName(unitTypeId);
+        }
+
+        private static string GetForgeTypeLabel(string methodName, ForgeTypeId typeId)
+        {
+            if (typeId == null || string.IsNullOrWhiteSpace(typeId.TypeId))
+                return null;
+
+            try
+            {
+                MethodInfo method = typeof(LabelUtils).GetMethod(methodName, new[] { typeof(ForgeTypeId) });
+                if (method == null)
+                    return null;
+
+                return method.Invoke(null, new object[] { typeId }) as string;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetForgeTypeShortName(ForgeTypeId typeId)
+        {
+            if (typeId == null || string.IsNullOrWhiteSpace(typeId.TypeId))
+                return null;
+
+            string value = typeId.TypeId;
+            int colonIndex = value.LastIndexOf(':');
+            if (colonIndex >= 0 && colonIndex + 1 < value.Length)
+                value = value.Substring(colonIndex + 1);
+
+            int hyphenIndex = value.LastIndexOf('-');
+            if (hyphenIndex > 0)
+                value = value.Substring(0, hyphenIndex);
+
+            int slashIndex = value.LastIndexOf('/');
+            if (slashIndex >= 0 && slashIndex + 1 < value.Length)
+                value = value.Substring(slashIndex + 1);
+
+            return value;
+        }
 #endif
         #endregion
 
@@ -6691,7 +6894,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
             }
         }
 
-        #endregion    
+        #endregion
 
         #region 36_get_if_elements_pass_filter   
 
@@ -7023,7 +7226,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
         /// </summary>
         /// <param name="doc">Документ Revit (для получения версии)</param>
         /// <param name="userDateTime">Дата и время в формате (день.месяц.год час:минута:секунда)</param>
-        public static object GetJournalEntriesSince(Document doc, string userDateTime)
+        public static object GetJournalEntriesSince(Document doc, string userDateTime, string endUserDateTime = null)
         {
             try
             {
@@ -7037,6 +7240,31 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         success = false,
                         error = "Не удалось распознать дату. Используйте форматы: '26 марта', '26.03.2026', '26.03.2026 14:30'"
                     };
+                }
+
+                DateTime? endDateTime = null;
+                if (!string.IsNullOrWhiteSpace(endUserDateTime))
+                {
+                    DateTime parsedEndDateTime = ParseUserDateTime(endUserDateTime);
+                    if (parsedEndDateTime == DateTime.MinValue)
+                    {
+                        return new
+                        {
+                            success = false,
+                            error = "Не удалось распознать дату конца диапазона. Используйте форматы: '26 марта', '26.03.2026', '26.03.2026 14:30'"
+                        };
+                    }
+
+                    if (parsedEndDateTime < targetDateTime)
+                    {
+                        return new
+                        {
+                            success = false,
+                            error = "Дата конца диапазона не может быть раньше даты начала"
+                        };
+                    }
+
+                    endDateTime = parsedEndDateTime;
                 }
 
                 // 2. Определяем версию Revit
@@ -7076,61 +7304,86 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     };
                 }
 
-                // 5. Находим самый свежий журнал
-                FileInfo latestJournal = journalFiles.First();
 
-                // 6. СОЗДАЁМ КОПИЮ ФАЙЛА (чтобы обойти блокировку Revit)
-                string tempCopyPath = Path.Combine(Path.GetTempPath(), $"journal_copy_{Guid.NewGuid()}.txt");
+                const int maxEntriesChars = 200 * 1024;
+                const int maxJournalFilesToScan = 10;
+                var journalFileInfos = new List<object>();
+                var entryBlocksNewestFirst = new List<string>();
+                int totalEntryCount = 0;
+                long totalSizeBytes = 0;
+                int matchedJournalCount = 0;
 
-                try
+                foreach (FileInfo journal in journalFiles.Take(maxJournalFilesToScan))
                 {
-                    File.Copy(latestJournal.FullName, tempCopyPath, overwrite: true);
-
-                }
-                catch (Exception ex)
-                {
-                    return new
+                    string journalContent;
+                    try
                     {
-                        success = false,
-                        error = $"Не удалось создать копию файла журнала. Возможно, файл слишком большой или нет прав доступа. {ex.Message}"
-                    };
+                        journalContent = ReadJournalFileThroughTempCopy(journal);
+                    }
+                    catch (Exception ex)
+                    {
+                        journalFileInfos.Add(new
+                        {
+                            journal_file = journal.FullName,
+                            journal_date = journal.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                            read_success = false,
+                            error = ex.Message
+                        });
+                        continue;
+                    }
+
+                    var extractedEntries = ExtractEntriesFromDate(journalContent, targetDateTime, endDateTime);
+                    totalEntryCount += extractedEntries.count;
+                    totalSizeBytes += extractedEntries.totalSizeBytes;
+
+                    journalFileInfos.Add(new
+                    {
+                        journal_file = journal.FullName,
+                        journal_date = journal.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                        read_success = true,
+                        has_entries_in_range = extractedEntries.count > 0,
+                        entry_count = extractedEntries.count,
+                        total_size_bytes = extractedEntries.totalSizeBytes,
+                        first_entry_date = extractedEntries.firstEntryDate?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        last_entry_date = extractedEntries.lastEntryDate?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        started_collecting = extractedEntries.startedCollecting,
+                        skipped_as_newer_than_end_date = endDateTime.HasValue && extractedEntries.firstEntryDate.HasValue && extractedEntries.firstEntryDate.Value > endDateTime.Value,
+                        debug_info = extractedEntries.debugInfo
+                    });
+
+                    if (extractedEntries.count > 0 && !string.IsNullOrWhiteSpace(extractedEntries.entries))
+                    {
+                        matchedJournalCount++;
+                        entryBlocksNewestFirst.Add($"===== {journal.Name} =====\r\n{extractedEntries.entries}");
+                    }
                 }
 
-                // 7. Читаем содержимое из копии с правильной кодировкой
-                string journalContent;
-                try
+                entryBlocksNewestFirst.Reverse();
+                string combinedEntries = string.Join("\r\n\r\n", entryBlocksNewestFirst);
+                bool entriesTruncated = false;
+                int originalEntriesLength = combinedEntries.Length;
+                if (combinedEntries.Length > maxEntriesChars)
                 {
-                    // Журналы Revit в русской Windows обычно в кодировке Windows-1251
-                    journalContent = File.ReadAllText(tempCopyPath, Encoding.GetEncoding("windows-1251"));
+                    combinedEntries = combinedEntries.Substring(combinedEntries.Length - maxEntriesChars);
+                    combinedEntries = $"... [ОБРЕЗАНО] Показаны последние {maxEntriesChars / 1024} КБ из {originalEntriesLength / 1024} КБ найденных записей.\r\n\r\n" + combinedEntries;
+                    entriesTruncated = true;
                 }
-                catch
-                {
-                    // Fallback: системная ANSI кодировка
-                    journalContent = File.ReadAllText(tempCopyPath, Encoding.Default);
-                }
-
-                // 8. Удаляем временную копию
-                try
-                {
-                    File.Delete(tempCopyPath);
-                }
-                catch { /* Игнорируем ошибки при удалении */ }
-
-                // 9. Извлекаем записи начиная с указанной даты
-                var extractedEntries = ExtractEntriesFromDate(journalContent, targetDateTime);
 
                 return new
                 {
                     success = true,
-                    journal_file = latestJournal.FullName,
-                    journal_date = latestJournal.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    journal_files = journalFileInfos,
                     target_date = targetDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
-                    entries = extractedEntries.entries,
-                    entry_count = extractedEntries.count,
-                    total_size_bytes = extractedEntries.totalSizeBytes,
-                    debug_info = extractedEntries.debugInfo,
-                    message = extractedEntries.count == 0
-                        ? $"Записи после {targetDateTime:yyyy-MM-dd HH:mm:ss} не найдены"
+                    end_date = endDateTime.HasValue ? endDateTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : null,
+                    entries = combinedEntries,
+                    entry_count = totalEntryCount,
+                    total_size_bytes = totalSizeBytes,
+                    scanned_journal_count = journalFileInfos.Count,
+                    matched_journal_count = matchedJournalCount,
+                    entries_truncated = entriesTruncated,
+                    max_entries_chars = maxEntriesChars,
+                    message = totalEntryCount == 0
+                        ? $"Записи в заданном диапазоне не найдены в последних {maxJournalFilesToScan} журналах"
                         : null
                 };
             }
@@ -7216,14 +7469,43 @@ namespace KPLN_CoordiantorAI.ExternalModel
             return Path.Combine(localAppData, "Autodesk", "Revit", revitVersion, "Journals");
         }
 
+        private static string ReadJournalFileThroughTempCopy(FileInfo journal)
+        {
+            string tempCopyPath = Path.Combine(Path.GetTempPath(), $"journal_copy_{Guid.NewGuid()}.txt");
+
+            try
+            {
+                File.Copy(journal.FullName, tempCopyPath, overwrite: true);
+
+                try
+                {
+                    return File.ReadAllText(tempCopyPath, Encoding.GetEncoding("windows-1251"));
+                }
+                catch
+                {
+                    return File.ReadAllText(tempCopyPath, Encoding.Default);
+                }
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(tempCopyPath))
+                        File.Delete(tempCopyPath);
+                }
+                catch { }
+            }
+        }
+
         /// <summary>
         /// Извлекает записи из журнала начиная с указанной даты
         /// </summary>
-        private static (string entries, int count, long totalSizeBytes, string debugInfo) ExtractEntriesFromDate(string journalContent, DateTime targetDate)
+        private static (string entries, int count, long totalSizeBytes, string debugInfo, DateTime? firstEntryDate, DateTime? lastEntryDate, bool startedCollecting) ExtractEntriesFromDate(string journalContent, DateTime targetDate, DateTime? endDate)
         {
             var lines = journalContent.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None);
             var resultLines = new List<string>();
             bool startCollecting = false;
+            bool stopCollecting = false;
             int entryCount = 0;
             long totalSize = 0;
 
@@ -7236,6 +7518,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
             foreach (string line in lines)
             {
+                if (stopCollecting)
+                    break;
+
                 // Пропускаем пустые строки
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
@@ -7269,6 +7554,17 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         if (firstFoundDate == null) firstFoundDate = lineDate;
                         lastFoundDate = lineDate;
 
+                        if (endDate.HasValue && lineDate > endDate.Value)
+                        {
+                            if (startCollecting)
+                            {
+                                stopCollecting = true;
+                                break;
+                            }
+
+                            continue;
+                        }
+
                         if (!startCollecting && lineDate >= targetDate)
                         {
                             startCollecting = true;
@@ -7297,18 +7593,11 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                $"Первая дата в журнале: {firstFoundDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "не найдена"}; " +
                                $"Последняя дата в журнале: {lastFoundDate?.ToString("yyyy-MM-dd HH:mm:ss") ?? "не найдена"}; " +
                                $"Целевая дата: {targetDate:yyyy-MM-dd HH:mm:ss}; " +
+                               $"Дата конца диапазона: {(endDate.HasValue ? endDate.Value.ToString("yyyy-MM-dd HH:mm:ss") : "не задана")}; " +
                                $"Сбор начат: {startCollecting}; " +
                                $"Найдено записей: {entryCount}";
 
-            // Если размер слишком большой (>200KB), обрезаем с предупреждением
-            if (totalSize > 200 * 1024)
-            {
-                int originalLength = entries.Length;
-                entries = entries.Substring(0, 200 * 1024) +
-                    $"\r\n\r\n... [ОБРЕЗАНО] Журнал слишком большой. Показаны первые 200 КБ из {totalSize / 1024} КБ";
-            }
-
-            return (entries, entryCount, totalSize, debugInfo);
+            return (entries, entryCount, totalSize, debugInfo, firstFoundDate, lastFoundDate, startCollecting);
         }
 
 
