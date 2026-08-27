@@ -1,0 +1,165 @@
+﻿<Window x:Class="KPLN_MEPBender.Forms.MepBenderForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN: Обход пересечений"
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="WidthAndHeight"
+        MinWidth="450"
+        ResizeMode="NoResize"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Escape"
+                    Command="{Binding CloseWindowCmd}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <ScrollViewer Margin="6"
+                  MaxHeight="900"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel DataContext="{Binding CurrentMepBenderM}">
+            <Border Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <TextBlock Text="Что огибаем?" Style="{StaticResource TXT}" />
+                    <TextBlock Text="{Binding ObstaclesButtonText}"
+                               Style="{StaticResource TXT}"
+                               FontSize="12" />
+                    <UniformGrid Columns="2">
+                        <Button Style="{StaticResource BTN}"
+                                Height="32"
+                                Content="Выбрать из модели"
+                                Command="{Binding DataContext.PickModelObstaclesCmd, RelativeSource={RelativeSource AncestorType=Window}}" />
+                        <Button Style="{StaticResource BTN}"
+                                Height="32"
+                                Content="Выбрать из связи"
+                                Command="{Binding DataContext.PickLinkedObstaclesCmd, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    </UniformGrid>
+                    <Button Style="{StaticResource BTN}"
+                            Height="28"
+                            Content="Очистить огибаемые элементы"
+                            Command="{Binding DataContext.ClearObstaclesCmd, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    <CheckBox Content="Автоматически очищать после выполнения изгиба"
+                              Style="{StaticResource CHB}"
+                              IsChecked="{Binding AutoClearObstaclesAfterRun}" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <TextBlock Text="Что меняем?" Style="{StaticResource TXT}" />
+                    <Button Style="{StaticResource BTN}"
+                            Height="32"
+                            Content="{Binding RoutesButtonText}"
+                            Command="{Binding DataContext.PickRoutesCmd, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    <Button Style="{StaticResource BTN}"
+                            Height="28"
+                            Content="Очистить трассы"
+                            Command="{Binding DataContext.ClearRoutesCmd, RelativeSource={RelativeSource AncestorType=Window}}" />
+                    <CheckBox Content="Автоматически очищать после выполнения изгиба"
+                              Style="{StaticResource CHB}"
+                              IsChecked="{Binding AutoClearRoutesAfterRun}" />
+                    <TextBlock Text="Трубы, воздуховоды и кабельные лотки"
+                               Style="{StaticResource TXT}"
+                               FontSize="12" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <TextBlock Text="Значения огибания" Style="{StaticResource TXT}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Зазор, мм" Style="{StaticResource TXT}" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding OffsetMm, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TXB}" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Угол, °" Style="{StaticResource TXT}" />
+                        <ComboBox Grid.Row="1"
+                                  Grid.Column="1"
+                                  ItemsSource="{Binding AngleOptions}"
+                                  SelectedItem="{Binding AngleDegrees, Mode=TwoWay}"
+                                  Style="{StaticResource CBX}" />
+                    </Grid>
+                    <TextBlock Text="{Binding AngleHelp}" Style="{StaticResource TXT}" FontSize="12" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <TextBlock Text="Направление огибания" Style="{StaticResource TXT}" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource TGB_GROUP}">
+                            <StackPanel>
+                                <TextBlock Text="Вверх/Вниз" Style="{StaticResource TXT}" FontSize="12" />
+                                <UniformGrid Columns="2">
+                                    <ToggleButton Content="Вверх" Style="{StaticResource TGB}" IsChecked="{Binding BendUp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ToggleButton Content="Вниз" Style="{StaticResource TGB}" IsChecked="{Binding BendDown, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Style="{StaticResource TGB_GROUP}">
+                            <StackPanel>
+                                <TextBlock Text="Влево/Вправо" Style="{StaticResource TXT}" FontSize="12" />
+                                <UniformGrid Columns="2">
+                                    <ToggleButton Content="Влево" Style="{StaticResource TGB}" IsChecked="{Binding BendLeft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <ToggleButton Content="Вправо" Style="{StaticResource TGB}" IsChecked="{Binding BendRight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <TextBlock Text="{Binding DirectionHelp}" Style="{StaticResource TXT}" FontSize="12" />
+                </StackPanel>
+            </Border>
+
+            <!--<Border Style="{StaticResource RCTG}">
+                <StackPanel>
+                    <CheckBox Content="Анализировать коллизии после огибания"
+                              Style="{StaticResource CHB}"
+                              IsChecked="{Binding AnalyzeCollisions}" />
+                    <TextBlock Text="{Binding ClashAnalyzeHelp}" Style="{StaticResource TXT}" FontSize="12" />
+                </StackPanel>
+            </Border>-->
+
+            <Button Style="{StaticResource BTN}"
+                    Height="36"
+                    Content="Выполнить изгиб"
+                    IsEnabled="{Binding CanRun}"
+                    Command="{Binding DataContext.RunBenderCmd, RelativeSource={RelativeSource AncestorType=Window}}" />
+
+            <TextBlock Text="{Binding UserMainStatus}"
+                       Style="{StaticResource TXT}"
+                       FontSize="12"
+                       Foreground="Red"
+                       MinHeight="32" />
+            <TextBlock Text="{Binding UserHelp}"
+                       Style="{StaticResource TXT}"
+                       FontSize="12"
+                       Foreground="#FFD166"
+                       TextWrapping="Wrap"
+                       MinHeight="32" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>
