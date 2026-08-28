@@ -31,22 +31,6 @@ namespace KPLN_MEPBender.Services.Routing
         public MepBendResult Execute(MepBendRequest request)
         {
             MepBendResult result = new MepBendResult();
-            Outline obstacleOutline = null;
-
-            try
-            {
-                obstacleOutline = _obstacleOutlineBuilder.Build(request, 0);
-            }
-            catch (Exception ex)
-            {
-                result.AddIssue(ElementId.InvalidElementId, "Obstacle", "Область препятствий", GetExceptionText(ex));
-            }
-
-            if (obstacleOutline == null)
-            {
-                result.Message = "Не удалось построить область препятствий.";
-                return result;
-            }
 
             using (Transaction transaction = new Transaction(request.Doc, "KPLN MEP Bender"))
             {
@@ -56,7 +40,7 @@ namespace KPLN_MEPBender.Services.Routing
                 {
                     try
                     {
-                        BendRoute(request, routeElementId, obstacleOutline, result);
+                        BendRoute(request, routeElementId, result);
                     }
                     catch (Exception ex)
                     {
@@ -74,7 +58,7 @@ namespace KPLN_MEPBender.Services.Routing
             return result;
         }
 
-        private void BendRoute(MepBendRequest request, ElementId routeElementId, Outline obstacleOutline, MepBendResult result)
+        private void BendRoute(MepBendRequest request, ElementId routeElementId, MepBendResult result)
         {
             MEPCurve source = request.Doc.GetElement(routeElementId) as MEPCurve;
             LocationCurve locationCurve = source?.Location as LocationCurve;
@@ -89,10 +73,18 @@ namespace KPLN_MEPBender.Services.Routing
                 return;
             }
 
+            Outline obstacleOutline = _obstacleOutlineBuilder.BuildForRoute(request, source, 0, 0);
+            if (obstacleOutline == null)
+            {
+                result.SkippedRouteCount++;
+                result.AddIssue(routeElementId, GetElementTypeName(source), "Построение пути", "Для этой трассы нет пересекающихся препятствий. Непересекающиеся элементы выборки игнорируются.");
+                return;
+            }
+
             if (!_bendPathBuilder.TryBuild(request, source, routeLine, obstacleOutline, out List<XYZ> pathPoints))
             {
                 result.SkippedRouteCount++;
-                result.AddIssue(routeElementId, GetElementTypeName(source), "Построение пути", "Не удалось построить путь огибания: трасса не пересекает область препятствий, не хватает длины для угла/зазора или выбранное направление параллельно трассе.");
+                result.AddIssue(routeElementId, GetElementTypeName(source), "Построение пути", "Не удалось построить путь огибания: не хватает длины для угла/зазора или выбранное направление параллельно трассе.");
                 return;
             }
 

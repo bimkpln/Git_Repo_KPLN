@@ -104,32 +104,14 @@
             <Border Style="{StaticResource RCTG}">
                 <StackPanel>
                     <TextBlock Text="Направление огибания" Style="{StaticResource TXT}" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Style="{StaticResource TGB_GROUP}">
-                            <StackPanel>
-                                <TextBlock Text="Вверх/Вниз" Style="{StaticResource TXT}" FontSize="12" />
-                                <UniformGrid Columns="2">
-                                    <ToggleButton Content="Вверх" Style="{StaticResource TGB}" IsChecked="{Binding BendUp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <ToggleButton Content="Вниз" Style="{StaticResource TGB}" IsChecked="{Binding BendDown, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </UniformGrid>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="1" Style="{StaticResource TGB_GROUP}">
-                            <StackPanel>
-                                <TextBlock Text="Влево/Вправо" Style="{StaticResource TXT}" FontSize="12" />
-                                <UniformGrid Columns="2">
-                                    <ToggleButton Content="Влево" Style="{StaticResource TGB}" IsChecked="{Binding BendLeft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <ToggleButton Content="Вправо" Style="{StaticResource TGB}" IsChecked="{Binding BendRight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </UniformGrid>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                    <Border Style="{StaticResource TGB_GROUP}">
+                        <UniformGrid Columns="4">
+                            <ToggleButton Content="Вверх" Style="{StaticResource TGB}" IsChecked="{Binding BendUp, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ToggleButton Content="Вниз" Style="{StaticResource TGB}" IsChecked="{Binding BendDown, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ToggleButton Content="Влево" Style="{StaticResource TGB}" IsChecked="{Binding BendLeft, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <ToggleButton Content="Вправо" Style="{StaticResource TGB}" IsChecked="{Binding BendRight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </UniformGrid>
+                    </Border>
                     <TextBlock Text="{Binding DirectionHelp}" Style="{StaticResource TXT}" FontSize="12" />
                 </StackPanel>
             </Border>

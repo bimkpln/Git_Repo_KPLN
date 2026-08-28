@@ -6,7 +6,7 @@ namespace KPLN_MEPBender.Services.Config
 {
     public sealed class MepBenderConfigService
     {
-        private const string ConfigName = "KPLN_MEPBender";
+        private const string ConfigName = "MEPBender";
 
         public MepBenderM LoadOrCreateDefault()
         {

@@ -15,7 +15,7 @@ namespace KPLN_MEPBender.Forms.Entities
     {
         private double _offsetMm = 100;
         private double _angleDegrees = 45;
-        private bool _bendUp = true;
+        private bool _bendUp;
         private bool _bendDown;
         private bool _bendLeft = true;
         private bool _bendRight;
@@ -65,81 +65,25 @@ namespace KPLN_MEPBender.Forms.Entities
         public bool BendUp
         {
             get => _bendUp;
-            set
-            {
-                if (_bendUp == value)
-                    return;
-
-                _bendUp = value;
-                if (value && _bendDown)
-                {
-                    _bendDown = false;
-                    OnPropertyChanged(nameof(BendDown));
-                }
-
-                OnPropertyChanged();
-                UpdateCanRunProperties();
-            }
+            set => SetDirection(BendDirection.Up, value);
         }
 
         public bool BendDown
         {
             get => _bendDown;
-            set
-            {
-                if (_bendDown == value)
-                    return;
-
-                _bendDown = value;
-                if (value && _bendUp)
-                {
-                    _bendUp = false;
-                    OnPropertyChanged(nameof(BendUp));
-                }
-
-                OnPropertyChanged();
-                UpdateCanRunProperties();
-            }
+            set => SetDirection(BendDirection.Down, value);
         }
 
         public bool BendLeft
         {
             get => _bendLeft;
-            set
-            {
-                if (_bendLeft == value)
-                    return;
-
-                _bendLeft = value;
-                if (value && _bendRight)
-                {
-                    _bendRight = false;
-                    OnPropertyChanged(nameof(BendRight));
-                }
-
-                OnPropertyChanged();
-                UpdateCanRunProperties();
-            }
+            set => SetDirection(BendDirection.Left, value);
         }
 
         public bool BendRight
         {
             get => _bendRight;
-            set
-            {
-                if (_bendRight == value)
-                    return;
-
-                _bendRight = value;
-                if (value && _bendLeft)
-                {
-                    _bendLeft = false;
-                    OnPropertyChanged(nameof(BendLeft));
-                }
-
-                OnPropertyChanged();
-                UpdateCanRunProperties();
-            }
+            set => SetDirection(BendDirection.Right, value);
         }
 
         public bool AnalyzeCollisions
@@ -199,7 +143,7 @@ namespace KPLN_MEPBender.Forms.Entities
 
         public string AngleHelp => $"Угол построения огибания: {AngleDegrees}°.";
 
-        public string DirectionHelp => "Вверх/вниз и влево/вправо разделены на две группы. Плоскость изменения определит алгоритм.";
+        public string DirectionHelp => "Одновременно может быть активно только одно направление. Плоскость изменения определит алгоритм.";
 
         public string ClashAnalyzeHelp => AnalyzeCollisions
             ? "Подключение к KPLN_IOSClasher заложено в отдельном сервисе, сам анализ пока не запускается."
@@ -251,11 +195,7 @@ namespace KPLN_MEPBender.Forms.Entities
             if (OffsetMm <= 0)
                 OffsetMm = 100;
 
-            if (BendUp && BendDown)
-                BendDown = false;
-
-            if (BendLeft && BendRight)
-                BendRight = false;
+            NormalizeDirectionSelection();
         }
 
         public void SetObstacles(IEnumerable<LinkedElementReference> references)
@@ -307,6 +247,70 @@ namespace KPLN_MEPBender.Forms.Entities
             UserMainStatus = mainStatus;
             if (help != null)
                 UserHelp = help;
+        }
+
+        private void SetDirection(BendDirection direction, bool isSelected)
+        {
+            bool oldBendUp = _bendUp;
+            bool oldBendDown = _bendDown;
+            bool oldBendLeft = _bendLeft;
+            bool oldBendRight = _bendRight;
+
+            if (isSelected)
+            {
+                _bendUp = direction == BendDirection.Up;
+                _bendDown = direction == BendDirection.Down;
+                _bendLeft = direction == BendDirection.Left;
+                _bendRight = direction == BendDirection.Right;
+            }
+            else
+            {
+                switch (direction)
+                {
+                    case BendDirection.Up:
+                        _bendUp = false;
+                        break;
+                    case BendDirection.Down:
+                        _bendDown = false;
+                        break;
+                    case BendDirection.Left:
+                        _bendLeft = false;
+                        break;
+                    case BendDirection.Right:
+                        _bendRight = false;
+                        break;
+                }
+            }
+
+            RaiseDirectionChanges(oldBendUp, oldBendDown, oldBendLeft, oldBendRight);
+        }
+
+        private void NormalizeDirectionSelection()
+        {
+            if (_bendLeft)
+                SetDirection(BendDirection.Left, true);
+            else if (_bendRight)
+                SetDirection(BendDirection.Right, true);
+            else if (_bendUp)
+                SetDirection(BendDirection.Up, true);
+            else if (_bendDown)
+                SetDirection(BendDirection.Down, true);
+            else
+                SetDirection(BendDirection.Left, true);
+        }
+
+        private void RaiseDirectionChanges(bool oldBendUp, bool oldBendDown, bool oldBendLeft, bool oldBendRight)
+        {
+            if (oldBendUp != _bendUp)
+                OnPropertyChanged(nameof(BendUp));
+            if (oldBendDown != _bendDown)
+                OnPropertyChanged(nameof(BendDown));
+            if (oldBendLeft != _bendLeft)
+                OnPropertyChanged(nameof(BendLeft));
+            if (oldBendRight != _bendRight)
+                OnPropertyChanged(nameof(BendRight));
+
+            UpdateCanRunProperties();
         }
 
         private void ResetCollection(ObservableCollection<ElementId> collection, IEnumerable<ElementId> ids)

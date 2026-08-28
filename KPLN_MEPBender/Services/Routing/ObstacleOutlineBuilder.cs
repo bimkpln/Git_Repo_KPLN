@@ -30,6 +30,38 @@ namespace KPLN_MEPBender.Services.Routing
             return result;
         }
 
+        public Outline BuildForRoute(MepBendRequest request, MEPCurve route, double intersectionTolerance, double expandBy)
+        {
+            BoundingBoxXYZ routeBox = route?.get_BoundingBox(null);
+            Outline routeOutline = LinkTransformHelper.ToHostOutline(routeBox, Transform.Identity);
+            if (routeOutline == null)
+                return null;
+
+            Outline result = null;
+
+            foreach (LinkedElementReference obstacleReference in request.ObstacleReferences)
+            {
+                Element element = GetSourceElement(request.Doc, obstacleReference);
+                BoundingBoxXYZ box = element?.get_BoundingBox(null);
+                Outline obstacleOutline = LinkTransformHelper.ToHostOutline(box, obstacleReference.TransformToHost);
+                if (obstacleOutline == null)
+                    continue;
+
+                if (!routeOutline.Intersects(obstacleOutline, intersectionTolerance))
+                    continue;
+
+                AddOutline(ref result, obstacleOutline.MinimumPoint, obstacleOutline.MaximumPoint);
+            }
+
+            if (result == null)
+                return null;
+
+            result.AddPoint(result.MinimumPoint - new XYZ(expandBy, expandBy, expandBy));
+            result.AddPoint(result.MaximumPoint + new XYZ(expandBy, expandBy, expandBy));
+
+            return result;
+        }
+
         private Element GetSourceElement(Document hostDoc, LinkedElementReference obstacleReference)
         {
             if (!obstacleReference.IsLinked)
