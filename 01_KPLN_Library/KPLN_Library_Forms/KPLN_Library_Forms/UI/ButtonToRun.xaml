@@ -10,68 +10,17 @@
         MaxHeight="750"
         Title="KPLN: Окно выбора" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        Background="#2B2F38"
         WindowStyle="ToolWindow" 
         Topmost="False" 
         WindowStartupLocation="CenterScreen" 
         SizeToContent="WidthAndHeight">
     <Window.Resources>
-        <Style x:Key="BTN" TargetType="Button">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#7F3D3F42"/>
-            <Setter Property="Margin" Value="1,1,1,1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border CornerRadius="5" Background="{TemplateBinding Background}">
-                            <Grid>
-                                <Rectangle 
-                                    RadiusX="5" 
-                                    RadiusY="5" 
-                                    Fill="{TemplateBinding Background}"/>
-                                <Path 
-                                    x:Name="PathIcon" 
-                                    Width="15" 
-                                    Height="25" 
-                                    Stretch="Fill" 
-                                    Fill="#4C87B3" 
-                                    HorizontalAlignment="Left" 
-                                    Margin="17,0,0,0"/>
-                                <ContentPresenter 
-                                    x:Name="MyContentPresenter" 
-                                    Content="{TemplateBinding Content}" 
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center" 
-                                    Margin="5,0,5,0" />
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#E59400" />
-                                <Setter Property="Foreground" Value="White" />
-                                <Setter TargetName="PathIcon" Property="Fill" Value="Black" />
-                            </Trigger>
-
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#FF00C867" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="TXT" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
-        </Style>
-        <Style x:Key="TXTBX" TargetType="TextBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -84,7 +33,7 @@
             x:Name="MainDescription" 
             Grid.Row="0"
             Text="Задаётся через конструктор"
-            Style="{StaticResource TXT}"/>
+            Style="{StaticResource KPLN_TextBlock}"/>
 
         <ScrollViewer 
             Grid.Row="1" 
@@ -95,7 +44,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button 
-                                Style="{StaticResource BTN}" 
+                                Style="{StaticResource KPLN_ButtonToRunItemButton}"
                                 Content="{Binding Name}" 
                                 ToolTip="{Binding Tooltip}" 
                                 Click="OnBtnClick"/>

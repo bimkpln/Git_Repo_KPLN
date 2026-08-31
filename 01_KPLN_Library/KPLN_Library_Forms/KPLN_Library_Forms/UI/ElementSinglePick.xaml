@@ -11,87 +11,18 @@
         MaxWidth="750"
         ResizeMode="CanResizeWithGrip" 
         SizeToContent="WidthAndHeight" 
-        Title="KPLN: Окно выбора" 
-        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
-        WindowStyle="ToolWindow" 
+        Title="KPLN: Окно выбора"
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
+        Background="#2B2F38"
+        WindowStyle="ToolWindow"
         WindowStartupLocation="CenterScreen" 
         Loaded="OnLoaded">
     <Window.Resources>
-        <Style x:Key="BTN" TargetType="Button">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#7F000000"/>
-            <Setter Property="Margin" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border CornerRadius="5" Background="{TemplateBinding Background}">
-                            <Grid>
-                                <ContentPresenter 
-                                    x:Name="MyContentPresenter" 
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center"
-                                    Margin="5"/>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="Red" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#FF00C867" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="RunBTN" TargetType="Button">
-            <Setter Property="Background" Value="Orange"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border CornerRadius="5" Background="{TemplateBinding Background}">
-                            <Grid>
-                                <ContentPresenter 
-                                    x:Name="MyContentPresenter" 
-                                    Content="{TemplateBinding Content}" 
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="Red" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#FF00C867" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="TXT" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
-        </Style>
-        
-        <Style x:Key="TXTBX" TargetType="TextBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="MaxWidth" Value="400"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -104,15 +35,16 @@
             <ColumnDefinition></ColumnDefinition>
         </Grid.ColumnDefinitions>
 
-        <DockPanel Background="Orange" LastChildFill="True">
-            <TextBlock 
-                Text="Поиск:" 
-                VerticalAlignment="Center" 
+        <DockPanel Background="#333840" LastChildFill="True">
+            <TextBlock
+                Text="Поиск:"
+                Foreground="#EDEDED"
+                VerticalAlignment="Center"
                 FontWeight="Bold" 
                 Margin="5"/>
             <TextBox 
                 x:Name="SearchText"
-                Style="{StaticResource TXTBX}" 
+                Style="{StaticResource KPLN_TextBox}"
                 Grid.Row="0" 
                 TextChanged="SearchText_Changed"
                 TextAlignment="Left" 
@@ -138,7 +70,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button 
-                                Style="{StaticResource BTN}" 
+                                Style="{StaticResource KPLN_ElementPickButton}"
                                 ToolTip="{Binding Tooltip}" 
                                 Click="OnElementClick">
                                 <TextBlock

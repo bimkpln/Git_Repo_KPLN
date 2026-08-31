@@ -7,6 +7,7 @@
         mc:Ignorable="d"
         Title="KPLN: Авторизация специалиста BIM-отдела" 
         FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        Background="#2B2F38"
         ResizeMode="NoResize"
         SizeToContent="WidthAndHeight" 
         WindowStyle="ToolWindow"  
@@ -15,47 +16,11 @@
         Loaded="OnLoaded">
     
     <Window.Resources>
-        <Style x:Key="RunBTN" TargetType="Button">
-            <Setter Property="Background" Value="Orange"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border CornerRadius="5" Background="{TemplateBinding Background}">
-                            <Grid>
-                                <ContentPresenter 
-                                    x:Name="MyContentPresenter" 
-                                    Content="{TemplateBinding Content}" 
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="Red" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#FF00C867" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="TXT" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
-        
-        <Style x:Key="PSWBX" TargetType="PasswordBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5,5,5,5"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -69,10 +34,11 @@
         </Grid.ColumnDefinitions>
 
         <DockPanel 
-            Background="Orange" 
+            Background="#333840"
             LastChildFill="True">
             <TextBlock 
                 Text="Почему это появилось?" 
+                Foreground="#EDEDED"
                 VerticalAlignment="Center" 
                 FontWeight="Bold" 
                 Margin="5" 
@@ -80,19 +46,21 @@
             <TextBlock 
                 x:Name="FormDescription" 
                 Text="Описание, которое устанавливается через конструктор" 
+                Foreground="#EDEDED"
                 TextWrapping="Wrap" 
                 VerticalAlignment="Center" 
                 Margin="5"
                 DockPanel.Dock="Top"/>
             <TextBlock 
                 Text="Пароль:" 
+                Foreground="#EDEDED"
                 VerticalAlignment="Center" 
                 FontWeight="Bold" 
                 Margin="5"/>
             <PasswordBox 
                 x:Name="SearchPassword" 
                 Grid.Row="0" 
-                Style="{StaticResource PSWBX}" 
+                Style="{StaticResource KPLN_PasswordBox}"
                 Margin="0,10,10,10"
                 VerticalAlignment="Center" 
                 DockPanel.Dock="Right" 
@@ -110,8 +78,7 @@
         <Button 
             x:Name="Run" 
             Grid.Row="1" 
-            Style="{StaticResource RunBTN}" 
-            Background="Orange" 
+            Style="{StaticResource KPLN_RunButton}"
             Content="Выполнить команду" 
             Click="OnRunClick"/>
     

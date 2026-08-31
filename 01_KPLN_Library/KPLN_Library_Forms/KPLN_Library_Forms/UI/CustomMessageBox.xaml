@@ -9,20 +9,16 @@
         Title="KPLN" 
         Width="400" 
         Height="200"  
-        Background="#FF292D36" 
+        Background="#2B2F38"
         ResizeMode="NoResize" 
         WindowStyle="ToolWindow" 
         Topmost="True">
     <Window.Resources>
-        <Style TargetType="Button" x:Key="BTN">
-            <Setter Property="Background" Value="{x:Null}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="White"/>
-            <Setter Property="VerticalAlignment" Value="Top"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="5,0,0,0"/>
-            <Setter Property="Padding" Value="5,0,5,0"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
     
     <Grid Margin="5">
@@ -56,7 +52,7 @@
 
         <Button x:Name="BtnOk" 
             Grid.Row="2" 
-            Style="{StaticResource BTN}" 
+            Style="{StaticResource KPLN_MessageBoxButton}"
             HorizontalAlignment="Left"
             Content="Ok"
             Click="BtnOk_Click"/>

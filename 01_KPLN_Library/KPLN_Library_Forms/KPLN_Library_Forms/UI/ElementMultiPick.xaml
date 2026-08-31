@@ -9,61 +9,19 @@
         MinHeight="400"
         MaxWidth="600"
         MaxHeight="800"
-        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
-        ResizeMode="CanResizeWithGrip" 
+        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace"
+        Background="#2B2F38"
+        ResizeMode="CanResizeWithGrip"
         WindowStyle="ToolWindow" 
         WindowStartupLocation="CenterScreen" 
         SizeToContent="WidthAndHeight" 
         Loaded="OnLoaded">
     <Window.Resources>
-
-        <Style x:Key="RunBTN" TargetType="Button">
-            <Setter Property="Background" Value="Orange"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border CornerRadius="5" Background="{TemplateBinding Background}">
-                            <Grid>
-                                <ContentPresenter 
-                                    x:Name="MyContentPresenter" 
-                                    Content="{TemplateBinding Content}" 
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="Red" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#FF00C867" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="TXT" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
-        
-        <Style x:Key="TXTBX" TargetType="TextBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
-
-        <Style x:Key="CHCBX" TargetType="CheckBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
@@ -75,16 +33,17 @@
         </Grid.RowDefinitions>
 
         <DockPanel 
-            Background="Orange" 
+            Background="#333840"
             LastChildFill="True">
-            <TextBlock 
-                Text="Поиск:" 
-                VerticalAlignment="Center" 
+            <TextBlock
+                Text="Поиск:"
+                Foreground="#EDEDED"
+                VerticalAlignment="Center"
                 FontWeight="Bold" 
                 Margin="5"/>
             <TextBox 
                 x:Name="SearchText"
-                Style="{StaticResource TXTBX}" 
+                Style="{StaticResource KPLN_TextBox}"
                 Grid.Row="0" 
                 TextChanged="SearchText_Changed"
                 TextAlignment="Left" 
@@ -110,7 +69,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <CheckBox 
-                            Style="{StaticResource CHCBX}" 
+                            Style="{StaticResource KPLN_CheckBox}"
                             ToolTip="{Binding Tooltip}"
                             IsChecked ="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}">
                             <CheckBox.Content>
@@ -144,14 +103,14 @@
             
             <Button 
                 x:Name="CheckAllBtn" 
-                Style="{StaticResource RunBTN}" 
+                Style="{StaticResource KPLN_RunButton}"
                 Content="Выбрать всё" 
                 ToolTip="Нажми, если хочешь выбрать все элементы из представленного списка" 
                 Click="CheckAllBtn_Click"/>
             <Button 
                 x:Name="ToggleBtn" 
                 Grid.Column="2"
-                Style="{StaticResource RunBTN}" 
+                Style="{StaticResource KPLN_RunButton}"
                 Content="Инверсия" 
                 ToolTip="Нажми, если хочешь выполнить инверсию выбора - где галок нет - появятся, где галки есть - исчезнут" 
                 Click="ToggleBtn_Click"/>
@@ -160,7 +119,7 @@
                 x:Name="RunBtn"
                 Grid.Row="1"
                 Grid.ColumnSpan="2" 
-                Style="{StaticResource RunBTN}" 
+                Style="{StaticResource KPLN_RunButton}"
                 Content="Запуск" 
                 Click="RunBtn_Click"/>
         </Grid>

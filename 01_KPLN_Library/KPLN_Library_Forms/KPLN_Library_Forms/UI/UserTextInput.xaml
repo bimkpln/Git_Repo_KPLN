@@ -9,32 +9,18 @@
         Title="KPLN: Комментарий" 
         Width="400" 
         Height="200"  
-        Background="#FF292D36" 
+        Background="#2B2F38"
         WindowStartupLocation="CenterOwner" 
         ResizeMode="NoResize" 
         WindowStyle="ToolWindow" 
         Topmost="True" 
         Loaded="OnLoaded">
     <Window.Resources>
-        <Style TargetType="TextBox" x:Key="BX">
-            <Setter Property="Background" Value="#FF292D36"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="White"/>
-        </Style>
-        <Style TargetType="Button" x:Key="BTN">
-            <Setter Property="Background" Value="{x:Null}"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="White"/>
-            <Setter Property="VerticalAlignment" Value="Top"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Margin" Value="5,5,0,0"/>
-            <Setter Property="Padding" Value="5,0,5,0"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="TXT">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid Margin="5">
@@ -50,7 +36,7 @@
         <TextBlock 
             x:Name="tbHeader" 
             Grid.Row="0" 
-            Style="{StaticResource TXT}" 
+            Style="{StaticResource KPLN_TextBlock}"
             Text="Задаётся через конструктор!" 
             FontWeight="Bold"/>
 
@@ -58,13 +44,13 @@
             x:Name="tBox" 
             Grid.Row="1"
             xml:lang="ru-RU"
-            Style="{StaticResource BX}" 
+            Style="{StaticResource KPLN_TextBox}"
             TextWrapping="Wrap"/>
 
         <Button 
             x:Name="btnApply" 
             Grid.Row="2" 
-            Style="{StaticResource BTN}" 
+            Style="{StaticResource KPLN_TextInputButton}"
             IsEnabled="{Binding ElementName=tBox, Path=Text.Length, Converter={StaticResource IntToBoolConverter}}" 
             HorizontalAlignment="Left" 
             ToolTip="Действие необходимо подтверждать развернутым комментарием (более 5 символов)" 
