@@ -1,0 +1,14 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug2020" />
+    <BuildType Name="Debug2023" />
+    <BuildType Name="Debug2024" />
+    <BuildType Name="Revit2020" />
+    <BuildType Name="Revit2023" />
+    <BuildType Name="Revit2024" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="KPLN_TrailingMEP.csproj" Id="eefbad95-9d5d-44b0-832f-cf4608c285fb">
+    <Platform Project="x64" />
+  </Project>
+</Solution>

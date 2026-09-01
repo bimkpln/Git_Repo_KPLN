@@ -1,0 +1,139 @@
+<Window x:Class="KPLN_TrailingMEP.Forms.RouteTraceForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="KPLN: Дотянуть трассу"
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="Height"
+        Width="560"
+        MaxHeight="760"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="6">
+        <ScrollViewer
+            VerticalScrollBarVisibility="Auto"
+            HorizontalScrollBarVisibility="Disabled"
+            CanContentScroll="False">
+            <StackPanel>
+                <Border Style="{StaticResource KPLN_CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="Дотянуть трассу" Style="{StaticResource KPLN_RouteHeaderTextBlock}" />
+                        <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Foreground="{Binding CurrentRouteTraceM.UserMainStatusBrush}"
+                        Text="{Binding CurrentRouteTraceM.UserMainStatus}" />
+                        <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        FontSize="12"
+                        Foreground="{Binding CurrentRouteTraceM.UserHelpBrush}"
+                        Text="{Binding CurrentRouteTraceM.UserHelp}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource KPLN_CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="1. Исходный пучок" Style="{StaticResource KPLN_RouteHeaderTextBlock}" />
+                        <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Text="{Binding CurrentRouteTraceM.BundleInfo}" />
+                        <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Выбрать трубы, воздуховоды и лотки"
+                        Command="{Binding PickBundleCmd}"
+                        ToolTip="Окно временно скроется, чтобы выбрать элементы в модели" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource KPLN_CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="2. Точки траектории" Style="{StaticResource KPLN_RouteHeaderTextBlock}" />
+                        <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Text="{Binding CurrentRouteTraceM.TargetInfo}" />
+                        <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Указать точки на экране"
+                        Command="{Binding PickTargetPointCmd}"
+                        IsEnabled="{Binding CurrentRouteTraceM.CanPickPoints}"
+                        ToolTip="Окно временно скроется. Указывай точки последовательно, Esc закончит выбор" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource KPLN_CardBorder}">
+                    <StackPanel>
+                        <TextBlock Text="3. Углы и траектория" Style="{StaticResource KPLN_RouteHeaderTextBlock}" />
+                        <CheckBox
+                        Style="{StaticResource KPLN_CheckBox}"
+                        Content="Автокорректировка по углам"
+                        IsChecked="{Binding CurrentRouteTraceM.AutoCorrectRoute}" />
+                        <StackPanel Orientation="Horizontal">
+                            <CheckBox
+                            Style="{StaticResource KPLN_CheckBox}"
+                            Content="90"
+                            IsChecked="{Binding CurrentRouteTraceM.AllowAngle90}" />
+                            <CheckBox
+                            Style="{StaticResource KPLN_CheckBox}"
+                            Content="45"
+                            IsChecked="{Binding CurrentRouteTraceM.AllowAngle45}" />
+                            <CheckBox
+                            Style="{StaticResource KPLN_CheckBox}"
+                            Content="30"
+                            IsChecked="{Binding CurrentRouteTraceM.AllowAngle30}" />
+                        </StackPanel>
+                        <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        FontSize="12"
+                        Text="{Binding CurrentRouteTraceM.AngleInfo}" />
+                        <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Text="{Binding CurrentRouteTraceM.PreviewInfo}" />
+                        <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Выбрать траекторию"
+                        Command="{Binding PickPreviewRouteCmd}"
+                        IsEnabled="{Binding CurrentRouteTraceM.CanPickPreviewRoute}"
+                        ToolTip="Выбирает прямые линии траектории со стилем KPLN_TRAILING. После ручных правок выбери их заново" />
+                        <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Удалить траекторию"
+                        Command="{Binding DeletePreviewRouteCmd}"
+                        IsEnabled="{Binding CurrentRouteTraceM.HasPreviewRoute}" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource KPLN_CardBorder}">
+                    <StackPanel>
+                        <CheckBox
+                        Style="{StaticResource KPLN_CheckBox}"
+                        Content="Удалить линию траектории после построения"
+                        IsChecked="{Binding CurrentRouteTraceM.DeletePreviewAfterBuild}" />
+                        <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Построить продолжение"
+                        Command="{Binding BuildRouteCmd}"
+                        IsEnabled="{Binding CurrentRouteTraceM.CanBuild}"
+                        ToolTip="Строит новые участки теми же типами и системами, сохраняя смещения выбранного пучка" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
