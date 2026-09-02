@@ -2,6 +2,7 @@
 using KPLN_Library_DBWorker;
 using KPLN_Loader.Common;
 using KPLN_MEPBender.ExternalCommands;
+using KPLN_MEPSpacing.ExternalCommands;
 using KPLN_TrailingMEP.ExternalCommands;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,25 +51,15 @@ namespace KPLN_TrailingMEP
         {
             Assembly benderAssembly = typeof(MepBenderExtCmd).Assembly;
             string benderAssemblyName = benderAssembly.GetName().Name;
-            string[] stackItemImgs = new string[] { "pipeLine", "mepBender" };
-            string[] stackItemAssemblies = new string[] { _assemblyName, benderAssemblyName };
+            
 
-            PushButtonData trailingButtonData = CreatePushButtonData(
-                string.Join("\n", RouteTraceExtCmd.PluginName.Split(' ')),
-                string.Join("\n", RouteTraceExtCmd.PluginName.Split(' ')),
-                "Продолжить выбранные трубы, воздуховоды и кабельные лотки до указанной точки",
-                string.Format(
-                    "Создает редактируемую линию траектории, а затем строит продолжения выбранного пучка с исходными типами, системами и смещениями.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(RouteTraceExtCmd).FullName,
-                _assemblyPath,
-                _assemblyName,
-                stackItemImgs[0],
-                "http://moodle.stinproject.local"
-            );
+            Assembly mepSpacingAssembly = typeof(MepSpacingExtCmd).Assembly;
+            string mepSpacingAssemblyName = mepSpacingAssembly.GetName().Name;
+
+
+            string[] stackItemImgs = new string[] { "mepBender", "pipeLine", "mepSpacing" };
+            string[] stackItemAssemblies = new string[] { benderAssemblyName, _assemblyName, mepSpacingAssemblyName };
+
 
             PushButtonData benderButtonData = CreatePushButtonData(
                 string.Join("\n", MepBenderExtCmd.PluginName.Split(' ')),
@@ -83,11 +74,44 @@ namespace KPLN_TrailingMEP
                 typeof(MepBenderExtCmd).FullName,
                 benderAssembly.Location,
                 benderAssemblyName,
+                stackItemImgs[0],
+                "http://moodle.stinproject.local"
+            );
+
+            PushButtonData trailingButtonData = CreatePushButtonData(
+                string.Join("\n", RouteTraceExtCmd.PluginName.Split(' ')),
+                string.Join("\n", RouteTraceExtCmd.PluginName.Split(' ')),
+                "Продолжить выбранные трубы, воздуховоды и кабельные лотки до указанной точки",
+                string.Format(
+                    "Создает редактируемую линию траектории, а затем строит продолжения выбранного пучка с исходными типами, системами и смещениями.\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(RouteTraceExtCmd).FullName,
+                _assemblyPath,
+                _assemblyName,
                 stackItemImgs[1],
                 "http://moodle.stinproject.local"
             );
 
-            IList<RibbonItem> stackedGroup = panel.AddStackedItems(trailingButtonData, benderButtonData);
+            PushButtonData mepSpacing = CreatePushButtonData(
+                string.Join("\n", MepSpacingExtCmd.PluginName.Split(' ')),
+                string.Join("\n", MepSpacingExtCmd.PluginName.Split(' ')),
+                "Выравнивает расстояние между трубами, воздуховодами и лотками",
+                string.Format("\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                    ModuleData.Date,
+                    ModuleData.Version,
+                    ModuleData.ModuleName
+                ),
+                typeof(MepSpacingExtCmd).FullName,
+                mepSpacingAssembly.Location,
+                mepSpacingAssemblyName,
+                stackItemImgs[2],
+                "http://moodle.stinproject.local"
+            );
+
+            IList<RibbonItem> stackedGroup = panel.AddStackedItems(benderButtonData, trailingButtonData, mepSpacing);
             PrepareStackedButtons(stackedGroup, stackItemImgs, stackItemAssemblies);
         }
 

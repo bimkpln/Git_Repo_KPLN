@@ -89,6 +89,10 @@
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
       <ItemGroup>
+        <Reference Include="KPLN_MEPSpacing">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_MEPSpacing\bin\Debug\$(RevitVer)\KPLN_MEPSpacing.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_MEPBender">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_MEPBender\bin\Debug\$(RevitVer)\KPLN_MEPBender.dll</HintPath>
           <Private>False</Private>
@@ -117,6 +121,10 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
       <ItemGroup>
+        <Reference Include="KPLN_MEPSpacing">
+          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\MEPSpacing\$(RevitVer)\KPLN_MEPSpacing.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="KPLN_MEPBender">
           <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\MEPBender\$(RevitVer)\KPLN_MEPBender.dll</HintPath>
           <Private>False</Private>
