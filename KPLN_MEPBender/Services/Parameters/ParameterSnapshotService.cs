@@ -15,13 +15,15 @@ namespace KPLN_MEPBender.Services.Parameters
             { "Ширина кривой MEP", BuiltInParameter.RBS_CURVE_WIDTH_PARAM },
             { "Высота кривой MEP", BuiltInParameter.RBS_CURVE_HEIGHT_PARAM },
             { "Ширина кабельного лотка", BuiltInParameter.RBS_CABLETRAY_WIDTH_PARAM },
-            { "Высота кабельного лотка", BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM }
+            { "Высота кабельного лотка", BuiltInParameter.RBS_CABLETRAY_HEIGHT_PARAM },
+            { "Conduit diameter", BuiltInParameter.RBS_CONDUIT_DIAMETER_PARAM },
+            { "Conduit trade size", BuiltInParameter.RBS_CONDUIT_TRADESIZE },
+            { "Conduit inner diameter", BuiltInParameter.RBS_CONDUIT_INNER_DIAM_PARAM },
+            { "Conduit outer diameter", BuiltInParameter.RBS_CONDUIT_OUTER_DIAM_PARAM }
         };
 
         private static readonly HashSet<string> ParameterNamesToIgnore = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "КП_Размер_Текст",
-            "КП_О_Сортировка",
         };
 
         public ParameterSnapshot Capture(Element source)

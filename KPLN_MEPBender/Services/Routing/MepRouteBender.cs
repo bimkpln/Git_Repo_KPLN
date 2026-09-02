@@ -339,6 +339,8 @@ namespace KPLN_MEPBender.Services.Routing
 
             for (int i = 1; i < newSegments.Count; i++)
             {
+                doc.Regenerate();
+
                 XYZ jointPoint = jointPoints[i - 1];
                 Connector firstConnector = MepCurveConnectorUtils.GetClosestEndConnector(newSegments[i - 1], jointPoint);
                 Connector secondConnector = MepCurveConnectorUtils.GetClosestEndConnector(newSegments[i], jointPoint);
@@ -363,6 +365,8 @@ namespace KPLN_MEPBender.Services.Routing
 
                     result.CreatedElementIds.Add(fitting.Id);
                 }
+
+                doc.Regenerate();
             }
 
             return failureCount;
@@ -506,6 +510,9 @@ namespace KPLN_MEPBender.Services.Routing
 
             if (element is CableTray)
                 return "CableTray";
+
+            if (element is Conduit)
+                return "Conduit";
 
             return element.GetType().Name;
         }

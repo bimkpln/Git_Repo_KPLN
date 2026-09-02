@@ -50,6 +50,7 @@ namespace KPLN_MEPBender.Common
 
             BuiltInCategory category = (BuiltInCategory)elem.Category.Id.GetStableIntegerValue();
             return category == BuiltInCategory.OST_PipeCurves
+                   || category == BuiltInCategory.OST_Conduit
                    || category == BuiltInCategory.OST_DuctCurves
                    || category == BuiltInCategory.OST_CableTray;
         }
