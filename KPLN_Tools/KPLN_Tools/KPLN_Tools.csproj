@@ -219,6 +219,7 @@
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
     <Compile Include="ExternalCommands\Command_hiddenElementsFilter.cs" />
+    <Compile Include="ExternalCommands\Command_KR_expitVolume.cs" />
     <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_DesOptEntity.cs" />
     <Compile Include="Common\AR_PyatnGraph\ARPG_Flat.cs" />
@@ -243,6 +244,9 @@
     </Compile>
     <Compile Include="Forms\EvacuationRoutesResizeDialog.xaml.cs">
       <DependentUpon>EvacuationRoutesResizeDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\ExpitVolume.xaml.cs">
+      <DependentUpon>ExpitVolume.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormChangeElementInLevel.xaml.cs">
       <DependentUpon>FormChangeElementInLevel.xaml</DependentUpon>
@@ -482,6 +486,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\ExpitVolume.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\FormChangeElementInLevel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -549,6 +557,8 @@
     <EmbeddedResource Include="Imagens\furniture2DFrom3DBig_dark.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall_dark.png" />
+    <EmbeddedResource Include="Imagens\expitVolumeBig.png" />
+    <EmbeddedResource Include="Imagens\expitVolumeSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

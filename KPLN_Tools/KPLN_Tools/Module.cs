@@ -359,6 +359,8 @@ namespace KPLN_Tools
             #region Инструменты КР
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 3 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
+
+#if Debug2024 || Revit2024
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины КР",
                     "Плагины КР",
@@ -371,6 +373,8 @@ namespace KPLN_Tools
                     "krMain",
                     panel,
                     false);
+
+#endif
 
                 PushButtonData smnx_Rebar = CreateBtnData(
                     "SMNX_Металоёмкость",
@@ -405,10 +409,30 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.IFCRebarMarkSmall.png",
                     "http://moodle");
 
+
+
+                PushButtonData kr_expitVolume = CreateBtnData(
+                    Command_KR_expitVolume.PluginName,
+                    Command_KR_expitVolume.PluginName,
+                    "Плагин для получения объема котлована",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_KR_expitVolume).FullName,
+                    "KPLN_Tools.Imagens.expitVolumeSmall.png",
+                    "KPLN_Tools.Imagens.expitVolumeSmall.png",
+                    "http://moodle");
+
+
+
+                krToolsPullDownBtn.AddPushButton(kr_expitVolume);
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
                 krToolsPullDownBtn.AddPushButton(kr_IFCRebarMark);
             }
-            #endregion
+#endregion
 
             #region Инструменты ОВВК
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 4
