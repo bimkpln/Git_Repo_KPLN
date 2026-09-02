@@ -360,7 +360,7 @@ namespace KPLN_Tools
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 3 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
 
-#if Debug2024 || Revit2024
+
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины КР",
                     "Плагины КР",
@@ -373,8 +373,6 @@ namespace KPLN_Tools
                     "krMain",
                     panel,
                     false);
-
-#endif
 
                 PushButtonData smnx_Rebar = CreateBtnData(
                     "SMNX_Металоёмкость",
@@ -410,7 +408,7 @@ namespace KPLN_Tools
                     "http://moodle");
 
 
-
+#if Debug2024 || Revit2024
                 PushButtonData kr_expitVolume = CreateBtnData(
                     Command_KR_expitVolume.PluginName,
                     Command_KR_expitVolume.PluginName,
@@ -426,9 +424,9 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.expitVolumeSmall.png",
                     "http://moodle");
 
-
-
                 krToolsPullDownBtn.AddPushButton(kr_expitVolume);
+#endif
+
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
                 krToolsPullDownBtn.AddPushButton(kr_IFCRebarMark);
             }

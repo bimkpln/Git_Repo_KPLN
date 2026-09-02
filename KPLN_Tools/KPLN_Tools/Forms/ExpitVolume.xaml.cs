@@ -17,7 +17,7 @@ namespace KPLN_Tools.Forms
         private readonly ExternalEvent _externalEvent;
         private ElementId _toposolidId = ElementId.InvalidElementId;
         private readonly List<ElementId> _cutterIds = new List<ElementId>();
-        private ExpitVolumeResult _result;
+        private ExpitVolumeOperationResult _operation;
 
         internal ExpitVolume(UIDocument uidoc)
         {
@@ -27,6 +27,7 @@ namespace KPLN_Tools.Forms
             _handler = new ExpitVolumeExternalEventHandler(this);
             _externalEvent = ExternalEvent.Create(_handler);
             Closed += (sender, args) => _externalEvent.Dispose();
+            SetOperationState(false);
         }
 
         private Document Doc => _uidoc.Document;
@@ -37,11 +38,11 @@ namespace KPLN_Tools.Forms
         private void PickCutters_Click(object sender, RoutedEventArgs e) =>
             Request(ExpitVolumeAction.PickCutters);
 
-        private void Calculate_Click(object sender, RoutedEventArgs e) =>
-            Request(ExpitVolumeAction.Calculate);
+        private void CalculateWrite_Click(object sender, RoutedEventArgs e) =>
+            Request(ExpitVolumeAction.CalculateAndWrite);
 
-        private void Write_Click(object sender, RoutedEventArgs e) =>
-            Request(ExpitVolumeAction.Write);
+        private void CancelOperation_Click(object sender, RoutedEventArgs e) =>
+            Request(ExpitVolumeAction.CancelOperation);
 
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
@@ -50,11 +51,14 @@ namespace KPLN_Tools.Forms
             _handler.Action = action;
             IsEnabled = false;
             StatusText.Foreground = Brushes.DarkSlateGray;
-            StatusText.Text = action == ExpitVolumeAction.Calculate
-                ? "Выполняется расчёт..."
-                : action == ExpitVolumeAction.Write
-                    ? "Выполняется запись..."
-                    : string.Empty;
+
+            if (action == ExpitVolumeAction.CalculateAndWrite)
+                StatusText.Text = "Выполняется расчёт и запись...";
+            else if (action == ExpitVolumeAction.CancelOperation)
+                StatusText.Text = "Выполняется отмена...";
+            else
+                StatusText.Text = string.Empty;
+
             _externalEvent.Raise();
         }
 
@@ -77,11 +81,11 @@ namespace KPLN_Tools.Forms
                     case ExpitVolumeAction.PickCutters:
                         PickCutters();
                         break;
-                    case ExpitVolumeAction.Calculate:
-                        Calculate();
+                    case ExpitVolumeAction.CalculateAndWrite:
+                        CalculateAndWrite();
                         break;
-                    case ExpitVolumeAction.Write:
-                        Write();
+                    case ExpitVolumeAction.CancelOperation:
+                        CancelOperation();
                         break;
                 }
             }
@@ -125,6 +129,9 @@ namespace KPLN_Tools.Forms
                 new SolidElementSelectionFilter(),
                 "Выберите элементы модели котлована и нажмите «Готово»");
 
+            if (references.Count == 0)
+                throw new InvalidOperationException("Не выбраны элементы модели котлована.");
+
             _cutterIds.Clear();
             _cutterIds.AddRange(references.Select(x => x.ElementId));
 
@@ -141,36 +148,58 @@ namespace KPLN_Tools.Forms
                 CuttersList.ItemsSource = cutters.Select(DescribeElement).ToList();
                 CuttersList.Visibility = System.Windows.Visibility.Visible;
             }
+
             ResetResult();
         }
 
-        private void Calculate()
+        private void CalculateAndWrite()
         {
             Element toposolid = GetToposolid();
             List<Element> cutters = GetCutters();
-            _result = ExpitVolumeService.Calculate(Doc, toposolid, cutters);
 
-            OriginalVolumeText.Text = FormatVolume(_result.OriginalCubicMeters);
-            CutVolumeText.Text = FormatVolume(_result.CutCubicMeters);
-            ExcavationVolumeText.Text = FormatVolume(_result.ExcavationCubicMeters);
+            bool writeToCutters = WriteToCuttersRadioButton.IsChecked == true;
+            _operation = ExpitVolumeService.CalculateAndWrite(
+                Doc,
+                toposolid,
+                cutters,
+                writeToCutters);
+            _uidoc.RefreshActiveView();
+
+            OriginalVolumeText.Text = FormatVolume(_operation.OriginalCubicMeters);
+            CutVolumeText.Text = FormatVolume(_operation.CutCubicMeters);
+            ExcavationVolumeText.Text = FormatVolume(_operation.ExcavationCubicMeters);
             StatusText.Foreground = Brushes.DarkGreen;
-            StatusText.Text = "Расчёт выполнен. Исходная геометрия восстановлена.";
-            WriteButton.IsEnabled = true;
+            StatusText.Text = writeToCutters
+                ? "Вырез создан, значения записаны в элементы модели котлована."
+                : "Вырез создан, значение записано в основное топотело.";
+            SetOperationState(true);
         }
 
-        private void Write()
+        private void CancelOperation()
         {
-            if (_result == null)
-                throw new InvalidOperationException("Сначала выполните расчёт.");
+            if (_operation == null)
+                throw new InvalidOperationException("Нет операции для отмены.");
 
             Element toposolid = GetToposolid();
-            ExpitVolumeService.WriteResult(
-                Doc,
-                new List<Element> { toposolid },
-                _result);
+            ExpitVolumeService.CancelOperation(Doc, toposolid, _operation);
+            _uidoc.RefreshActiveView();
 
+            _operation = null;
+            OriginalVolumeText.Text = "—";
+            CutVolumeText.Text = "—";
+            ExcavationVolumeText.Text = "—";
             StatusText.Foreground = Brushes.DarkGreen;
-            StatusText.Text = "Значение записано в основное топотело.";
+            StatusText.Text = "Вырез и запись параметра отменены.";
+            SetOperationState(false);
+        }
+
+        private void SetOperationState(bool operationApplied)
+        {
+            PickToposolidButton.IsEnabled = !operationApplied;
+            PickCuttersButton.IsEnabled = !operationApplied;
+            WriteTargetGroup.IsEnabled = !operationApplied;
+            CalculateWriteButton.IsEnabled = !operationApplied;
+            CancelOperationButton.IsEnabled = operationApplied;
         }
 
         private Element GetToposolid()
@@ -192,18 +221,19 @@ namespace KPLN_Tools.Forms
                 .ToList();
 
             if (elements.Count == 0)
-                throw new InvalidOperationException("Выберите хотя бы один элемент модели котлована.");
+                throw new InvalidOperationException(
+                    "Выберите хотя бы один элемент модели котлована.");
             return elements;
         }
 
         private void ResetResult()
         {
-            _result = null;
+            _operation = null;
             OriginalVolumeText.Text = "—";
             CutVolumeText.Text = "—";
             ExcavationVolumeText.Text = "—";
             StatusText.Text = string.Empty;
-            WriteButton.IsEnabled = false;
+            SetOperationState(false);
         }
 
         private void ShowError(string text)
@@ -230,8 +260,8 @@ namespace KPLN_Tools.Forms
         None,
         PickToposolid,
         PickCutters,
-        Calculate,
-        Write
+        CalculateAndWrite,
+        CancelOperation
     }
 
     internal sealed class ExpitVolumeExternalEventHandler : IExternalEventHandler
@@ -244,7 +274,11 @@ namespace KPLN_Tools.Forms
             _form = form;
         }
 
-        public void Execute(UIApplication app) => _form.ExecuteRequestedAction();
+        public void Execute(UIApplication app)
+        {
+            if (_form.IsLoaded)
+                _form.ExecuteRequestedAction();
+        }
 
         public string GetName() => "Получение объема котлована";
     }
@@ -281,7 +315,7 @@ namespace KPLN_Tools.Forms
         public bool AllowReference(Reference reference, XYZ position) => false;
     }
 
-    internal sealed class ExpitVolumeResult
+    internal sealed class ExpitVolumeOperationResult
     {
         internal double OriginalInternal { get; }
         internal double CutInternal { get; }
@@ -289,11 +323,19 @@ namespace KPLN_Tools.Forms
         internal double OriginalCubicMeters => ToCubicMeters(OriginalInternal);
         internal double CutCubicMeters => ToCubicMeters(CutInternal);
         internal double ExcavationCubicMeters => ToCubicMeters(ExcavationInternal);
+        internal IReadOnlyList<ElementId> OperationCutterIds { get; }
+        internal IReadOnlyList<ExpitVolumeParameterBackup> ParameterBackups { get; }
 
-        internal ExpitVolumeResult(double originalInternal, double cutInternal)
+        internal ExpitVolumeOperationResult(
+            double originalInternal,
+            double cutInternal,
+            IEnumerable<ElementId> operationCutterIds,
+            IEnumerable<ExpitVolumeParameterBackup> parameterBackups)
         {
             OriginalInternal = originalInternal;
             CutInternal = cutInternal;
+            OperationCutterIds = operationCutterIds.ToList().AsReadOnly();
+            ParameterBackups = parameterBackups.ToList().AsReadOnly();
         }
 
         private static double ToCubicMeters(double value)
@@ -306,93 +348,310 @@ namespace KPLN_Tools.Forms
         }
     }
 
+    internal sealed class ExpitVolumeParameterBackup
+    {
+        internal ElementId ElementId { get; }
+        internal bool HadValue { get; }
+        internal double Value { get; }
+
+        internal ExpitVolumeParameterBackup(
+            ElementId elementId,
+            bool hadValue,
+            double value)
+        {
+            ElementId = elementId;
+            HadValue = hadValue;
+            Value = value;
+        }
+    }
+
     internal static class ExpitVolumeService
     {
         internal const string VolumeParameterName = "КП_Р_Объем";
         private const double Tolerance = 1.0e-9;
 
-        internal static ExpitVolumeResult Calculate(
+        internal static ExpitVolumeOperationResult CalculateAndWrite(
             Document doc,
+            Element toposolid,
+            IList<Element> cutters,
+            bool writeToCutters)
+        {
+            Validate(doc, toposolid, cutters);
+            ValidateCuttersForExcavation(toposolid, cutters);
+
+            List<Element> parameterTargets = writeToCutters
+                ? cutters.ToList()
+                : new List<Element> { toposolid };
+            Dictionary<ElementId, Parameter> parameters = parameterTargets
+                .ToDictionary(x => x.Id, GetWritableVolumeParameter);
+            List<ExpitVolumeParameterBackup> parameterBackups = parameterTargets
+                .Select(x => CreateParameterBackup(x, parameters[x.Id]))
+                .ToList();
+
+            List<ElementId> operationCutterIds = cutters
+                .Select(cutter => cutter.Id)
+                .ToList();
+            List<ElementId> cuttersToCreate = cutters
+                .Where(cutter => !CutExists(toposolid, cutter))
+                .Select(cutter => cutter.Id)
+                .ToList();
+
+            double originalVolume;
+            double cutVolume;
+
+            using (Transaction transaction = new Transaction(
+                doc,
+                "КП: рассчитать и записать объем котлована"))
+            {
+                if (transaction.Start() != TransactionStatus.Started)
+                    throw new InvalidOperationException("Не удалось начать транзакцию.");
+
+                SetFailureHandling(transaction);
+                try
+                {
+                    // Сначала создаём вырез и считываем V2.
+                    foreach (Element cutter in cutters.Where(
+                        x => cuttersToCreate.Contains(x.Id)))
+                        CreateExcavation(doc, toposolid, cutter);
+
+                    doc.Regenerate();
+
+                    foreach (Element cutter in cutters)
+                        VerifyCutterCutsToposolid(toposolid, cutter);
+
+                    cutVolume = GetVolume(toposolid);
+
+                    // Временно удаляем вырезы, считываем V1 и откатываем только
+                    // это удаление. После RollBack вырезы снова остаются в модели.
+                    using (SubTransaction temporaryRemoval = new SubTransaction(doc))
+                    {
+                        if (temporaryRemoval.Start() != TransactionStatus.Started)
+                            throw new InvalidOperationException(
+                                "Не удалось начать временную отмену вырезания.");
+
+                        try
+                        {
+                            foreach (Element cutter in cutters)
+                                RemoveExcavation(doc, toposolid, cutter);
+
+                            doc.Regenerate();
+                            originalVolume = GetVolume(toposolid);
+                        }
+                        finally
+                        {
+                            if (temporaryRemoval.GetStatus() == TransactionStatus.Started)
+                                temporaryRemoval.RollBack();
+                        }
+                    }
+
+                    doc.Regenerate();
+
+                    foreach (Element cutter in cutters)
+                        VerifyCutterCutsToposolid(toposolid, cutter);
+
+                    Dictionary<ElementId, double> individualVolumes =
+                        writeToCutters
+                            ? CalculateIndividualVolumes(doc, toposolid, cutters, originalVolume)
+                            : null;
+
+                    ValidateVolumeDifference(originalVolume, cutVolume);
+
+                    if (writeToCutters)
+                    {
+                        foreach (Element cutter in cutters)
+                            SetVolumeParameter(
+                                parameters[cutter.Id],
+                                individualVolumes[cutter.Id],
+                                cutter);
+                    }
+                    else
+                    {
+                        SetVolumeParameter(
+                            parameters[toposolid.Id],
+                            originalVolume - cutVolume,
+                            toposolid);
+                    }
+
+                    if (transaction.Commit() != TransactionStatus.Committed)
+                        throw new InvalidOperationException(
+                            "Не удалось завершить расчёт и запись параметра.");
+                }
+                catch
+                {
+                    if (transaction.GetStatus() == TransactionStatus.Started)
+                        transaction.RollBack();
+                    throw;
+                }
+            }
+
+            return new ExpitVolumeOperationResult(
+                originalVolume,
+                cutVolume,
+                operationCutterIds,
+                parameterBackups);
+        }
+
+        internal static void CancelOperation(
+            Document doc,
+            Element toposolid,
+            ExpitVolumeOperationResult operation)
+        {
+            if (operation == null)
+                throw new ArgumentNullException(nameof(operation));
+
+            using (Transaction transaction = new Transaction(
+                doc,
+                "КП: отменить расчет объема котлована"))
+            {
+                if (transaction.Start() != TransactionStatus.Started)
+                    throw new InvalidOperationException("Не удалось начать транзакцию отмены.");
+
+                SetFailureHandling(transaction);
+                try
+                {
+                    foreach (ElementId cutterId in operation.OperationCutterIds)
+                    {
+                        Element cutter = doc.GetElement(cutterId);
+                        if (cutter != null)
+                            RemoveExcavation(doc, toposolid, cutter);
+                    }
+
+                    doc.Regenerate();
+
+                    foreach (ExpitVolumeParameterBackup backup in operation.ParameterBackups)
+                        RestoreParameter(doc, backup);
+
+                    if (transaction.Commit() != TransactionStatus.Committed)
+                        throw new InvalidOperationException(
+                            "Не удалось отменить вырез и запись параметра.");
+                }
+                catch
+                {
+                    if (transaction.GetStatus() == TransactionStatus.Started)
+                        transaction.RollBack();
+                    throw;
+                }
+            }
+        }
+
+        private static bool CutExists(Element first, Element second)
+        {
+            bool firstCutsSecond;
+            return TryGetCutOrder(first, second, out firstCutsSecond);
+        }
+
+        private static bool TryGetCutOrder(
+            Element first,
+            Element second,
+            out bool firstCutsSecond)
+        {
+            return SolidSolidCutUtils.CutExistsBetweenElements(
+                first, second, out firstCutsSecond);
+        }
+
+        private static void CreateExcavation(
+            Document doc,
+            Element toposolid,
+            Element cutter)
+        {
+            SolidSolidCutUtils.AddCutBetweenSolids(doc, toposolid, cutter);
+        }
+
+        private static void VerifyCutterCutsToposolid(
+            Element toposolid,
+            Element cutter)
+        {
+            bool firstCutsSecond;
+            if (!TryGetCutOrder(toposolid, cutter, out firstCutsSecond))
+                throw new InvalidOperationException(
+                    $"Не удалось создать вырез элементом ID " +
+                    $"{IDHelper.ElIdValue(cutter.Id)}.");
+
+            if (firstCutsSecond)
+                throw new InvalidOperationException(
+                    $"Revit создал вырез в обратном направлении для элемента ID " +
+                    $"{IDHelper.ElIdValue(cutter.Id)}.");
+        }
+
+        private static void RemoveExcavation(
+            Document doc,
+            Element toposolid,
+            Element cutter)
+        {
+            if (CutExists(toposolid, cutter))
+                SolidSolidCutUtils.RemoveCutBetweenSolids(doc, toposolid, cutter);
+        }
+
+        private static void ValidateCuttersForExcavation(
             Element toposolid,
             IList<Element> cutters)
         {
-            Validate(doc, toposolid, cutters);
-
             foreach (Element cutter in cutters)
             {
-                bool firstCutsSecond;
-                if (SolidSolidCutUtils.CutExistsBetweenElements(
-                    toposolid,
-                    cutter,
-                    out firstCutsSecond))
+                if (CutExists(toposolid, cutter))
+                {
+                    VerifyCutterCutsToposolid(toposolid, cutter);
+                    continue;
+                }
+
+                CutFailureReason reason;
+                if (!SolidSolidCutUtils.CanElementCutElement(cutter, toposolid, out reason))
                     throw new InvalidOperationException(
-                        $"Между топотелом и элементом ID {IDHelper.ElIdValue(cutter.Id)} " +
-                        "уже существует Cut Geometry.");
+                        $"Элемент ID {IDHelper.ElIdValue(cutter.Id)} не может вырезать " +
+                        $"топотело: {reason}.");
             }
+        }
 
-            double originalVolume = GetVolume(toposolid);
-            double cutVolume;
+        private static Dictionary<ElementId, double> CalculateIndividualVolumes(
+            Document doc,
+            Element toposolid,
+            IList<Element> cutters,
+            double originalVolume)
+        {
+            Dictionary<ElementId, double> result = new Dictionary<ElementId, double>();
 
-            using (Transaction temporary = new Transaction(doc, "КП: временно вырезать котлован"))
+            foreach (Element current in cutters)
             {
-                if (temporary.Start() != TransactionStatus.Started)
-                    throw new InvalidOperationException("Не удалось начать временную транзакцию.");
-
-                SetFailureHandling(temporary);
-                try
+                double volumeWithCurrent;
+                using (SubTransaction isolateCurrent = new SubTransaction(doc))
                 {
-                    foreach (Element cutter in cutters)
-                        SolidSolidCutUtils.AddCutBetweenSolids(doc, toposolid, cutter);
+                    if (isolateCurrent.Start() != TransactionStatus.Started)
+                        throw new InvalidOperationException(
+                            "Не удалось начать отдельный расчёт элемента котлована.");
 
-                    doc.Regenerate();
-                    cutVolume = GetVolume(toposolid);
+                    try
+                    {
+                        foreach (Element other in cutters.Where(x => x.Id != current.Id))
+                            RemoveExcavation(doc, toposolid, other);
+
+                        doc.Regenerate();
+                        volumeWithCurrent = GetVolume(toposolid);
+                    }
+                    finally
+                    {
+                        if (isolateCurrent.GetStatus() == TransactionStatus.Started)
+                            isolateCurrent.RollBack();
+                    }
                 }
-                finally
-                {
-                    if (temporary.GetStatus() == TransactionStatus.Started)
-                        temporary.RollBack();
-                }
+
+                doc.Regenerate();
+                ValidateVolumeDifference(originalVolume, volumeWithCurrent);
+                result[current.Id] = originalVolume - volumeWithCurrent;
             }
 
+            foreach (Element cutter in cutters)
+                VerifyCutterCutsToposolid(toposolid, cutter);
+
+            return result;
+        }
+
+        private static void ValidateVolumeDifference(double originalVolume, double cutVolume)
+        {
             if (originalVolume + Tolerance < cutVolume)
                 throw new InvalidOperationException("V2 оказался больше V1. Расчёт остановлен.");
             if (originalVolume - cutVolume <= Tolerance)
                 throw new InvalidOperationException(
                     "Разность объёмов равна нулю. Проверьте пересечение элементов.");
-
-            return new ExpitVolumeResult(originalVolume, cutVolume);
-        }
-
-        internal static void WriteResult(
-            Document doc,
-            IList<Element> targets,
-            ExpitVolumeResult result)
-        {
-            if (targets == null || targets.Count == 0)
-                throw new InvalidOperationException("Не выбраны элементы для записи.");
-
-            List<Parameter> parameters = targets
-                .Select(GetWritableVolumeParameter)
-                .ToList();
-
-            using (Transaction transaction = new Transaction(doc, "КП: записать объем котлована"))
-            {
-                if (transaction.Start() != TransactionStatus.Started)
-                    throw new InvalidOperationException("Не удалось начать транзакцию записи.");
-
-                SetFailureHandling(transaction);
-                foreach (Parameter parameter in parameters)
-                {
-                    if (!parameter.Set(result.ExcavationInternal))
-                    {
-                        transaction.RollBack();
-                        throw new InvalidOperationException("Revit не принял значение параметра.");
-                    }
-                }
-
-                if (transaction.Commit() != TransactionStatus.Committed)
-                    throw new InvalidOperationException("Не удалось записать объем котлована.");
-            }
         }
 
         private static void Validate(Document doc, Element toposolid, IList<Element> cutters)
@@ -411,7 +670,8 @@ namespace KPLN_Tools.Forms
                 if (cutter == null || !cutter.IsValidObject)
                     throw new InvalidOperationException("Один из элементов котлована недоступен.");
                 if (cutter.Id == toposolid.Id)
-                    throw new InvalidOperationException("Топотело нельзя выбрать как модель котлована.");
+                    throw new InvalidOperationException(
+                        "Топотело нельзя выбрать как модель котлована.");
             }
         }
 
@@ -420,15 +680,64 @@ namespace KPLN_Tools.Forms
             Parameter parameter = element?.LookupParameter(VolumeParameterName);
             if (parameter == null)
                 throw new InvalidOperationException(
-                    $"У элемента ID {IDHelper.ElIdValue(element.Id)} отсутствует параметр " +
-                    $"«{VolumeParameterName}».");
+                    $"У элемента ID {IDHelper.ElIdValue(element.Id)} отсутствует " +
+                    $"параметр «{VolumeParameterName}».");
             if (parameter.IsReadOnly)
                 throw new InvalidOperationException(
-                    $"Параметр «{VolumeParameterName}» доступен только для чтения.");
+                    $"Параметр «{VolumeParameterName}» элемента ID " +
+                    $"{IDHelper.ElIdValue(element.Id)} доступен только для чтения.");
             if (parameter.StorageType != StorageType.Double || !IsVolumeParameter(parameter))
                 throw new InvalidOperationException(
                     $"Параметр «{VolumeParameterName}» должен иметь тип данных «Объем».");
             return parameter;
+        }
+
+        private static ExpitVolumeParameterBackup CreateParameterBackup(
+            Element element,
+            Parameter parameter) =>
+            new ExpitVolumeParameterBackup(
+                element.Id,
+                parameter.HasValue,
+                parameter.HasValue ? parameter.AsDouble() : 0.0);
+
+        private static void SetVolumeParameter(
+            Parameter parameter,
+            double value,
+            Element element)
+        {
+            if (!parameter.Set(value))
+                throw new InvalidOperationException(
+                    $"Revit не принял значение параметра «{VolumeParameterName}» " +
+                    $"для элемента ID {IDHelper.ElIdValue(element.Id)}.");
+        }
+
+        private static void RestoreParameter(
+            Document doc,
+            ExpitVolumeParameterBackup backup)
+        {
+            Element element = doc.GetElement(backup.ElementId);
+            if (element == null)
+                return;
+
+            Parameter parameter = GetWritableVolumeParameter(element);
+            if (backup.HadValue)
+            {
+                SetVolumeParameter(parameter, backup.Value, element);
+            }
+            else
+            {
+                // Revit 2024 запрещает ClearValue(), если у определения параметра
+                // HideWhenNoValue == false. В таком случае безопасно возвращаем 0 м³.
+                try
+                {
+                    if (!parameter.ClearValue())
+                        SetVolumeParameter(parameter, 0.0, element);
+                }
+                catch (Exception)
+                {
+                    SetVolumeParameter(parameter, 0.0, element);
+                }
+            }
         }
 
         private static double GetVolume(Element element)
@@ -442,7 +751,8 @@ namespace KPLN_Tools.Forms
 
             double volume = SumVolume(geometry);
             if (volume <= Tolerance)
-                throw new InvalidOperationException("В геометрии топотела не найден объемный Solid.");
+                throw new InvalidOperationException(
+                    "В геометрии топотела не найден объемный Solid.");
             return volume;
         }
 

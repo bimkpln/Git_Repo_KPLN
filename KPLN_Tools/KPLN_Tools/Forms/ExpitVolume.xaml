@@ -4,13 +4,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="KPLN. Получение объема котлована"
         Width="700"
-        Height="540"
+        Height="590"
         ResizeMode="NoResize"
         SizeToContent="Manual"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True">
     <Grid Margin="18">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -23,7 +24,8 @@
                     <ColumnDefinition Width="150"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Height="30" Content="Выбрать топотело" Click="PickToposolid_Click"/>
+                <Button x:Name="PickToposolidButton" Grid.Column="0" Height="30"
+                        Content="Выбрать топотело" Click="PickToposolid_Click"/>
                 <TextBlock x:Name="ToposolidText" Grid.Column="1" Margin="12,0,0,0"
                            VerticalAlignment="Center" Text="Не выбрано" TextTrimming="CharacterEllipsis"/>
             </Grid>
@@ -39,7 +41,8 @@
                     <ColumnDefinition Width="150"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Row="0" Grid.Column="0" Height="30" Content="Выбрать элементы" Click="PickCutters_Click"/>
+                <Button x:Name="PickCuttersButton" Grid.Row="0" Grid.Column="0" Height="30"
+                        Content="Выбрать элементы" Click="PickCutters_Click"/>
                 <TextBlock x:Name="CuttersText" Grid.Row="0" Grid.Column="1" Margin="12,0,0,0"
                            VerticalAlignment="Center" Text="Не выбрано" TextTrimming="CharacterEllipsis"/>
                 <ListBox x:Name="CuttersList"
@@ -53,7 +56,19 @@
             </Grid>
         </GroupBox>
 
-        <GroupBox Grid.Row="2" Header="Результат" Margin="0,0,0,14">
+        <GroupBox x:Name="WriteTargetGroup" Grid.Row="2"
+                  Header="3. Куда записать КП_Р_Объем" Margin="0,0,0,10">
+            <StackPanel Margin="10" Orientation="Horizontal">
+                <RadioButton x:Name="WriteToToposolidRadioButton"
+                             Content="В исходное топотело"
+                             IsChecked="True"
+                             Margin="0,0,28,0"/>
+                <RadioButton x:Name="WriteToCuttersRadioButton"
+                             Content="В модель/модели котлована"/>
+            </StackPanel>
+        </GroupBox>
+
+        <GroupBox Grid.Row="3" Header="Результат" Margin="0,0,0,14">
             <Grid Margin="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="430"/>
@@ -79,10 +94,24 @@
             </Grid>
         </GroupBox>
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Width="125" Height="32" Margin="0,0,8,0" Content="Рассчитать" Click="Calculate_Click"/>
-            <Button x:Name="WriteButton" Width="125" Height="32" Margin="0,0,8,0"
-                    Content="Записать" IsEnabled="False" Click="Write_Click"/>
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="CalculateWriteButton" Width="180" Height="32" Margin="0,0,8,0"
+                    Content="Рассчитать и записать" Click="CalculateWrite_Click"/>
+            <Button x:Name="CancelOperationButton" Width="110" Height="32" Margin="0,0,8,0"
+                    Content="Отменить" IsEnabled="False" Click="CancelOperation_Click">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="Background" Value="#C62828"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#555555"/>
+                                <Setter Property="Background" Value="#D9D9D9"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
             <Button Width="90" Height="32" Content="Закрыть" Click="Close_Click"/>
         </StackPanel>
     </Grid>
