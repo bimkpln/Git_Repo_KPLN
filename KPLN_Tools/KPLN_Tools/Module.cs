@@ -360,7 +360,6 @@ namespace KPLN_Tools
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 3 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
 
-#if Debug2024 || Revit2024
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины КР",
                     "Плагины КР",
@@ -374,7 +373,6 @@ namespace KPLN_Tools
                     panel,
                     false);
 
-#endif
 
                 PushButtonData smnx_Rebar = CreateBtnData(
                     "SMNX_Металоёмкость",
