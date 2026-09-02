@@ -1,0 +1,14 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug2020" />
+    <BuildType Name="Debug2023" />
+    <BuildType Name="Debug2024" />
+    <BuildType Name="Revit2020" />
+    <BuildType Name="Revit2023" />
+    <BuildType Name="Revit2024" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="KPLN_MEPSpacing.csproj" Id="ffe23faa-f87e-4167-8657-2d7a9833aa6c">
+    <Platform Project="x64" />
+  </Project>
+</Solution>

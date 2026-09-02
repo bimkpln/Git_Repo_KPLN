@@ -1,0 +1,129 @@
+<Window x:Class="KPLN_MEPSpacing.Forms.MepSpacingForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:conv="clr-namespace:KPLN_MEPSpacing.Forms.Converters"
+        mc:Ignorable="d"
+        Title="KPLN: Выровнять шаг"
+        WindowStartupLocation="CenterOwner"
+        SizeToContent="Height"
+        Width="520"
+        MaxHeight="720"
+        FontFamily="Consolas, 'Segoe UI', monospace"
+        Background="#2B2F38">
+
+    <Window.InputBindings>
+        <KeyBinding
+            Key="Escape"
+            Command="{Binding CloseWindowCmd}"
+            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" />
+    </Window.InputBindings>
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <conv:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+            <conv:UserMessageLevelToBrushConverter x:Key="UserMessageLevelToBrushConverter" />
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Margin="6">
+        <ScrollViewer
+            MaxHeight="690"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto">
+            <StackPanel DataContext="{Binding CurrentMepSpacingM}">
+            <Border
+                Style="{StaticResource KPLN_StatusBorder}"
+                Background="{Binding MessageLevel, Converter={StaticResource UserMessageLevelToBrushConverter}}"
+                BorderBrush="{Binding MessageLevel, Converter={StaticResource UserMessageLevelToBrushConverter}, ConverterParameter=Border}">
+                <StackPanel>
+                        <TextBlock Text="Выровнять шаг" Style="{StaticResource KPLN_HeaderTextBlock}" />
+                    <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Text="{Binding SelectionInfo}" />
+                    <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Text="{Binding UserMainStatus}" />
+                    <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        FontSize="12"
+                        Text="{Binding UserHelp}" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource KPLN_CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="Элементы для расчёта" Style="{StaticResource KPLN_HeaderTextBlock}" />
+                    <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Выбрать элементы"
+                        Command="{Binding DataContext.PickSpacingElementsCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Height="30" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource KPLN_CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="Базовые элементы" Style="{StaticResource KPLN_HeaderTextBlock}" />
+                    <TextBlock
+                        Style="{StaticResource KPLN_TextBlock}"
+                        Text="{Binding BaseSelectionInfo}" />
+                    <Button
+                        Style="{StaticResource KPLN_Button}"
+                        Content="Выбрать базовые элементы"
+                        Command="{Binding DataContext.PickBaseElementsCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Height="30" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource KPLN_CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="Расстояние, мм" Style="{StaticResource KPLN_HeaderTextBlock}" />
+                    <TextBox
+                        Style="{StaticResource KPLN_TextBox}"
+                        Text="{Binding DistanceText, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource KPLN_CardBorder}">
+                <StackPanel>
+                    <TextBlock Text="Как считать?" Style="{StaticResource KPLN_HeaderTextBlock}" />
+                    <RadioButton
+                        GroupName="DistanceMode"
+                        Content="Межосевое расстояние"
+                        Style="{StaticResource KPLN_RadioButton}"
+                        IsChecked="{Binding CalculationMode,
+                            Converter={StaticResource EnumToBooleanConverter},
+                            ConverterParameter=Centerline}" />
+                    <RadioButton
+                        GroupName="DistanceMode"
+                        Content="Между гранями элементов"
+                        Style="{StaticResource KPLN_RadioButton}"
+                        IsChecked="{Binding CalculationMode,
+                            Converter={StaticResource EnumToBooleanConverter},
+                            ConverterParameter=Clearance}" />
+                </StackPanel>
+            </Border>
+
+            <StackPanel>
+                <Button
+                    Style="{StaticResource KPLN_Button}"
+                    Content="Выставить шаг"
+                    Command="{Binding DataContext.RunSpacingCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                    IsEnabled="{Binding CanRun}"
+                    Height="30" />
+                <Button
+                    Style="{StaticResource KPLN_Button}"
+                    Content="Закрыть"
+                    Command="{Binding DataContext.CloseWindowCmd, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+                    Height="30" />
+            </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
