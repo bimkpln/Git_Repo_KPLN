@@ -249,7 +249,7 @@ namespace KPLN_Tools
             sharedPullDownBtn.AddPushButton(movingElementsInLevel);
             sharedPullDownBtn.AddPushButton(changeRLinks);
             sharedPullDownBtn.AddPushButton(ws_Links);
-            
+
 
             #endregion
 
@@ -360,6 +360,7 @@ namespace KPLN_Tools
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 3 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
             {
 
+
                 PulldownButton krToolsPullDownBtn = CreatePulldownButtonInRibbon(
                     "Плагины КР",
                     "Плагины КР",
@@ -372,7 +373,6 @@ namespace KPLN_Tools
                     "krMain",
                     panel,
                     false);
-
 
                 PushButtonData smnx_Rebar = CreateBtnData(
                     "SMNX_Металоёмкость",
@@ -408,7 +408,7 @@ namespace KPLN_Tools
                     "http://moodle");
 
 
-
+#if Debug2024 || Revit2024
                 PushButtonData kr_expitVolume = CreateBtnData(
                     Command_KR_expitVolume.PluginName,
                     Command_KR_expitVolume.PluginName,
@@ -424,13 +424,13 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.expitVolumeSmall.png",
                     "http://moodle");
 
-
-
                 krToolsPullDownBtn.AddPushButton(kr_expitVolume);
+#endif
+
                 krToolsPullDownBtn.AddPushButton(smnx_Rebar);
                 krToolsPullDownBtn.AddPushButton(kr_IFCRebarMark);
             }
-#endregion
+            #endregion
 
             #region Инструменты ОВВК
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 4
@@ -551,7 +551,7 @@ namespace KPLN_Tools
                 "KPLN_Tools.Imagens.autonumberSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=687");
 
-                PushButtonData auptTagPlacer= CreateBtnData(
+                PushButtonData auptTagPlacer = CreateBtnData(
                     ExtCmd_AUPT_TagPlacer.PluginName,
                     ExtCmd_AUPT_TagPlacer.PluginName,
                     "АУПТ: Расставляет автоматические марки для ответвлений",
@@ -644,7 +644,7 @@ namespace KPLN_Tools
                     typeof(Command_hiddenElementsFilter).FullName,
                     "KPLN_Tools.Imagens.hiddenElementsFilterSmall.png",
                     "KPLN_Tools.Imagens.hiddenElementsFilterSmall.png",
-                    "http://moodle");               
+                    "http://moodle");
 
                 ssToolsPullDownBtn.AddPushButton(ssFillInParameters);
                 ssToolsPullDownBtn.AddPushButton(ssCheckingDimension);
@@ -797,7 +797,7 @@ namespace KPLN_Tools
                     "http://moodle/mod/book/view.php?id=502&chapterid=1342");
 
             mPanel.AddItem(nodeManager);
-#endregion
+            #endregion
 
             return Result.Succeeded;
         }
@@ -826,13 +826,13 @@ namespace KPLN_Tools
             {
                 Text = text,
                 ToolTip = shortDescription,
-                LongDescription = longDescription,                
+                LongDescription = longDescription,
             };
             data.SetContextualHelp(new ContextualHelp(ContextualHelpType.Url, contextualHelp));
             data.Image = PngImageSource(smlImageName);
             data.LargeImage = PngImageSource(lrgImageName);
 
-            
+
             if (avclass)
                 data.AvailabilityClassName = typeof(StaticAvailable).FullName;
 
