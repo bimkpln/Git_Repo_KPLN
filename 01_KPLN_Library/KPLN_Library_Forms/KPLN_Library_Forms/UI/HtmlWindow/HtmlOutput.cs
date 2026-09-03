@@ -156,7 +156,7 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
                 if (_html_Output_Head == null)
                 {
                     string resCssPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location).ToString();
-                    _html_Output_Head = string.Format(@"<head><meta http-equiv='X-UA-Compatible' content='IE=9'><meta http-equiv='content-type' content='text/html; charset=utf-8'><meta name='appversion' content='0.2.0.0'><link href='file:///{0}\UI\HtmlWindow\LibStyles\outputLibStyles.css' rel='LibStylesheet'></head>", resCssPath).ToString();
+                    _html_Output_Head = string.Format(@"<head><meta http-equiv='X-UA-Compatible' content='IE=9'><meta http-equiv='content-type' content='text/html; charset=utf-8'><meta name='appversion' content='0.2.0.0'><link href='file:///{0}\UI\HtmlWindow\Styles\outputstyles.css' rel='stylesheet'></head>", resCssPath).ToString();
                 }
 
                 return _html_Output_Head;
