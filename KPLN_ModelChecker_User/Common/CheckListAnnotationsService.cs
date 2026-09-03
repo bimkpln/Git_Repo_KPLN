@@ -41,6 +41,8 @@ namespace KPLN_ModelChecker_User.Common
             {
                 uiapp.ActiveUIDocument.Selection.SetElementIds(abstrCheck.CheckerEntitiesColl.SelectMany(ent => ent.ElementIdCollection).ToList());
                 resultStatus = $"Выделено {abstrCheck.CheckerEntitiesColl.Sum(ce => ce.ElementIdCollection.Count())} элементов.";
+
+                return resultStatus;
             }
 
 
