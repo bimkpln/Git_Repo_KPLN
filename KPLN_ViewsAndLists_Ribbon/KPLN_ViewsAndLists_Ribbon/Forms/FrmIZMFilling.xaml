@@ -168,8 +168,19 @@
 
                                                                                     <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="2">
                                                                                         <ComboBox ItemsSource="{Binding AvailableRevisionItems}"
-                                                                                                  DisplayMemberPath="Name"
+                                                                                                  IsEnabled="{Binding IsRevisionSelectionEnabled}"
                                                                                                   SelectedItem="{Binding SelectedRevisionItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                                            <ComboBox.ItemTemplate>
+                                                                                                <DataTemplate>
+                                                                                                    <StackPanel Orientation="Horizontal">
+                                                                                                        <TextBlock Text="{Binding Name}"/>
+                                                                                                        <TextBlock Text=" - ОБЛАКО"
+                                                                                                                   Foreground="Red"
+                                                                                                                   FontWeight="Bold"
+                                                                                                                   Visibility="{Binding IsCloudRevision, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                                                    </StackPanel>
+                                                                                                </DataTemplate>
+                                                                                            </ComboBox.ItemTemplate>
                                                                                             <ComboBox.ItemContainerStyle>
                                                                                                 <Style TargetType="ComboBoxItem">
                                                                                                     <Style.Triggers>
@@ -226,8 +237,19 @@
                                                                         </Border>
                                                                         <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1" Padding="2">
                                                                             <ComboBox ItemsSource="{Binding SingleLine.AvailableRevisionItems}"
-                                                                                      DisplayMemberPath="Name"
+                                                                                      IsEnabled="{Binding SingleLine.IsRevisionSelectionEnabled}"
                                                                                       SelectedItem="{Binding SingleLine.SelectedRevisionItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                                                                <ComboBox.ItemTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <StackPanel Orientation="Horizontal">
+                                                                                            <TextBlock Text="{Binding Name}"/>
+                                                                                            <TextBlock Text=" - ОБЛАКО"
+                                                                                                       Foreground="Red"
+                                                                                                       FontWeight="Bold"
+                                                                                                       Visibility="{Binding IsCloudRevision, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                                                                        </StackPanel>
+                                                                                    </DataTemplate>
+                                                                                </ComboBox.ItemTemplate>
                                                                                 <ComboBox.ItemContainerStyle>
                                                                                     <Style TargetType="ComboBoxItem">
                                                                                         <Style.Triggers>
