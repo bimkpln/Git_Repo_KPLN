@@ -452,14 +452,19 @@ namespace KPLN_Looker
 
 
             #region Утсановка переменных, привязаных к виду
-            // Имя файла
             if (!doc.IsFamilyDocument)
-                _currentMonitoredDocFilePath_ExceptARKon = MonitoredDocFilePath_ExceptARKon(doc);
+            {
+                string docFilePath = MonitoredDocFilePath_ExceptARKon(doc);
+                
+                // Обновляю с заходом в БД, если другой проект
+                if (!docFilePath.Equals(_currentMonitoredDocFilePath_ExceptARKon))
+                {
+                    string fileFullName = KPLN_Library_DBWorker.FactoryParts.SQLite.SQLiteDocService.GetFileFullName(doc);
+                    CurrentDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
+                }
 
-
-            // Проект КПЛН
-            string fileFullName = KPLN_Library_DBWorker.FactoryParts.SQLite.SQLiteDocService.GetFileFullName(doc);
-            CurrentDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
+                _currentMonitoredDocFilePath_ExceptARKon = docFilePath;
+            }
             #endregion
 
 
@@ -674,54 +679,63 @@ namespace KPLN_Looker
             #region Бэкап версий с RS на наш сервак по проектам
             if (args.Status == RevitAPIEventStatus.Succeeded && CurrentDBProject != null && CurrentDBProject.RevitServerPath != null)
             {
-                bool isSET = doc.PathName.Contains("СЕТ_1");
                 // Проект Сетунь
+                bool isSET = _currentMonitoredDocFilePath_ExceptARKon.Contains("СЕТ_1");
                 if (isSET)
                 {
-                    if (doc.PathName.Contains("_АР_"))
+                    if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_АР_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_КР_"))
+                    else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_КР_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ЭОМ"))
+                    else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ЭОМ"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.1.ЭОМ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ВК"))
+                    else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ВК"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.2.ВК\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ПТ"))
+                    else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ПТ"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.3.АУПТ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ОВ"))
+                    else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ОВ"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.4.ОВ\\1.RVT\\00_Автоархив с Revit-Server");
-                    else if (doc.PathName.Contains("_ПБ_") || doc.PathName.Contains("_АК_") || doc.PathName.Contains("_СС_"))
+                    else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ПБ_") || _currentMonitoredDocFilePath_ExceptARKon.Contains("_АК_") || _currentMonitoredDocFilePath_ExceptARKon.Contains("_СС_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\Самолет Сетунь\\10.Стадия_Р\\7.5.СС\\1.RVT\\00_Автоархив с Revit-Server");
                 }
 
+
                 // Проект Матросская тишина
-                bool isMTRS = doc.PathName.Contains("МТРС_");
+                bool isMTRS = _currentMonitoredDocFilePath_ExceptARKon.Contains("МТРС_");
                 if (isMTRS)
                 {
                     ModelPath mPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(KPLN_Library_DBWorker.FactoryParts.SQLite.SQLiteDocService.GetFileFullName(doc));
                     if (mPath.ServerPath)
                     {
-                        if (doc.PathName.Contains("_КР_"))
+                        if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_КР_"))
                             RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\6.КР\\1.RVT\\00_Автоархив с Revit-Server");
-                        else if (doc.PathName.Contains("_ОВ_ТМ_"))
+                        else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ОВ_ТМ_"))
                             RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
-                        else if (doc.PathName.Contains("_ОВ_АТМ_"))
+                        else if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_ОВ_АТМ_"))
                             RSBackupFile(doc, "Y:\\Жилые здания\\Матросская Тишина\\10.Стадия_Р\\7.4.1.ИТП\\1.RVT\\00_Автоархив с Revit-Server");
                     }
                 }
 
+
                 // Проект Измайловский1
-                bool isIZML1 = doc.PathName.Contains("ИЗМЛ_");
+                bool isIZML1 = _currentMonitoredDocFilePath_ExceptARKon.Contains("ИЗМЛ_");
                 if (isIZML1)
                 {
-                    if (doc.PathName.Contains("_АР_"))
+                    if (_currentMonitoredDocFilePath_ExceptARKon.Contains("_АР_"))
                         RSBackupFile(doc, "Y:\\Жилые здания\\ФСК_Измайловский\\10.Стадия_Р\\5.АР\\1.RVT\\1 очередь\\00_Автоархив с Revit-Server");
                 }
 
+
                 // Проект Сочи гостиница Москва
-                bool isSGM = doc.PathName.Contains("СГМ_");
-                if (isSGM && doc.PathName.Contains("_АР_"))
+                bool isSGM = _currentMonitoredDocFilePath_ExceptARKon.Contains("СГМ_");
+                if (isSGM && _currentMonitoredDocFilePath_ExceptARKon.Contains("_АР_"))
                     RSBackupFile(doc, "Y:\\Общественные здания\\Сочи гостиница Москва\\10.Стадия_Р\\5.АР\\1.RVT\\00_Автоархив с Revit-Server");
+
+
+                // Проект Сочи Гравион
+                bool isSGRVN = _currentMonitoredDocFilePath_ExceptARKon.Contains("СГРВН_");
+                if (isSGRVN && _currentMonitoredDocFilePath_ExceptARKon.Contains("onmloiqzbbvg.rsnbim.ru") && _currentMonitoredDocFilePath_ExceptARKon.Contains("_АР_"))
+                    RSBackupFile(doc, "Y:\\Общественные здания\\Гравион_Сочи\\9.Стадия_П\\5.АР\\3.RVT\\00_Автоархив с Revit-Server");
             }
             #endregion
 
