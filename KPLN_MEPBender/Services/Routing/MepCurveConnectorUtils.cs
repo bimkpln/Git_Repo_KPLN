@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -68,10 +69,20 @@ namespace KPLN_MEPBender.Services.Routing
 
         public static bool TryConnect(Document doc, Connector firstConnector, Connector secondConnector, bool useElbow, out Element createdElement)
         {
+            string error;
+            return TryConnect(doc, firstConnector, secondConnector, useElbow, out createdElement, out error);
+        }
+
+        public static bool TryConnect(Document doc, Connector firstConnector, Connector secondConnector, bool useElbow, out Element createdElement, out string error)
+        {
             createdElement = null;
+            error = string.Empty;
 
             if (firstConnector == null || secondConnector == null)
+            {
+                error = "Не найден коннектор для соединения.";
                 return false;
+            }
 
             try
             {
@@ -85,8 +96,9 @@ namespace KPLN_MEPBender.Services.Routing
 
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                error = GetExceptionText(ex);
                 try
                 {
                     if (!firstConnector.IsConnectedTo(secondConnector))
@@ -94,8 +106,11 @@ namespace KPLN_MEPBender.Services.Routing
 
                     return true;
                 }
-                catch
+                catch (Exception connectEx)
                 {
+                    error = string.IsNullOrWhiteSpace(error)
+                        ? GetExceptionText(connectEx)
+                        : $"{error} {GetExceptionText(connectEx)}";
                     return false;
                 }
             }
@@ -116,6 +131,16 @@ namespace KPLN_MEPBender.Services.Routing
 
             foreach (Connector connector in familyInstance.MEPModel.ConnectorManager.Connectors)
                 yield return connector;
+        }
+
+        private static string GetExceptionText(Exception ex)
+        {
+            if (ex == null)
+                return string.Empty;
+
+            return string.IsNullOrWhiteSpace(ex.Message)
+                ? ex.GetType().Name
+                : $"{ex.GetType().Name}: {ex.Message}";
         }
     }
 }

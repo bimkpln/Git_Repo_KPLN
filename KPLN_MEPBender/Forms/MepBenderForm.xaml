@@ -68,7 +68,7 @@
                     <CheckBox Content="Автоматически очищать после выполнения изгиба"
                               Style="{StaticResource CHB}"
                               IsChecked="{Binding AutoClearRoutesAfterRun}" />
-                    <TextBlock Text="Трубы, воздуховоды и кабельные лотки"
+                    <TextBlock Text="Трубы, воздуховоды, кабельные лотки и короба"
                                Style="{StaticResource TXT}"
                                FontSize="12" />
                 </StackPanel>
@@ -80,24 +80,31 @@
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="90" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Зазор, мм" Style="{StaticResource TXT}" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Мин. зазор, мм" Style="{StaticResource TXT}" />
                         <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding OffsetMm, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TXB}" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="Добор, мм" Style="{StaticResource TXT}" Margin="8,0,4,0" />
+                        <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding OffsetIterationStepMm, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TXB}" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Угол, °" Style="{StaticResource TXT}" />
                         <ComboBox Grid.Row="1"
                                   Grid.Column="1"
+                                  Grid.ColumnSpan="3"
                                   ItemsSource="{Binding AngleOptions}"
                                   SelectedItem="{Binding AngleDegrees, Mode=TwoWay}"
                                   Style="{StaticResource CBX}" />
                     </Grid>
                     <TextBlock Text="{Binding AngleHelp}" Style="{StaticResource TXT}" FontSize="12" />
+                    <TextBlock Text="{Binding OffsetIterationHelp}" Style="{StaticResource TXT}" FontSize="12" TextWrapping="Wrap" />                    
+                    <TextBlock Text="{Binding AlignVerticalBendHelp}" Style="{StaticResource TXT}" FontSize="12" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -112,6 +119,9 @@
                             <ToggleButton Content="Вправо" Style="{StaticResource TGB}" IsChecked="{Binding BendRight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </UniformGrid>
                     </Border>
+                    <CheckBox Content="Вниз: выровнять по самой нижней отметке"
+                              Style="{StaticResource CHB}"
+                              IsChecked="{Binding AlignVerticalBendByLowest}" />
                     <TextBlock Text="{Binding DirectionHelp}" Style="{StaticResource TXT}" FontSize="12" />
                 </StackPanel>
             </Border>
@@ -139,7 +149,7 @@
             <TextBlock Text="{Binding UserHelp}"
                        Style="{StaticResource TXT}"
                        FontSize="12"
-                       Foreground="#FFD166"
+                       Foreground="{Binding UserHelpForeground}"
                        TextWrapping="Wrap"
                        MinHeight="32" />
         </StackPanel>

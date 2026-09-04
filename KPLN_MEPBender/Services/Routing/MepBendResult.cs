@@ -30,6 +30,10 @@ namespace KPLN_MEPBender.Services.Routing
 
         public bool GeometryWasChanged { get; set; }
 
+        public bool HasInvalidFittingFamilyFailure { get; set; }
+
+        public bool HasInsufficientSpaceFailure { get; set; }
+
         public string Message { get; set; }
 
         public void AddIssue(ElementId elementId, string elementType, string stage, string message)

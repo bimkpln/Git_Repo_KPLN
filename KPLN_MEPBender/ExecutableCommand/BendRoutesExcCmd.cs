@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_MEPBender.Forms.Entities;
@@ -32,8 +32,10 @@ namespace KPLN_MEPBender.ExecutableCommand
                     _entity.RouteElementIds,
                     _entity.ObstacleReferences,
                     _entity.OffsetMm,
+                    _entity.OffsetIterationStepMm,
                     _entity.AngleDegrees,
                     _entity.GetSelectedDirections(),
+                    _entity.AlignVerticalBendByLowest,
                     _entity.AnalyzeCollisions);
 
                 MepBendResult result = new MepRouteBender().Execute(request);
@@ -48,7 +50,11 @@ namespace KPLN_MEPBender.ExecutableCommand
 
                 _entity.SetStatus(
                     result.GeometryWasChanged ? null : "Геометрия трасс пока не изменялась.",
-                    result.Message);
+                    result.Message,
+                    GetResultHelpForeground(result));
+
+                if (result.HasInvalidFittingFamilyFailure)
+                    ShowInvalidFittingFamilyDialog();
 
                 if (_entity.AutoClearObstaclesAfterRun)
                     _entity.ClearObstacles();
@@ -61,9 +67,34 @@ namespace KPLN_MEPBender.ExecutableCommand
             catch (Exception ex)
             {
                 TaskDialog.Show("MEP Bender", ex.ToString());
-                _entity.SetStatus("Ошибка при выполнении MEP Bender.");
+                _entity.SetStatus("Ошибка при выполнении MEP Bender.", null, "#FF5C5C");
                 return Result.Failed;
             }
+        }
+
+        private string GetResultHelpForeground(MepBendResult result)
+        {
+            if (result == null || !result.GeometryWasChanged || result.ProcessedRouteIds.Count == 0)
+                return "#FF5C5C";
+
+            bool hasErrors = result.SkippedRouteCount > 0
+                             || result.FailedRouteCount > 0
+                             || result.FittingFailureCount > 0
+                             || result.ReconnectFailureCount > 0
+                             || result.HasInvalidFittingFamilyFailure
+                             || result.HasInsufficientSpaceFailure;
+
+            return hasErrors ? "#FFD166" : "#6FD37A";
+        }
+        private void ShowInvalidFittingFamilyDialog()
+        {
+            TaskDialog dialog = new TaskDialog("MEP Bender")
+            {
+                MainInstruction = "Проверь семейства фасонных элементов",
+                MainContent = "Revit не нашёл подходящий отвод/соединительную деталь для выбранного угла. Проверь семейства, таблицы углов и тип трассы.",
+                CommonButtons = TaskDialogCommonButtons.Ok
+            };
+            dialog.Show();
         }
     }
 }

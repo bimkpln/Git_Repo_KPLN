@@ -9,6 +9,7 @@ namespace KPLN_MEPBender.Services.Routing
     internal sealed class BendPathBuilder
     {
         private static readonly double MinSegmentLength = UnitConvert.MmToInternal(10);
+        private readonly ObstacleOutlineBuilder _obstacleOutlineBuilder = new ObstacleOutlineBuilder();
 
         public bool TryBuild(MepBendRequest request, MEPCurve source, Line routeLine, Outline obstacleOutline, out List<XYZ> points)
         {
@@ -111,16 +112,62 @@ namespace KPLN_MEPBender.Services.Routing
             if (bendDirection == BendDirection.Left || bendDirection == BendDirection.Right)
                 return CalculateLateralGroupOffset(request, source, routeDirection, obstacleOutline, offsetDirection, clearance);
 
+            if (bendDirection == BendDirection.Down && request.AlignVerticalBendByLowest)
+                return CalculateLowestAlignedVerticalOffset(request, source, routeStart, routeDirection, obstacleOutline, offsetDirection, clearance);
+
             return CalculateSingleRouteOffset(source, routeStart, obstacleOutline, offsetDirection, clearance);
         }
 
         private double CalculateSingleRouteOffset(MEPCurve source, XYZ routeStart, Outline obstacleOutline, XYZ offsetDirection, double clearance)
         {
             double sourceCenterProjection = routeStart.DotProduct(offsetDirection);
+            return CalculateTargetCenterProjection(source, routeStart, obstacleOutline, offsetDirection, clearance) - sourceCenterProjection;
+        }
+
+        private double CalculateLowestAlignedVerticalOffset(
+            MepBendRequest request,
+            MEPCurve source,
+            XYZ routeStart,
+            XYZ routeDirection,
+            Outline obstacleOutline,
+            XYZ offsetDirection,
+            double clearance)
+        {
+            double sourceCenterProjection = routeStart.DotProduct(offsetDirection);
+            double targetCenterProjection = CalculateTargetCenterProjection(source, routeStart, obstacleOutline, offsetDirection, clearance);
+
+            foreach (ElementId routeElementId in request.RouteElementIds)
+            {
+                MEPCurve route = request.Doc.GetElement(routeElementId) as MEPCurve;
+                if (route == null || route.Id == source.Id)
+                    continue;
+
+                LocationCurve locationCurve = route.Location as LocationCurve;
+                Line routeLine = locationCurve?.Curve as Line;
+                if (routeLine == null)
+                    continue;
+
+                if (!IsParallelTo(route, routeDirection))
+                    continue;
+
+                Outline routeObstacleOutline = _obstacleOutlineBuilder.BuildForRoute(request, route, 0, 0);
+                if (routeObstacleOutline == null)
+                    continue;
+
+                double routeTargetProjection = CalculateTargetCenterProjection(route, routeLine.GetEndPoint(0), routeObstacleOutline, offsetDirection, clearance);
+                targetCenterProjection = Math.Max(targetCenterProjection, routeTargetProjection);
+            }
+
+            return targetCenterProjection - sourceCenterProjection;
+        }
+
+        private double CalculateTargetCenterProjection(MEPCurve source, XYZ routeStart, Outline obstacleOutline, XYZ offsetDirection, double clearance)
+        {
+            double sourceCenterProjection = routeStart.DotProduct(offsetDirection);
             double obstacleSurfaceProjection = GetMaxProjection(obstacleOutline, offsetDirection);
             double routeHalfSize = GetRouteHalfSize(source, offsetDirection, sourceCenterProjection);
 
-            return obstacleSurfaceProjection + clearance + routeHalfSize - sourceCenterProjection;
+            return obstacleSurfaceProjection + clearance + routeHalfSize;
         }
 
         private double CalculateLateralGroupOffset(

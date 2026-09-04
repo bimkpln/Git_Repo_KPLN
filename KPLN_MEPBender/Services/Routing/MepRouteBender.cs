@@ -13,6 +13,7 @@ namespace KPLN_MEPBender.Services.Routing
 {
     public sealed class MepRouteBender
     {
+        private const int MaxOffsetRetryCount = 5;
         private readonly BendPathBuilder _bendPathBuilder;
         private readonly MepCurveFactory _mepCurveFactory;
         private readonly ObstacleOutlineBuilder _obstacleOutlineBuilder;
@@ -32,32 +33,180 @@ namespace KPLN_MEPBender.Services.Routing
         {
             MepBendResult result = new MepBendResult();
 
-            using (Transaction transaction = new Transaction(request.Doc, "KPLN MEP Bender"))
-            {
-                transaction.Start();
+            foreach (ElementId routeElementId in request.RouteElementIds)
+                BendRouteWithRetries(request, routeElementId, result);
 
-                foreach (ElementId routeElementId in request.RouteElementIds)
-                {
-                    try
-                    {
-                        BendRoute(request, routeElementId, result);
-                    }
-                    catch (Exception ex)
-                    {
-                        result.FailedRouteCount++;
-                        Element element = request.Doc.GetElement(routeElementId);
-                        result.AddIssue(routeElementId, GetElementTypeName(element), "Ошибка трассы", GetExceptionText(ex));
-                    }
-                }
-
-                transaction.Commit();
-            }
-
+            UpdateFailureFlagsFromIssues(result);
             result.GeometryWasChanged = result.CreatedElementIds.Count > 0;
             result.Message = BuildResultMessage(result);
             return result;
         }
 
+        private void BendRouteWithRetries(MepBendRequest request, ElementId routeElementId, MepBendResult result)
+        {
+            MepBendResult lastRouteResult = null;
+            List<MepBenderFailure> lastFailures = new List<MepBenderFailure>();
+            Exception lastException = null;
+
+            for (int attempt = 0; attempt <= MaxOffsetRetryCount; attempt++)
+            {
+                double currentOffsetMm = request.OffsetMm + request.OffsetIterationStepMm * attempt;
+                MepBendRequest attemptRequest = request.WithOffset(currentOffsetMm);
+
+                bool succeeded = TryExecuteRouteTransaction(
+                    attemptRequest,
+                    routeElementId,
+                    out MepBendResult routeResult,
+                    out List<MepBenderFailure> failures,
+                    out Exception exception);
+
+                MepBenderFailureKind failureKind = MepBenderFailureClassifier.Classify(failures, routeResult, exception);
+                if (succeeded)
+                {
+                    if (attempt > 0)
+                    {
+                        routeResult.AddIssue(
+                            routeElementId,
+                            GetElementTypeName(request.Doc.GetElement(routeElementId)),
+                            "Подбор зазора",
+                            $"Трасса построена с зазором {currentOffsetMm:0.##} мм после {attempt} пересчёта(ов). Минимальный зазор: {request.OffsetMm:0.##} мм.");
+                    }
+
+                    MergeResult(result, routeResult);
+                    return;
+                }
+
+                ClearRolledBackGeometry(routeResult);
+                lastRouteResult = routeResult;
+                lastFailures = failures;
+                lastException = exception;
+
+                if (failureKind == MepBenderFailureKind.InsufficientSpace && attempt < MaxOffsetRetryCount)
+                    continue;
+
+                AddAttemptFailureIssues(routeElementId, request, routeResult, failures, exception, failureKind, currentOffsetMm);
+                if (routeResult.SkippedRouteCount == 0 && routeResult.ProcessedRouteIds.Count == 0)
+                    routeResult.SkippedRouteCount++;
+
+                MergeResult(result, routeResult);
+                return;
+            }
+
+            if (lastRouteResult == null)
+                lastRouteResult = new MepBendResult();
+
+            AddAttemptFailureIssues(
+                routeElementId,
+                request,
+                lastRouteResult,
+                lastFailures,
+                lastException,
+                MepBenderFailureKind.InsufficientSpace,
+                request.OffsetMm + request.OffsetIterationStepMm * MaxOffsetRetryCount);
+
+            if (lastRouteResult.SkippedRouteCount == 0 && lastRouteResult.ProcessedRouteIds.Count == 0)
+                lastRouteResult.SkippedRouteCount++;
+
+            MergeResult(result, lastRouteResult);
+        }
+
+        private bool TryExecuteRouteTransaction(
+            MepBendRequest request,
+            ElementId routeElementId,
+            out MepBendResult routeResult,
+            out List<MepBenderFailure> failures,
+            out Exception exception)
+        {
+            routeResult = new MepBendResult();
+            exception = null;
+            MepBenderFailuresPreprocessor failuresPreprocessor = new MepBenderFailuresPreprocessor();
+
+            using (Transaction transaction = new Transaction(request.Doc, "KPLN MEP Bender"))
+            {
+                transaction.Start();
+                FailureHandlingOptions options = transaction.GetFailureHandlingOptions();
+                options.SetFailuresPreprocessor(failuresPreprocessor);
+                options.SetClearAfterRollback(true);
+                transaction.SetFailureHandlingOptions(options);
+
+                try
+                {
+                    BendRoute(request, routeElementId, routeResult);
+
+                    if (routeResult.ProcessedRouteIds.Count == 0)
+                    {
+                        transaction.RollBack();
+                        failures = failuresPreprocessor.Failures;
+                        return false;
+                    }
+
+                    TransactionStatus status = transaction.Commit();
+                    failures = failuresPreprocessor.Failures;
+                    return status == TransactionStatus.Committed && !failuresPreprocessor.HasError;
+                }
+                catch (Exception ex)
+                {
+                    exception = ex;
+                    if (transaction.GetStatus() == TransactionStatus.Started)
+                        transaction.RollBack();
+
+                    failures = failuresPreprocessor.Failures;
+                    routeResult.AddIssue(routeElementId, GetElementTypeName(request.Doc.GetElement(routeElementId)), "Ошибка трассы", GetExceptionText(ex));
+                    return false;
+                }
+            }
+        }
+
+        private void ClearRolledBackGeometry(MepBendResult routeResult)
+        {
+            if (routeResult == null)
+                return;
+
+            routeResult.CreatedElementIds.Clear();
+            routeResult.ProcessedRouteIds.Clear();
+            routeResult.FittingFailureCount = 0;
+            routeResult.ReconnectFailureCount = 0;
+        }
+
+        private void AddAttemptFailureIssues(
+            ElementId routeElementId,
+            MepBendRequest request,
+            MepBendResult routeResult,
+            IEnumerable<MepBenderFailure> failures,
+            Exception exception,
+            MepBenderFailureKind failureKind,
+            double currentOffsetMm)
+        {
+            string elementType = GetElementTypeName(request.Doc.GetElement(routeElementId));
+
+            if (failureKind == MepBenderFailureKind.InsufficientSpace)
+            {
+                routeResult.HasInsufficientSpaceFailure = true;
+                routeResult.AddIssue(
+                    routeElementId,
+                    elementType,
+                    "\u041f\u043e\u0434\u0431\u043e\u0440 \u0437\u0430\u0437\u043e\u0440\u0430",
+                    $"\u041d\u0435\u0434\u043e\u0441\u0442\u0430\u0442\u043e\u0447\u043d\u043e \u043c\u0435\u0441\u0442\u0430 \u0434\u043b\u044f \u043f\u043e\u0441\u0442\u0440\u043e\u0435\u043d\u0438\u044f \u0441\u043e\u0435\u0434\u0438\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0445 \u0434\u0435\u0442\u0430\u043b\u0435\u0439. \u041f\u0440\u043e\u0432\u0435\u0440\u0435\u043d\u044b \u0437\u0430\u0437\u043e\u0440\u044b \u043e\u0442 {request.OffsetMm:0.##} \u0434\u043e {currentOffsetMm:0.##} \u043c\u043c \u0441 \u0448\u0430\u0433\u043e\u043c {request.OffsetIterationStepMm:0.##} \u043c\u043c. \u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0443\u0432\u0435\u043b\u0438\u0447\u0438\u0442\u044c \u0437\u0430\u0437\u043e\u0440, \u0443\u043c\u0435\u043d\u044c\u0448\u0438\u0442\u044c \u0443\u0433\u043e\u043b \u0438\u043b\u0438 \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u0434\u0440\u0443\u0433\u043e\u0435 \u043d\u0430\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435.");
+            }
+            else if (failureKind == MepBenderFailureKind.InvalidFittingFamily)
+            {
+                routeResult.HasInvalidFittingFamilyFailure = true;
+                routeResult.AddIssue(
+                    routeElementId,
+                    elementType,
+                    "\u0424\u0430\u0441\u043e\u043d\u043d\u044b\u0435 \u044d\u043b\u0435\u043c\u0435\u043d\u0442\u044b",
+                    "\u0422\u0430\u043a\u043e\u0439 \u0443\u0433\u043e\u043b \u0434\u043b\u044f \u0444\u0430\u0441\u043e\u043d\u043d\u044b\u0445 \u044d\u043b\u0435\u043c\u0435\u043d\u0442\u043e\u0432 \u043d\u0435 \u043f\u0440\u0438\u043c\u0435\u043d\u0438\u043c: Revit \u043d\u0435 \u043d\u0430\u0448\u0451\u043b \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0439 \u043e\u0442\u0432\u043e\u0434/\u0441\u043e\u0435\u0434\u0438\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u0443\u044e \u0434\u0435\u0442\u0430\u043b\u044c. \u041f\u0440\u043e\u0432\u0435\u0440\u044c \u0441\u0435\u043c\u0435\u0439\u0441\u0442\u0432\u0430, \u0442\u0430\u0431\u043b\u0438\u0446\u044b \u0443\u0433\u043b\u043e\u0432 \u0438 \u0442\u0438\u043f \u0442\u0440\u0430\u0441\u0441\u044b.");
+            }
+
+            foreach (MepBenderFailure failure in failures ?? Enumerable.Empty<MepBenderFailure>())
+            {
+                if (!string.IsNullOrWhiteSpace(failure.Description))
+                    routeResult.AddIssue(routeElementId, elementType, "\u041e\u0448\u0438\u0431\u043a\u0430 Revit", failure.Description);
+            }
+
+            if (exception != null)
+                routeResult.AddIssue(routeElementId, elementType, "\u0418\u0441\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435", GetExceptionText(exception));
+        }
         private void BendRoute(MepBendRequest request, ElementId routeElementId, MepBendResult result)
         {
             MEPCurve source = request.Doc.GetElement(routeElementId) as MEPCurve;
@@ -153,6 +302,17 @@ namespace KPLN_MEPBender.Services.Routing
             }
         }
 
+        private void UpdateFailureFlagsFromIssues(MepBendResult result)
+        {
+            if (result == null)
+                return;
+
+            MepBenderFailureKind failureKind = MepBenderFailureClassifier.Classify(null, result, null);
+            if (failureKind == MepBenderFailureKind.InvalidFittingFamily)
+                result.HasInvalidFittingFamilyFailure = true;
+            else if (failureKind == MepBenderFailureKind.InsufficientSpace)
+                result.HasInsufficientSpaceFailure = true;
+        }
         private void MergeResult(MepBendResult result, MepBendResult routeResult)
         {
             result.CreatedElementIds.AddRange(routeResult.CreatedElementIds);
@@ -162,6 +322,8 @@ namespace KPLN_MEPBender.Services.Routing
             result.FailedRouteCount += routeResult.FailedRouteCount;
             result.FittingFailureCount += routeResult.FittingFailureCount;
             result.ReconnectFailureCount += routeResult.ReconnectFailureCount;
+            result.HasInvalidFittingFamilyFailure |= routeResult.HasInvalidFittingFamilyFailure;
+            result.HasInsufficientSpaceFailure |= routeResult.HasInsufficientSpaceFailure;
             result.Issues.AddRange(routeResult.Issues);
         }
 
@@ -179,10 +341,7 @@ namespace KPLN_MEPBender.Services.Routing
             MepBendResult result)
         {
             if (!(source is Pipe) && !(source is Duct))
-            {
-                result.AddIssue(source.Id, GetElementTypeName(source), "Разрыв исходника", "BreakCurve доступен только для труб и воздуховодов. Для этого типа будет использован запасной сценарий.");
                 return false;
-            }
 
             XYZ start = pathPoints.First();
             XYZ firstJoin = pathPoints[1];
@@ -239,7 +398,10 @@ namespace KPLN_MEPBender.Services.Routing
             chainSegments.Add(tailSegment);
 
             List<XYZ> jointPoints = pathPoints.Skip(1).Take(pathPoints.Count - 2).ToList();
-            result.FittingFailureCount += ConnectInternalSegments(doc, chainSegments, jointPoints, sourceParameters, result);
+            int fittingFailureCount = ConnectInternalSegments(doc, chainSegments, jointPoints, sourceParameters, result);
+            result.FittingFailureCount += fittingFailureCount;
+            if (fittingFailureCount > 0)
+                return false;
 
             result.ProcessedRouteIds.Add(source.Id);
             result.CreatedElementIds.AddRange(chainSegments.Where(s => !s.Id.Equals(source.Id)).Select(s => s.Id));
@@ -278,7 +440,10 @@ namespace KPLN_MEPBender.Services.Routing
 
             doc.Regenerate();
             List<XYZ> jointPoints = pathPoints.Skip(1).Take(pathPoints.Count - 2).ToList();
-            result.FittingFailureCount += ConnectInternalSegments(doc, chainSegments, jointPoints, sourceParameters, result);
+            int fittingFailureCount = ConnectInternalSegments(doc, chainSegments, jointPoints, sourceParameters, result);
+            result.FittingFailureCount += fittingFailureCount;
+            if (fittingFailureCount > 0)
+                return false;
             doc.Regenerate();
 
             result.ReconnectFailureCount += ReconnectExternalElements(doc, chainSegments, pathPoints, externalConnections, result);
@@ -345,10 +510,10 @@ namespace KPLN_MEPBender.Services.Routing
                 Connector firstConnector = MepCurveConnectorUtils.GetClosestEndConnector(newSegments[i - 1], jointPoint);
                 Connector secondConnector = MepCurveConnectorUtils.GetClosestEndConnector(newSegments[i], jointPoint);
 
-                if (!MepCurveConnectorUtils.TryConnect(doc, firstConnector, secondConnector, true, out Element fitting))
+                if (!MepCurveConnectorUtils.TryConnect(doc, firstConnector, secondConnector, true, out Element fitting, out string connectError))
                 {
                     failureCount++;
-                    result.AddIssue(newSegments[i].Id, GetElementTypeName(newSegments[i]), "Соединение", $"Не удалось соединить участки в точке {FormatPoint(jointPoint)}.");
+                    result.AddIssue(newSegments[i].Id, GetElementTypeName(newSegments[i]), "Соединение", $"Не удалось соединить участки в точке {FormatPoint(jointPoint)}. {connectError}" );
                     continue;
                 }
 
@@ -481,22 +646,64 @@ namespace KPLN_MEPBender.Services.Routing
         private string BuildResultMessage(MepBendResult result)
         {
             StringBuilder builder = new StringBuilder();
-            builder.Append($"Обработано трасс: {result.ProcessedRouteIds.Count}. Создано участков: {result.CreatedElementIds.Count}. Пропущено: {result.SkippedRouteCount}. Ошибок трасс: {result.FailedRouteCount}. Ошибок фитингов: {result.FittingFailureCount}. Ошибок переподключения: {result.ReconnectFailureCount}.");
+            builder.Append($"\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e \u0442\u0440\u0430\u0441\u0441: {result.ProcessedRouteIds.Count}. \u0421\u043e\u0437\u0434\u0430\u043d\u043e \u0443\u0447\u0430\u0441\u0442\u043a\u043e\u0432: {result.CreatedElementIds.Count}. \u041f\u0440\u043e\u043f\u0443\u0449\u0435\u043d\u043e: {result.SkippedRouteCount}. \u041e\u0448\u0438\u0431\u043e\u043a \u0442\u0440\u0430\u0441\u0441: {result.FailedRouteCount}. \u041e\u0448\u0438\u0431\u043e\u043a \u0444\u0438\u0442\u0438\u043d\u0433\u043e\u0432: {result.FittingFailureCount}. \u041e\u0448\u0438\u0431\u043e\u043a \u043f\u0435\u0440\u0435\u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f: {result.ReconnectFailureCount}.");
 
-            if (result.Issues.Count > 0)
+            if (result.HasInvalidFittingFamilyFailure)
             {
                 builder.AppendLine();
-                builder.AppendLine("Детали:");
-                foreach (RouteIssue issue in result.Issues.Take(12))
+                builder.AppendLine();
+                builder.AppendLine("\u0412\u0430\u0436\u043d\u043e: Revit \u043d\u0435 \u043d\u0430\u0448\u0451\u043b \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0439 \u043e\u0442\u0432\u043e\u0434/\u0441\u043e\u0435\u0434\u0438\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u0443\u044e \u0434\u0435\u0442\u0430\u043b\u044c.");
+                builder.AppendLine("\u041f\u0440\u043e\u0432\u0435\u0440\u044c \u0441\u0435\u043c\u0435\u0439\u0441\u0442\u0432\u0430, \u0442\u0430\u0431\u043b\u0438\u0446\u044b \u0443\u0433\u043b\u043e\u0432 \u0438 \u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u043e\u0441\u0442\u044c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u0443\u0433\u043b\u0430 \u0434\u043b\u044f \u044d\u0442\u043e\u0433\u043e \u0442\u0438\u043f\u0430 \u0442\u0440\u0430\u0441\u0441\u044b.");
+            }
+
+            if (result.HasInsufficientSpaceFailure)
+            {
+                builder.AppendLine();
+                builder.AppendLine();
+                builder.AppendLine("\u0412\u0430\u0436\u043d\u043e: \u043c\u0435\u0441\u0442\u0430 \u0434\u043b\u044f \u043f\u043e\u0441\u0442\u0440\u043e\u0435\u043d\u0438\u044f \u043d\u0435 \u0445\u0432\u0430\u0442\u0438\u043b\u043e \u0434\u0430\u0436\u0435 \u043f\u043e\u0441\u043b\u0435 \u0434\u043e\u0431\u043e\u0440\u0430 \u0437\u0430\u0437\u043e\u0440\u0430.");
+                builder.AppendLine("\u041f\u043e\u043f\u0440\u043e\u0431\u0443\u0439 \u0443\u0432\u0435\u043b\u0438\u0447\u0438\u0442\u044c \u043c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 \u0437\u0430\u0437\u043e\u0440, \u0443\u043c\u0435\u043d\u044c\u0448\u0438\u0442\u044c \u0443\u0433\u043e\u043b \u0438\u043b\u0438 \u0432\u044b\u0431\u0440\u0430\u0442\u044c \u0434\u0440\u0443\u0433\u043e\u0435 \u043d\u0430\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435.");
+            }
+
+            List<RouteIssue> visibleIssues = GetVisibleIssues(result).ToList();
+            if (visibleIssues.Count > 0)
+            {
+                builder.AppendLine();
+                builder.AppendLine();
+                builder.AppendLine("\u0422\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0434\u0435\u0442\u0430\u043b\u0438:");
+                foreach (RouteIssue issue in visibleIssues.Take(6))
                     builder.AppendLine(issue.ToString());
 
-                if (result.Issues.Count > 12)
-                    builder.AppendLine($"... и ещё {result.Issues.Count - 12} сообщений.");
+                int hiddenCount = result.Issues.Count - visibleIssues.Take(6).Count();
+                if (hiddenCount > 0)
+                    builder.AppendLine($"... \u0438 \u0435\u0449\u0451 {hiddenCount} \u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u0438\u0445 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439.");
             }
 
             return builder.ToString();
         }
 
+        private IEnumerable<RouteIssue> GetVisibleIssues(MepBendResult result)
+        {
+            if (!result.HasInvalidFittingFamilyFailure)
+                return result.Issues;
+
+            return result.Issues.Where(issue => !IsLowLevelFittingIssue(issue));
+        }
+
+        private bool IsLowLevelFittingIssue(RouteIssue issue)
+        {
+            if (issue == null)
+                return false;
+
+            string stage = issue.Stage ?? string.Empty;
+            string message = issue.Message ?? string.Empty;
+
+            return stage.Contains("\u0421\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0435")
+                   || stage.Contains("\u0420\u0430\u0437\u0440\u044b\u0432 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0430")
+                   || stage.Contains("\u0418\u0442\u043e\u0433 \u0442\u0440\u0430\u0441\u0441\u044b")
+                   || message.Contains("failed to insert elbow")
+                   || message.Contains("The referenced object is not valid")
+                   || message.Contains("BreakCurve \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d");
+        }
         private string GetElementTypeName(Element element)
         {
             if (element == null)

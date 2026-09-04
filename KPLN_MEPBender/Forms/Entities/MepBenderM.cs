@@ -14,6 +14,7 @@ namespace KPLN_MEPBender.Forms.Entities
     public sealed class MepBenderM : INotifyPropertyChanged, IJsonSerializable
     {
         private double _offsetMm = 100;
+        private double _offsetIterationStepMm = 25;
         private double _angleDegrees = 45;
         private bool _bendUp;
         private bool _bendDown;
@@ -22,8 +23,10 @@ namespace KPLN_MEPBender.Forms.Entities
         private bool _analyzeCollisions;
         private bool _autoClearObstaclesAfterRun = true;
         private bool _autoClearRoutesAfterRun = true;
+        private bool _alignVerticalBendByLowest = true;
         private string _userMainStatus;
         private string _userHelp;
+        private string _userHelpForeground = "#FFD166";
 
         public MepBenderM()
         {
@@ -46,6 +49,18 @@ namespace KPLN_MEPBender.Forms.Entities
             {
                 _offsetMm = value;
                 OnPropertyChanged();
+                UpdateCanRunProperties();
+            }
+        }
+
+        public double OffsetIterationStepMm
+        {
+            get => _offsetIterationStepMm;
+            set
+            {
+                _offsetIterationStepMm = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(OffsetIterationHelp));
                 UpdateCanRunProperties();
             }
         }
@@ -117,6 +132,16 @@ namespace KPLN_MEPBender.Forms.Entities
             }
         }
 
+        public bool AlignVerticalBendByLowest
+        {
+            get => _alignVerticalBendByLowest;
+            set
+            {
+                _alignVerticalBendByLowest = value;
+                OnPropertyChanged();
+            }
+        }
+
         public string UserMainStatus
         {
             get => _userMainStatus;
@@ -137,12 +162,25 @@ namespace KPLN_MEPBender.Forms.Entities
             }
         }
 
+        public string UserHelpForeground
+        {
+            get => _userHelpForeground;
+            set
+            {
+                _userHelpForeground = value;
+                OnPropertyChanged();
+            }
+        }
+
         public string ObstaclesButtonText => $"Огибаемые элементы ({ObstacleReferences.Count})";
 
         public string RoutesButtonText => $"Выбрать трассы ({RouteElementIds.Count})";
 
         public string AngleHelp => $"Угол построения огибания: {AngleDegrees}°.";
 
+        public string OffsetIterationHelp => $"Добор зазора применяется только если Revit сообщает, что места не хватило. Максимум 5 пересчётов: от минимального зазора до +{OffsetIterationStepMm * 5:0.##} мм.";
+
+        public string AlignVerticalBendHelp => "Для направления вниз выравнивает все выбранные параллельные трассы по самой нижней рассчитанной отметке обхода.";
         public string DirectionHelp => "Одновременно может быть активно только одно направление. Плоскость изменения определит алгоритм.";
 
         public string ClashAnalyzeHelp => AnalyzeCollisions
@@ -153,6 +191,7 @@ namespace KPLN_MEPBender.Forms.Entities
                               && RouteElementIds.Count > 0
                               && GetSelectedDirections().Any()
                               && OffsetMm > 0
+                              && OffsetIterationStepMm > 0
                               && AngleOptions.Contains(AngleDegrees);
 
         public IReadOnlyCollection<BendDirection> GetSelectedDirections()
@@ -176,11 +215,13 @@ namespace KPLN_MEPBender.Forms.Entities
             return new
             {
                 OffsetMm,
+                OffsetIterationStepMm,
                 AngleDegrees,
                 BendUp,
                 BendDown,
                 BendLeft,
                 BendRight,
+                AlignVerticalBendByLowest,
                 AnalyzeCollisions,
                 AutoClearObstaclesAfterRun,
                 AutoClearRoutesAfterRun
@@ -194,6 +235,9 @@ namespace KPLN_MEPBender.Forms.Entities
 
             if (OffsetMm <= 0)
                 OffsetMm = 100;
+
+            if (OffsetIterationStepMm <= 0)
+                OffsetIterationStepMm = 25;
 
             NormalizeDirectionSelection();
         }
@@ -242,11 +286,13 @@ namespace KPLN_MEPBender.Forms.Entities
             UpdateCanRunProperties();
         }
 
-        public void SetStatus(string mainStatus, string help = null)
+        public void SetStatus(string mainStatus, string help = null, string helpForeground = null)
         {
             UserMainStatus = mainStatus;
             if (help != null)
                 UserHelp = help;
+            if (!string.IsNullOrWhiteSpace(helpForeground))
+                UserHelpForeground = helpForeground;
         }
 
         private void SetDirection(BendDirection direction, bool isSelected)
