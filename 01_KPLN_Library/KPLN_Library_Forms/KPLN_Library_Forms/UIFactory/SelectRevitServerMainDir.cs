@@ -48,6 +48,7 @@ namespace KPLN_Library_Forms.UIFactory
                     {
                         new ElementEntity(@"rs24-1\Гравион_Сочи\Стадия П", "Содержит модели всех разделов стадии ПД"),
                         new ElementEntity(@"rs24-1\Гравион_Сочи\Стадия Р", "Содержит модели всех разделов стадии РД"),
+                        new ElementEntity(@"onmloiqzbbvg.rsnbim.ru\Гравион_Сочи\Стадия П", "ОБЛАКО: Содержит модели всех разделов стадии ПД"),
                     };
                     break;
             }
