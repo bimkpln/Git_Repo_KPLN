@@ -614,6 +614,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
     internal class RevisionComboItem : INotifyPropertyChanged
     {
         private bool _isEnabled;
+        private bool _isCloudRevision;
 
         public ElementId Id { get; set; }
         public int IdValue { get; set; }
@@ -633,6 +634,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             }
         }
 
+        public bool IsCloudRevision
+        {
+            get { return _isCloudRevision; }
+            set
+            {
+                if (_isCloudRevision == value)
+                    return;
+
+                _isCloudRevision = value;
+                OnPropertyChanged("IsCloudRevision");
+            }
+        }
+
         public RevisionComboItem(ElementId id, string name, int sequenceNumber)
         {
             Id = id ?? ElementId.InvalidElementId;
@@ -640,13 +654,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             Name = name;
             SequenceNumber = sequenceNumber;
             _isEnabled = true;
+            _isCloudRevision = false;
         }
 
         public RevisionComboItem Clone()
         {
             return new RevisionComboItem(Id, Name, SequenceNumber)
             {
-                IsEnabled = IsEnabled
+                IsEnabled = IsEnabled,
+                IsCloudRevision = IsCloudRevision
             };
         }
 
@@ -1201,7 +1217,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void LoadStandardFull()
         {
-            List<Revision> revisions = _sheet.GetAdditionalRevisionIds()
+            List<Revision> revisions = _sheet.GetAllRevisionIds()
                 .Select(x => _doc.GetElement(x) as Revision)
                 .Where(x => x != null)
                 .OrderByDescending(x => x.SequenceNumber)
@@ -1231,7 +1247,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             foreach (SheetRevisionLine line in Lines)
                 line.ResetAllData();
 
-            Revision revision = _sheet.GetAdditionalRevisionIds()
+            Revision revision = _sheet.GetAllRevisionIds()
                 .Select(x => _doc.GetElement(x) as Revision)
                 .Where(x => x != null)
                 .OrderByDescending(x => x.SequenceNumber)
@@ -1264,8 +1280,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         {
             SortLinesByRevisionOrder();
 
-            List<ElementId> selectedRevisionIds = GetSelectedRevisionIds();
-            _sheet.SetAdditionalRevisionIds(selectedRevisionIds);
+            HashSet<int> cloudRevisionIdValues = GetCloudRevisionIdValues();
+
+            List<ElementId> additionalRevisionIds = GetSelectedRevisionIds()
+                .Where(x => !cloudRevisionIdValues.Contains(IDHelper.ElIdInt(x)))
+                .ToList();
+
+            _sheet.SetAdditionalRevisionIds(additionalRevisionIds);
 
             for (int rowIndex = 0; rowIndex < Lines.Count; rowIndex++)
             {
@@ -1288,12 +1309,29 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void ApplySingleRevisionOnly()
         {
-            List<ElementId> ids = new List<ElementId>();
+            HashSet<int> cloudRevisionIdValues = GetCloudRevisionIdValues();
+            List<ElementId> additionalRevisionIds = new List<ElementId>();
 
-            if (SingleLine != null && IsValidRevisionId(SingleLine.RevisionId))
-                ids.Add(SingleLine.RevisionId);
+            if (SingleLine != null
+                && IsValidRevisionId(SingleLine.RevisionId)
+                && !cloudRevisionIdValues.Contains(IDHelper.ElIdInt(SingleLine.RevisionId)))
+            {
+                additionalRevisionIds.Add(SingleLine.RevisionId);
+            }
 
-            _sheet.SetAdditionalRevisionIds(ids);
+            _sheet.SetAdditionalRevisionIds(additionalRevisionIds);
+        }
+
+        private HashSet<int> GetCloudRevisionIdValues()
+        {
+            HashSet<int> additionalRevisionIdValues = new HashSet<int>(
+                _sheet.GetAdditionalRevisionIds()
+                    .Select(IDHelper.ElIdInt));
+
+            return new HashSet<int>(
+                _sheet.GetAllRevisionIds()
+                    .Select(IDHelper.ElIdInt)
+                    .Where(x => !additionalRevisionIdValues.Contains(x)));
         }
 
         private void ApplyMultiStampCustom()
@@ -1389,8 +1427,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             try
             {
+                HashSet<int> cloudRevisionIdValues = GetCloudRevisionIdValues();
+
                 foreach (SheetRevisionLine line in Lines)
+                {
                     line.RebuildAvailableRevisionItems(_revisionDefinitions);
+                    line.ApplyCloudRevisionIds(cloudRevisionIdValues);
+                }
 
                 foreach (SheetRevisionLine currentLine in Lines)
                 {
@@ -1920,6 +1963,15 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        public bool IsRevisionSelectionEnabled
+        {
+            get
+            {
+                return _selectedRevisionItem == null
+                    || !_selectedRevisionItem.IsCloudRevision;
+            }
+        }
+
         public int DisplayNumber
         {
             get { return _displayNumber; }
@@ -2207,6 +2259,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             SyncSelectedRevisionItem();
         }
 
+        public void ApplyCloudRevisionIds(HashSet<int> cloudRevisionIdValues)
+        {
+            if (cloudRevisionIdValues == null)
+                cloudRevisionIdValues = new HashSet<int>();
+
+            foreach (RevisionComboItem item in AvailableRevisionItems)
+            {
+                item.IsCloudRevision = item.IdValue > 0
+                    && cloudRevisionIdValues.Contains(item.IdValue);
+            }
+
+            SyncSelectedRevisionItem();
+            OnPropertyChanged("IsRevisionSelectionEnabled");
+        }
+
         public void ApplyRevisionAvailability(HashSet<int> selectedByOtherLines)
         {
             if (selectedByOtherLines == null)
@@ -2241,6 +2308,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 {
                     _selectedRevisionItem = item;
                     OnPropertyChanged("SelectedRevisionItem");
+                    OnPropertyChanged("IsRevisionSelectionEnabled");
                 }
             }
             finally
