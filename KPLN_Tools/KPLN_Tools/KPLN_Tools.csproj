@@ -226,6 +226,7 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
+    <Compile Include="ExternalCommands\Command_VentilationSettingsConfigurator.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AutoSaveConfig.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
@@ -416,6 +417,9 @@
     <Compile Include="Forms\UserSearch.xaml.cs">
       <DependentUpon>UserSearch.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\VentilationSettingsConfiguratorMain.xaml.cs">
+      <DependentUpon>VentilationSettingsConfiguratorMain.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -505,6 +509,10 @@
     <Page Include="Forms\Styles.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\VentilationSettingsConfiguratorMain.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Resource Include="Imagens\toolBox16.png" />
     <Resource Include="Imagens\toolBox16_dark.png" />
     <Resource Include="Imagens\toolBox32.png" />
@@ -549,6 +557,8 @@
     <EmbeddedResource Include="Imagens\furniture2DFrom3DBig_dark.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall_dark.png" />
+    <EmbeddedResource Include="Imagens\ventilationSettingsConfiguratorBig.png" />
+    <EmbeddedResource Include="Imagens\ventilationSettingsConfiguratorSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
