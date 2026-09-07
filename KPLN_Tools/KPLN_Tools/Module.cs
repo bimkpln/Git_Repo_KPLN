@@ -299,6 +299,21 @@ namespace KPLN_Tools
                     "KPLN_Tools.Imagens.arPyatnGraphSmall.png",
                     "http://moodle");
 
+                PushButtonData calculateTEP = CreateBtnData(
+                    "Расчёт ТЭП",
+                    "Расчёт ТЭП",
+                    "Плагин для рассчёта ТЭП",
+                    string.Format(
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
+                    typeof(Command_AR_calculateTEP).FullName,
+                    "KPLN_Tools.Imagens.calculateTEPBig.png",
+                    "KPLN_Tools.Imagens.calculateTEPSmall.png",
+                    "http://moodle");
+
                 PushButtonData TEPDesign = CreateBtnData(
                     "Оформление ТЭП",
                     "Оформление ТЭП",
@@ -347,9 +362,10 @@ namespace KPLN_Tools
 
                 arToolsPullDownBtn.AddPushButton(arGNSArea);
                 arToolsPullDownBtn.AddPushButton(Furniture3DFrom2D);
-#if Debug2023 || Revit2023
-                arToolsPullDownBtn.AddPushButton(arPyatnGraph);
+                arToolsPullDownBtn.AddPushButton(calculateTEP);
+#if Debug2023 || Revit2023               
                 arToolsPullDownBtn.AddPushButton(TEPDesign);
+                arToolsPullDownBtn.AddPushButton(arPyatnGraph);
 #endif
                 arToolsPullDownBtn.AddPushButton(evacuationRoutes);
             }

@@ -77,6 +77,7 @@
       <HintPath>..\packages\System.Data.SQLite.2.0.3\lib\net471\System.Data.SQLite.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="UIFramework">
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\UIFramework.dll</HintPath>
       <Private>False</Private>
@@ -213,6 +214,7 @@
     <Compile Include="Common\IDHelper.cs" />
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
+    <Compile Include="ExternalCommands\Command_AR_calculateTEP.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_AR_Furniture3DFrom2D.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
@@ -229,6 +231,9 @@
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AutoSaveConfig.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
+    <Compile Include="Forms\AR_calculateTEP.xaml.cs">
+      <DependentUpon>AR_calculateTEP.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -466,6 +471,10 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
+    <Page Include="Forms\AR_calculateTEP.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Forms\AUPT_TagPlacerForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -549,6 +558,8 @@
     <EmbeddedResource Include="Imagens\furniture2DFrom3DBig_dark.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall_dark.png" />
+    <EmbeddedResource Include="Imagens\calculateTEPBig.png" />
+    <EmbeddedResource Include="Imagens\calculateTEPSmall.png" />
     <Content Include="Source\autonumber.exe">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
