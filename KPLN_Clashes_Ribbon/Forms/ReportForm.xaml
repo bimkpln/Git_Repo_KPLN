@@ -75,7 +75,7 @@
         </Style>
 
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -117,7 +117,7 @@
                 </RadioButton>
             </DockPanel>
         </StackPanel>
-        
+
         <!--Фильтрование по статусу замечания-->
         <StackPanel 
             Grid.Row="1" 
@@ -146,7 +146,7 @@
                 </ComboBox>
             </Grid>
         </StackPanel>
-        
+
         <!--Экспорт в txt-->
         <Button 
             Grid.Row="1" 
@@ -179,7 +179,7 @@
                 </StackPanel>
             </Button.ToolTip>
         </Button>
-        
+
         <!--Фильтрование по атрибутам отчетов-->
         <StackPanel 
             Grid.Row="2" 
@@ -691,7 +691,7 @@
                                                 <RowDefinition/>
                                                 <RowDefinition/>
                                             </Grid.RowDefinitions>
-                                            
+
                                             <Rectangle 
                                                 Grid.RowSpan="3" 
                                                 Margin="-3" 
@@ -760,7 +760,7 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        
+
         <!--Блок обновления-->
         <DockPanel 
             Grid.Row="4" 
@@ -781,7 +781,15 @@
                     </StackPanel>
                 </Button.ToolTip>
             </Button>
+
+            <Button
+                x:Name="btnZoomSettings"
+                Content="Настройки зума"
+                Click="OnZoomSettings"
+                Style="{StaticResource ItemBTN}"
+                Margin="5,0,5,5"
+                BorderBrush="White"/>
         </DockPanel>
-        
+
     </Grid>
 </Window>

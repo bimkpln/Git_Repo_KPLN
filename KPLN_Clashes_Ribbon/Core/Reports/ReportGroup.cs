@@ -32,6 +32,9 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private SolidColorBrush _fill;
         private bool _isEnabled = true;
         private bool _isExpandedItem = false;
+        private int _filteredOpenedClashGroupsCount = 0;
+        private int _totalClashGroupsCount = 0;
+        private bool _isClashGroupsCountLoaded = false;
         private static SQLitePrjService _libProjectDbService;
         private string _searchText = string.Empty;
 
@@ -384,6 +387,55 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
+        public bool IsClashGroupsCountLoaded
+        {
+            get => _isClashGroupsCountLoaded;
+            set
+            {
+                if (_isClashGroupsCountLoaded != value)
+                {
+                    _isClashGroupsCountLoaded = value;
+                    NotifyPropertyChanged();
+                    NotifyPropertyChanged(nameof(FilteredClashGroupsCountText));
+                }
+            }
+        }
+
+        public int FilteredOpenedClashGroupsCount
+        {
+            get => _filteredOpenedClashGroupsCount;
+            set
+            {
+                if (_filteredOpenedClashGroupsCount != value)
+                {
+                    _filteredOpenedClashGroupsCount = value;
+                    NotifyPropertyChanged();
+                    NotifyPropertyChanged(nameof(FilteredClashGroupsCountText));
+                }
+            }
+        }
+
+        public int TotalClashGroupsCount
+        {
+            get => _totalClashGroupsCount;
+            set
+            {
+                if (_totalClashGroupsCount != value)
+                {
+                    _totalClashGroupsCount = value;
+                    NotifyPropertyChanged();
+                    NotifyPropertyChanged(nameof(FilteredClashGroupsCountText));
+                }
+            }
+        }
+
+        public string FilteredClashGroupsCountText
+        {
+            get => IsClashGroupsCountLoaded
+                ? $"Групп коллизий по фильтру: {FilteredOpenedClashGroupsCount} (открытых) из {TotalClashGroupsCount} (всего)"
+                : "Групп коллизий по фильтру: не посчитано";
+        }
+
         public System.Windows.Visibility AdminControllsVisibility
         {
             get
@@ -394,6 +446,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
                 return System.Windows.Visibility.Collapsed;
             }
         }
+
 
         public System.Windows.Visibility AdminControllsVisibilityAdd
         {
@@ -468,3 +521,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         }
     }
 }
+
+
+
+

@@ -89,6 +89,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                     iControllGroups.ItemsSource = FilteredRepGroupColl;
 
                     ApplySearchToReportGroup(groups[i]);
+                    EnsureClashGroupsCountLoaded(groups[i]);
 
                     break;
                 }
@@ -151,6 +152,58 @@ namespace KPLN_Clashes_Ribbon.Forms
             }
 
             return group;
+        }
+
+        private void ReportGroupExpanded(object sender, RoutedEventArgs e)
+        {
+            if ((sender as Expander)?.DataContext is ReportGroup reportGroup)
+                EnsureClashGroupsCountLoaded(reportGroup);
+        }
+
+        private void EnsureClashGroupsCountLoaded(ReportGroup group)
+        {
+            if (group == null || group.IsClashGroupsCountLoaded)
+                return;
+
+            foreach (Report report in group.Reports)
+            {
+                SetClashsExceptGroupCounts(report);
+            }
+
+            group.IsClashGroupsCountLoaded = true;
+            UpdateFilteredClashGroupsCount(group);
+        }
+
+        private void SetClashsExceptGroupCounts(Report report)
+        {
+            try
+            {
+                Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(report.PathToReportInstance);
+                var repItems = sqliteService_ReportInstanceDB.GetAllReporItems();
+                report.ClashExceptGroupsCount = repItems.Count(IsClash_ExceptGroup);
+                report.OpenedClashExceptGroupsCount = repItems.Count(IsOpenClash_ExceptGroup);
+            }
+            catch
+            {
+                report.ClashExceptGroupsCount = -1;
+                report.OpenedClashExceptGroupsCount = -1;
+            }
+        }
+
+        private static bool IsClash_ExceptGroup(ReportItem item) 
+            => item?.ParentGroupId == -1;
+
+        private static bool IsOpenClash_ExceptGroup(ReportItem item)
+            => IsClash_ExceptGroup(item)
+            && (item.StatusId == (int)KPItemStatus.New || item.StatusId == (int)KPItemStatus.Opened);
+
+        private void UpdateFilteredClashGroupsCount(ReportGroup group)
+        {
+            if (group == null)
+                return;
+
+            group.TotalClashGroupsCount = group.Reports.Sum(report => report.ClashExceptGroupsCount);
+            group.FilteredOpenedClashGroupsCount = group.Reports.Where(report => report.IsReportVisible).Sum(report => report.OpenedClashExceptGroupsCount);
         }
 
         private bool FilterRepGroups(object obj)
@@ -1086,6 +1139,25 @@ namespace KPLN_Clashes_Ribbon.Forms
             {
                 report.IsReportVisible = string.IsNullOrEmpty(search) || report.Name.ToLower().Contains(search);
             }
+
+            if (reportGroup.IsClashGroupsCountLoaded)
+                UpdateFilteredClashGroupsCount(reportGroup);
+        }
+
+        private void OnZoomSettings(object sender, RoutedEventArgs e)
+        {
+            if (ZoomSettingsForm.TryActivateExisting())
+                return;
+
+            Autodesk.Revit.DB.Document doc = _viewHandler?.CurrnetUIApplication?.ActiveUIDocument?.Document;
+            if (doc == null)
+            {
+                System.Windows.MessageBox.Show(this, "Не удалось получить активный документ Revit для shared-конфига.", "Настройки зума", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            ZoomSettingsForm form = new ZoomSettingsForm(doc) { Owner = this };
+            form.ShowDialog();
         }
 
         private void ShowClosedReportGroups_Checked(object sender, RoutedEventArgs e) =>
@@ -1129,3 +1201,4 @@ namespace KPLN_Clashes_Ribbon.Forms
         }
     }
 }
+

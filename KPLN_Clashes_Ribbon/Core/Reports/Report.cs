@@ -22,6 +22,8 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         private int _progress = 0;
         private int _delegationProgress = 0;
         private int _approvedProgress = 0;
+        private int _clashExceptGroupsCount = 0;
+        private int _openedClashExceptGroupsCount = 0;
         private System.Windows.Visibility _pbEnabled = System.Windows.Visibility.Collapsed;
         private System.Windows.Visibility _isGroupEnabled = System.Windows.Visibility.Visible;
         private bool _isReportVisible = true;
@@ -198,6 +200,26 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
+        public int ClashExceptGroupsCount
+        {
+            get => _clashExceptGroupsCount;
+            set
+            {
+                _clashExceptGroupsCount = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public int OpenedClashExceptGroupsCount
+        {
+            get => _openedClashExceptGroupsCount;
+            set
+            {
+                _openedClashExceptGroupsCount = value;
+                NotifyPropertyChanged();
+            }
+        }
+
         public SolidColorBrush Fill_Default
         {
             get
@@ -358,3 +380,4 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         }
     }
 }
+

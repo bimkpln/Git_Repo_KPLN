@@ -183,18 +183,22 @@
                                     RadiusY="3" 
                                     Fill="{Binding Fill, UpdateSourceTrigger=PropertyChanged}"/>
                                 
-                                <StackPanel 
-                                    Grid.Row="0"
-                                    Orientation="Horizontal">
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
                                     <Image 
                                         Grid.Column="0" 
                                         Source="{Binding Source.Value, UpdateSourceTrigger=PropertyChanged}" 
                                         Width="30" 
                                         Height="30"/>
                                     <StackPanel 
+                                        Grid.Column="1"
                                         Margin="5,0,0,0" 
                                         Orientation="Vertical" 
-                                        VerticalAlignment="Center">
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Stretch">
                                         <TextBlock 
                                             Text="{Binding GroupName}" 
                                             TextWrapping="Wrap" 
@@ -248,31 +252,47 @@
                                         </DockPanel>
                                         
                                         <!-- Поиск внутри группы-->
-                                        <DockPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
                                             <TextBlock 
+                                                Grid.Column="0"
                                                 Text="Поиск отчета:" 
                                                 VerticalAlignment="Center" 
                                                 FontWeight="Bold" 
                                                 Margin="5"/>
+                                            <TextBlock
+                                                Grid.Column="1"
+                                                Text="{Binding FilteredClashGroupsCountText, UpdateSourceTrigger=PropertyChanged}"
+                                                VerticalAlignment="Center"
+                                                FontWeight="Bold"
+                                                Foreground="White"
+                                                Margin="10,5,5,5"/>
                                             <TextBox 
-                                                x:Name="SearchText" 
-                                                DockPanel.Dock="Right" 
+                                                x:Name="SearchText"
+                                                Grid.Column="2"
                                                 Style="{StaticResource TXTBX}" 
                                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                                 TextChanged="SearchText_Changed"
                                                 TextAlignment="Left"
                                                 VerticalAlignment="Center"
+                                                HorizontalAlignment="Stretch"
+                                                MinWidth="120"
                                                 FontStretch="ExtraExpanded"/>
-                                        </DockPanel>
+                                        </Grid>
                                     </StackPanel>
-                                </StackPanel>
+                                </Grid>
                                 
                                 <Expander 
                                     Grid.Row="1" 
                                     Margin="0,0,0,0" 
                                     Header="Список отчетов:" 
                                     Foreground="White" 
-                                    IsExpanded="{Binding IsExpandedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                    IsExpanded="{Binding IsExpandedItem, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    Expanded="ReportGroupExpanded">
                                     <ItemsControl ItemsSource="{Binding Reports}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -564,6 +584,12 @@
                 </Button.ToolTip>
             </Button>
 
+            <Button
+                x:Name="btnZoomSettings"
+                Style="{StaticResource MainBTN}"
+                Content="Настройки зума"
+                Click="OnZoomSettings"/>
+
             <CheckBox
                 x:Name="ShowClosedReportGroups"
                 IsChecked="False"
@@ -582,3 +608,7 @@
     
     </Grid>
 </Window>
+
+
+
+

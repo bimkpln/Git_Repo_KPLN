@@ -18,82 +18,49 @@
     </NuGetPackageImportStamp>
     <TargetFrameworkProfile />
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
-    <OutputPath>C:\KPLN_Debug\KPLN_Clashes_Ribbon\2020\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;Debug2020</DefineConstants>
+  <!-- Анализ Configuration для получения версии -->
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020' OR '$(Configuration)'=='Revit2020_ExtraNet'">
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Revit2023' OR '$(Configuration)'=='Revit2023_ExtraNet'">
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024' OR '$(Configuration)'=='Revit2024_ExtraNet'">
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <!-- DEBUG CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Debug$(RevitVer)|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
     <Optimize>false</Optimize>
+    <OutputPath>C:\KPLN_Debug\KPLN_Clashes_Ribbon\$(RevitVer)\</OutputPath>
+    <DefineConstants>DEBUG;TRACE;Debug$(RevitVer)</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
     <XamlDebuggingInformation>True</XamlDebuggingInformation>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <OutputPath>C:\KPLN_Debug\KPLN_Clashes_Ribbon\2023\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;Debug2023</DefineConstants>
-    <Optimize>false</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <XamlDebuggingInformation>True</XamlDebuggingInformation>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
-    <OutputPath>C:\KPLN_Debug\KPLN_Clashes_Ribbon\2024\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;Debug2024</DefineConstants>
-    <Optimize>false</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-    <DebugType>full</DebugType>
-    <DebugSymbols>true</DebugSymbols>
-    <XamlDebuggingInformation>True</XamlDebuggingInformation>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Clashes\2020\</OutputPath>
-    <DefineConstants>Revit2020</DefineConstants>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+  <!-- RELEASE CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)|x64' ">
+    <DebugType>none</DebugType>
     <Optimize>true</Optimize>
-    <ErrorReport>none</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Clashes\2023\</OutputPath>
-    <DefineConstants>Revit2023</DefineConstants>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
-    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Clashes\2024\</OutputPath>
-    <DefineConstants>Revit2024</DefineConstants>
-    <Optimize>true</Optimize>
-    <PlatformTarget>x64</PlatformTarget>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
-    <LangVersion>7.3</LangVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020_ExtraNet|x64'">
-    <OutputPath>..\..\SetupFiles\Revit\1.Common\KPLN\2020_ExtraNet\KPLN_Loader\Modules\Clashes\</OutputPath>
-    <DefineConstants>Revit2020</DefineConstants>
-    <Optimize>true</Optimize>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\Clashes\$(RevitVer)\</OutputPath>
+    <DefineConstants>Revit$(RevitVer)</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
     <ErrorReport>none</ErrorReport>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023_ExtraNet|x64'">
-    <OutputPath>..\..\SetupFiles\Revit\1.Common\KPLN\2023_ExtraNet\KPLN_Loader\Modules\Clashes\</OutputPath>
-    <DefineConstants>Revit2023</DefineConstants>
+  <!-- EXTRANET CONFIGS -->
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)_ExtraNet|x64' ">
+    <OutputPath>..\..\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)_ExtraNet\KPLN_Loader\Modules\Clashes\</OutputPath>
+    <DefineConstants>Revit$(RevitVer)</DefineConstants>
     <Optimize>true</Optimize>
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Dapper, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -175,131 +142,44 @@
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
+  <!-- CONFIG REFERENCES -->
   <Choose>
-    <When Condition=" '$(Configuration)'=='Debug2020' ">
+    <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' OR '$(Configuration)'=='Revit$(RevitVer)_ExtraNet' ">
       <ItemGroup>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
     </When>
-    <When Condition=" '$(Configuration)'=='Debug2023' ">
+    <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
       <ItemGroup>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
         <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
         <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Debug2024' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2020' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2020_ExtraNet' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2020\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2023' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2024' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\2024\KPLN_Library_Bitrix24Worker.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition=" '$(Configuration)'=='Revit2023_ExtraNet' ">
-      <ItemGroup>
-        <Reference Include="RevitAPI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="RevitAPIUI">
-          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="KPLN_Library_Bitrix24Worker">
-          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\Debug\2023\KPLN_Library_Bitrix24Worker.dll</HintPath>
+          <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Bitrix24Worker\KPLN_Library_Bitrix24Worker\bin\$(RevitVer)\KPLN_Library_Bitrix24Worker.dll</HintPath>
           <Private>False</Private>
         </Reference>
       </ItemGroup>
@@ -320,6 +200,9 @@
     <Compile Include="Core\Reports\ReportItemComment.cs" />
     <Compile Include="Core\Reports\ReportGroup.cs" />
     <Compile Include="Core\Reports\ReportItem.cs" />
+    <Compile Include="Core\ZoomSettings.cs" />
+    <Compile Include="Forms\Commands\RelayCommand.cs" />
+    <Compile Include="Forms\Entities\ZoomSettingsM.cs" />
     <Compile Include="Forms\ConfirmDialog.xaml.cs">
       <DependentUpon>ConfirmDialog.xaml</DependentUpon>
     </Compile>
@@ -333,6 +216,10 @@
     <Compile Include="Forms\ReportManagerForm.xaml.cs">
       <DependentUpon>ReportManagerForm.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ViewModels\ZoomSettingsVM.cs" />
+    <Compile Include="Forms\ZoomSettingsForm.xaml.cs">
+      <DependentUpon>ZoomSettingsForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ReportForm.xaml.cs">
       <DependentUpon>ReportForm.xaml</DependentUpon>
     </Compile>
@@ -343,6 +230,7 @@
     <Compile Include="Services\SQLite\AbsSQLiteService.cs" />
     <Compile Include="Services\SQLite\SQLiteService_ReportItemsDB.cs" />
     <Compile Include="Services\SQLite\SQLiteService_MainDB.cs" />
+    <Compile Include="Services\ZoomSettingsConfigService.cs" />
     <Compile Include="Source\Source.cs" />
     <Compile Include="Tools\HtmlReportParser.cs" />
     <Compile Include="Tools\HTMLTools.cs" />
@@ -392,6 +280,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\ReportManagerForm.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ZoomSettingsForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -450,3 +342,4 @@ IF "$(ConfigurationName)" == "Revit2024_ExtraNet" (
   <Import Project="packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
   <Import Project="packages\SourceGear.sqlite3.3.50.4.5\build\net471\SourceGear.sqlite3.targets" Condition="Exists('packages\SourceGear.sqlite3.3.50.4.5\build\net471\SourceGear.sqlite3.targets')" />
 </Project>
+

@@ -22,7 +22,7 @@ namespace KPLN_Clashes_Ribbon.Commands
             {
                 Document doc = uiDoc.Document;
                 
-                if (doc != null)
+                if (doc != null && !doc.IsFamilyDocument)
                 {
                     Transaction t = new Transaction(doc, "KPLN_Указатель очистить");
                     t.Start();

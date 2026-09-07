@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Services.SQLite
 {

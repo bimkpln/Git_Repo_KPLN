@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Clashes_Ribbon.Core;
+using KPLN_Clashes_Ribbon.Services;
 using System;
 using System.Collections.Generic;
 
@@ -7,13 +9,14 @@ namespace KPLN_Clashes_Ribbon.Tools
 {
     internal static class ZoomTools
     {
-        public static void ZoomElement(BoundingBoxXYZ box, UIDocument uidoc, View3D activeView)
+        public static void ZoomElement(BoundingBoxXYZ box, UIDocument uidoc, View3D activeView, BoundingBoxXYZ orientationBox = null)
         {
-            if (box == null)
+            if (box == null || uidoc == null || activeView == null)
                 return;
-            
-            XYZ offsetMin = new XYZ(-5, -5, -2);
-            XYZ offsetMax = new XYZ(5, 5, 1);
+
+            ZoomSettings settings = ZoomSettingsConfigService.LoadOrCreateDefault(uidoc.Document);
+            XYZ offsetMin = new XYZ(-settings.OffsetXFeet, -settings.OffsetYFeet, -settings.OffsetZMinFeet);
+            XYZ offsetMax = new XYZ(settings.OffsetXFeet, settings.OffsetYFeet, settings.OffsetZMaxFeet);
 
             ViewFamily activeViewFamily = ViewFamily.Invalid;
             try
@@ -23,14 +26,15 @@ namespace KPLN_Clashes_Ribbon.Tools
             }
             catch (Exception) { }
 
-
             if (activeViewFamily == ViewFamily.ThreeDimensional)
             {
-                activeView.SetSectionBox(new BoundingBoxXYZ() { Max = box.Max + offsetMax, Min = box.Min + offsetMin });
+                BoundingBoxXYZ zoomBox = new BoundingBoxXYZ() { Max = box.Max + offsetMax, Min = box.Min + offsetMin };
+                activeView.SetSectionBox(zoomBox);
 
+                BoundingBoxXYZ centroidBox = orientationBox ?? box;
                 XYZ forward_direction = VectorFromHorizVertAngles(135, -30);
                 XYZ up_direction = VectorFromHorizVertAngles(135, -30 + 90);
-                XYZ centroid = new XYZ((box.Max.X + box.Min.X) / 2, (box.Max.Y + box.Min.Y) / 2, (box.Max.Z + box.Min.Z) / 2);
+                XYZ centroid = new XYZ((centroidBox.Max.X + centroidBox.Min.X) / 2, (centroidBox.Max.Y + centroidBox.Min.Y) / 2, (centroidBox.Max.Z + centroidBox.Min.Z) / 2);
                 ViewOrientation3D orientation = new ViewOrientation3D(centroid, up_direction, forward_direction);
 
                 activeView.SetOrientation(orientation);
@@ -39,10 +43,8 @@ namespace KPLN_Clashes_Ribbon.Tools
                 foreach (UIView uvView in views)
                 {
                     if (uvView.ViewId.Equals(activeView.Id))
-                        uvView.ZoomAndCenterRectangle(box.Min, box.Max);
+                        uvView.ZoomAndCenterRectangle(zoomBox.Min, zoomBox.Max);
                 }
-
-                return;
             }
         }
 

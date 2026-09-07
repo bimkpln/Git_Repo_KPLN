@@ -59,7 +59,6 @@ namespace KPLN_Clashes_Ribbon.Forms
             FilteredInstancesColl.Filter += FilterForRepItems;
             
             
-            _viewHandler.PropertyChanged += (s, e) => FilteredInstancesColl?.Refresh();
             
 
             UIApplication uiapp = _viewHandler.CurrnetUIApplication;
@@ -193,7 +192,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 bool checkConflictMetaData = item.SubElements.Any(sub => sub.Element_1_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0
                         || sub.Element_2_Info?.IndexOf(_conflictMetaDataTBx, StringComparison.OrdinalIgnoreCase) >= 0);
 
-                bool checkIDData = item.GroupElementIds.Contains(_idDataTBx);
+                bool checkIDData = isEmptyIDData || item.GroupElementIds.Contains(_idDataTBx);
 
                 if (checkConflData && checkConflictMetaData && checkIDData)
                     return true;
@@ -330,6 +329,21 @@ namespace KPLN_Clashes_Ribbon.Forms
             ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
 
             FilteredInstancesColl?.Refresh();
+        }
+        private void OnZoomSettings(object sender, RoutedEventArgs e)
+        {
+            if (ZoomSettingsForm.TryActivateExisting())
+                return;
+
+            Document doc = _viewHandler?.CurrnetUIApplication?.ActiveUIDocument?.Document;
+            if (doc == null)
+            {
+                System.Windows.MessageBox.Show(this, "Не удалось получить активный документ Revit для shared-конфига.", "Настройки зума", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            ZoomSettingsForm form = new ZoomSettingsForm(doc) { Owner = this };
+            form.ShowDialog();
         }
 
         /// <summary>

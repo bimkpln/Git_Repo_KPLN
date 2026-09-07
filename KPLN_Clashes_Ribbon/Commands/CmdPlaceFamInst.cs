@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
+using KPLN_Clashes_Ribbon.Services;
 using KPLN_Clashes_Ribbon.Tools;
 using KPLN_Loader.Common;
 using System;
@@ -119,7 +121,20 @@ namespace KPLN_Clashes_Ribbon.Commands
 
 
                     // Приближаю к элементу
-                    ZoomTools.ZoomElement(SumBBox(resultInst), app.ActiveUIDocument, activeView);
+                    ZoomSettings zoomSettings = ZoomSettingsConfigService.LoadOrCreateDefault(doc);
+                    BoundingBoxXYZ clashPointBox = SumBBox(resultInst);
+                    BoundingBoxXYZ zoomBox = clashPointBox;
+                    BoundingBoxXYZ orientationBox = clashPointBox;
+                    if (zoomSettings.FitCollision)
+                    {
+                        BoundingBoxXYZ collisionBox = SumBBox(GetReportElements(doc, _report));
+                        if (collisionBox != null)
+                        {
+                            zoomBox = collisionBox;
+                            orientationBox = collisionBox;
+                        }
+                    }
+                    ZoomTools.ZoomElement(zoomBox, app.ActiveUIDocument, activeView, orientationBox);
 
                     t.Commit();
                 }
@@ -240,6 +255,24 @@ namespace KPLN_Clashes_Ribbon.Commands
             return result.ToArray();
         }
 
+        private static IEnumerable<Element> GetReportElements(Document doc, ReportItem report)
+        {
+            IEnumerable<ReportItem> items = report.SubElements.Any()
+                ? report.SubElements.AsEnumerable()
+                : new ReportItem[1] { report };
+
+            foreach (ReportItem item in items)
+            {
+                Element elem1 = doc.GetElement(new ElementId(item.Element_1_Id));
+                if (elem1 != null)
+                    yield return elem1;
+
+                Element elem2 = doc.GetElement(new ElementId(item.Element_2_Id));
+                if (elem2 != null)
+                    yield return elem2;
+            }
+        }
+
         /// <summary>
         /// Создать общий BoundingBoxXYZ для элементов
         /// </summary>
@@ -358,3 +391,4 @@ namespace KPLN_Clashes_Ribbon.Commands
         }
     }
 }
+
