@@ -180,6 +180,14 @@
                     ToolTip="{Binding CurrentSetParamsByFrameM.RunButtonTooltip, UpdateSourceTrigger=PropertyChanged}"
                     Command="{Binding SelectANDSetElemsParamCmd}"/>
             </StackPanel>
+            <!-- Итог последнего запуска -->
+            <TextBlock
+                Style="{StaticResource TXT}"
+                FontSize="10"
+                HorizontalAlignment="Left"
+                Foreground="{Binding CurrentSetParamsByFrameM.UserMainStatusBrush}"
+                TextWrapping="Wrap"
+                Text="{Binding CurrentSetParamsByFrameM.UserMainStatus}"/>
         </StackPanel>
     </Grid>
 </Window>

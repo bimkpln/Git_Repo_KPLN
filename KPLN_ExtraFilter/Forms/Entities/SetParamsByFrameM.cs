@@ -8,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 
 namespace KPLN_ExtraFilter.Forms.Entities
 {
@@ -40,6 +41,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private string _userInputParamValue;
         private string _runButtonName;
         private string _runButtonTooltip;
+        private string _userMainStatus;
+        private Brush _userMainStatusBrush = Brushes.Orange;
         private bool _canAddParam = false;
         private bool _canRun = false;
         private string _userHelp;
@@ -147,6 +150,29 @@ namespace KPLN_ExtraFilter.Forms.Entities
         }
 
         /// <summary>
+        /// Краткий итог последнего запуска.
+        /// </summary>
+        public string UserMainStatus
+        {
+            get => _userMainStatus;
+            private set
+            {
+                _userMainStatus = string.IsNullOrWhiteSpace(value) ? string.Empty : $"ВАЖНО: {value}";
+                NotifyPropertyChanged();
+            }
+        }
+
+        public Brush UserMainStatusBrush
+        {
+            get => _userMainStatusBrush;
+            private set
+            {
+                _userMainStatusBrush = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// Маркер возможности добавления параметра
         /// </summary>
         public bool CanAddParam
@@ -189,6 +215,24 @@ namespace KPLN_ExtraFilter.Forms.Entities
         {
             this.ParamItems,
         };
+
+        public void SetRunResult(SetParamsByFrameMessageKind messageKind, string message)
+        {
+            switch (messageKind)
+            {
+                case SetParamsByFrameMessageKind.Success:
+                    UserMainStatusBrush = Brushes.LightGreen;
+                    break;
+                case SetParamsByFrameMessageKind.Warning:
+                    UserMainStatusBrush = Brushes.Orange;
+                    break;
+                case SetParamsByFrameMessageKind.Error:
+                    UserMainStatusBrush = Brushes.IndianRed;
+                    break;
+            }
+
+            UserMainStatus = message;
+        }
 
         /// <summary>
         /// Обновить статус возможности запуска и текстовых подсказок
@@ -281,5 +325,12 @@ namespace KPLN_ExtraFilter.Forms.Entities
                     paramM.RestoreSelectedParamById(tempOldSelParamM.RevitParamIntId);
             }
         }
+    }
+
+    public enum SetParamsByFrameMessageKind
+    {
+        Success,
+        Warning,
+        Error
     }
 }
