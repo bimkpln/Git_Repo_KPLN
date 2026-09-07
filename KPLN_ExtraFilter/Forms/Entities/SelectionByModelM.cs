@@ -3,6 +3,7 @@ using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -34,6 +35,15 @@ namespace KPLN_ExtraFilter.Forms.Entities
     }
 
     /// <summary>
+    /// Фильтры для значений параметров.
+    /// </summary>
+    public enum ParameterValueFilterMode
+    {
+        Contains,
+        NotContains
+    }
+
+    /// <summary>
     /// Модель для SelectionByModel
     /// </summary>
     public sealed class SelectionByModelM : INotifyPropertyChanged
@@ -47,7 +57,9 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private bool _where_Workset;
         private WSEntity _where_SelectedWorkset;
         private bool _whereCategoryFilter;
+        private bool _where_ParameterData;
         private bool _what_ParameterData;
+        private bool _isReloadingParamFilters;
         private ViewFilterMode _where_ViewDocFilterMode;
         private SelectFilterMode _how_SelectFilterMode = SelectFilterMode.CreateNew;
         private bool _belongGroup;
@@ -266,6 +278,33 @@ namespace KPLN_ExtraFilter.Forms.Entities
         public ObservableCollection<SelectionByModelM_CategoryM> Where_SelectedCategories { get; } = new ObservableCollection<SelectionByModelM_CategoryM>();
 
         /// <summary>
+        /// Фильтровать по значению параметра
+        /// </summary>
+        public bool Where_ParameterData
+        {
+            get => _where_ParameterData;
+            set
+            {
+                _where_ParameterData = value;
+                NotifyPropertyChanged();
+
+                if (_where_ParameterData)
+                    Where_SelectedParameters.Add(new SelectionByModelM_ParamM(this));
+                else
+                    Where_SelectedParameters.Clear();
+
+                SetUserSelElems();
+                UpdateCanRunANDUserHelp();
+            }
+        }
+
+        /// <summary>
+        /// Коллекция выбранных параметров для использования в фильтрах
+        /// </summary>
+        public ObservableCollection<SelectionByModelM_ParamM> Where_SelectedParameters { get; } = new ObservableCollection<SelectionByModelM_ParamM>();
+
+
+        /// <summary>
         /// Исключить элементы групп
         /// </summary>
         public bool Belong_Group
@@ -417,6 +456,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
             Where_ViewDocFilterMode = ViewFilterMode.CurrentView;
             Where_Workset = false;
             Where_Category = false;
+            Where_ParameterData = false;
             Belong_Group = false;
             What_ParameterData = false;
             How_SelectFilterMode = SelectFilterMode.CreateNew;
@@ -437,14 +477,22 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 checkWs = false;
 
             bool checkCategory = true;
-            if (Where_Category && Where_SelectedCategories.Count == 0 || Where_SelectedCategories.Any(catM => catM.CatM_SelectedCategory == null))
+            if (Where_Category && (Where_SelectedCategories.Count == 0 || Where_SelectedCategories.Any(catM => catM.CatM_SelectedCategory == null)))
                 checkCategory = false;
 
+            bool checkWhereParam = true;
+            if (Where_ParameterData
+                && (Where_SelectedParameters.Count == 0
+                    || Where_SelectedParameters.Any(paramM =>
+                        paramM.ParamM_SelectedParameter == null
+                        || string.IsNullOrWhiteSpace(paramM.ParamM_InputValue))))
+                checkWhereParam = false;
+
             bool checkParam = true;
-            if (What_ParameterData && What_SelectedParameters.Count == 0 || What_SelectedParameters.Any(paramM => paramM.ParamM_SelectedParameter == null))
+            if (What_ParameterData && (What_SelectedParameters.Count == 0 || What_SelectedParameters.Any(paramM => paramM.ParamM_SelectedParameter == null)))
                 checkParam = false;
 
-            CanRun = _canRunMain && checkElems && checkWs && checkCategory && checkParam;
+            CanRun = _canRunMain && checkElems && checkWs && checkCategory && checkWhereParam && checkParam;
 
 
             // Обновляю комментарий-подсказку пользователю
@@ -457,6 +505,18 @@ namespace KPLN_ExtraFilter.Forms.Entities
             if (Where_Category && Where_SelectedCategories.Any(catM => catM.CatM_SelectedCategory == null))
             {
                 UserHelp = "Одна или несколько категорий не заполнены. Или заполни, или сними галку с фильтрации по категориям";
+                return;
+            }
+
+            if (Where_ParameterData && Where_SelectedParameters.Any(paramM => paramM.ParamM_SelectedParameter == null))
+            {
+                UserHelp = "Один или несколько параметров фильтра не заполнены. Или заполни, или сними галку с фильтрации по параметрам";
+                return;
+            }
+
+            if (Where_ParameterData && Where_SelectedParameters.Any(paramM => string.IsNullOrWhiteSpace(paramM.ParamM_InputValue)))
+            {
+                UserHelp = "Один или несколько фильтров по параметрам без значения. Укажи значение, или сними галку с фильтрации по параметрам";
                 return;
             }
 
@@ -561,10 +621,107 @@ namespace KPLN_ExtraFilter.Forms.Entities
             }
 
 
-            Where_UserSelElems = elemsWithCat.ToArray();
+            Element[] elemsBeforeParamFilter = elemsWithCat.ToArray();
             Cahce_UserSelElemsWithoutCatFilter = elemsNoCat.ToArray();
+            RefreshWhereParamItems(elemsBeforeParamFilter);
+
+            if (Where_ParameterData
+                && Where_SelectedParameters.Count > 0
+                && Where_SelectedParameters.All(paramM =>
+                    paramM.ParamM_SelectedParameter != null
+                    && !string.IsNullOrWhiteSpace(paramM.ParamM_InputValue)))
+            {
+                elemsBeforeParamFilter = FilterElemsByParamValue(elemsBeforeParamFilter).ToArray();
+            }
+
+            Where_UserSelElems = elemsBeforeParamFilter;
 
             CreateTree();
+        }
+
+        /// <summary>
+        /// Реакция на изменение настроек параметра фильтрации/группировки
+        /// </summary>
+        internal void OnParamMDataChanged()
+        {
+            if (_isReloadingParamFilters)
+            {
+                UpdateCanRunANDUserHelp();
+                return;
+            }
+
+            SetUserSelElems();
+            UpdateCanRunANDUserHelp();
+        }
+
+        /// <summary>
+        /// Перезагрузить список параметров для фильтрации по значению
+        /// </summary>
+        private void RefreshWhereParamItems(Element[] elemsBeforeParamFilter)
+        {
+            if (!Where_ParameterData)
+                return;
+
+            _isReloadingParamFilters = true;
+            try
+            {
+                foreach (var paramM in Where_SelectedParameters)
+                {
+                    paramM.ParamM_UserSelElems = elemsBeforeParamFilter;
+                }
+            }
+            finally
+            {
+                _isReloadingParamFilters = false;
+            }
+        }
+
+        /// <summary>
+        /// Отфильтровать элементы по пользовательским условиям значений параметров
+        /// </summary>
+        private IEnumerable<Element> FilterElemsByParamValue(IEnumerable<Element> elems)
+        {
+            IEnumerable<Element> filteredElems = elems;
+
+            foreach (SelectionByModelM_ParamM paramM in Where_SelectedParameters)
+            {
+                filteredElems = filteredElems.Where(el => IsElementParamValueMatched(el, paramM));
+            }
+
+            return filteredElems;
+        }
+
+        /// <summary>
+        /// Проверить, подходит ли значение параметра элемента под условие
+        /// </summary>
+        private bool IsElementParamValueMatched(Element elem, SelectionByModelM_ParamM paramM)
+        {
+            Parameter param = GetParameterFromElementOrType(elem, paramM.ParamM_SelectedParameter.RevitParamName);
+            if (param == null)
+                return false;
+
+            string paramValue = DocWorker.GetParamValueInSI(Doc, param) ?? string.Empty;
+            StringComparison comparison = paramM.ParamM_CaseSensitive
+                ? StringComparison.Ordinal
+                : StringComparison.OrdinalIgnoreCase;
+
+            bool isContains = paramValue.IndexOf(paramM.ParamM_InputValue, comparison) >= 0;
+            return paramM.ParamM_ValueFilterMode == ParameterValueFilterMode.Contains
+                ? isContains
+                : !isContains;
+        }
+
+        /// <summary>
+        /// Найти параметр у экземпляра или у типа
+        /// </summary>
+        private Parameter GetParameterFromElementOrType(Element elem, string paramName)
+        {
+            Parameter param = elem.LookupParameter(paramName);
+
+            if (param == null && Doc.GetElement(elem.GetTypeId()) is Element typeElem)
+                param = typeElem.LookupParameter(paramName);
+
+            return param;
         }
 
         /// <summary>
@@ -662,13 +819,21 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
             if (What_ParameterData)
             {
-                foreach (var paramM in What_SelectedParameters)
+                _isReloadingParamFilters = true;
+                try
                 {
-                    var tempOldSelParamM = paramM.ParamM_SelectedParameter;
-                    paramM.ParamM_UserSelElems = UserSelElems.ToArray();
+                    foreach (var paramM in What_SelectedParameters)
+                    {
+                        var tempOldSelParamM = paramM.ParamM_SelectedParameter;
+                        paramM.ParamM_UserSelElems = UserSelElems.ToArray();
 
-                    if (tempOldSelParamM != null)
-                        paramM.RestoreSelectedParamById(tempOldSelParamM.RevitParamIntId);
+                        if (tempOldSelParamM != null)
+                            paramM.RestoreSelectedParamById(tempOldSelParamM.RevitParamIntId);
+                    }
+                }
+                finally
+                {
+                    _isReloadingParamFilters = false;
                 }
             }
         }

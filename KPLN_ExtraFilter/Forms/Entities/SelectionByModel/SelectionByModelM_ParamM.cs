@@ -14,6 +14,9 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private readonly SelectionByModelM _modelM;
         private Element[] _paramM_UserSelElems;
         private ParamEntity _paramM_SelectedParameter;
+        private ParameterValueFilterMode _paramM_ValueFilterMode = ParameterValueFilterMode.Contains;
+        private string _paramM_InputValue;
+        private bool _paramM_CaseSensitive;
 
         public SelectionByModelM_ParamM(SelectionByModelM modelM)
         {
@@ -91,7 +94,49 @@ namespace KPLN_ExtraFilter.Forms.Entities
             {
                 _paramM_SelectedParameter = value;
                 NotifyPropertyChanged();
-                _modelM.UpdateCanRunANDUserHelp();
+                _modelM?.OnParamMDataChanged();
+            }
+        }
+
+        /// <summary>
+        /// Условие фильтрации значения
+        /// </summary>
+        public ParameterValueFilterMode ParamM_ValueFilterMode
+        {
+            get => _paramM_ValueFilterMode;
+            set
+            {
+                _paramM_ValueFilterMode = value;
+                NotifyPropertyChanged();
+                _modelM?.OnParamMDataChanged();
+            }
+        }
+
+        /// <summary>
+        /// Значение для фильтрации
+        /// </summary>
+        public string ParamM_InputValue
+        {
+            get => _paramM_InputValue;
+            set
+            {
+                _paramM_InputValue = value;
+                NotifyPropertyChanged();
+                _modelM?.OnParamMDataChanged();
+            }
+        }
+
+        /// <summary>
+        /// Учитывать регистр при фильтрации значения
+        /// </summary>
+        public bool ParamM_CaseSensitive
+        {
+            get => _paramM_CaseSensitive;
+            set
+            {
+                _paramM_CaseSensitive = value;
+                NotifyPropertyChanged();
+                _modelM?.OnParamMDataChanged();
             }
         }
 

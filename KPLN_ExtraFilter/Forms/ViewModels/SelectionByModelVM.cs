@@ -45,6 +45,8 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
 
             AddCategoryCmd = new RelayCommand<object>(_ => AddCategory());
             RemoveCategoryCmd = new RelayCommand<SelectionByModelM_CategoryM>(RemoveCategory);
+            AddWhereParameterCmd = new RelayCommand<object>(_ => AddWhereParameter());
+            RemoveWhereParameterCmd = new RelayCommand<SelectionByModelM_ParamM>(RemoveWhereParameter);
             AddParameterCmd = new RelayCommand<object>(_ => AddParameter());
             RemoveParameterCmd = new RelayCommand<SelectionByModelM_ParamM>(RemoveParameter);
 
@@ -77,6 +79,16 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         /// Комманда: Удалить параметр фильтрации
         /// </summary>
         public ICommand RemoveCategoryCmd { get; }
+
+        /// <summary>
+        /// Комманда: Добавить параметр фильтрации по значению
+        /// </summary>
+        public ICommand AddWhereParameterCmd { get; }
+
+        /// <summary>
+        /// Комманда: Удалить параметр фильтрации по значению
+        /// </summary>
+        public ICommand RemoveWhereParameterCmd { get; }
 
         /// <summary>
         /// Комманда: Добавить категорию группирования
@@ -133,6 +145,41 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
                 {
                     CurrentSelectionByModelM.Where_SelectedCategories.Remove(c);
                     
+                    CurrentSelectionByModelM.SetUserSelElems();
+                    CurrentSelectionByModelM.UpdateCanRunANDUserHelp();
+                }
+            }
+        }
+
+        public void AddWhereParameter()
+        {
+            if (CurrentSelectionByModelM.Where_SelectedParameters.Count < 3)
+            {
+                if (CurrentSelectionByModelM.Where_SelectedParameters.Any(c => c.ParamM_SelectedParameter == null || string.IsNullOrWhiteSpace(c.ParamM_InputValue)))
+                    MessageBox.Show(_mainWindow, "Добавить новый параметр можно только если все ранее добавлены задействованы (сейчас есть пустые поля)", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+                else
+                {
+                    CurrentSelectionByModelM.Where_SelectedParameters.Add(new SelectionByModelM_ParamM(CurrentSelectionByModelM));
+                    CurrentSelectionByModelM.UpdateCanRunANDUserHelp();
+                }
+            }
+            else
+                MessageBox.Show(_mainWindow, "Максимально фильтровать можно по 3 параметрам.", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        public void RemoveWhereParameter(SelectionByModelM_ParamM item)
+        {
+            if (CurrentSelectionByModelM.Where_SelectedParameters.Count == 1)
+                MessageBox.Show(_mainWindow, "Нельзя удалить последний параметр из списка. Если НЕ нужно фильтровать по параметрам - сними галку с параметра \"Фильтровать по значению пар-ра\".", "Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+            else if (item is SelectionByModelM_ParamM c)
+            {
+                string paramName = c.ParamM_SelectedParameter == null ? "Пустой параметр" : c.ParamM_SelectedParameter.RevitParamName;
+
+                var td = MessageBox.Show(_mainWindow, $"Сейчас из фильтров будет удален параметр \"{paramName}\"", "Внимание", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (td == MessageBoxResult.Yes)
+                {
+                    CurrentSelectionByModelM.Where_SelectedParameters.Remove(c);
+
                     CurrentSelectionByModelM.SetUserSelElems();
                     CurrentSelectionByModelM.UpdateCanRunANDUserHelp();
                 }
