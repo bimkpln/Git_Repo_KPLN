@@ -143,6 +143,11 @@
             BorderBrush="#BDBDBD"
             BorderThickness="1"
             ItemsSource="{Binding CurrentSumParametersM.FilteredSumResults}">
+            <DataGrid.CellStyle>
+                <Style TargetType="{x:Type DataGridCell}">
+                    <EventSetter Event="PreviewMouseRightButtonDown" Handler="OnCellPreviewMouseRightButtonDown" />
+                </Style>
+            </DataGrid.CellStyle>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Имя параметра" Binding="{Binding ParameterName}" Width="*" />
                 <DataGridTextColumn Header="Значение" Binding="{Binding ValueText}" Width="125" />
