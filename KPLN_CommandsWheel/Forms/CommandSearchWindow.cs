@@ -16,6 +16,8 @@ namespace KPLN_CommandsWheel.Forms
 
         private readonly List<RevitCommandInfo> _commands;
         private readonly Dictionary<string, RevitCommandInfo> _commandsById;
+        private readonly Dictionary<string, ImageSource> _displayedImages =
+            new Dictionary<string, ImageSource>(StringComparer.OrdinalIgnoreCase);
         private readonly UserSettings _settings;
         private readonly RevitCommandExecutor _executor;
         private readonly TextBox _searchBox;
@@ -107,6 +109,47 @@ namespace KPLN_CommandsWheel.Forms
             };
 
             Rebuild();
+        }
+
+        internal static void RefreshExistingCommands(IEnumerable<RevitCommandInfo> commands)
+        {
+            if (_current == null || !_current.IsVisible || commands == null)
+            {
+                return;
+            }
+
+            bool added = false;
+            foreach (RevitCommandInfo command in commands)
+            {
+                if (command == null || string.IsNullOrWhiteSpace(command.Id)
+                    || _current._commandsById.ContainsKey(command.Id))
+                {
+                    continue;
+                }
+
+                _current._commandsById.Add(command.Id, command);
+                _current._commands.Add(command);
+                added = true;
+            }
+
+            if (added)
+            {
+                _current._commands.Sort((left, right) =>
+                    StringComparer.CurrentCulture.Compare(left.Name, right.Name));
+            }
+
+            bool imagesChanged = _current._commands.Any(command =>
+            {
+                ImageSource displayed;
+                return !_current._displayedImages.TryGetValue(command.Id, out displayed)
+                    || !ReferenceEquals(displayed, command.RibbonImage);
+            });
+            if (added || imagesChanged)
+            {
+                // Icons may appear later without any new command being added.
+                // Keep the existing search text and user settings when updating.
+                _current.Rebuild();
+            }
         }
 
         internal static bool TryActivateExisting()
@@ -975,6 +1018,11 @@ namespace KPLN_CommandsWheel.Forms
         private void Rebuild()
         {
             _contentPanel.Children.Clear();
+            _displayedImages.Clear();
+            foreach (RevitCommandInfo command in _commands)
+            {
+                _displayedImages[command.Id] = command.RibbonImage;
+            }
 
             string query = (_searchBox.Text ?? string.Empty).Trim();
 

@@ -1,6 +1,8 @@
 ﻿using Autodesk.Revit.UI;
+using ComponentManager = Autodesk.Windows.ComponentManager;
 using KPLN_CommandsWheel.Models;
 using System;
+using System.Windows.Threading;
 
 namespace KPLN_CommandsWheel.Services
 {
@@ -52,11 +54,18 @@ namespace KPLN_CommandsWheel.Services
             private readonly object _sync = new object();
             private string _commandId;
             private string _commandName;
+            private bool _stopped;
+            private bool _ribbonCommandQueued;
 
             internal void SetCommand(string commandId, string commandName)
             {
                 lock (_sync)
                 {
+                    if (_stopped)
+                    {
+                        return;
+                    }
+
                     _commandId = commandId;
                     _commandName = string.IsNullOrWhiteSpace(commandName) ? commandId : commandName;
                 }
@@ -66,6 +75,7 @@ namespace KPLN_CommandsWheel.Services
             {
                 lock (_sync)
                 {
+                    _stopped = true;
                     _commandId = null;
                     _commandName = null;
                 }
@@ -97,23 +107,17 @@ namespace KPLN_CommandsWheel.Services
                 RevitCommandId revitCommandId = null;
                 try
                 {
-                    revitCommandId = RevitCommandId.LookupCommandId(commandId);
+                    revitCommandId = RibbonCommandCollector.ResolveCommandId(commandId);
                 }
                 catch
                 {
                     revitCommandId = null;
                 }
 
-                if (revitCommandId == null)
-                {
-                    TaskDialog.Show("Команды", string.Format("Команда \"{0}\" не найдена в текущей сессии Revit.", commandName));
-                    return;
-                }
-
                 bool canPost = false;
                 try
                 {
-                    canPost = app.CanPostCommand(revitCommandId);
+                    canPost = revitCommandId != null && app.CanPostCommand(revitCommandId);
                 }
                 catch
                 {
@@ -122,11 +126,78 @@ namespace KPLN_CommandsWheel.Services
 
                 if (!canPost)
                 {
-                    TaskDialog.Show("Команды", string.Format("Команда \"{0}\" сейчас недоступна на ленте Revit.", commandName));
+                    QueueRibbonCommand(commandId, commandName);
                     return;
                 }
 
-                app.PostCommand(revitCommandId);
+                if (!RibbonCommandCollector.IsAvailableInCurrentContext(commandId))
+                {
+                    ShowUnavailable(commandName);
+                    return;
+                }
+
+                try
+                {
+                    app.PostCommand(revitCommandId);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "KPLN Commands Wheel: cannot post command. " + ex.Message);
+                    ShowUnavailable(commandName);
+                }
+            }
+
+            private void QueueRibbonCommand(string commandId, string commandName)
+            {
+                Dispatcher dispatcher = ComponentManager.Ribbon == null
+                    ? null : ComponentManager.Ribbon.Dispatcher;
+                if (_stopped || _ribbonCommandQueued || dispatcher == null
+                    || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
+                {
+                    ShowUnavailable(commandName);
+                    return;
+                }
+
+                _ribbonCommandQueued = true;
+                try
+                {
+                    // Native ribbon handlers must run like a normal UI click,
+                    // after the API callback and the wheel's mouse event return.
+                    dispatcher.BeginInvoke(new Action(delegate
+                    {
+                        try
+                        {
+                            if (!_stopped && !RibbonCommandCollector.TryExecuteRibbonCommand(commandId))
+                            {
+                                ShowUnavailable(commandName);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                "KPLN Commands Wheel: ribbon dispatch failed. " + ex.Message);
+                            ShowUnavailable(commandName);
+                        }
+                        finally
+                        {
+                            _ribbonCommandQueued = false;
+                        }
+                    }), DispatcherPriority.ApplicationIdle);
+                }
+                catch (Exception ex)
+                {
+                    _ribbonCommandQueued = false;
+                    System.Diagnostics.Debug.WriteLine(
+                        "KPLN Commands Wheel: cannot queue ribbon command. " + ex.Message);
+                    ShowUnavailable(commandName);
+                }
+            }
+
+            private static void ShowUnavailable(string commandName)
+            {
+                TaskDialog.Show("Команды", string.Format(
+                    "В данном контексте команду «{0}» выполнить нельзя.", commandName));
             }
 
             public string GetName()
