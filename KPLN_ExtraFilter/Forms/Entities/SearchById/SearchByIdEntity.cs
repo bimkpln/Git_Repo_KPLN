@@ -1,4 +1,7 @@
 ﻿using Autodesk.Revit.DB;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 
 namespace KPLN_ExtraFilter.Forms.Entities.SearchById
@@ -61,13 +64,50 @@ namespace KPLN_ExtraFilter.Forms.Entities.SearchById
                 return null;
             }
             
-            Transform linkTrans = ElemDocEntity.SDE_RLI.GetTotalTransform();
+            Transform linkTrans = ElemDocEntity.SDE_RLI?.GetTotalTransform() ?? Transform.Identity;
+            Transform boxTrans = linkElemBBox.Transform ?? Transform.Identity;
+            IEnumerable<XYZ> hostCorners = GetBBoxCorners(linkElemBBox)
+                .Select(p => linkTrans.OfPoint(boxTrans.OfPoint(p)));
+
+            XYZ minPoint = null;
+            XYZ maxPoint = null;
+            foreach (XYZ point in hostCorners)
+            {
+                if (minPoint == null)
+                {
+                    minPoint = point;
+                    maxPoint = point;
+                    continue;
+                }
+
+                minPoint = new XYZ(
+                    Math.Min(minPoint.X, point.X),
+                    Math.Min(minPoint.Y, point.Y),
+                    Math.Min(minPoint.Z, point.Z));
+
+                maxPoint = new XYZ(
+                    Math.Max(maxPoint.X, point.X),
+                    Math.Max(maxPoint.Y, point.Y),
+                    Math.Max(maxPoint.Z, point.Z));
+            }
 
             return new BoundingBoxXYZ()
             {
-                Min = linkTrans.OfPoint(linkElemBBox.Min),
-                Max = linkTrans.OfPoint(linkElemBBox.Max)
+                Min = minPoint,
+                Max = maxPoint
             };
+        }
+
+        private static IEnumerable<XYZ> GetBBoxCorners(BoundingBoxXYZ bbox)
+        {
+            yield return new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Min.Z);
+            yield return new XYZ(bbox.Min.X, bbox.Min.Y, bbox.Max.Z);
+            yield return new XYZ(bbox.Min.X, bbox.Max.Y, bbox.Min.Z);
+            yield return new XYZ(bbox.Min.X, bbox.Max.Y, bbox.Max.Z);
+            yield return new XYZ(bbox.Max.X, bbox.Min.Y, bbox.Min.Z);
+            yield return new XYZ(bbox.Max.X, bbox.Min.Y, bbox.Max.Z);
+            yield return new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Min.Z);
+            yield return new XYZ(bbox.Max.X, bbox.Max.Y, bbox.Max.Z);
         }
     }
 }

@@ -94,7 +94,10 @@ namespace KPLN_ExtraFilter
             {
                 LargeImage = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, stackItemImgs[2], 32),
                 Image = KPLN_Loader.Application.GetBtnImage_ByTheme(_assemblyName, stackItemImgs[2], 16),
-                ToolTip = "Находит элементы из связи по ID и создаёт 3D-вид с подрезкой",
+                ToolTip = "Поиск элементов внутри связанных моделей по ID. " +
+                    "Если перед запуском выбран элемент из связи - команда сразу откроет/создаст 3D-вид KPLN_IDSearch, " +
+                    "подрежет его по элементу и приблизит камеру. " +
+                    "Если ничего не выбрано - откроется окно для ручного ввода одного или нескольких ID через запятую.",
                 LongDescription = string.Format(
                     "\nДата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
                     ModuleData.Date,

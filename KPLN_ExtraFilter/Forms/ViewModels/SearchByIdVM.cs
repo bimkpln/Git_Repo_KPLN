@@ -1,8 +1,10 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
 using KPLN_ExtraFilter.ExecutableCommand;
 using KPLN_ExtraFilter.Forms.Commands;
 using KPLN_ExtraFilter.Forms.Entities.SearchById;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -35,6 +37,10 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
             SelectByIdCmd = new RelayCommand<SearchByIdEntity>(SelectById);
 
             CloseWindowCmd = new RelayCommand<object>(CloseWindow);
+
+            SearchId = GetSelectedLinkedElementIds();
+            if (SearchByIdCmd.CanExecute(null))
+                SearchByIdCmd.Execute(null);
         }
 
         /// <summary>
@@ -130,6 +136,30 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         /// </summary>
         /// <returns></returns>
         private bool CanSearch() => !string.IsNullOrEmpty(SearchId) && Regex.IsMatch(SearchId, @"^\d+(\s*,\s*\d+)*$");
+
+        private string GetSelectedLinkedElementIds()
+        {
+#if Debug2020 || Revit2020
+            return string.Empty;
+#else
+            try
+            {
+                Selection selection = UIApp.ActiveUIDocument.Selection;
+                IList<Reference> selectedReferences = selection.GetReferences();
+
+                IEnumerable<string> selectedLinkIds = selectedReferences
+                    .Where(r => r.LinkedElementId != null && r.LinkedElementId != ElementId.InvalidElementId)
+                    .Select(r => r.LinkedElementId.ToString())
+                    .Distinct();
+
+                return string.Join(",", selectedLinkIds);
+            }
+            catch (Exception)
+            {
+                return string.Empty;
+            }
+#endif
+        }
 
         public void CloseWindow(object windObj)
         {
