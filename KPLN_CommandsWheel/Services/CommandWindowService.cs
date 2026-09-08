@@ -13,14 +13,16 @@ namespace KPLN_CommandsWheel.Services
 
         internal static bool ShowCommandSearch(UIApplication uiapp)
         {
+            List<RevitCommandInfo> commands = RibbonCommandCollector.Collect(uiapp);
+            SelectionCustomCommandService.AddCommands(commands);
+            CommandSearchWindow.RefreshExistingCommands(commands);
+
             if (CommandSearchWindow.TryActivateExisting())
             {
                 return true;
             }
 
             UserSettings settings = UserSettingsService.Load();
-            List<RevitCommandInfo> commands = RibbonCommandCollector.Collect();
-            SelectionCustomCommandService.AddCommands(commands);
 
             if (commands.Count == 0)
             {
@@ -53,14 +55,16 @@ namespace KPLN_CommandsWheel.Services
 
         internal static bool ShowCommandsWheel(UIApplication uiapp)
         {
+            List<RevitCommandInfo> allCommands = RibbonCommandCollector.Collect(uiapp);
+            SelectionCustomCommandService.AddCommands(allCommands);
+            CommandSearchWindow.RefreshExistingCommands(allCommands);
+
             if (CommandsWheelWindow.TryActivateExisting())
             {
                 return true;
             }
 
             UserSettings settings = UserSettingsService.Load();
-            List<RevitCommandInfo> allCommands = RibbonCommandCollector.Collect();
-            SelectionCustomCommandService.AddCommands(allCommands);
 
             Dictionary<string, RevitCommandInfo> commandsById = allCommands
                 .GroupBy(command => command.Id, StringComparer.OrdinalIgnoreCase)
