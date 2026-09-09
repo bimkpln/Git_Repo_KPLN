@@ -5335,6 +5335,48 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #region 33.1.1_get_phase_visibility_settings
 
+        public static object GetAllPhasesInModel(Document doc)
+        {
+            PhaseArray documentPhases = doc.Phases;
+            List<object> phases = new List<object>();
+            ElementId activeViewPhaseId = doc.ActiveView == null
+                ? ElementId.InvalidElementId
+                : GetElementIdParameterValue(doc.ActiveView, BuiltInParameter.VIEW_PHASE);
+
+            for (int index = 0; index < documentPhases.Size; index++)
+            {
+                Phase phase = documentPhases.get_Item(index);
+                if (phase == null)
+                    continue;
+
+                phases.Add(new
+                {
+                    id = IDHelper.ElIdInt(phase.Id),
+                    name = phase.Name,
+                    order_index = index,
+                    order_number = index + 1,
+                    is_earliest = index == 0,
+                    is_latest = index == documentPhases.Size - 1,
+                    is_active_view_phase = IsUsableElementId(activeViewPhaseId)
+                        && IDHelper.ElIdInt(activeViewPhaseId) == IDHelper.ElIdInt(phase.Id)
+                });
+            }
+
+            Phase activeViewPhase = IsUsableElementId(activeViewPhaseId)
+                ? doc.GetElement(activeViewPhaseId) as Phase
+                : null;
+
+            return new
+            {
+                phases = phases,
+                count = phases.Count,
+                order = "earliest_to_latest",
+                active_view_id = doc.ActiveView != null ? (int?)IDHelper.ElIdInt(doc.ActiveView.Id) : null,
+                active_view_name = doc.ActiveView != null ? doc.ActiveView.Name : null,
+                active_view_phase = BuildPhaseReference(activeViewPhase)
+            };
+        }
+
         public static object GetPhaseVisibilitySettings(
             Document doc,
             int? viewId,

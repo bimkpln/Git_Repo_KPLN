@@ -304,6 +304,9 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                         _document,
                         GetInt(arguments, "viewId"));
 
+                case "get_all_phases_in_model":
+                    return Commands.GetAllPhasesInModel(_document);
+
                 case "get_phase_visibility_settings":
                     return Commands.GetPhaseVisibilitySettings(
                         _document,
@@ -609,6 +612,8 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 case "get_link_graphics_overrides_in_view":
                 case "get_detailed_link_graphics_overrides_in_view":
                     return "link_overrides";
+                case "get_all_phases_in_model":
+                    return "phases";
                 case "get_phase_visibility_settings":
                     return "elements";
                 case "get_viewports_and_schedules_on_sheets":

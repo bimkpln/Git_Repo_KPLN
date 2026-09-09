@@ -19,7 +19,7 @@ MCP is the source of truth for Revit tool discovery and execution. If the intern
 Implemented:
 
 - shared MCP tool contracts;
-- one shared MCP registry for all 54 Revit tools;
+- one shared MCP registry for all 55 Revit tools;
 - one shared executor for all registered read-only and UI-changing tools;
 - `ExternalEvent` wrapper for safe Revit API execution;
 - local HTTP JSON-RPC endpoint inside Revit;
@@ -158,7 +158,7 @@ Expected response:
   "name": "revit-mcp",
   "status": "running",
   "endpoint": "http://127.0.0.1:48731/mcp/",
-  "tools": 54
+  "tools": 55
 }
 ```
 
@@ -404,6 +404,7 @@ Currently registered tools:
 - `get_workset_visibility_in_view`
 - `get_link_graphics_overrides_in_view`
 - `get_detailed_link_graphics_overrides_in_view`
+- `get_all_phases_in_model`
 - `get_phase_visibility_settings`
 - `get_if_elements_pass_filter`
 - `get_viewports_and_schedules_on_sheets`
@@ -432,7 +433,7 @@ Expected response:
   "name": "revit-mcp",
   "status": "running",
   "endpoint": "http://127.0.0.1:48731/mcp/",
-  "tools": 54
+  "tools": 55
 }
 ```
 
@@ -492,6 +493,8 @@ Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "
 ```
 
 The `allowed_by_phase_filter` field evaluates phase rules only. Other view settings can still hide an element.
+
+Revit API 2020/2023/2024 does not expose the phase-status graphic overrides configured on the Graphic Overrides tab of the Phasing dialog. Colors, line settings, patterns, halftone and materials must be inspected manually in Revit when they may affect the diagnosis.
 
 ## Paginated Tool Results
 
