@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bundle-манифест плагина. Кладётся в:
+    %ProgramData%\Autodesk\ApplicationPlugins\KPLN_NavisMcpBridge.bundle\PackageContents.xml
+  а собранная KPLN_NavisMcpBridge.dll — в подпапку Contents\ рядом с ним.
+  (Это делает автоматически таргет DeployBundle в KPLN_NavisMcpBridge.csproj
+  после каждой сборки.)
+
+  Значения ниже сверены с реально работающим сторонним bundle-аддином
+  (SkylarDanielsSpoolToSearchSets.bundle) на вашей машине — именно он даёт
+  кнопку SpoolToSearchSet на вкладке "Надстройки инструментов 1", а значит
+  формат манифеста этому Navisworks точно подходит. Три вещи в прошлой
+  версии файла были неправильными (отсюда кнопка не появлялась):
+    - Platform должен быть "NAVMAN|NAVSIM", не "Navisworks"
+    - SeriesMin/SeriesMax — внутренний код версии "NwNN", не "R2020"; для
+      2020 это Nw17 (совпадает со старшей частью версии сборки Api.dll,
+      17.0.1338.62 — подтверждено декомпиляцией)
+    - ComponentEntry нужен AppType="ManagedPlugin"
+  Также ProductCode/UpgradeCode раньше были не настоящими GUID (содержали
+  буквы вне hex) — заменил на honest-to-god сгенерированные GUID.
+-->
+<ApplicationPackage
+    SchemaVersion="1.0"
+    AutodeskProduct="Naviswork"
+    ProductType="Application"
+    AppVersion="0.1.0"
+    FriendlyVersion="0.1.0"
+    Name="KPLN_NavisMcpBridge"
+    Description="Локальный MCP-мост для Navisworks Manage 2020 (Clash Detective)"
+    AppNameSpace="kpln.navismcpbridge"
+    SupportedLocales="Enu;Ru"
+    Author="KPLN"
+    ProductCode="{D82F55F4-F40B-4E51-A573-027EB84A7EA6}"
+    UpgradeCode="{1D973439-7AAE-419E-9E51-47184B95FDF6}">
+  <CompanyDetails Name="KPLN" Url="" Email="bim.kpln@gmail.com" />
+  <Components Description="2020">
+    <RuntimeRequirements OS="Win64" Platform="NAVMAN|NAVSIM" SeriesMin="Nw17" SeriesMax="Nw17" />
+    <ComponentEntry
+        AppName="KPLN_NavisMcpBridge"
+        AppType="ManagedPlugin"
+        Version="0.1.0"
+        ModuleName="./Contents/KPLN_NavisMcpBridge.dll"
+        AppDescription="MCP Bridge для Clash Detective"
+        LoadOnAutodeskProductStartup="True" />
+  </Components>
+</ApplicationPackage>

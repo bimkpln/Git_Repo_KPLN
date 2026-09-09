@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Navisworks Manage 2020 — управляемый API собран под .NET Framework 4.7.2 -->
+    <TargetFramework>net472</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>KPLN_NavisMcpBridge</AssemblyName>
+    <RootNamespace>KPLN_NavisMcpBridge</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Nullable>disable</Nullable>
+    <BaseOutputPath>bin\</BaseOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Три DLL из установки Navisworks Manage 2020
+      (C:\Program Files\Autodesk\Navisworks Manage 2020\), лежат у вас прямо
+      в корне проекта (на уровень выше этого .csproj — папка, которую вы
+      подключили). Имена/версии подтверждены декомпиляцией присланных вами
+      файлов (Assembly-таблица метаданных), все три — v17.0.1338.62:
+        - Autodesk.Navisworks.Api.dll               (управляемый API)
+        - Autodesk.Navisworks.Interop.ComApi.dll    (COM-интерфейсы Inw*)
+        - Autodesk.Navisworks.ComApi.dll             (ComApiBridge — мост
+          к COM-состоянию, только что нашли в этой сборке; изначальной
+          "ComBridge.dll" отдельно правда не существует, как вы и говорили)
+      Copy Local = false: на машине с установленным Navisworks эти сборки
+      уже есть рядом с navisworks.exe, копировать их в bundle не нужно.
+    -->
+    <Reference Include="Autodesk.Navisworks.Api">
+      <HintPath>..\Autodesk.Navisworks.Api.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Autodesk.Navisworks.Interop.ComApi">
+      <HintPath>..\Autodesk.Navisworks.Interop.ComApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Autodesk.Navisworks.ComApi">
+      <HintPath>..\Autodesk.Navisworks.ComApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <!--
+    Автодеплой после каждой сборки (в т.ч. по F5) — копирует DLL аддина,
+    Newtonsoft.Json.dll и манифест в bundle-папку ApplicationPlugins, чтобы
+    Navisworks сразу видел свежую сборку. $(ProgramData) обычно
+    C:\ProgramData — переменная окружения, MSBuild подхватывает её сам.
+  -->
+  <Target Name="DeployBundle" AfterTargets="Build">
+    <PropertyGroup>
+      <BundleDir Condition="'$(BundleDir)' == ''">$(ProgramData)\Autodesk\ApplicationPlugins\KPLN_NavisMcpBridge.bundle\</BundleDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <BundleContents Include="$(TargetDir)$(AssemblyName).dll" />
+      <BundleContents Include="$(TargetDir)Newtonsoft.Json.dll" />
+    </ItemGroup>
+    <MakeDir Directories="$(BundleDir)Contents" Condition="!Exists('$(BundleDir)Contents')" />
+    <Copy SourceFiles="@(BundleContents)" DestinationFolder="$(BundleDir)Contents" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="PackageContents.xml" DestinationFolder="$(BundleDir)" SkipUnchangedFiles="false" />
+  </Target>
+
+</Project>
