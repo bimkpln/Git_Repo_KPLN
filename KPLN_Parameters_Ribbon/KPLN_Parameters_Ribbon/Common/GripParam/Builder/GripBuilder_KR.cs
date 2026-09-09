@@ -1,11 +1,8 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -21,80 +18,71 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
         public override void Prepare()
         {
-            // Таска на подготовку солидов секций/этажей
-            Task sectSolidPrepareTask = Task.Run(() =>
+            // Подготовка в основном потоке Revit: солидов секций/этажей
+            SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
+
+            // Подготовка в основном потоке Revit: элементов на основе (ByHost)
+            List<BuiltInCategory> userCat = new List<BuiltInCategory>()
             {
-                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
-            });
+                BuiltInCategory.OST_GenericModel,
+                BuiltInCategory.OST_StructuralColumns,
+                BuiltInCategory.OST_Rebar,
+                BuiltInCategory.OST_StructuralFraming,
+                BuiltInCategory.OST_Walls,
+                BuiltInCategory.OST_Floors,
+            };
 
-            // Таска на подготовку элементов на основе (ByHost)
-            Task elemsByHostPrepareTask = Task.Run(() =>
+            foreach (BuiltInCategory cat in userCat)
             {
-                List<BuiltInCategory> userCat = new List<BuiltInCategory>()
-                {
-                    BuiltInCategory.OST_GenericModel,
-                    BuiltInCategory.OST_StructuralColumns,
-                    BuiltInCategory.OST_Rebar,
-                    BuiltInCategory.OST_StructuralFraming,
-                    BuiltInCategory.OST_Walls,
-                    BuiltInCategory.OST_Floors,
-                };
-
-                foreach (BuiltInCategory cat in userCat)
-                {
-                    ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                        .OfClass(typeof(FamilyInstance))
-                        .OfCategory(cat)
-                        .Cast<FamilyInstance>()
-                        .Where(x => x.SuperComponent != null)
-                        .Select(e => new InstanceElemData(e)));
-                }
-            });
-
-            // Таска на подготовку элементов под уровнем (ElemsUnderLevel)
-            Task elemsUnderLevelPrepareTask = Task.Run(() =>
-            {
-                // Категория "Стены" монолит под уровнем
-                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                    .OfClass(typeof(Wall))
-                    .Cast<Wall>()
-                    .Where(x =>
-                        x.Name.StartsWith("00_")
-                        && (x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")))
-                    .Select(e => new InstanceGeomData(e)));
-
-                // Категория "Перекрытия" монолит под уровнем
-                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                    .OfClass(typeof(Floor))
-                    .Cast<Floor>()
-                    .Where(x =>
-                        x.Name.StartsWith("00_")
-                        && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")))
-                    .Select(e => new InstanceGeomData(e)));
-
-                // Семейства "Колоны" под уровнем
-                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
                     .OfClass(typeof(FamilyInstance))
-                    .OfCategory(BuiltInCategory.OST_StructuralFraming)
+                    .OfCategory(cat)
                     .Cast<FamilyInstance>()
-                    .Where(x => x.SuperComponent == null)
-                    .Select(e => new InstanceGeomData(e)));
+                    .Where(x => x.SuperComponent != null)
+                    .Select(e => new InstanceElemData(e)));
+            }
 
-                // Категория "Кровля" под уровнем
-                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                    .OfClass(typeof(RoofBase))
-                    .Cast<RoofBase>()
-                    .Select(e => new InstanceGeomData(e)));
+            // Подготовка в основном потоке Revit: элементов под уровнем (ElemsUnderLevel)
+            // Категория "Стены" монолит под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Wall))
+                .Cast<Wall>()
+                .Where(x =>
+                    x.Name.StartsWith("00_")
+                    && (x.Name.ToLower().Contains("перепад") || x.Name.ToLower().Contains("балк")))
+                .Select(e => new InstanceGeomData(e)));
 
-                // Семейства "Обобщенная модель" под уровнем
-                ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(BuiltInCategory.OST_GenericModel)
-                    .Cast<FamilyInstance>()
-                    .Where(x => x.SuperComponent == null
-                            && !x.Symbol.FamilyName.StartsWith("ClashPoint"))
-                    .Select(e => new InstanceGeomData(e)));
-            });
+            // Категория "Перекрытия" монолит под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(Floor))
+                .Cast<Floor>()
+                .Where(x =>
+                    x.Name.StartsWith("00_")
+                    && (x.Name.ToLower().Contains("площадка") || x.Name.ToLower().Contains("фундамент") || x.Name.ToLower().Contains("пандус")))
+                .Select(e => new InstanceGeomData(e)));
+
+            // Семейства "Колоны" под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_StructuralFraming)
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null)
+                .Select(e => new InstanceGeomData(e)));
+
+            // Категория "Кровля" под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(RoofBase))
+                .Cast<RoofBase>()
+                .Select(e => new InstanceGeomData(e)));
+
+            // Семейства "Обобщенная модель" под уровнем
+            ElemsUnderLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_GenericModel)
+                .Cast<FamilyInstance>()
+                .Where(x => x.SuperComponent == null
+                        && !x.Symbol.FamilyName.StartsWith("ClashPoint"))
+                .Select(e => new InstanceGeomData(e)));
 
             // Категория "Стены" над уровнем
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -162,21 +150,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => x.SuperComponent == null)
                 .Select(e => new InstanceGeomData(e)));
 
-            try
-            {
-                Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask, elemsUnderLevelPrepareTask);
-            }
-            catch (AggregateException ex)
-            {
-                var checkerEx = ex.InnerExceptions
-                    .OfType<CheckerException>()
-                    .FirstOrDefault();
-
-                if (checkerEx != null)
-                    throw checkerEx;
-
-                throw;
-            }
         }
     }
 }

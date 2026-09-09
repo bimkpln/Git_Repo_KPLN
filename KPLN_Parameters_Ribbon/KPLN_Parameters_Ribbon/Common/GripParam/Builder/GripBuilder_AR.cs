@@ -1,10 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
-using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
-using System;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -20,29 +17,23 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
         public override void Prepare()
         {
-            // Таска на подготовку солидов секций/этажей
-            Task sectSolidPrepareTask = Task.Run(() =>
-            {
-                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
-            });
+            // Подготовка в основном потоке Revit: солидов секций/этажей
+            SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
 
-            // Таска на подготовку элементов на основе (ByHost)
-            Task elemsByHostPrepareTask = Task.Run(() =>
-            {
-                // Семейства "Панели витража"
-                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(BuiltInCategory.OST_CurtainWallPanels)
-                    .Cast<FamilyInstance>()
-                    .Select(e => new InstanceElemData(e)));
+            // Подготовка в основном потоке Revit: элементов на основе (ByHost)
+            // Семейства "Панели витража"
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_CurtainWallPanels)
+                .Cast<FamilyInstance>()
+                .Select(e => new InstanceElemData(e)));
 
-                // Семейства "Импосты витража"
-                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(BuiltInCategory.OST_CurtainWallMullions)
-                    .Cast<FamilyInstance>()
-                    .Select(e => new InstanceElemData(e)));
-            });
+            // Семейства "Импосты витража"
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_CurtainWallMullions)
+                .Cast<FamilyInstance>()
+                .Select(e => new InstanceElemData(e)));
 
             // Категория "Стены"
             ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
@@ -148,21 +139,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
                 .Select(e => new InstanceGeomData(e)));
 
-            try
-            {
-                Task.WaitAll(sectSolidPrepareTask, elemsByHostPrepareTask);
-            }
-            catch (AggregateException ex)
-            {
-                var checkerEx = ex.InnerExceptions
-                    .OfType<CheckerException>()
-                    .FirstOrDefault();
-
-                if (checkerEx != null)
-                    throw checkerEx;
-
-                throw;
-            }
         }
     }
 }

@@ -1,7 +1,5 @@
 using Autodesk.Revit.DB;
 using KPLN_Parameters_Ribbon.Forms;
-using System;
-using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -39,7 +37,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     pb = new Progress_Single(
                         $"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по геометрии",
                         format,
-                        false);
+                        false) { UpdateIntervalMilliseconds = 125 };
 
                     pb.SetProggresValues(_builder.AllElementsCount, 0);
                     pb.ShowProgress();
@@ -47,6 +45,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     _builder.ExecuteGripParams_ByGeom(pb);
 
                     t.Commit();
+                    pb.FlushProgress(_builder.PbCounter, "Поиск по геометрии");
 
                     pb.Close();
                     pb.Dispose();
@@ -63,7 +62,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     pb = new Progress_Single(
                         $"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по основанию",
                         format,
-                        false); // ВАЖНО: OK не показываем во время процесса
+                        false) { UpdateIntervalMilliseconds = 125 }; // ВАЖНО: OK не показываем во время процесса
 
                     pb.SetProggresValues(_builder.AllElementsCount, _builder.PbCounter);
                     pb.ShowProgress();
@@ -71,6 +70,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     _builder.ExecuteGripParams_ByHost(pb);
 
                     t.Commit();
+                    pb.FlushProgress(_builder.PbCounter, "Анализ элементов на основе");
 
                     pb.Close();
                     pb.Dispose();
@@ -93,6 +93,10 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 }
 
                 throw; // ВАЖНО: не throw ex;
+            }
+            finally
+            {
+                _builder.DisposeGeometryFilters();
             }
         }
     }

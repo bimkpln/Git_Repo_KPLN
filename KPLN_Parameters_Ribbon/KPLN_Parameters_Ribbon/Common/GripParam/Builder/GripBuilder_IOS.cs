@@ -1,10 +1,7 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -20,11 +17,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
         public override void Prepare()
         {
-            // Таска на подготовку солидов секций/этажей
-            Task sectSolidPrepareTask = Task.Run(() =>
-            {
-                SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
-            });
+            // Подготовка в основном потоке Revit: солидов секций/этажей
+            SectDataSolids = LevelAndSectionSolid.PrepareSolids(Doc, !string.IsNullOrEmpty(CorpsParamName));
 
             List<BuiltInCategory> userCat = null;
             List<BuiltInCategory> revitCat = null;
@@ -94,18 +88,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 };
             }
 
-            // Таска на подготовку элементов на основе (ByHost)
-            Task elemsByHostPrepareTask = Task.Run(() =>
-            {
-                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                    .OfCategory(BuiltInCategory.OST_DuctInsulations)
-                    .WhereElementIsNotElementType()
-                    .Select(e => new InstanceElemData(e)));
-                ElemsByHost.AddRange(new FilteredElementCollector(Doc)
-                    .OfCategory(BuiltInCategory.OST_PipeInsulations)
-                    .WhereElementIsNotElementType()
-                    .Select(e => new InstanceElemData(e)));
-            });
+            // Подготовка в основном потоке Revit: элементов на основе (ByHost)
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfCategory(BuiltInCategory.OST_DuctInsulations)
+                .WhereElementIsNotElementType()
+                .Select(e => new InstanceElemData(e)));
+            ElemsByHost.AddRange(new FilteredElementCollector(Doc)
+                .OfCategory(BuiltInCategory.OST_PipeInsulations)
+                .WhereElementIsNotElementType()
+                .Select(e => new InstanceElemData(e)));
 
             foreach (BuiltInCategory bic in revitCat)
             {
@@ -114,8 +105,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .WhereElementIsNotElementType()
                     .Select(e => new InstanceGeomData(e)));
             }
-
-            Task.WaitAll(elemsByHostPrepareTask);
 
             foreach (BuiltInCategory bic in userCat)
             {
@@ -137,22 +126,6 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     .Select(e => new InstanceElemData(e)));
             }
 
-
-            try
-            {
-                Task.WaitAll(sectSolidPrepareTask);
-            }
-            catch (AggregateException ex)
-            {
-                var checkerEx = ex.InnerExceptions
-                    .OfType<CheckerException>()
-                    .FirstOrDefault();
-
-                if (checkerEx != null)
-                    throw checkerEx;
-
-                throw;
-            }
         }
     }
 }

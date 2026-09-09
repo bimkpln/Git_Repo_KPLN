@@ -1,10 +1,15 @@
-﻿using System.Windows.Forms;
+﻿using System.Diagnostics;
+using System.Windows.Forms;
 
 namespace KPLN_Parameters_Ribbon.Forms
 {
     public partial class Progress_Single : Form
     {
         private string _format;
+        private readonly Stopwatch _updateWatch = Stopwatch.StartNew();
+
+        // По умолчанию сохраняется прежнее поведение остальных команд.
+        public int UpdateIntervalMilliseconds { get; set; }
         
         public Progress_Single(string header, string format, bool isBtnOkVisible)
         {
@@ -83,6 +88,20 @@ namespace KPLN_Parameters_Ribbon.Forms
 
         public void Update(int progressvalue, string value = null)
         {
+            UpdateProgress(progressvalue, value, false);
+        }
+
+        public void FlushProgress(int progressvalue, string value = null)
+        {
+            UpdateProgress(progressvalue, value, true);
+        }
+
+        private void UpdateProgress(int progressvalue, string value, bool force)
+        {
+            if (!force && _updateWatch.ElapsedMilliseconds < UpdateIntervalMilliseconds)
+                return;
+            _updateWatch.Restart();
+
             if (!string.IsNullOrEmpty(value) && !Add_lbl.Text.Equals(value))
                 Add_lbl.Text = value;
             

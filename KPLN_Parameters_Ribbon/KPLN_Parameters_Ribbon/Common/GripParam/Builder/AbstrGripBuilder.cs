@@ -4,7 +4,6 @@ using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
@@ -26,6 +25,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         private List<GripParamError> _errorElements = new List<GripParamError>();
         private int _allElementsCount = 0;
         private int _hostElementsCount = 0;
+        private readonly Dictionary<LevelAndSectionSolid, BoundingBoxIntersectsFilter> _intersectionFilters
+            = new Dictionary<LevelAndSectionSolid, BoundingBoxIntersectsFilter>();
+        private readonly Dictionary<LevelAndSectionSolid, BoundingBoxIsInsideFilter> _insideFilters
+            = new Dictionary<LevelAndSectionSolid, BoundingBoxIsInsideFilter>();
+
+        // Фильтры принадлежат одному запуску. Используются только в контексте Revit API.
+        internal void DisposeGeometryFilters()
+        {
+            foreach (BoundingBoxIntersectsFilter filter in _intersectionFilters.Values)
+                filter.Dispose();
+            foreach (BoundingBoxIsInsideFilter filter in _insideFilters.Values)
+                filter.Dispose();
+            _intersectionFilters.Clear();
+            _insideFilters.Clear();
+        }
 
         public AbstrGripBuilder(Document doc, string docMainTitle, string levelParamName, string sectionParamName)
         {
@@ -185,12 +199,21 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     $"Попроси коллег ОСВОБОДИТЬ все забранные рабочие наборы и элементы, примеры элементов:\n" +
                     $"{notAvailableIds.FirstOrDefault()}");
 
-            Task elemsOnLevelCheckTask = Task.Run(() => CheckElemParams(ElemsOnLevel));
-            Task elemsByHostCheckTask = Task.Run(() => CheckElemParams(ElemsByHost));
-            Task elemsUnderLevelCheckTask = Task.Run(() => CheckElemParams(ElemsUnderLevel));
-            Task elemsStairsElemsCheckTask = Task.Run(() => CheckElemParams(StairsElems));
-
-            Task.WaitAll(new Task[] { elemsOnLevelCheckTask, elemsByHostCheckTask, elemsUnderLevelCheckTask, elemsStairsElemsCheckTask });
+            // Сохраняем проверку всех коллекций и AggregateException, как при Task.WaitAll.
+            List<Exception> errors = new List<Exception>();
+            foreach (List<InstanceElemData> collection in new[] { ElemsOnLevel, ElemsByHost, ElemsUnderLevel, StairsElems })
+            {
+                try
+                {
+                    CheckElemParams(collection);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
+            }
+            if (errors.Count > 0)
+                throw new AggregateException(errors);
         }
 
         /// <summary>
@@ -496,8 +519,16 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             foreach (LevelAndSectionSolid levelAndGridSolid in SectDataSolids)
             {
                 // Фильтры
-                BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(levelAndGridSolid.BBoxOutline, 0.1);
-                BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(levelAndGridSolid.BBoxOutline, 0.1);
+                if (!_intersectionFilters.TryGetValue(levelAndGridSolid, out BoundingBoxIntersectsFilter intersectsFilter))
+                {
+                    intersectsFilter = new BoundingBoxIntersectsFilter(levelAndGridSolid.BBoxOutline, 0.1);
+                    _intersectionFilters.Add(levelAndGridSolid, intersectsFilter);
+                }
+                if (!_insideFilters.TryGetValue(levelAndGridSolid, out BoundingBoxIsInsideFilter insideFilter))
+                {
+                    insideFilter = new BoundingBoxIsInsideFilter(levelAndGridSolid.BBoxOutline, 0.1);
+                    _insideFilters.Add(levelAndGridSolid, insideFilter);
+                }
 
 
                 // Фильтрация по QuickFilter
