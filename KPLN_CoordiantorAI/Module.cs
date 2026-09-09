@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_CoordiantorAI.ExternalAIModel.Mcp;
 using KPLN_Loader.Common;
 using KPLN_Library_DBWorker;
 using System.IO;
@@ -12,9 +13,16 @@ namespace KPLN_CoordiantorAI
     public class Module : IExternalModule
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private RevitMcpServer _mcpServer;
 
         public Result Close()
         {
+            if (_mcpServer != null)
+            {
+                _mcpServer.Dispose();
+                _mcpServer = null;
+            }
+
             return Result.Succeeded;
         }
 
@@ -23,6 +31,7 @@ namespace KPLN_CoordiantorAI
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+            StartMcpServer();
 
             //Добавляю панель
             RibbonPanel panel = application.CreateRibbonPanel(tabName, "Координатор ИИ");
@@ -68,6 +77,30 @@ namespace KPLN_CoordiantorAI
             };
 
             return Result.Succeeded;
+        }
+
+        private void StartMcpServer()
+        {
+            if (_mcpServer != null && _mcpServer.IsRunning)
+                return;
+
+            try
+            {
+                RevitMcpDiagnosticLogger.Log("Module.StartMcpServer begin.");
+                _mcpServer = new RevitMcpServer();
+                _mcpServer.Start();
+                RevitMcpDiagnosticLogger.Log("Module.StartMcpServer success.");
+            }
+            catch (System.Exception ex)
+            {
+                RevitMcpDiagnosticLogger.LogException("Module.StartMcpServer failed", ex);
+
+                if (_mcpServer != null)
+                {
+                    _mcpServer.Dispose();
+                    _mcpServer = null;
+                }
+            }
         }
 
         /// <summary>

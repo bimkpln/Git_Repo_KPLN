@@ -7,6 +7,7 @@ using KPLN_CoordiantorAI.Common;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -561,6 +562,437 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     unplaced_families = families.Count(f => !f.IsPlacedInModel)
                 }
             };
+        }
+
+        private static object GetJournalEntriesSinceSafe(Document doc, string userDateTime, string endUserDateTime = null, int limit = 200 * 1024, int offset = 0)
+        {
+            const int defaultPageChars = 200 * 1024;
+            const int maxPageChars = 200 * 1024;
+            const int maxCollectionChars = 5 * 1024 * 1024;
+            const int maxJournalFilesToScan = 80;
+            const long maxJournalFileBytes = 12L * 1024L * 1024L;
+            const int maxElapsedMilliseconds = 8000;
+            const int maxLinesPerFile = 250000;
+
+            if (limit <= 0)
+                limit = defaultPageChars;
+
+            if (limit > maxPageChars)
+                limit = maxPageChars;
+
+            if (offset < 0)
+                offset = 0;
+
+            int collectCharsLimit = offset + limit + defaultPageChars;
+            if (collectCharsLimit < 0 || collectCharsLimit > maxCollectionChars)
+                collectCharsLimit = maxCollectionChars;
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            DateTime targetDateTime = ParseMcpJournalUserDate(userDateTime);
+            if (targetDateTime == DateTime.MinValue)
+            {
+                return new
+                {
+                    success = false,
+                    error = "Could not parse dateTime. Use formats: 'yyyy-MM-dd HH:mm:ss', 'yyyy-MM-ddTHH:mm:ss', 'dd.MM.yyyy HH:mm:ss'."
+                };
+            }
+
+            DateTime? endDateTime = null;
+            if (!string.IsNullOrWhiteSpace(endUserDateTime))
+            {
+                DateTime parsedEndDateTime = ParseMcpJournalUserDate(endUserDateTime);
+                if (parsedEndDateTime == DateTime.MinValue)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "Could not parse endDateTime. Use formats: 'yyyy-MM-dd HH:mm:ss', 'yyyy-MM-ddTHH:mm:ss', 'dd.MM.yyyy HH:mm:ss'."
+                    };
+                }
+
+                if (parsedEndDateTime < targetDateTime)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "endDateTime cannot be earlier than dateTime."
+                    };
+                }
+
+                endDateTime = parsedEndDateTime;
+            }
+
+            if (doc == null)
+            {
+                return new
+                {
+                    success = false,
+                    error = "Active Revit document is missing."
+                };
+            }
+
+            string revitVersion = "Autodesk Revit " + GetRevitVersion(doc);
+            string journalFolder = GetJournalFolderPath(revitVersion);
+            if (!Directory.Exists(journalFolder))
+            {
+                return new
+                {
+                    success = false,
+                    error = "Journal folder was not found: " + journalFolder,
+                    journal_folder = journalFolder
+                };
+            }
+
+            List<FileInfo> journalFiles = SelectJournalFilesToScan(journalFolder, maxJournalFilesToScan);
+
+            if (journalFiles.Count == 0)
+            {
+                return new
+                {
+                    success = false,
+                    error = "No Revit journal files were found for the requested date range.",
+                    journal_folder = journalFolder,
+                    target_date = targetDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    end_date = endDateTime.HasValue ? endDateTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : null
+                };
+            }
+
+            List<object> journalFileInfos = new List<object>();
+            List<string> entryBlocksNewestFirst = new List<string>();
+            int totalEntryCount = 0;
+            long totalSizeBytes = 0;
+            int matchedJournalCount = 0;
+            bool timedOut = false;
+            bool truncatedByExtractor = false;
+
+            foreach (FileInfo journal in journalFiles)
+            {
+                if (stopwatch.ElapsedMilliseconds > maxElapsedMilliseconds)
+                {
+                    timedOut = true;
+                    break;
+                }
+
+                var extracted = ExtractEntriesFromJournalFile(
+                    journal,
+                    targetDateTime,
+                    endDateTime,
+                    collectCharsLimit,
+                    maxJournalFileBytes,
+                    maxElapsedMilliseconds,
+                    maxLinesPerFile,
+                    stopwatch);
+
+                totalEntryCount += extracted.count;
+                totalSizeBytes += extracted.totalSizeBytes;
+                timedOut = timedOut || extracted.timedOut;
+                truncatedByExtractor = truncatedByExtractor || extracted.truncated;
+
+                journalFileInfos.Add(new
+                {
+                    journal_file = journal.FullName,
+                    journal_date = journal.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    journal_size_bytes = journal.Length,
+                    read_success = extracted.readSuccess,
+                    has_entries_in_range = extracted.count > 0,
+                    entry_count = extracted.count,
+                    total_size_bytes = extracted.totalSizeBytes,
+                    first_entry_date = extracted.firstEntryDate.HasValue ? extracted.firstEntryDate.Value.ToString("yyyy-MM-dd HH:mm:ss") : null,
+                    last_entry_date = extracted.lastEntryDate.HasValue ? extracted.lastEntryDate.Value.ToString("yyyy-MM-dd HH:mm:ss") : null,
+                    started_collecting = extracted.startedCollecting,
+                    truncated = extracted.truncated,
+                    timed_out = extracted.timedOut,
+                    debug_info = extracted.debugInfo,
+                    error = extracted.error
+                });
+
+                if (extracted.count > 0 && !string.IsNullOrWhiteSpace(extracted.entries))
+                {
+                    matchedJournalCount++;
+                    entryBlocksNewestFirst.Add("===== " + journal.Name + " =====\r\n" + extracted.entries);
+                }
+
+                if (timedOut)
+                    break;
+            }
+
+            entryBlocksNewestFirst.Reverse();
+            string combinedEntries = string.Join("\r\n\r\n", entryBlocksNewestFirst);
+            int totalEntriesChars = combinedEntries.Length;
+            bool collectionTruncated = totalEntriesChars >= collectCharsLimit || truncatedByExtractor;
+            string pageEntries = string.Empty;
+            if (offset < totalEntriesChars)
+            {
+                int pageChars = Math.Min(limit, totalEntriesChars - offset);
+                pageEntries = combinedEntries.Substring(offset, pageChars);
+            }
+            bool hasMore = offset + pageEntries.Length < totalEntriesChars || collectionTruncated;
+            int? nextOffset = hasMore ? (int?)(offset + pageEntries.Length) : null;
+
+            return new
+            {
+                success = !timedOut,
+                journal_files = journalFileInfos,
+                target_date = targetDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                end_date = endDateTime.HasValue ? endDateTime.Value.ToString("yyyy-MM-dd HH:mm:ss") : null,
+                entries = pageEntries,
+                entry_count = totalEntryCount,
+                total_size_bytes = totalSizeBytes,
+                total_entries_chars = totalEntriesChars,
+                scanned_journal_count = journalFileInfos.Count,
+                candidate_journal_count = journalFiles.Count,
+                matched_journal_count = matchedJournalCount,
+                entries_truncated = hasMore,
+                extractor_truncated = truncatedByExtractor,
+                collection_truncated = collectionTruncated,
+                limit = limit,
+                offset = offset,
+                has_more = hasMore,
+                next_offset = nextOffset,
+                timed_out = timedOut,
+                elapsed_ms = stopwatch.ElapsedMilliseconds,
+                max_entries_chars = maxPageChars,
+                max_collection_chars = maxCollectionChars,
+                max_journal_file_bytes = maxJournalFileBytes,
+                max_elapsed_ms = maxElapsedMilliseconds,
+                message = totalEntryCount == 0
+                    ? "No journal entries were found in the requested range in the selected journal files."
+                    : null,
+                error = timedOut ? "Journal scan reached the time limit and returned a partial result." : null
+            };
+        }
+
+        private static bool UseSafeJournalReader()
+        {
+            return Environment.GetEnvironmentVariable("COORDINATOR_AI_USE_LEGACY_JOURNAL_READER") != "1";
+        }
+
+        private static DateTime ParseMcpJournalUserDate(string userInput)
+        {
+            if (string.IsNullOrWhiteSpace(userInput))
+                return DateTime.MinValue;
+
+            userInput = userInput.Trim();
+
+            string[] exactFormats =
+            {
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-ddTHH:mm:ss",
+                "yyyy-MM-dd HH:mm",
+                "yyyy-MM-ddTHH:mm",
+                "dd.MM.yyyy HH:mm:ss",
+                "dd.MM.yyyy HH:mm",
+                "dd.MM.yyyy"
+            };
+
+            DateTime parsed;
+            if (DateTime.TryParseExact(userInput, exactFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
+                return parsed;
+
+            if (DateTime.TryParse(userInput, CultureInfo.CurrentCulture, DateTimeStyles.None, out parsed))
+                return parsed;
+
+            if (DateTime.TryParse(userInput, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
+                return parsed;
+
+            return DateTime.MinValue;
+        }
+
+        private static List<FileInfo> SelectJournalFilesToScan(string journalFolder, int maxJournalFilesToScan)
+        {
+            return Directory.GetFiles(journalFolder, "journal.*.txt")
+                .Select(f => new FileInfo(f))
+                .Where(f => f.Exists)
+                .OrderByDescending(GetJournalFileNumber)
+                .ThenByDescending(f => f.LastWriteTime)
+                .Take(maxJournalFilesToScan)
+                .ToList();
+        }
+
+        private static int GetJournalFileNumber(FileInfo journal)
+        {
+            if (journal == null)
+                return -1;
+
+            Match match = Regex.Match(journal.Name ?? string.Empty, @"^journal\.(\d+)\.txt$", RegexOptions.IgnoreCase);
+            if (!match.Success)
+                return -1;
+
+            int number;
+            return int.TryParse(match.Groups[1].Value, out number) ? number : -1;
+        }
+
+        private static bool ShouldScanJournalFile(FileInfo journal, DateTime targetDate, DateTime? endDate)
+        {
+            if (journal == null || !journal.Exists)
+                return false;
+
+            DateTime lowerBound = targetDate.AddMinutes(-10);
+            DateTime upperBound = endDate.HasValue ? endDate.Value.AddMinutes(30) : DateTime.MaxValue;
+
+            if (journal.LastWriteTime < lowerBound)
+                return false;
+
+            if (journal.CreationTime > upperBound && journal.LastWriteTime > upperBound)
+                return false;
+
+            return true;
+        }
+
+        private static (string entries, int count, long totalSizeBytes, string debugInfo, DateTime? firstEntryDate, DateTime? lastEntryDate, bool startedCollecting, bool readSuccess, bool truncated, bool timedOut, string error) ExtractEntriesFromJournalFile(
+            FileInfo journal,
+            DateTime targetDate,
+            DateTime? endDate,
+            int maxEntriesChars,
+            long maxJournalFileBytes,
+            int maxElapsedMilliseconds,
+            int maxLinesPerFile,
+            Stopwatch stopwatch)
+        {
+            List<string> resultLines = new List<string>();
+            int entryCount = 0;
+            long totalSize = 0;
+            int totalLines = 0;
+            int totalLinesWithDate = 0;
+            bool startedCollecting = false;
+            bool truncated = false;
+            bool timedOut = false;
+            DateTime? firstFoundDate = null;
+            DateTime? lastFoundDate = null;
+
+            long bytesToRead = Math.Min(journal.Length, maxJournalFileBytes);
+            bool readTailOnly = journal.Length > maxJournalFileBytes;
+
+            try
+            {
+                using (FileStream stream = new FileStream(journal.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    if (readTailOnly)
+                        stream.Seek(-bytesToRead, SeekOrigin.End);
+
+                    using (StreamReader reader = new StreamReader(stream, Encoding.GetEncoding("windows-1251"), true))
+                    {
+                        if (readTailOnly)
+                            reader.ReadLine();
+
+                        string line;
+                        while ((line = reader.ReadLine()) != null)
+                        {
+                            totalLines++;
+
+                            if (totalLines > maxLinesPerFile)
+                            {
+                                truncated = true;
+                                break;
+                            }
+
+                            if (stopwatch.ElapsedMilliseconds > maxElapsedMilliseconds)
+                            {
+                                timedOut = true;
+                                break;
+                            }
+
+                            DateTime lineDate;
+                            bool hasDate = TryParseJournalLineDate(line, out lineDate);
+                            if (hasDate)
+                            {
+                                totalLinesWithDate++;
+                                if (!firstFoundDate.HasValue)
+                                    firstFoundDate = lineDate;
+
+                                lastFoundDate = lineDate;
+
+                                if (lineDate < targetDate)
+                                {
+                                    startedCollecting = false;
+                                    continue;
+                                }
+
+                                if (endDate.HasValue && lineDate > endDate.Value)
+                                {
+                                    if (startedCollecting)
+                                        break;
+
+                                    if (totalLinesWithDate == 1)
+                                        break;
+
+                                    startedCollecting = false;
+                                    continue;
+                                }
+
+                                startedCollecting = true;
+                                entryCount++;
+                            }
+
+                            if (startedCollecting)
+                            {
+                                resultLines.Add(line);
+                                totalSize += line.Length + 2;
+
+                                if (totalSize > maxEntriesChars)
+                                {
+                                    truncated = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                string entries = string.Join("\r\n", resultLines);
+                string debugInfo = "lines=" + totalLines
+                    + "; date_lines=" + totalLinesWithDate
+                    + "; first_date=" + (firstFoundDate.HasValue ? firstFoundDate.Value.ToString("yyyy-MM-dd HH:mm:ss") : "none")
+                    + "; last_date=" + (lastFoundDate.HasValue ? lastFoundDate.Value.ToString("yyyy-MM-dd HH:mm:ss") : "none")
+                    + "; target=" + targetDate.ToString("yyyy-MM-dd HH:mm:ss")
+                    + "; end=" + (endDate.HasValue ? endDate.Value.ToString("yyyy-MM-dd HH:mm:ss") : "none")
+                    + "; tail_only=" + readTailOnly;
+
+                return (entries, entryCount, totalSize, debugInfo, firstFoundDate, lastFoundDate, startedCollecting, true, truncated, timedOut, null);
+            }
+            catch (Exception ex)
+            {
+                return (string.Empty, 0, 0, "read failed", null, null, false, false, false, false, ex.Message);
+            }
+        }
+
+        private static bool TryParseJournalLineDate(string line, out DateTime lineDate)
+        {
+            lineDate = DateTime.MinValue;
+            if (string.IsNullOrWhiteSpace(line))
+                return false;
+
+            Match match = Regex.Match(line, @"^\s*'\w?\s+(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?;");
+            if (!match.Success)
+                return false;
+
+            int month = GetMonthNumberFromAbbreviation(match.Groups[2].Value);
+            if (month <= 0)
+                return false;
+
+            int day;
+            int year;
+            int hour;
+            int minute;
+            int second;
+            if (!int.TryParse(match.Groups[1].Value, out day)
+                || !int.TryParse(match.Groups[3].Value, out year)
+                || !int.TryParse(match.Groups[4].Value, out hour)
+                || !int.TryParse(match.Groups[5].Value, out minute)
+                || !int.TryParse(match.Groups[6].Value, out second))
+                return false;
+
+            try
+            {
+                lineDate = new DateTime(year, month, day, hour, minute, second);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -3478,10 +3910,19 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #region 29_get_user_selection_in_revit
 
-        public static object GetUserSelectionInRevit(Document doc, UIDocument uiDoc)
+        public static object GetUserSelectionInRevit(Document doc, UIDocument uiDoc, int limit = 200, int offset = 0)
         {
             try
             {
+                if (limit <= 0)
+                    limit = 200;
+
+                if (limit > 200)
+                    limit = 200;
+
+                if (offset < 0)
+                    offset = 0;
+
                 // Проверяем, есть ли активный UI документ
                 if (uiDoc == null)
                 {
@@ -3489,7 +3930,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         error = "Нет активного UI документа. Пожалуйста, откройте проект Revit.",
                         selected_element_ids = new List<int>(),
-                        count = 0
+                        items = new List<object>(),
+                        elements = new List<object>(),
+                        count = 0,
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset,
+                        has_more = false,
+                        next_offset = (int?)null,
+                        full_selection_ids_omitted = false
                     };
                 }
 
@@ -3501,7 +3951,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     return new
                     {
                         selected_element_ids = new List<int>(),
+                        items = new List<object>(),
+                        elements = new List<object>(),
                         count = 0,
+                        total_count = 0,
+                        returned_count = 0,
+                        limit = limit,
+                        offset = offset,
+                        has_more = false,
+                        next_offset = (int?)null,
+                        full_selection_ids_omitted = false,
                         message = "Ничего не выделено. Пожалуйста, выделите элементы в Revit."
                     };
                 }
@@ -3509,28 +3968,44 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 // Преобразуем ElementId в int
                 var elementIds = selectedIds
                     .Select(IDHelper.ElIdInt)
+                    .OrderBy(i => i)
+                    .ToList();
+
+                var pageElementIds = elementIds
+                    .Skip(offset)
+                    .Take(limit)
                     .ToList();
 
                 // Дополнительная информация о выделении (опционально)
                 var elementsInfo = new List<object>();
-                foreach (ElementId id in selectedIds)
+                foreach (int idInt in pageElementIds)
                 {
-                    Element elem = doc.GetElement(id);
+                    Element elem = doc.GetElement(IDHelper.ToElementId(idInt));
                     if (elem != null)
                     {
                         elementsInfo.Add(new
                         {
-                            id = IDHelper.ElIdInt(id),
+                            id = idInt,
                             name = elem.Name ?? "Unnamed",
                             category = elem.Category?.Name ?? "Unknown"
                         });
                     }
                 }
 
+                bool hasMore = offset + pageElementIds.Count < elementIds.Count;
+
                 return new
                 {
-                    selected_element_ids = elementIds,
-                    count = elementIds.Count,
+                    selected_element_ids = pageElementIds,
+                    count = pageElementIds.Count,
+                    total_count = elementIds.Count,
+                    returned_count = pageElementIds.Count,
+                    limit = limit,
+                    offset = offset,
+                    has_more = hasMore,
+                    next_offset = hasMore ? (int?)(offset + pageElementIds.Count) : null,
+                    full_selection_ids_omitted = hasMore || offset > 0,
+                    items = elementsInfo,
                     elements = elementsInfo,  // Дополнительная информация для контекста
                     message = $"Выделено {elementIds.Count} элементов."
                 };
@@ -3541,7 +4016,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     error = $"Ошибка при получении выделенных элементов: {ex.Message}",
                     selected_element_ids = new List<int>(),
-                    count = 0
+                    items = new List<object>(),
+                    elements = new List<object>(),
+                    count = 0,
+                    total_count = 0,
+                    returned_count = 0,
+                    limit = limit,
+                    offset = offset,
+                    has_more = false,
+                    next_offset = (int?)null,
+                    full_selection_ids_omitted = false
                 };
             }
         }
@@ -4844,6 +5328,389 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 AddCategoryIfNotAdded(categories, addedCategoryIds, subCategory);
                 AddSubcategoriesRecursive(categories, addedCategoryIds, subCategory);
+            }
+        }
+
+        #endregion
+
+        #region 33.1.1_get_phase_visibility_settings
+
+        public static object GetPhaseVisibilitySettings(
+            Document doc,
+            int? viewId,
+            List<int> elementIds,
+            bool includeAllFilters)
+        {
+            View view = viewId.HasValue
+                ? doc.GetElement(IDHelper.ToElementId(viewId.Value)) as View
+                : doc.ActiveView;
+
+            if (view == null)
+            {
+                return new
+                {
+                    error = viewId.HasValue
+                        ? $"Вид с ID {viewId.Value} не найден."
+                        : "В документе отсутствует активный вид."
+                };
+            }
+
+            Parameter disciplineParameter = view.get_Parameter(BuiltInParameter.VIEW_DISCIPLINE);
+            ElementId viewPhaseId = GetElementIdParameterValue(view, BuiltInParameter.VIEW_PHASE);
+            ElementId phaseFilterId = GetElementIdParameterValue(view, BuiltInParameter.VIEW_PHASE_FILTER);
+            Phase viewPhase = IsUsableElementId(viewPhaseId) ? doc.GetElement(viewPhaseId) as Phase : null;
+            PhaseFilter phaseFilter = IsUsableElementId(phaseFilterId) ? doc.GetElement(phaseFilterId) as PhaseFilter : null;
+
+            List<object> elements = new List<object>();
+            foreach (int elementId in (elementIds ?? new List<int>()).Distinct())
+                elements.Add(BuildElementPhaseVisibilityInfo(doc, viewPhaseId, phaseFilter, elementId));
+
+            List<object> allPhaseFilters = new List<object>();
+            if (includeAllFilters)
+            {
+                foreach (PhaseFilter filter in new FilteredElementCollector(doc)
+                    .OfClass(typeof(PhaseFilter))
+                    .Cast<PhaseFilter>()
+                    .OrderBy(i => i.Name))
+                {
+                    bool isAppliedToView = phaseFilter != null
+                        && IDHelper.ElIdInt(filter.Id) == IDHelper.ElIdInt(phaseFilter.Id);
+                    allPhaseFilters.Add(BuildPhaseFilterInfo(filter, isAppliedToView));
+                }
+            }
+
+            return new
+            {
+                visibility_scope = "phase_rules_only",
+                view = new
+                {
+                    id = IDHelper.ElIdInt(view.Id),
+                    name = view.Name,
+                    type = view.ViewType.ToString(),
+                    discipline = GetParameterDisplayValue(disciplineParameter),
+                    discipline_value = GetParameterIntegerValue(disciplineParameter),
+                    phase = BuildPhaseReference(viewPhase),
+                    phase_filter = phaseFilter != null
+                        ? BuildPhaseFilterInfo(phaseFilter, true)
+                        : BuildNoPhaseFilterInfo()
+                },
+                elements = elements,
+                all_phase_filters_included = includeAllFilters,
+                all_phase_filters = allPhaseFilters,
+                notes = new[]
+                {
+                    "The result evaluates phase rules only.",
+                    "Category visibility, view filters, element hiding, worksets, links, view range and crop settings may still affect final visibility."
+                }
+            };
+        }
+
+        private static object BuildElementPhaseVisibilityInfo(
+            Document doc,
+            ElementId viewPhaseId,
+            PhaseFilter phaseFilter,
+            int elementId)
+        {
+            Element element = doc.GetElement(IDHelper.ToElementId(elementId));
+            if (element == null)
+            {
+                return new
+                {
+                    element_id = elementId,
+                    found = false,
+                    error = $"Элемент с ID {elementId} не найден."
+                };
+            }
+
+            if (!element.HasPhases())
+            {
+                return new
+                {
+                    element_id = elementId,
+                    found = true,
+                    element_name = element.Name,
+                    category_name = element.Category != null ? element.Category.Name : null,
+                    has_phase_properties = false,
+                    status_in_view = (string)null,
+                    phase_filter_presentation = (string)null,
+                    allowed_by_phase_filter = (bool?)null,
+                    reason = "Элемент не поддерживает свойства стадий."
+                };
+            }
+
+            Phase createdPhase = IsUsableElementId(element.CreatedPhaseId)
+                ? doc.GetElement(element.CreatedPhaseId) as Phase
+                : null;
+            Phase demolishedPhase = IsUsableElementId(element.DemolishedPhaseId)
+                ? doc.GetElement(element.DemolishedPhaseId) as Phase
+                : null;
+
+            if (!IsUsableElementId(viewPhaseId))
+            {
+                return new
+                {
+                    element_id = elementId,
+                    found = true,
+                    element_name = element.Name,
+                    category_name = element.Category != null ? element.Category.Name : null,
+                    has_phase_properties = true,
+                    phase_created = BuildPhaseReference(createdPhase),
+                    phase_demolished = BuildPhaseReference(demolishedPhase),
+                    status_in_view = (string)null,
+                    phase_filter_presentation = (string)null,
+                    allowed_by_phase_filter = (bool?)null,
+                    reason = "У вида не задана стадия, поэтому статус элемента относительно вида вычислить невозможно."
+                };
+            }
+
+            try
+            {
+                ElementOnPhaseStatus status = element.GetPhaseStatus(viewPhaseId);
+                PhaseStatusPresentation? presentation = GetPhaseStatusPresentation(phaseFilter, status);
+
+                return new
+                {
+                    element_id = elementId,
+                    found = true,
+                    element_name = element.Name,
+                    category_name = element.Category != null ? element.Category.Name : null,
+                    has_phase_properties = true,
+                    phase_created = BuildPhaseReference(createdPhase),
+                    phase_demolished = BuildPhaseReference(demolishedPhase),
+                    status_in_view = status.ToString(),
+                    status_display_name = GetPhaseStatusDisplayName(status),
+                    phase_filter_presentation = presentation.HasValue
+                        ? GetPhasePresentationName(presentation.Value)
+                        : phaseFilter == null ? "NoFilter" : "NotApplicable",
+                    allowed_by_phase_filter = IsAllowedByPhaseFilter(phaseFilter, status, presentation),
+                    reason = GetPhaseVisibilityReason(phaseFilter, status, presentation)
+                };
+            }
+            catch (Exception ex)
+            {
+                return new
+                {
+                    element_id = elementId,
+                    found = true,
+                    element_name = element.Name,
+                    category_name = element.Category != null ? element.Category.Name : null,
+                    has_phase_properties = true,
+                    phase_created = BuildPhaseReference(createdPhase),
+                    phase_demolished = BuildPhaseReference(demolishedPhase),
+                    status_in_view = (string)null,
+                    phase_filter_presentation = (string)null,
+                    allowed_by_phase_filter = (bool?)null,
+                    error = ex.Message
+                };
+            }
+        }
+
+        private static object BuildPhaseFilterInfo(PhaseFilter phaseFilter, bool isAppliedToView)
+        {
+            return new
+            {
+                id = IDHelper.ElIdInt(phaseFilter.Id),
+                name = phaseFilter.Name,
+                is_applied_to_view = isAppliedToView,
+                statuses = BuildPhaseStatusSettings(phaseFilter)
+            };
+        }
+
+        private static object BuildNoPhaseFilterInfo()
+        {
+            return new
+            {
+                id = (int?)null,
+                name = "None",
+                is_applied_to_view = false,
+                statuses = BuildPhaseStatusSettings(null)
+            };
+        }
+
+        private static List<object> BuildPhaseStatusSettings(PhaseFilter phaseFilter)
+        {
+            ElementOnPhaseStatus[] statuses =
+            {
+                ElementOnPhaseStatus.New,
+                ElementOnPhaseStatus.Existing,
+                ElementOnPhaseStatus.Demolished,
+                ElementOnPhaseStatus.Temporary
+            };
+
+            List<object> result = new List<object>();
+            foreach (ElementOnPhaseStatus status in statuses)
+            {
+                PhaseStatusPresentation? presentation = GetPhaseStatusPresentation(phaseFilter, status);
+                result.Add(new
+                {
+                    status = status.ToString(),
+                    display_name = GetPhaseStatusDisplayName(status),
+                    presentation = presentation.HasValue
+                        ? GetPhasePresentationName(presentation.Value)
+                        : "NoFilter",
+                    is_visible = !presentation.HasValue || presentation.Value != PhaseStatusPresentation.DontShow
+                });
+            }
+
+            return result;
+        }
+
+        private static PhaseStatusPresentation? GetPhaseStatusPresentation(
+            PhaseFilter phaseFilter,
+            ElementOnPhaseStatus status)
+        {
+            if (phaseFilter == null || !IsConfigurablePhaseStatus(status))
+                return null;
+
+            return phaseFilter.GetPhaseStatusPresentation(status);
+        }
+
+        private static bool IsConfigurablePhaseStatus(ElementOnPhaseStatus status)
+        {
+            return status == ElementOnPhaseStatus.New
+                || status == ElementOnPhaseStatus.Existing
+                || status == ElementOnPhaseStatus.Demolished
+                || status == ElementOnPhaseStatus.Temporary;
+        }
+
+        private static bool IsAllowedByPhaseFilter(
+            PhaseFilter phaseFilter,
+            ElementOnPhaseStatus status,
+            PhaseStatusPresentation? presentation)
+        {
+            if (!IsConfigurablePhaseStatus(status))
+                return false;
+
+            if (phaseFilter == null)
+                return true;
+
+            return presentation.HasValue && presentation.Value != PhaseStatusPresentation.DontShow;
+        }
+
+        private static string GetPhaseVisibilityReason(
+            PhaseFilter phaseFilter,
+            ElementOnPhaseStatus status,
+            PhaseStatusPresentation? presentation)
+        {
+            if (!IsConfigurablePhaseStatus(status))
+                return "Статус элемента находится вне четырех статусов, настраиваемых фильтром стадий для этого вида.";
+
+            if (phaseFilter == null)
+                return "Фильтр стадий не назначен; данный статус не скрывается фильтром стадий.";
+
+            if (!presentation.HasValue)
+                return "Настройку отображения статуса получить не удалось.";
+
+            switch (presentation.Value)
+            {
+                case PhaseStatusPresentation.DontShow:
+                    return "Текущий фильтр стадий не отображает элементы с этим статусом.";
+                case PhaseStatusPresentation.ShowOverriden:
+                    return "Элемент разрешен фильтром стадий и отображается с глобальными переопределениями стадий.";
+                case PhaseStatusPresentation.ShowByCategory:
+                    return "Элемент разрешен фильтром стадий и отображается по настройкам своей категории.";
+                default:
+                    return "Получено неизвестное значение настройки фильтра стадий.";
+            }
+        }
+
+        private static string GetPhasePresentationName(PhaseStatusPresentation presentation)
+        {
+            switch (presentation)
+            {
+                case PhaseStatusPresentation.DontShow:
+                    return "NotDisplayed";
+                case PhaseStatusPresentation.ShowOverriden:
+                    return "Overridden";
+                case PhaseStatusPresentation.ShowByCategory:
+                    return "ByCategory";
+                default:
+                    return presentation.ToString();
+            }
+        }
+
+        private static string GetPhaseStatusDisplayName(ElementOnPhaseStatus status)
+        {
+            switch (status)
+            {
+                case ElementOnPhaseStatus.New:
+                    return "Новые";
+                case ElementOnPhaseStatus.Existing:
+                    return "Существующие";
+                case ElementOnPhaseStatus.Demolished:
+                    return "Снесенные";
+                case ElementOnPhaseStatus.Temporary:
+                    return "Временные";
+                case ElementOnPhaseStatus.Future:
+                    return "Будущие";
+                case ElementOnPhaseStatus.Past:
+                    return "Прошедшие";
+                default:
+                    return "Нет статуса";
+            }
+        }
+
+        private static ElementId GetElementIdParameterValue(Element element, BuiltInParameter builtInParameter)
+        {
+            Parameter parameter = element == null ? null : element.get_Parameter(builtInParameter);
+            if (parameter == null || parameter.StorageType != StorageType.ElementId)
+                return ElementId.InvalidElementId;
+
+            try
+            {
+                return parameter.AsElementId() ?? ElementId.InvalidElementId;
+            }
+            catch
+            {
+                return ElementId.InvalidElementId;
+            }
+        }
+
+        private static object BuildPhaseReference(Phase phase)
+        {
+            return phase == null
+                ? null
+                : new
+                {
+                    id = IDHelper.ElIdInt(phase.Id),
+                    name = phase.Name
+                };
+        }
+
+        private static bool IsUsableElementId(ElementId elementId)
+        {
+            return elementId != null
+                && elementId != ElementId.InvalidElementId
+                && IDHelper.ElIdInt(elementId) >= 0;
+        }
+
+        private static string GetParameterDisplayValue(Parameter parameter)
+        {
+            if (parameter == null)
+                return null;
+
+            try
+            {
+                return parameter.AsValueString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static int? GetParameterIntegerValue(Parameter parameter)
+        {
+            if (parameter == null || parameter.StorageType != StorageType.Integer)
+                return null;
+
+            try
+            {
+                return parameter.AsInteger();
+            }
+            catch
+            {
+                return null;
             }
         }
 
@@ -7226,10 +8093,13 @@ namespace KPLN_CoordiantorAI.ExternalModel
         /// </summary>
         /// <param name="doc">Документ Revit (для получения версии)</param>
         /// <param name="userDateTime">Дата и время в формате (день.месяц.год час:минута:секунда)</param>
-        public static object GetJournalEntriesSince(Document doc, string userDateTime, string endUserDateTime = null)
+        public static object GetJournalEntriesSince(Document doc, string userDateTime, string endUserDateTime = null, int limit = 200 * 1024, int offset = 0)
         {
             try
             {
+                if (UseSafeJournalReader())
+                    return GetJournalEntriesSinceSafe(doc, userDateTime, endUserDateTime, limit, offset);
+
                 // 1. Парсим введённую дату/время
                 DateTime targetDateTime = ParseUserDateTime(userDateTime);
 
@@ -7708,7 +8578,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #region 40_get_revit_link_elements
 
-        public static object GetRevitLinkElements(Document doc, int linkInstanceId, int limit = 300, int offset = 0)
+        public static object GetRevitLinkElements(Document doc, int linkInstanceId, int limit = 200, int offset = 0)
         {
             try
             {
@@ -7728,10 +8598,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 if (limit <= 0)
-                    limit = 300;
+                    limit = 200;
 
-                if (limit > 300)
-                    limit = 300;
+                if (limit > 200)
+                    limit = 200;
 
                 if (offset < 0)
                     offset = 0;
@@ -7935,7 +8805,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #region 42_get_revit_link_elements_by_category
 
-        public static object GetRevitLinkElementsByCategory(Document doc, int linkInstanceId, int categoryId, string categoryName = null, int limit = 300, int offset = 0)
+        public static object GetRevitLinkElementsByCategory(Document doc, int linkInstanceId, int categoryId, string categoryName = null, int limit = 200, int offset = 0)
         {
             try
             {
@@ -7957,10 +8827,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 }
 
                 if (limit <= 0)
-                    limit = 300;
+                    limit = 200;
 
-                if (limit > 300)
-                    limit = 300;
+                if (limit > 200)
+                    limit = 200;
 
                 if (offset < 0)
                     offset = 0;

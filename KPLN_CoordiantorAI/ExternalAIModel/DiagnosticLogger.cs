@@ -12,9 +12,16 @@ namespace KPLN_CoordiantorAI.ExternalAIModel
         private const int RetentionDays = 3;
         private readonly string _logFilePath;
         private readonly object _syncRoot = new object();
+        private readonly string _scenario;
 
         public DiagnosticLogger(string logFolder)
+            : this(logFolder, null)
         {
+        }
+
+        public DiagnosticLogger(string logFolder, string scenario)
+        {
+            _scenario = NormalizeValue(scenario);
             string diagnosticsFolder = GetDiagnosticsFolder(logFolder);
             if (!Directory.Exists(diagnosticsFolder))
                 Directory.CreateDirectory(diagnosticsFolder);
@@ -38,6 +45,12 @@ namespace KPLN_CoordiantorAI.ExternalAIModel
                 line.Append(FormatDate(DateTime.Now));
                 line.Append(" | requestId=");
                 line.Append(string.IsNullOrWhiteSpace(requestId) ? "-" : requestId);
+                if (!string.IsNullOrWhiteSpace(_scenario))
+                {
+                    line.Append(" | scenario=");
+                    line.Append(_scenario);
+                }
+
                 line.Append(" | ");
                 line.Append(eventName ?? "UNKNOWN");
 
