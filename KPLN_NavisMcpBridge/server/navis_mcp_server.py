@@ -18,23 +18,19 @@ get_clash_test_results.
   * C#-аддин            — только сырые данные COM API (пути, статусы,
                           Distance, Pt1/Pt2, Bound, Item1Bound/Item2Bound).
                           Никакой инженерной логики.
-  * этот MCP-сервер     — АРИФМЕТИКА: перевод футов в мм, векторы осей
-                          элементов, угол между ними, вытянутость,
-                          относительный промах мимо оси, классификация
-                          стороны по пути (изоляция/фитинг/голая труба).
-                          Никаких порогов и никаких вердиктов.
-  * навык (SKILL.md)    — ПОЛИТИКА: пороги (5°, 0.15, e>=5), порядок
-                          правил, исключения регламента, что делать
-                          с "не проверено". Меняется без перезапуска.
+  * этот MCP-сервер     — команды чтения/записи данных Navisworks и
+                          нормализация этих данных: миллиметры, категории,
+                          размеры, габариты, центры и простые метрики.
+                          Никаких проектных порогов, вердиктов, обучения
+                          или реестра правил.
+  * навык (SKILL.md)    — ПОЛИТИКА: пороги проекта, порядок правил,
+                          обучение на человеческой разметке и решение,
+                          какие статусы предлагать.
 """
 
 import difflib
-import fnmatch
-import json
 import math
 import re
-from datetime import date
-from pathlib import Path
 from urllib.parse import quote
 
 import httpx
@@ -155,15 +151,10 @@ def _kind(path: str | None) -> str:
 # они НЕ трогаются, а рядом добавляются Class1/Class2/PairClass.
 _WALL_MARKERS = ("Базовая стена", "/ Стены /", "Перегород")
 _SLAB_MARKERS = ("Перекрыти", "/ Полы /", "Кровля")
-# Отделочные слои: штукатурка по сетке, облицовка, утеплитель. По регламенту
-# отверстия в них НЕ МОДЕЛИРУЮТСЯ ВООБЩЕ — пересечение с ними всегда допуск.
-# Проверяется РАНЬШЕ стены: путь такого слоя тоже содержит "Базовая стена".
+# Отделочные слои: штукатурка по сетке, облицовка, утеплитель.
+# Сервер только распознаёт категорию; решение о допуске принимает skill.
+# Проверяется раньше стены: путь такого слоя тоже содержит "Базовая стена".
 _STRUCT = ("стена", "перекрытие", "отделка")
-# Элементы, у которых габарит bounding box'а НЕ равен сечению воздуховода:
-# у отвода R=1.5 коробка вдвое больше диаметра, у противопожарного клапана
-# в неё входят корпус и привод. Правило "сечение больше порога" к ним
-# применять нельзя.
-_BBOX_NOT_SECTION = ("фасонина", "клапан", "фитинг")
 _FINISH_MARKERS = ("штукатурк", "по сетке", "Отделк", "отделк", "Утеплител",
                    "утеплител", "Облицовк", "облицовк")
 
@@ -280,8 +271,11 @@ def _parse_size(text: str | None) -> tuple[float | None, float | None]:
 
 
 def _metrics(result: dict) -> dict:
-    """Готовые геометрические метрики одной пары. Только числа и
-    классификация — никаких порогов и вердиктов (они в навыке)."""
+    """Готовые геометрические метрики одной пары.
+
+    Это нормализация данных Navisworks, а не инженерное решение:
+    здесь нет проектных порогов, статусов Approved/Active или обучения.
+    """
     p1 = result.get("Item1Path")
     p2 = result.get("Item2Path")
     k1, k2 = _kind(p1), _kind(p2)
@@ -406,265 +400,6 @@ def _metrics(result: dict) -> dict:
     return out
 
 
-# ---------------------------------------------------------------------------
-# СЛОВАРЬ ПРОВЕРОК (clash_rules.json)
-#
-# Имена тестов Clash Detective у KPLN статичны, и именно имя — ключ к набору
-# правил разбора. Словарь лежит РЯДОМ с этим файлом отдельным JSON и читается
-# при КАЖДОМ вызове (не кэшируется) — значит новую обученную проверку можно
-# добавить прямо во время работы, без перезапуска Claude Desktop.
-#
-# Смысл словаря — жёсткий отказ вместо угадывания:
-#   * имени нет в открытом документе      -> отказ + список похожих имён (опечатка);
-#   * имя есть, но нет в словаре          -> отказ давать вердикты и ставить
-#                                            статусы; читать результаты можно
-#                                            (иначе не на чем обучаться);
-#   * status="assumed"                    -> набор правил предполагается по
-#                                            аналогии, но НЕ проверен на
-#                                            размеченных данных: тоже отказ,
-#                                            пока пользователь не подтвердит.
-# ---------------------------------------------------------------------------
-
-RULES_PATH = Path(__file__).with_name("clash_rules.json")
-
-
-def _load_registry() -> dict:
-    try:
-        with RULES_PATH.open(encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {"version": 1, "rulesets": {}, "tests": []}
-    except Exception as exc:
-        raise RuntimeError(
-            f"Словарь проверок {RULES_PATH} повреждён и не читается: {exc}. "
-            "Разбор коллизий остановлен — сначала почините файл."
-        ) from exc
-
-
-def _save_registry(reg: dict) -> None:
-    reg["updated"] = date.today().isoformat()
-    tmp = RULES_PATH.with_suffix(".json.tmp")
-    with tmp.open("w", encoding="utf-8") as f:
-        json.dump(reg, f, ensure_ascii=False, indent=2)
-    tmp.replace(RULES_PATH)
-
-
-def _match_entry(test_name: str, reg: dict) -> dict | None:
-    """Ищет строку словаря для имени теста. Точное совпадение приоритетнее
-    шаблона; из шаблонов выигрывает самый длинный (самый специфичный)."""
-    best = None
-    for entry in reg.get("tests", []):
-        pattern = entry.get("pattern", "")
-        kind = entry.get("match", "exact")
-        hit = (pattern == test_name) if kind == "exact" else fnmatch.fnmatch(test_name, pattern)
-        if not hit:
-            continue
-        if kind == "exact":
-            return entry
-        if best is None or len(pattern) > len(best.get("pattern", "")):
-            best = entry
-    return best
-
-
-def _known_patterns(reg: dict) -> list[str]:
-    """Шаблоны имён, которые есть в словаре — для подсказки при опечатке.
-    Берутся ИЗ ЛОКАЛЬНОГО ФАЙЛА: путь отказа не должен ходить в Navisworks,
-    иначе "СТОП" на незнакомом тесте стоит столько же, сколько сам разбор."""
-    return [e.get("pattern", "") for e in reg.get("tests", []) if e.get("pattern")]
-
-
-def _require_ruleset(test_name: str, allow_untrained: bool = False) -> dict:
-    """Возвращает набор правил для теста или ОТКАЗЫВАЕТ с объяснением."""
-    reg = _load_registry()
-    entry = _match_entry(test_name, reg)
-
-    if entry is None:
-        patterns = _known_patterns(reg)
-        close = difflib.get_close_matches(test_name, patterns, n=3, cutoff=0.5)
-        hint = "\nВ словаре есть: " + (
-            ", ".join(f'"{n}"' for n in (close or patterns[:8])) or "(пусто)"
-        )
-        if allow_untrained:
-            return {
-                "test_name": test_name,
-                "status": "untrained",
-                "ruleset": None,
-                "message": "Тест не описан в словаре — правил нет." + hint,
-            }
-        raise RuntimeError(
-            f'СТОП. Теста "{test_name}" нет в словаре проверок '
-            f"({RULES_PATH.name}) — правил для него нет."
-            + hint
-            + "\nРАБОТА ОСТАНОВЛЕНА: не читать результаты, не считать метрики, "
-            "не ставить статусы, не угадывать правила по аналогии. Сказать об "
-            "этом пользователю и ждать. Разбирать данные этого теста можно "
-            "только если пользователь ЯВНО попросил обучить новую проверку "
-            "(тогда get_clash_test_results с allow_untrained=True), а по итогам "
-            "обучения занести её через register_clash_test."
-        )
-
-    status = entry.get("status", "untrained")
-    rs_name = entry.get("ruleset")
-    rs = (reg.get("rulesets") or {}).get(rs_name)
-    out = {
-        "test_name": test_name,
-        "matched_pattern": entry.get("pattern"),
-        "status": status,
-        "ruleset_name": rs_name,
-        "ruleset": rs,
-        "note": entry.get("note"),
-    }
-    if status != "trained" and not allow_untrained:
-        raise RuntimeError(
-            f'СТОП. Тест "{test_name}" числится в словаре как "{status}", а не '
-            f'"trained": набор правил "{rs_name}" предположен по аналогии и на '
-            "размеченных данных этого теста НЕ проверялся.\nРАБОТА ОСТАНОВЛЕНА: "
-            "спросить пользователя, действуют ли эти правила, и только после его "
-            "подтверждения перевести строку словаря в trained через "
-            "register_clash_test."
-        )
-    if rs is None:
-        raise RuntimeError(
-            f'Словарь повреждён: тест "{test_name}" ссылается на набор правил '
-            f'"{rs_name}", которого нет в разделе rulesets.'
-        )
-    return out
-
-
-def _require_params(info: dict, params: dict | None) -> dict:
-    """Параметры проекта, без которых набор правил применять нельзя.
-
-    Часть правил зависит не от геометрии, а от соглашения ПРОЕКТА — например,
-    с какой грани отверстие вообще моделируется (в одном проекте 250 мм, в
-    другом другое). Такие параметры перечислены в наборе правил как
-    params_required, и пока пользователь не назвал их значения, инструмент
-    ОТКАЗЫВАЕТ и печатает вопросы, которые надо ему задать. Значения нигде
-    не запоминаются между вызовами намеренно: молча утащить в новый проект
-    число из прошлого — худшая из возможных ошибок здесь.
-    """
-    rs = info.get("ruleset") or {}
-    required = rs.get("params_required") or []
-    if not required:
-        return {}
-    params = params or {}
-    missing = [p for p in required if p.get("key") not in params]
-    if missing:
-        qs = "\n".join(
-            f"  - {p.get('key')}: {p.get('question')}"
-            + (f" (единицы: {p['unit']})" if p.get("unit") else "")
-            + (f" [в разобранном примере было {p['example']}]" if p.get("example") is not None else "")
-            for p in missing
-        )
-        raise RuntimeError(
-            f'СТОП. Набор правил "{info.get("ruleset_name")}" зависит от '
-            "соглашений ПРОЕКТА, а они не заданы.\nРАБОТА ОСТАНОВЛЕНА: сначала "
-            "задать пользователю эти вопросы, получить числа и передать их в "
-            "параметре params:\n" + qs
-        )
-    return params
-
-
-@mcp.tool()
-def list_clash_rulesets() -> dict:
-    """Словарь проверок целиком: какие тесты разобраны, по каким наборам правил,
-    в каком статусе обучения (trained / assumed / untrained) и на каких данных
-    это проверялось.
-
-    Смотреть ПЕРЕД разбором незнакомого теста и перед проходом по всему файлу:
-    тесты, которых здесь нет, разбирать нельзя — по ним будет отказ."""
-    return _load_registry()
-
-
-@mcp.tool()
-def get_clash_ruleset(test_name: str, allow_untrained: bool = False) -> dict:
-    """Набор правил для конкретного теста Clash Detective по его имени.
-
-    Если тест не описан в словаре (или описан как "assumed" — правила
-    предполагаются, но не проверены), инструмент ОТКАЗЫВАЕТ с объяснением
-    и, при опечатке в имени, со списком похожих имён из открытого документа.
-    Это защита от разбора проверки по правилам, которым вас не учили.
-
-    allow_untrained=True — вернуть описание без отказа (что известно, что нет).
-    Использовать только чтобы ПОКАЗАТЬ пользователю состояние, а не чтобы
-    обойти отказ и всё-таки проставить статусы."""
-    return _require_ruleset(test_name, allow_untrained=allow_untrained)
-
-
-@mcp.tool()
-def register_clash_test(
-    pattern: str,
-    ruleset: str,
-    status: str = "trained",
-    note: str = "",
-    match: str = "glob",
-    ruleset_definition: dict | None = None,
-    trained_on: str = "",
-) -> dict:
-    """Занести проверку в словарь — ЕДИНСТВЕННЫЙ способ добавить новую
-    обученную проверку. Вызывать после того, как пользователь разметил отчёт
-    и правила проверены на его разметке.
-
-    pattern — имя теста или шаблон. Префикс со стадией/номером у KPLN меняется
-    от модели к модели, поэтому обычно нужен шаблон вида
-    "*ОВ1---Трубы (Самопересечение)", а не точное имя из одной модели.
-    match — "glob" (по умолчанию) или "exact".
-
-    ruleset — имя набора правил. Если такого набора ещё нет, ОБЯЗАТЕЛЬНО
-    передать ruleset_definition — словарь с описанием: title, skill, section,
-    thresholds (числовые пороги), pair_kinds_ok, pair_kinds_unknown.
-    Сами правила (порядок проверок, что они значат) живут в навыке — здесь
-    только пороги и ссылка на раздел навыка.
-
-    status — "trained" (проверено на размеченных данных этого теста),
-    "assumed" (предполагается по аналогии — сервер будет отказывать до
-    подтверждения) или "untrained".
-
-    trained_on — одна строка про данные, на которых проверено: модель, тест,
-    сколько результатов, какая точность. Дописывается к набору правил.
-
-    Повторный вызов с тем же pattern обновляет строку, а не плодит дубли."""
-    if status not in ("trained", "assumed", "untrained"):
-        raise RuntimeError('status должен быть "trained", "assumed" или "untrained"')
-    if match not in ("glob", "exact"):
-        raise RuntimeError('match должен быть "glob" или "exact"')
-
-    reg = _load_registry()
-    reg.setdefault("rulesets", {})
-    reg.setdefault("tests", [])
-
-    if ruleset not in reg["rulesets"]:
-        if not ruleset_definition:
-            raise RuntimeError(
-                f'Набора правил "{ruleset}" в словаре нет. Передайте '
-                "ruleset_definition с описанием (title, skill, section, thresholds, "
-                "pair_kinds_ok, pair_kinds_unknown) или укажите существующий набор: "
-                + (", ".join(reg["rulesets"]) or "(словарь пуст)")
-            )
-        reg["rulesets"][ruleset] = dict(ruleset_definition)
-    elif ruleset_definition:
-        reg["rulesets"][ruleset].update(ruleset_definition)
-
-    if trained_on:
-        reg["rulesets"][ruleset].setdefault("trained_on", []).append(trained_on)
-
-    entry = {
-        "match": match,
-        "pattern": pattern,
-        "ruleset": ruleset,
-        "status": status,
-        "note": note,
-    }
-    for i, old in enumerate(reg["tests"]):
-        if old.get("pattern") == pattern:
-            reg["tests"][i] = entry
-            break
-    else:
-        reg["tests"].append(entry)
-
-    _save_registry(reg)
-    return {"saved": entry, "rulesets": list(reg["rulesets"]), "tests_total": len(reg["tests"])}
-
-
 @mcp.tool()
 def list_clash_tests() -> list[dict]:
     """Список тестов Clash Detective в текущем открытом документе Navisworks:
@@ -690,8 +425,6 @@ def get_clash_test_results(
     include_sizes: bool = False,
     include_metrics: bool = False,
     keep_raw_bounds: bool = False,
-    allow_untrained: bool = False,
-    params: dict | None = None,
 ) -> list[dict]:
     """Результаты конкретного теста Clash Detective (по имени теста, как
     в list_clash_tests): пары столкнувшихся элементов (путь в дереве модели),
@@ -755,22 +488,9 @@ def get_clash_test_results(
     в футах. Нужен, если хочется считать геометрию самостоятельно;
     для обычного разбора берите include_metrics=True.
 
-    СТОП-ПРАВИЛО: если теста нет в словаре проверок со статусом
-    "trained", инструмент ОТКАЗЫВАЕТ СРАЗУ — до любого обращения к
-    Navisworks, не читая ни одного результата. Не тратить время и
-    токены на разбор проверки, правилам которой не учили.
-
-    allow_untrained=True — РЕЖИМ ОБУЧЕНИЯ: читать данные теста,
-    которого нет в словаре. Ставить ТОЛЬКО когда пользователь явно
-    попросил разобрать/разметить новую проверку. Статусы по ней всё
-    равно не проставить, пока она не занесена через register_clash_test.
-
-    params — значения проектных соглашений, которых требует набор правил
-    (например {"opening_min_edge_mm": 250}). Если набор их требует, а они не
-    переданы — тоже отказ со списком вопросов к пользователю."""
-    if not allow_untrained:
-        _require_params(_require_ruleset(test_name), params)
-
+    MCP-сервер не знает, обучен ли тест и какие проектные параметры нужны.
+    Он только возвращает данные. Решение о применимости правил, запрос
+    проектного порога и классификация результатов живут в skill."""
     need_bounds = include_item_bounds or include_metrics
     need_paths = include_paths or include_metrics
     need_sizes = include_sizes or include_metrics
@@ -845,21 +565,16 @@ def set_clash_result_status(
     result_name: str,
     status: str,
     comment: str = "",
-    force_untrained: bool = False,
-    params: dict | None = None,
 ) -> str:
     """Проставить статус результату коллизии.
     status: один из New, Active, Approved, Resolved, Reviewed.
 
-    ОТКАЗЫВАЕТ, если тест не описан в словаре проверок как "trained":
-    статусы нельзя расставлять по проверке, правилам которой вас не учили.
-    force_untrained=True — только когда пользователь ЯВНО в этом разговоре
-    попросил проставить статусы вручную, вопреки отсутствию правил.
+    MCP-сервер не проверяет обученность теста и не принимает инженерное
+    решение. Вызывать изменение статуса следует только после решения skill
+    и явного пользовательского разрешения.
     ВНИМАНИЕ: параметр comment пока не реализован на стороне аддина
     (добавление комментария не удалось проверить без запуска в реальном
     Navisworks) — если передать непустой comment, запрос вернёт ошибку 501."""
-    if not force_untrained:
-        _require_params(_require_ruleset(test_name), params)
     try:
         with _client() as c:
             r = c.post(
@@ -876,16 +591,13 @@ def set_clash_result_status(
 def batch_set_clash_result_status(
     test_name: str,
     updates: list[dict],
-    force_untrained: bool = False,
-    params: dict | None = None,
 ) -> dict:
     """Пакетно проставить статус нескольким результатам ОДНОГО теста Clash
     Detective за один вызов инструмента — вместо цепочки вызовов
     set_clash_result_status по одному на каждый результат.
 
     updates — список объектов вида:
-        [{"result_name": "Конфликт5", "status": "Approved"},
-         {"result_name": "Конфликт7", "status": "Approved"}]
+        [{"result_name": "<имя результата>", "status": "Approved"}]
 
     status в каждом элементе — один из New, Active, Approved, Resolved,
     Reviewed. Поле "comment" внутри элемента, если передано, игнорируется —
@@ -908,12 +620,10 @@ def batch_set_clash_result_status(
     пакет. Возвращает:
         {"test_name": ..., "updated": [...], "failed": [{"result_name":..., "error":...}]}
 
-    ОТКАЗЫВАЕТ целиком (ничего не пишет), если тест не описан в словаре
-    проверок как "trained" — см. get_clash_ruleset. force_untrained=True
-    только по явной просьбе пользователя в этом разговоре.
+    MCP-сервер не проверяет обученность теста и не выбирает статусы.
+    Перед вызовом skill должен уже сформировать список изменений, а
+    пользователь должен явно разрешить запись.
     """
-    if not force_untrained:
-        _require_params(_require_ruleset(test_name), params)
     updated: list[str] = []
     failed: list[dict] = []
     try:

@@ -14,7 +14,7 @@ namespace KPLN_NavisMcpBridge
     /// в отдельно ставящемся Navisworks 2020 Developer's Guide / SDK).
     /// </summary>
     [Plugin("KPLN_NavisMcpBridge.Bridge", "KPLN",
-        DisplayName = "KPLN MCP Bridge",
+        DisplayName = "KPLN_McpBridge",
         ToolTip = "Запустить/остановить локальный HTTP-мост для MCP")]
     public class BridgePlugin : AddInPlugin
     {
