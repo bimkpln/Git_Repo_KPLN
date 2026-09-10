@@ -5,12 +5,28 @@ using System.Text;
 
 namespace KPLN_CoordiantorAI.ExternalModel
 {
+    public sealed class McpToolLogItem
+    {
+        public string ToolName { get; set; }
+
+        public bool Success { get; set; }
+
+        public long ElapsedMs { get; set; }
+
+        public int ArgumentsLength { get; set; }
+
+        public int ResultLength { get; set; }
+
+        public string ErrorMessage { get; set; }
+    }
+
     /// <summary>
     /// Класс для логирования диалогов с ИИ
     /// </summary>
     public class ChatLogger
     {
         private readonly string _logFilePath;
+        private readonly string _scenario;
         private readonly string _separator = "---------------------------------------------------------------------\n---------------------------------------------------------------------";
 
         // Курс рубля к доллару (можно обновлять при каждом логировании или взять из API)
@@ -20,7 +36,13 @@ namespace KPLN_CoordiantorAI.ExternalModel
         /// Конструктор. Создаёт экземпляр логгера для текущего пользователя
         /// </summary>
         public ChatLogger(string logFolder)
+            : this(logFolder, null)
         {
+        }
+
+        public ChatLogger(string logFolder, string scenario)
+        {
+            _scenario = NormalizeLogValue(scenario);
             logFolder = (logFolder ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(logFolder))
             {
@@ -59,7 +81,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 StringBuilder logEntry = new StringBuilder();
 
                 logEntry.AppendLine("[" + FormatLogDate(timestamp) + "]");
-                AppendRequestMetadata(logEntry, timestamp, timestamp, null, null);
+                AppendRequestMetadata(logEntry, timestamp, timestamp, null, null, _scenario);
 
                 logEntry.AppendLine("");
                 logEntry.AppendLine($"REQUEST: {question}");
@@ -94,7 +116,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 StringBuilder logEntry = new StringBuilder();
                 logEntry.AppendLine("[" + FormatLogDate(requestTime) + "]");
-                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName);
+                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName, _scenario);
                 AppendToolAreaStats(logEntry, toolAreaStats);
                 logEntry.AppendLine("");
                 logEntry.AppendLine($"ВОПРОС: {question}");
@@ -106,6 +128,99 @@ namespace KPLN_CoordiantorAI.ExternalModel
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Ошибка записи лога: {ex.Message}");
+            }
+        }
+
+
+        public void LogMcpToolCall(
+            string toolName,
+            bool success,
+            DateTime requestTime,
+            DateTime responseTime,
+            string revitModelName,
+            string revitViewName,
+            long elapsedMs,
+            int argumentsLength,
+            int resultLength,
+            string errorMessage,
+            IDictionary<string, int> toolAreaStats = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_logFilePath))
+                    return;
+
+                StringBuilder logEntry = new StringBuilder();
+                logEntry.AppendLine("[" + FormatLogDate(requestTime) + "]");
+                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName, _scenario);
+                AppendToolAreaStats(logEntry, toolAreaStats);
+                logEntry.AppendLine("");
+                logEntry.AppendLine("MCP_TOOL: " + NormalizeLogValue(toolName));
+                logEntry.AppendLine("MCP_STATUS: " + (success ? "SUCCESS" : "ERROR"));
+                logEntry.AppendLine("MCP_ELAPSED_MS: " + elapsedMs);
+                logEntry.AppendLine("MCP_ARGUMENTS_LENGTH: " + argumentsLength);
+                logEntry.AppendLine("MCP_RESULT_LENGTH: " + resultLength);
+
+                if (!string.IsNullOrWhiteSpace(errorMessage))
+                    logEntry.AppendLine("MCP_ERROR: " + NormalizeLogValue(errorMessage));
+
+                logEntry.AppendLine(_separator);
+
+                File.AppendAllText(_logFilePath, logEntry.ToString(), Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MCP log write error: " + ex.Message);
+            }
+        }
+
+        public void LogMcpToolBatch(
+            IList<McpToolLogItem> toolCalls,
+            DateTime requestTime,
+            DateTime responseTime,
+            string revitModelName,
+            string revitViewName,
+            IDictionary<string, int> toolAreaStats = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(_logFilePath) || toolCalls == null || toolCalls.Count == 0)
+                    return;
+
+                StringBuilder logEntry = new StringBuilder();
+                logEntry.AppendLine("[" + FormatLogDate(requestTime) + "]");
+                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName, _scenario);
+                AppendToolAreaStats(logEntry, toolAreaStats);
+                logEntry.AppendLine("");
+                logEntry.AppendLine("MCP_TOOLS_COUNT: " + toolCalls.Count);
+                logEntry.AppendLine("--- MCP TOOLS ---");
+
+                for (int i = 0; i < toolCalls.Count; i++)
+                {
+                    McpToolLogItem item = toolCalls[i];
+                    if (item == null)
+                        continue;
+
+                    logEntry.AppendLine(string.Format(
+                        "{0}. {1} | status={2} | elapsedMs={3} | argsLength={4} | resultLength={5}",
+                        i + 1,
+                        NormalizeLogValue(item.ToolName),
+                        item.Success ? "SUCCESS" : "ERROR",
+                        item.ElapsedMs,
+                        item.ArgumentsLength,
+                        item.ResultLength));
+
+                    if (!string.IsNullOrWhiteSpace(item.ErrorMessage))
+                        logEntry.AppendLine("   error=" + NormalizeLogValue(item.ErrorMessage));
+                }
+
+                logEntry.AppendLine(_separator);
+
+                File.AppendAllText(_logFilePath, logEntry.ToString(), Encoding.UTF8);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("MCP batch log write error: " + ex.Message);
             }
         }
 
@@ -176,7 +291,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 StringBuilder logEntry = new StringBuilder();
                 logEntry.AppendLine("[" + timestamp + "]");
-                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName);
+                AppendRequestMetadata(logEntry, requestTime, responseTime, revitModelName, revitViewName, _scenario);
                 AppendToolAreaStats(logEntry, toolAreaStats);
                 logEntry.AppendLine("");
                 logEntry.AppendLine($"ВОПРОС: {question}");
@@ -226,7 +341,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 StringBuilder logEntry = new StringBuilder();
 
                 logEntry.AppendLine(FormatLogDate(timestamp));
-                AppendRequestMetadata(logEntry, timestamp, timestamp, null, null);
+                AppendRequestMetadata(logEntry, timestamp, timestamp, null, null, _scenario);
                 logEntry.AppendLine($"ВОПРОС: {question}");
                 logEntry.AppendLine($"ОТВЕТ: {answer}");
                 logEntry.AppendLine(_separator);
@@ -244,10 +359,13 @@ namespace KPLN_CoordiantorAI.ExternalModel
             DateTime requestTime,
             DateTime responseTime,
             string revitModelName,
-            string revitViewName)
+            string revitViewName,
+            string scenario)
         {
             logEntry.AppendLine("REQUEST_TIME: " + FormatLogDate(requestTime));
             logEntry.AppendLine("RESPONSE_TIME: " + FormatLogDate(responseTime));
+            if (!string.IsNullOrWhiteSpace(scenario))
+                logEntry.AppendLine("SCENARIO: " + scenario);
 
             if (!string.IsNullOrWhiteSpace(revitModelName))
                 logEntry.AppendLine("REVIT_MODEL: " + revitModelName.Trim());
@@ -280,6 +398,17 @@ namespace KPLN_CoordiantorAI.ExternalModel
         private static string FormatLogDate(DateTime value)
         {
             return value.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        }
+
+        private static string NormalizeLogValue(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            return value.Trim()
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n")
+                .Replace("|", "/");
         }
     }
 }

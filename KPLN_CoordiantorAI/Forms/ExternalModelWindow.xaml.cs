@@ -22,6 +22,8 @@ using Autodesk.Revit.Creation;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_CoordiantorAI.Common;
+using KPLN_CoordiantorAI.ExternalAIModel.Mcp;
+using KPLN_CoordiantorAI.ExternalAIModel.McpClient;
 using KPLN_CoordiantorAI.ExternalModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -35,6 +37,34 @@ using System.Threading;
 
 namespace KPLN_CoordiantorAI.Forms
 {
+    public interface IModelProgressReporter
+    {
+        void Report(string status);
+        void Clear();
+    }
+
+    internal sealed class WpfModelProgressReporter : IModelProgressReporter
+    {
+        private readonly ExternalModelControl _owner;
+
+        public WpfModelProgressReporter(ExternalModelControl owner)
+        {
+            _owner = owner;
+        }
+
+        public void Report(string status)
+        {
+            if (_owner != null)
+                _owner.ReportProgressStatus(status);
+        }
+
+        public void Clear()
+        {
+            if (_owner != null)
+                _owner.ClearProgressStatus();
+        }
+    }
+
     public partial class ExternalModelWindow : Window
     {
         public ExternalModelWindow(
@@ -62,7 +92,6 @@ namespace KPLN_CoordiantorAI.Forms
     public class ExternalModelControl : UserControl
     {
         private Autodesk.Revit.DB.Document _doc;
-        private UIDocument _uiDoc;
         private ChatLogger _logger;
         private DiagnosticLogger _diagnosticLogger;
         private ConnectionType _connectionType;
@@ -73,93 +102,11 @@ namespace KPLN_CoordiantorAI.Forms
         private bool _isRequestInProgress;
         private bool _isClosing;
         private CancellationTokenSource _currentRequestCancellation;
-        private RevitApiExternalEventHandler _revitApiExternalEventHandler;
+        private const int MaxRealToolCallsPerRound = 5;
+        private const string DefaultProgressStatus = "Анализирую запрос";
+        private IModelProgressReporter _progressReporter;
 
 
-        private enum ModelToolArea
-        {
-            ViewContext,
-            Visibility,
-            Categories,
-            Families,
-            Parameters,
-            Geometry,
-            ModelInfo,
-            Worksets,
-            Selection,
-            Schedules,
-            Journal,
-            Links,
-            Other
-        }
-
-        private static readonly Dictionary<string, ModelToolArea> ToolAreas = new Dictionary<string, ModelToolArea>
-        {
-            { "get_active_view_in_revit", ModelToolArea.ViewContext },
-            { "get_all_elements_shown_in_view", ModelToolArea.Visibility },
-
-            { "get_category_by_keyword", ModelToolArea.Categories },
-            { "get_elements_by_category", ModelToolArea.Categories },
-            { "get_model_categories", ModelToolArea.Categories },
-            { "get_categories_from_elementids", ModelToolArea.Categories },
-            { "get_object_classes_from_elementids", ModelToolArea.Categories },
-
-            { "get_element_types_for_elementids", ModelToolArea.Families },
-            { "get_all_elementids_for_specific_type_ids", ModelToolArea.Families },
-            { "get_all_used_families_in_model", ModelToolArea.Families },
-            { "get_all_used_families_of_category", ModelToolArea.Families },
-            { "get_all_used_types_of_a_family", ModelToolArea.Families },
-            { "get_all_elements_of_specific_families", ModelToolArea.Families },
-
-            { "get_parameters_from_elementid", ModelToolArea.Parameters },
-            { "get_parameter_value_for_element_ids", ModelToolArea.Parameters },
-            { "get_all_additional_properties_from_elementid", ModelToolArea.Parameters },
-            { "get_additional_property_for_all_elementids", ModelToolArea.Parameters },
-            { "get_revitlookup_like_properties", ModelToolArea.Parameters },
-
-            { "get_location_for_element_ids", ModelToolArea.Geometry },
-            { "get_boundingboxes_for_element_ids", ModelToolArea.Geometry },
-            { "get_boundary_lines", ModelToolArea.Geometry },
-            { "get_room_boundary_lines", ModelToolArea.Geometry },
-            { "get_host_id_for_element_ids", ModelToolArea.Geometry },
-            { "get_material_layers_from_types", ModelToolArea.Geometry },
-            { "set_view_section_box_to_elements", ModelToolArea.Geometry },
-
-            { "get_model_file_info", ModelToolArea.ModelInfo },
-            { "get_all_project_units", ModelToolArea.ModelInfo },
-            { "get_all_warnings_in_the_model", ModelToolArea.ModelInfo },
-
-            { "get_all_workset_information", ModelToolArea.Worksets },
-            { "get_worksets_from_elementids", ModelToolArea.Worksets },
-            { "get_worksharing_information_for_element_ids", ModelToolArea.Worksets },
-
-            { "get_user_selection_in_revit", ModelToolArea.Selection },
-            { "set_user_selection_in_revit", ModelToolArea.Selection },
-
-            { "get_graphic_overrides_for_element_ids_in_view", ModelToolArea.Visibility },
-            { "get_graphic_filters_applied_to_views", ModelToolArea.Visibility },
-            { "get_all_parameter_filters_in_model", ModelToolArea.Visibility },
-            { "get_graphic_overrides_view_filters", ModelToolArea.Visibility },
-            { "get_category_visibility_overrides_in_view", ModelToolArea.Visibility },
-            { "get_workset_visibility_in_view", ModelToolArea.Visibility },
-            { "get_link_graphics_overrides_in_view", ModelToolArea.Visibility },
-            { "get_detailed_link_graphics_overrides_in_view", ModelToolArea.Visibility },
-            { "get_if_elements_pass_filter", ModelToolArea.Visibility },
-
-            { "get_viewports_and_schedules_on_sheets", ModelToolArea.Schedules },
-            { "get_titleblock_family_parameters_description", ModelToolArea.Parameters },
-            { "get_schedules_info_and_columns", ModelToolArea.Schedules },
-            { "get_schedule_sorting_info", ModelToolArea.Schedules },
-
-            { "get_journal_entries_since", ModelToolArea.Journal },
-
-            { "get_revit_links_in_model", ModelToolArea.Links },
-            { "get_revit_link_elements", ModelToolArea.Links },
-            { "get_revit_link_categories", ModelToolArea.Links },
-            { "get_revit_link_elements_by_category", ModelToolArea.Links },
-            { "get_selected_revit_link_element_id", ModelToolArea.Links },
-            { "get_revit_link_element_properties", ModelToolArea.Links }
-        };
 
 
 
@@ -171,7 +118,7 @@ namespace KPLN_CoordiantorAI.Forms
 
 
         private readonly HttpClient _httpClient = new HttpClient();
-        private readonly Dictionary<ModelToolArea, int> _currentToolAreaStats = new Dictionary<ModelToolArea, int>();
+        private readonly Dictionary<string, int> _currentToolAreaStats = new Dictionary<string, int>(StringComparer.Ordinal);
         public List<object> ChatHistoryMessages { get; } = new List<object>();
 
         private Border _typingIndicator;
@@ -192,16 +139,15 @@ namespace KPLN_CoordiantorAI.Forms
         {
             InitializeModelLayout();
             _doc = document;
-            _uiDoc = uiDocument;
             _connectionType = connectionType;
             _settings = settings ?? new ExternalModelSettings();
-            _revitApiExternalEventHandler = new RevitApiExternalEventHandler();
+            _progressReporter = new WpfModelProgressReporter(this);
 
 
             // Инициализация логгера
-            _logger = new ChatLogger(_settings.LogFolder);
+            _logger = new ChatLogger(_settings.LogFolder, "wpf_window");
             //Можно задать путь через настройки к логу-диганостики
-            _diagnosticLogger = new DiagnosticLogger(null);
+            _diagnosticLogger = new DiagnosticLogger(null, "wpf_window");
 
             // Анимация точек
             _typingTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
@@ -458,36 +404,41 @@ namespace KPLN_CoordiantorAI.Forms
         //Задать текст под загрузку ИИ
         private void TypingTimer_Tick(object sender, EventArgs e)
         {
+            _currentTypingFrame = (_currentTypingFrame + 1) % 4;
+            UpdateProgressIndicatorText();
+        }
+
+        private string _currentProgressStatus = DefaultProgressStatus;
+
+        private string GetAnimatedProgressText()
+        {
+            string dots = new string('.', _currentTypingFrame);
+            return (_currentProgressStatus ?? DefaultProgressStatus) + dots;
+        }
+
+        private void UpdateProgressIndicatorText()
+        {
             if (_typingIndicator?.Child is RichTextBox richTextBox)
             {
-                var frames = new[]
-                {
-                    "ИИ печатает",
-                    "ИИ печатает.",
-                    "ИИ печатает..",
-                    "ИИ печатает..."
-                };
-
-                _currentTypingFrame = (_currentTypingFrame + 1) % frames.Length;
-
                 var paragraph = new Paragraph();
-                paragraph.Inlines.Add(new Run(frames[_currentTypingFrame]));
+                paragraph.Inlines.Add(new Run(GetAnimatedProgressText()));
                 richTextBox.Document = new FlowDocument(paragraph);
             }
-
         }
 
         //показать загрузку ИИ
-        private void ShowTypingIndicator()
+        private void ShowTypingIndicator(string status = null)
         {
             if (_typingIndicator != null)
                 ChatHistory.Children.Remove(_typingIndicator);
 
+            _currentProgressStatus = string.IsNullOrWhiteSpace(status) ? DefaultProgressStatus : status;
+            _currentTypingFrame = 0;
             _typingIndicator = CreateTypingIndicator();
             ChatHistory.Children.Add(_typingIndicator);
             ChatScrollViewer.ScrollToEnd();
 
-            _currentTypingFrame = 0;
+            UpdateProgressIndicatorText();
             _typingTimer.Start();  // ← Запуск анимации
         }
 
@@ -500,6 +451,41 @@ namespace KPLN_CoordiantorAI.Forms
                 ChatHistory.Children.Remove(_typingIndicator);
                 _typingIndicator = null;
             }
+        }
+
+        internal void ReportProgressStatus(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+                return;
+
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => ReportProgressStatus(status)));
+                return;
+            }
+
+            _currentProgressStatus = status.Trim().TrimEnd('.');
+            _currentTypingFrame = 0;
+
+            if (_typingIndicator == null)
+            {
+                ShowTypingIndicator(_currentProgressStatus);
+                return;
+            }
+
+            UpdateProgressIndicatorText();
+            ChatScrollViewer.ScrollToEnd();
+        }
+
+        internal void ClearProgressStatus()
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(ClearProgressStatus));
+                return;
+            }
+
+            HideTypingIndicator();
         }
 
 
@@ -542,6 +528,30 @@ namespace KPLN_CoordiantorAI.Forms
             }
         }
 
+        private static string ExtractAiErrorMessage(string responseJson)
+        {
+            if (string.IsNullOrWhiteSpace(responseJson))
+                return "AI API returned an empty error response.";
+
+            try
+            {
+                JObject obj = JObject.Parse(responseJson);
+                JToken error = obj["error"];
+                if (error == null)
+                    return responseJson;
+
+                JToken message = error["message"];
+                if (message != null && !string.IsNullOrWhiteSpace(message.ToString()))
+                    return message.ToString();
+
+                return JsonConvert.SerializeObject(error);
+            }
+            catch
+            {
+                return TruncateForDiagnostics(responseJson, 1000);
+            }
+        }
+
         //процесс отправки сообщения
         public async Task SendMessage(string revitContext = "")
         {
@@ -581,7 +591,7 @@ namespace KPLN_CoordiantorAI.Forms
 
             try
             {
-                ShowTypingIndicator(); //начало анимации загрузки
+                _progressReporter.Report("Анализирую запрос");
 
                 _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.START", new Dictionary<string, object>
                 {
@@ -589,9 +599,11 @@ namespace KPLN_CoordiantorAI.Forms
                     { "messages", ChatHistoryMessages.Count },
                     { "toolsEnabled", true }
                 });
+                _progressReporter.Report("Проверяю, нужны ли данные из Revit");
                 string response = await SendToOpenRouter(ChatHistoryMessages, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 if (IsCloseOrCancellationRequested(cancellationToken)) return;
+                _progressReporter.Report("Обрабатываю результат");
                 _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.END", new Dictionary<string, object>
                 {
                     { "phase", "initial" },
@@ -635,22 +647,38 @@ namespace KPLN_CoordiantorAI.Forms
                         Stopwatch toolsBatchStopwatch = Stopwatch.StartNew();
                         _diagnosticLogger.LogEvent(requestId, "TOOLS_BATCH.START", new Dictionary<string, object>
                         {
-                            { "toolCalls", toolCalls.Count }
+                            { "toolCalls", toolCalls.Count },
+                            { "maxRealToolCallsPerRound", MaxRealToolCallsPerRound }
                         });
+                        int realToolCallsExecuted = 0;
+                        int toolCallsSkipped = 0;
                         foreach (JObject tc in toolCalls)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
                             if (IsCloseOrCancellationRequested(cancellationToken)) return;
-                            await ProcessSingleToolCall(tc);
+
+                            if (realToolCallsExecuted < MaxRealToolCallsPerRound)
+                            {
+                                await ProcessSingleToolCall(tc);
+                                realToolCallsExecuted++;
+                            }
+                            else
+                            {
+                                AddSkippedToolCallResultToHistory(tc, toolCalls.Count, realToolCallsExecuted);
+                                toolCallsSkipped++;
+                            }
                         }
                         toolsBatchStopwatch.Stop();
                         _diagnosticLogger.LogEvent(requestId, "TOOLS_BATCH.END", new Dictionary<string, object>
                         {
                             { "toolCalls", toolCalls.Count },
+                            { "realToolCallsExecuted", realToolCallsExecuted },
+                            { "toolCallsSkipped", toolCallsSkipped },
                             { "elapsedMs", toolsBatchStopwatch.ElapsedMilliseconds }
                         });
 
                         // После всех tools → следующий запрос к ИИ
+                        _progressReporter.Report("Формирую ответ");
                         _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.START", new Dictionary<string, object>
                         {
                             { "phase", "afterTools" },
@@ -660,6 +688,7 @@ namespace KPLN_CoordiantorAI.Forms
                         response = await SendToOpenRouter(ChatHistoryMessages, cancellationToken);
                         cancellationToken.ThrowIfCancellationRequested();
                         if (IsCloseOrCancellationRequested(cancellationToken)) return;
+                        _progressReporter.Report("Обрабатываю результат");
                         _diagnosticLogger.LogEvent(requestId, "AI_REQUEST.END", new Dictionary<string, object>
                         {
                             { "phase", "afterTools" },
@@ -671,7 +700,7 @@ namespace KPLN_CoordiantorAI.Forms
                         if (!IsSuccessResponse(response))
                         {
                             // Если ошибка - показываем и выходим
-                            ChatHistory.Children.Add(CreateMessageBlock($"❌ Ошибка после tools: {response}", false));
+                            ChatHistory.Children.Add(CreateMessageBlock($"Ошибка после tools: {ExtractAiErrorMessage(response)}", false));
                             break;
                         }
 
@@ -689,6 +718,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                         if (!string.IsNullOrEmpty(finalContent) && finalContent.Trim().Length > 10)
                         {
+                            _progressReporter.Report("Формирую ответ");
                             DateTime responseTime = DateTime.Now;
                             _diagnosticLogger.LogEvent(requestId, "FINAL_RESPONSE.READY", new Dictionary<string, object>
                             {
@@ -753,6 +783,7 @@ namespace KPLN_CoordiantorAI.Forms
             }
             catch (OperationCanceledException ex)
             {
+                _progressReporter.Report("Запрос отменен");
                 _diagnosticLogger.LogException(requestId, "SendMessage.CANCELED", ex, new Dictionary<string, object>
                 {
                     { "elapsedMs", GetCurrentRequestElapsedMs() },
@@ -764,6 +795,7 @@ namespace KPLN_CoordiantorAI.Forms
             }
             catch (Exception ex)
             {
+                _progressReporter.Report("Не удалось обработать запрос");
                 _diagnosticLogger.LogException(requestId, "SendMessage.ERROR", ex, new Dictionary<string, object>
                 {
                     { "elapsedMs", GetCurrentRequestElapsedMs() }
@@ -791,7 +823,7 @@ namespace KPLN_CoordiantorAI.Forms
 
                 if (!IsCloseOrCancellationRequested(cancellationToken))
                 {
-                    HideTypingIndicator();  //конец анимации загрузки
+                    _progressReporter.Clear();
                     SendButton.IsEnabled = true;
                     ChatScrollViewer.ScrollToEnd();
                 }
@@ -889,9 +921,7 @@ namespace KPLN_CoordiantorAI.Forms
 
         private void RegisterToolAreaCall(string toolName)
         {
-            ModelToolArea area;
-            if (string.IsNullOrWhiteSpace(toolName) || !ToolAreas.TryGetValue(toolName, out area))
-                area = ModelToolArea.Other;
+            string area = GetToolAreaName(toolName);
 
             int currentCount;
             _currentToolAreaStats.TryGetValue(area, out currentCount);
@@ -900,21 +930,49 @@ namespace KPLN_CoordiantorAI.Forms
 
         private static string GetToolAreaName(string toolName)
         {
-            ModelToolArea area;
-            if (string.IsNullOrWhiteSpace(toolName) || !ToolAreas.TryGetValue(toolName, out area))
-                area = ModelToolArea.Other;
+            RevitMcpToolDefinition definition;
+            if (RevitMcpToolRegistry.TryGet(toolName, out definition) && !string.IsNullOrWhiteSpace(definition.Area))
+                return definition.Area;
 
-            return area.ToString();
+            return "Other";
+        }
+
+        private static string GetToolProgressStatus(string toolName)
+        {
+            switch (toolName)
+            {
+                case "get_active_view_in_revit":
+                    return "Проверяю активный вид";
+                case "get_model_categories":
+                    return "Получаю категории модели";
+                case "get_elements_by_category":
+                    return "Получаю элементы выбранной категории";
+                case "get_all_elements_shown_in_view":
+                    return "Получаю элементы активного вида";
+                case "get_journal_entries_since":
+                    return "Читаю журнал Revit";
+                case "set_user_selection_in_revit":
+                    return "Выделяю элементы в Revit";
+                case "set_view_section_box_to_elements":
+                    return "Настраиваю 3D-вид";
+                default:
+                    return "Выполняю команду Revit";
+            }
         }
 
         private Dictionary<string, int> GetCurrentToolAreaStatsForLog()
         {
-            Dictionary<string, int> stats = new Dictionary<string, int>();
-            foreach (ModelToolArea area in Enum.GetValues(typeof(ModelToolArea)))
+            Dictionary<string, int> stats = new Dictionary<string, int>(StringComparer.Ordinal);
+            IEnumerable<string> areas = RevitMcpToolRegistry.GetAll()
+                .Select(tool => tool.Area)
+                .Where(area => !string.IsNullOrWhiteSpace(area))
+                .Concat(new[] { "Other" })
+                .Distinct(StringComparer.Ordinal);
+            foreach (string area in areas)
             {
                 int count;
                 if (_currentToolAreaStats.TryGetValue(area, out count) && count > 0)
-                    stats[area.ToString()] = count;
+                    stats[area] = count;
             }
 
             return stats;
@@ -928,6 +986,7 @@ namespace KPLN_CoordiantorAI.Forms
         {
             string toolName = toolCall["function"]?["name"]?.ToString();
             RegisterToolAreaCall(toolName);
+            _progressReporter.Report(GetToolProgressStatus(toolName));
             string toolCallId = toolCall["id"]?.ToString() ?? Guid.NewGuid().ToString();
 
             string toolResult = "";
@@ -943,591 +1002,21 @@ namespace KPLN_CoordiantorAI.Forms
 
             try
             {
-
-                switch (toolName)
-                {
-                    case "get_active_view_in_revit":
-                        var viewInfo = Commands.GetActiveViewInfo(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(viewInfo);
-                        //ChatHistory.Children.Add(CreateMessageBlock($"✅ Активный вид: {viewInfo.ViewName} (ID: {viewInfo.ViewId}, Тип: {viewInfo.ViewType})", false));
-                        break;
-
-                    case "get_all_elements_shown_in_view":
-                        var viewIdParam = toolCall["function"]?["arguments"]?.ToString();
-                        var args = JObject.Parse(viewIdParam ?? "{}");
-                        int viewId = args["viewOrSheetId"]?.Value<int>() ?? IDHelper.ElIdInt(_doc.ActiveView.Id);
-                        var elementsResult = Commands.GetAllElementsShownInView(_doc, viewId);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementsResult);
-
-                        break;
-
-                    case "get_category_by_keyword":
-                        var keywordParam = toolCall["function"]?["arguments"]?.ToString();
-                        var keywordArgs = JObject.Parse(keywordParam ?? "{}");
-                        string keyword = keywordArgs["keyword"]?.Value<string>() ?? "";
-                        var categories = Commands.GetCategoryByKeyword(_doc, keyword);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(categories);
-
-                        //foreach (var cat in categories.Take(3))
-                        //    ChatHistory.Children.Add(CreateMessageBlock($"   • {cat.Name} (ID: {cat.Id})", false));
-                        break;
-
-                    case "get_elements_by_category":
-                        var catParam = toolCall["function"]?["arguments"]?.ToString();
-                        var catArgs = JObject.Parse(catParam ?? "{}");
-                        int categoryId = catArgs["categoryId"]?.Value<int>() ?? 0;
-                        var elementIds = Commands.GetElementsByCategory(_doc, categoryId);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(elementIds);
-
-                        break;
-
-                    case "get_model_categories":
-                        var allCats = Commands.GetModelCategories(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(allCats);
-                        break;
-
-                    case "get_categories_from_elementids":
-                        argsJson = toolCall["function"]?["arguments"]?.ToString();
-                        argsObj = JObject.Parse(argsJson ?? "{}");
-                        var idsToken = argsObj["list_elementIds"];
-                        var ids = new List<int>();
-                        if (idsToken is JArray arr)
-                            ids = arr.Select(t => t.Value<int>()).ToList();
-                        var catMap = Commands.GetCategoriesFromElementIds(_doc, ids);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(catMap);
-                        break;
-
-                    case "get_element_types_for_elementids":
-                        var typeArgsJson = toolCall["function"]?["arguments"]?.ToString();
-                        var typeArgsObj = JObject.Parse(typeArgsJson ?? "{}");
-                        var typeIdsToken = typeArgsObj["list_elementIds"];
-                        ids = new List<int>();
-                        if (typeIdsToken is JArray typeArr)
-                            ids = typeArr.Select(t => t.Value<int>()).ToList();
-                        var result = Commands.GetElementTypesForElementIds(_doc, ids);
-                        var typeMap = result.GetType().GetProperty("type_ids")?.GetValue(result) as Dictionary<int, ElementTypeInfo>;
-                        int count = (int)(result.GetType().GetProperty("count")?.GetValue(result) ?? 0);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result);
-                        break;
-
-                    case "get_all_elementids_for_specific_type_ids":
-
-                        var typeIdsToken_8 = argsObj["list_typeIds"];
-                        var typeIds = new List<int>();
-                        if (typeIdsToken_8 is JArray typeArray)
-                            typeIds = typeArray.Select(t => t.Value<int>()).ToList();
-                        var result_8 = Commands.GetAllElementIdsForSpecificTypeIds(_doc, typeIds);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_8);
-                        break;
-
-                    case "get_all_used_families_in_model":
-
-                        var familyResult = Commands.GetAllUsedFamiliesInModel(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(familyResult);
-                        break;
-
-                    case "get_all_used_families_of_category":
-
-                        int categoryId_9 = argsObj["categoryId"]?.Value<int>() ?? 0;
-                        var familyResult_9 = Commands.GetAllUsedFamiliesOfCategory(_doc, categoryId_9);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(familyResult_9);
-                        break;
-
-                    case "get_all_used_types_of_a_family":
-                        string familyName = argsObj["familyName"]?.Value<string>() ?? "";
-                        var result_11 = Commands.GetAllUsedTypesOfAFamily(_doc, familyName);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_11);
-                        break;
-
-                    case "get_all_elements_of_specific_families":
-                        var names = new List<string>();
-                        if (argsObj["familyNames"] is JArray famArr)
-                            names = famArr.Select(t => t.Value<string>()).ToList();
-                        var result_12 = Commands.GetAllElementsOfSpecificFamilies(_doc, names);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_12);
-                        break;
-
-                    case "get_parameters_from_elementid":
-                        int elementId = argsObj["elementId"]?.Value<int>() ?? 0;
-                        bool getIdValuesAsNames = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
-                        var result_13 = Commands.GetParametersFromElementId(_doc, elementId, getIdValuesAsNames);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_13);
-                        break;
-
-                    case "get_parameter_value_for_element_ids":
-                        var ids_14 = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_14)
-                            ids_14 = arr_14.Select(t => t.Value<int>()).ToList();
-                        int idParameter = argsObj["idParameter"]?.Value<int>() ?? 0;
-                        bool getIdValuesAsNames_14 = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
-                        var result_14 = Commands.GetParameterValueForElementIds(_doc, ids_14, idParameter, getIdValuesAsNames_14);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_14);
-                        break;
-
-                    case "get_all_additional_properties_from_elementid":
-                        int elementId_15 = argsObj["elementId"]?.Value<int>() ?? 0;
-                        var result_15 = Commands.GetAllAdditionalPropertiesFromElementId(_doc, elementId_15);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_15);
-                        break;
-
-                    case "get_additional_property_for_all_elementids":
-                        var ids_16 = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_16)
-                            ids_16 = arr_16.Select(t => t.Value<int>()).ToList();
-                        string propertyName = argsObj["propertyName"]?.Value<string>() ?? "";
-                        var result_16 = Commands.GetAdditionalPropertyForAllElementIds(_doc, ids_16, propertyName);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_16);
-                        break;
-
-                    case "get_revitlookup_like_properties":
-                        int elementId_lookup = argsObj["elementId"]?.Value<int>() ?? 0;
-                        bool includeParameters_lookup = argsObj["includeParameters"]?.Value<bool>() ?? true;
-                        bool includeApiProperties_lookup = argsObj["includeApiProperties"]?.Value<bool>() ?? true;
-                        int maxValueLength_lookup = argsObj["maxValueLength"]?.Value<int>() ?? 1000;
-                        var result_lookup = Commands.GetRevitLookupLikeProperties(
-                            _doc,
-                            elementId_lookup,
-                            maxValueLength_lookup);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_lookup);
-                        break;
-
-                    case "get_location_for_element_ids":
-                        var ids_17 = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_17)
-                            ids_17 = arr_17.Select(t => t.Value<int>()).ToList();
-
-                        var result_17 = Commands.GetLocationForElementIds(_doc, ids_17);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_17);
-                        break;
-
-                    case "get_boundingboxes_for_element_ids":
-                        var ids_18 = new List<int>();
-                        int? idSheet = null;
-                        if (argsObj["list_elementIds"] is JArray arr_18)
-                            ids = arr_18.Select(t => t.Value<int>()).ToList();
-
-                        if (argsObj["idSheet"] != null)
-                            idSheet = argsObj["idSheet"].Value<int?>();
-
-                        var result_18 = Commands.GetBoundingBoxesForElementIds(_doc, ids_18, idSheet);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_18);
-                        break;
-
-                    case "get_boundary_lines":
-                        var ids_19 = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_19)
-                            ids_19 = arr_19.Select(t => t.Value<int>()).ToList();
-                        var result_19 = Commands.GetBoundaryLines(_doc, ids_19);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_19);
-                        break;
-
-                    case "get_room_boundary_lines":
-                        var ids_room = new List<int>();
-                        // Проверяем наличие параметра list_roomIds
-                        if (argsObj["list_roomIds"] is JArray arr_room)
-                            ids_room = arr_room.Select(t => t.Value<int>()).ToList();
-                        // Вызываем метод получения границ помещений
-                        var result_room = Commands.GetRoomBoundaryLines(_doc, ids_room);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_room);
-                        break;
-
-                    case "get_host_id_for_element_ids":
-                        var ids_20 = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_20)
-                            ids = arr_20.Select(t => t.Value<int>()).ToList();
-                        var result_20 = Commands.GetHostIdForElementIds(_doc, ids_20);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_20);
-                        break;
-
-                    case "get_object_classes_from_elementids":
-                        var ids_21 = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_21)
-                            ids_21 = arr_21.Select(t => t.Value<int>()).ToList();
-                        var result_21 = Commands.GetObjectClassesFromElementIds(_doc, ids_21);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_21);
-                        break;
-
-                    case "get_material_layers_from_types":
-                        var ids_22 = new List<int>();
-
-                        if (argsObj["list_elementIds"] is JArray arr_22)
-                            ids_22 = arr_22.Select(t => t.Value<int>()).ToList();
-
-                        var result_22 = Commands.GetMaterialLayersFromTypes(_doc, ids_22);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_22);
-                        break;
-
-                    case "get_model_file_info":
-                        var result_fileInfo = Commands.GetModelFileInfo(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_fileInfo);
-                        break;
-
-                case "get_all_project_units":
-                    var result_units = Commands.GetAllProjectUnits(_doc);
-                    toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_units);
-                    break;
-
-                    case "get_all_warnings_in_the_model":
-                        var result_warnings = Commands.GetAllWarningsInTheModel(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_warnings);
-                        break;
-
-                    case "get_all_workset_information":
-                        var result_worksets = Commands.GetAllWorksetInformation(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_worksets);
-                        break;
-
-                    case "get_worksets_from_elementids":
-                        var ids_workset = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_workset)
-                            ids_workset = arr_workset.Select(t => t.Value<int>()).ToList();
-
-                        var result_workset = Commands.GetWorksetsFromElementIds(_doc, ids_workset);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_workset);
-                        break;
-
-                    case "get_worksharing_information_for_element_ids":
-                        var ids_worksharing = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_worksharing)
-                            ids_worksharing = arr_worksharing.Select(t => t.Value<int>()).ToList();
-
-                        var result_worksharing = Commands.GetWorksharingInformationForElementIds(_doc, ids_worksharing);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_worksharing);
-                        break;
-
-                    case "get_user_selection_in_revit":
-                        var result_selection = Commands.GetUserSelectionInRevit(_doc, _uiDoc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_selection);
-                        break;
-
-                    case "set_user_selection_in_revit":
-                        var ids_selection = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_selection)
-                            ids_selection = arr_selection.Select(t => t.Value<int>()).ToList();
-
-                        var result_selection_30 = Commands.SetUserSelectionInRevit(_doc, _uiDoc, ids_selection);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_selection_30);
-                        break;
-
-                    case "get_graphic_overrides_for_element_ids_in_view":
-                        var ids_overrides = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_overrides)
-                            ids_overrides = arr_overrides.Select(t => t.Value<int>()).ToList();
-
-                        int viewId_31 = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                        if (viewId_31 == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
-                            break;
-                        }
-
-                        var result_overrides = Commands.GetGraphicOverridesForElementIdsInView(_doc, ids_overrides, viewId_31);
-                        toolResult = JsonConvert.SerializeObject(result_overrides);
-                        break;
-
-                    case "get_graphic_filters_applied_to_views":
-                        var ids_filters = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_filters)
-                            ids_filters = arr_filters.Select(t => t.Value<int>()).ToList();
-
-                        var result_filters = Commands.GetGraphicFiltersAppliedToViews(_doc, ids_filters);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_filters);
-                        break;
-
-                    case "get_all_parameter_filters_in_model":
-                        var result_allFilters = Commands.GetAllParameterFiltersInModel(_doc);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_allFilters);
-                        break;
-
-                    case "get_graphic_overrides_view_filters":
-                        var ids_filterOverrides = new List<int>();
-                        if (argsObj["list_filterIds"] is JArray arr_filterOverrides)
-                            ids_filterOverrides = arr_filterOverrides.Select(t => t.Value<int>()).ToList();
-                        int viewIdFilter = argsObj["viewId"]?.Value<int>() ?? -1;
-                        if (viewIdFilter == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
-                            break;
-                        }
-                        var result_filterOverrides = Commands.GetGraphicOverridesViewFilters(_doc, ids_filterOverrides, viewIdFilter);
-                        toolResult = JsonConvert.SerializeObject(result_filterOverrides);
-                        break;
-
-                    case "get_category_visibility_overrides_in_view":
-                        int viewIdForCategory = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                        if (viewIdForCategory == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
-                            break;
-                        }
-
-                        var result_categoryOverrides = Commands.GetCategoryVisibilityOverridesInView(_doc, viewIdForCategory);
-                        toolResult = JsonConvert.SerializeObject(result_categoryOverrides);
-                        break;
-
-                    case "get_workset_visibility_in_view":
-                        int viewIdForWorkset = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                        if (viewIdForWorkset == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
-                            break;
-                        }
-
-                        var result_worksetVisibility = Commands.GetWorksetVisibilityInView(_doc, viewIdForWorkset);
-                        toolResult = JsonConvert.SerializeObject(result_worksetVisibility);
-                        break;
-
-                    case "get_link_graphics_overrides_in_view":
-                        int viewIdForLink = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                        if (viewIdForLink == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
-                            break;
-                        }
-
-                        var result_linkOverrides = Commands.GetLinkGraphicsOverridesInView(_doc, viewIdForLink);
-                        toolResult = JsonConvert.SerializeObject(result_linkOverrides);
-                        break;
-
-                    case "get_detailed_link_graphics_overrides_in_view":
-                        int viewIdForDetailedLink = argsObj["viewId"]?.Value<int>() ?? -1;
-
-                        if (viewIdForDetailedLink == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан viewId" });
-                            break;
-                        }
-
-                        var result_detailedLinkOverrides = Commands.GetDetailedLinkGraphicsOverridesInView(_doc, viewIdForDetailedLink);
-                        toolResult = JsonConvert.SerializeObject(result_detailedLinkOverrides);
-                        break;
-
-
-                    case "get_viewports_and_schedules_on_sheets":
-                        var ids_sheets = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_sheets)
-                            ids_sheets = arr_sheets.Select(t => t.Value<int>()).ToList();
-
-                        var result_sheets = Commands.GetViewportsAndSchedulesOnSheets(_doc, ids_sheets);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sheets);
-                        break;                   
-
-                    case "get_schedules_info_and_columns":
-                        var ids_schedules = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_schedules)
-                            ids_schedules = arr_schedules.Select(t => t.Value<int>()).ToList();
-
-                        var result_schedules = Commands.GetSchedulesInfoAndColumns(_doc, ids_schedules);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_schedules);
-                        break;
-
-                    case "get_schedule_sorting_info":
-                        var ids_sorting = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_sorting)
-                            ids_sorting = arr_sorting.Select(t => t.Value<int>()).ToList();
-
-                        var result_sorting = Commands.GetScheduleSortingInfo(_doc, ids_sorting);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sorting);
-                        break;
-
-                    //case "get_schedule_rows_with_elements":
-                    //    int scheduleIdForRows = argsObj["scheduleId"]?.Value<int>() ?? -1;
-
-                    //    if (scheduleIdForRows == -1)
-                    //    {
-                    //        toolResult = JsonConvert.SerializeObject(new { error = "Не указан scheduleId", success = false });
-                    //        break;
-                    //    }
-
-                    //    var result_rows = Commands.GetScheduleRowsWithElements(_doc, scheduleIdForRows);
-                    //    toolResult = JsonConvert.SerializeObject(result_rows);
-                    //    break;
-
-
-                    case "get_if_elements_pass_filter":
-                        int filterId = argsObj["filterId"]?.Value<int>() ?? -1;
-
-                        var ids_passFilter = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_passFilter)
-                            ids_passFilter = arr_passFilter.Select(t => t.Value<int>()).ToList();
-
-                        if (filterId == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан filterId" });
-                            break;
-                        }
-
-                        var result_passFilter = Commands.GetIfElementsPassFilter(_doc, filterId, ids_passFilter);
-                        toolResult = JsonConvert.SerializeObject(result_passFilter);
-                        break;
-
-                    case "set_view_section_box_to_elements":
-                        var ids_sectionBox = new List<int>();
-                        if (argsObj["list_elementIds"] is JArray arr_sectionBox)
-                            ids_sectionBox = arr_sectionBox.Select(t => t.Value<int>()).ToList();
-
-                        var result_sectionBox = await _revitApiExternalEventHandler.SetViewSectionBoxToElementsAsync(_doc, _uiDoc, ids_sectionBox);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_sectionBox);
-                        break;
-
-                    case "get_journal_entries_since":
-                        string dateTimeStr = argsObj["dateTime"]?.Value<string>() ?? "";
-                        string endDateTimeStr = argsObj["endDateTime"]?.Value<string>() ?? "";
-
-                        if (string.IsNullOrEmpty(dateTimeStr))
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указана дата", success = false });
-                            break;
-                        }
-
-                        var result_journal = Commands.GetJournalEntriesSince(_doc, dateTimeStr, endDateTimeStr);
-                        toolResult = JsonConvert.SerializeObject(result_journal);
-                        break;
-
-                    case "get_revit_links_in_model":
-                        var result_revitLinks = Commands.GetRevitLinksInModel(_doc);
-                        toolResult = JsonConvert.SerializeObject(result_revitLinks);
-                        break;
-
-                    case "get_revit_link_elements":
-                        int linkInstanceId = argsObj["linkInstanceId"]?.Value<int>() ?? -1;
-                        int limit = argsObj["limit"]?.Value<int>() ?? 300;
-                        int offset = argsObj["offset"]?.Value<int>() ?? 0;
-
-                        if (linkInstanceId == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkInstanceId" });
-                            break;
-                        }
-
-                        var result_linkElements = Commands.GetRevitLinkElements(_doc, linkInstanceId, limit, offset);
-                        toolResult = JsonConvert.SerializeObject(result_linkElements);
-                        break;
-
-                    case "get_revit_link_categories":
-                        int linkInstanceIdForCategories = argsObj["linkInstanceId"]?.Value<int>() ?? -1;
-
-                        if (linkInstanceIdForCategories == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkInstanceId" });
-                            break;
-                        }
-
-                        var result_linkCategories = Commands.GetRevitLinkCategories(_doc, linkInstanceIdForCategories);
-                        toolResult = JsonConvert.SerializeObject(result_linkCategories);
-                        break;
-
-                    case "get_revit_link_elements_by_category":
-                        int linkInstanceIdForCategoryElements = argsObj["linkInstanceId"]?.Value<int>() ?? -1;
-                        int linkedCategoryId = argsObj["categoryId"]?.Value<int>() ?? 0;
-                        string linkedCategoryName = argsObj["categoryName"]?.Value<string>() ?? "";
-                        int categoryLimit = argsObj["limit"]?.Value<int>() ?? 300;
-                        int categoryOffset = argsObj["offset"]?.Value<int>() ?? 0;
-
-                        if (linkInstanceIdForCategoryElements == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkInstanceId" });
-                            break;
-                        }
-
-                        if (linkedCategoryId == 0 && string.IsNullOrWhiteSpace(linkedCategoryName))
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан categoryId или categoryName" });
-                            break;
-                        }
-
-                        var result_linkElementsByCategory = Commands.GetRevitLinkElementsByCategory(_doc, linkInstanceIdForCategoryElements, linkedCategoryId, linkedCategoryName, categoryLimit, categoryOffset);
-                        toolResult = JsonConvert.SerializeObject(result_linkElementsByCategory);
-                        break;
-
-                    case "get_selected_revit_link_element_id":
-                        UIElement linkedSelectionPrompt = CreateMessageBlock("AI: Выберите один или несколько элементов внутри связанного файла в окне Revit. Завершите выбор кнопкой Готово, после этого я продолжу обработку.", false);
-                        ChatHistory.Children.Add(linkedSelectionPrompt);
-                        ChatScrollViewer.ScrollToEnd();
-                        Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
-
-                        try
-                        {
-                            var result_linkedSelection = Commands.GetSelectedRevitLinkElementId(_doc, _uiDoc);
-                            toolResult = JsonConvert.SerializeObject(result_linkedSelection);
-                        }
-                        finally
-                        {
-                            ChatHistory.Children.Remove(linkedSelectionPrompt);
-                            ChatScrollViewer.ScrollToEnd();
-                            Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
-                        }
-                        break;
-
-                    case "get_revit_link_element_properties":
-                        int linkInstanceIdForProperties = argsObj["linkInstanceId"]?.Value<int>() ?? -1;
-                        int linkedElementIdForProperties = argsObj["linkedElementId"]?.Value<int>() ?? -1;
-                        bool linkedGetIdValuesAsNames = argsObj["getIdValuesAsNames"]?.Value<bool>() ?? false;
-                        int linkedMaxValueLength = argsObj["maxValueLength"]?.Value<int>() ?? 1000;
-                        int linkedParameterId = argsObj["parameterId"]?.Value<int>() ?? 0;
-                        string linkedAdditionalPropertyName = argsObj["additionalPropertyName"]?.Value<string>() ?? "";
-
-                        if (linkInstanceIdForProperties == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkInstanceId" });
-                            break;
-                        }
-
-                        if (linkedElementIdForProperties == -1)
-                        {
-                            toolResult = JsonConvert.SerializeObject(new { error = "Не указан linkedElementId" });
-                            break;
-                        }
-
-                        var result_linkElementProperties = Commands.GetRevitLinkElementProperties(_doc, linkInstanceIdForProperties, linkedElementIdForProperties, linkedGetIdValuesAsNames, linkedMaxValueLength, linkedParameterId, linkedAdditionalPropertyName);
-                        toolResult = JsonConvert.SerializeObject(result_linkElementProperties);
-                        break;
-
-                    case "get_titleblock_family_parameters_description":
-                        var result_titleBlockDescription = Commands.GetTitleBlockFamilyParametersDescription(_settings.TitleBlockParametersDescription);
-                        toolResult = Newtonsoft.Json.JsonConvert.SerializeObject(result_titleBlockDescription);
-                        break;
-
-
-
-                    //case "get_document_switched":
-                    //    int linkElementId = argsObj["elementId"]?.Value<int>() ?? -1;
-                    //    bool switchToMain = argsObj["switchMainDoc"]?.Value<bool>() ?? false;
-
-                    //    var result_switch = Commands.GetDocumentSwitched(_doc, _uiDoc, linkElementId, switchToMain);
-                    //    toolResult = JsonConvert.SerializeObject(result_switch);
-                    //    break;
-
-
-
-
-                    default:
-                        ChatHistory.Children.Add(CreateMessageBlock($"❓ Неизвестная команда: {toolName}", false));
-                        toolResult = "[]";
-                        break;
-                }
-
-                // Добавляем результат в историю для ИИ
-                ChatHistoryMessages.Add(new
-                {
-                    role = "tool",
-                    tool_call_id = toolCallId,
-                    content = toolResult
-                });
+                toolResult = await ExecuteRegisteredMcpToolAsync(toolName, argsObj);
+                AddToolResultToHistory(toolCallId, toolResult);
                 toolStopwatch.Stop();
                 _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "TOOL.END", new Dictionary<string, object>
                 {
                     { "toolName", toolName },
                     { "resultLength", toolResult == null ? 0 : toolResult.Length },
-                    { "elapsedMs", toolStopwatch.ElapsedMilliseconds }
+                    { "elapsedMs", toolStopwatch.ElapsedMilliseconds },
+                    { "executionPath", "mcp" }
                 });
+                _progressReporter.Report("Обрабатываю результат команды Revit");
             }
             catch (Exception ex)
             {
+                _progressReporter.Report("Не удалось выполнить команду Revit");
                 toolStopwatch.Stop();
                 _diagnosticLogger.LogException(_currentDiagnosticRequestId, "TOOL.ERROR", ex, new Dictionary<string, object>
                 {
@@ -1557,6 +1046,82 @@ namespace KPLN_CoordiantorAI.Forms
                     { "resultLength", toolResult == null ? 0 : toolResult.Length }
                 });
             }
+        }
+
+        private async Task<string> ExecuteRegisteredMcpToolAsync(string toolName, JObject arguments)
+        {
+            RevitMcpDiagnosticLogger.Log("WPF chat routes tool through MCP. ToolName=" + (toolName ?? "<null>"));
+
+            using (InternalMcpClient mcpClient = new InternalMcpClient())
+            {
+                JObject mcpResult = await mcpClient.CallToolAsync(
+                    toolName,
+                    arguments ?? new JObject(),
+                    CancellationToken.None);
+
+                JToken structuredContent = mcpResult["structuredContent"];
+                if (structuredContent != null)
+                    return JsonConvert.SerializeObject(structuredContent);
+
+                JArray content = mcpResult["content"] as JArray;
+                if (content != null && content.Count > 0)
+                {
+                    JObject firstContent = content[0] as JObject;
+                    if (firstContent != null && firstContent["text"] != null)
+                        return firstContent["text"].ToString();
+                }
+
+                return JsonConvert.SerializeObject(mcpResult);
+            }
+        }
+
+        private async Task<JArray> GetMcpOpenAiCompatibleToolsAsync(CancellationToken cancellationToken)
+        {
+            using (InternalMcpClient mcpClient = new InternalMcpClient())
+            {
+                InternalMcpToolProvider toolProvider = new InternalMcpToolProvider(mcpClient);
+                JArray tools = await toolProvider.GetOpenAiCompatibleToolsAsync(cancellationToken);
+                return tools;
+            }
+        }
+
+        private void AddToolResultToHistory(string toolCallId, string toolResult)
+        {
+            ChatHistoryMessages.Add(new
+            {
+                role = "tool",
+                tool_call_id = toolCallId,
+                content = toolResult
+            });
+        }
+
+        private void AddSkippedToolCallResultToHistory(JObject toolCall, int totalToolCallsInRound, int realToolCallsExecuted)
+        {
+            string toolName = toolCall["function"]?["name"]?.ToString();
+            string toolCallId = toolCall["id"]?.ToString() ?? Guid.NewGuid().ToString();
+            string toolResult = JsonConvert.SerializeObject(new
+            {
+                success = false,
+                skipped = true,
+                error = "Per-round tool execution limit reached.",
+                message = "Only the first 5 tool calls from one model response are executed. Use the results already returned and request the next batch of tool calls separately if more data is needed.",
+                tool_name = toolName,
+                total_tool_calls_in_round = totalToolCallsInRound,
+                real_tool_calls_executed = realToolCallsExecuted,
+                max_real_tool_calls_per_round = MaxRealToolCallsPerRound
+            });
+
+            AddToolResultToHistory(toolCallId, toolResult);
+
+            _diagnosticLogger.LogEvent(_currentDiagnosticRequestId, "TOOL.SKIPPED_PER_ROUND_LIMIT", new Dictionary<string, object>
+            {
+                { "toolName", toolName },
+                { "toolCallId", toolCallId },
+                { "totalToolCallsInRound", totalToolCallsInRound },
+                { "realToolCallsExecuted", realToolCallsExecuted },
+                { "maxRealToolCallsPerRound", MaxRealToolCallsPerRound },
+                { "resultLength", toolResult.Length }
+            });
         }
 
 
@@ -1684,7 +1249,7 @@ namespace KPLN_CoordiantorAI.Forms
             };
 
             var paragraph = new Paragraph();
-            paragraph.Inlines.Add(new Run("ИИ печатает"));
+            paragraph.Inlines.Add(new Run(GetAnimatedProgressText()));
             richTextBox.Document = new FlowDocument(paragraph);
 
             border.Child = richTextBox;
@@ -1849,1887 +1414,17 @@ namespace KPLN_CoordiantorAI.Forms
                                     "→ 3.get_elements_by_category(ID_окон)"
                 : _settings.SystemPrompt;
 
+            systemPrompt += "\r\nЕсли часть tool-вызовов вернулась с skipped=true и ошибкой Per-round tool execution limit reached, значит за один ответ модели было запрошено слишком много команд. Используй уже полученные результаты и запроси следующую небольшую пачку tool-вызовов отдельным шагом, если данных недостаточно.";
+
             var messagesWithSystem = new List<object> { new { role = "system", content = systemPrompt } };
             messagesWithSystem.AddRange(_messages);
 
-            var toolsArray = new object[]
-                {
+            // Tool definitions are loaded from the local MCP tools/list endpoint.
 
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_active_view_in_revit",
-                            description = "Возвращает название, ID и тип текущего активного вида (или листа), открытого в Revit на момент вызова. " +
-                                          "Для видов-планов дополнительно возвращает view_range — секущий диапазон вида: верхняя граница, секущая плоскость, нижняя граница и глубина вида. " +
-                                          "Для каждой плоскости секущего диапазона возвращаются level_id, level_name, offset_feet и offset_mm. Нет входных параметров.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },  // Пустой объект — нет параметров
-                                required = new string[] { }
-                            }
-                        }
-                    },
-                   
 
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_elements_shown_in_view",
-                            description = "Возвращает список всех element id элементов, видимых в указанном виде, на листе или в спецификации. " +
-                            "Для вида — стены, колонны, помещения. Для листа — видовые экраны, основные надписи. Для спецификации — строки.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    viewOrSheetId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element ID вида, листа или спецификации. Если не указан — текущий активный вид."
-                                    }
-                                },
-                                required = new string[] { }
-                            }
-                        }
 
-                    },
 
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_category_by_keyword",
-                            description = "Ищет категории Revit по ключевому слову (часть названия). Возвращает ID и имена подходящих категорий. " +
-                            "Category ID нужно предварительно получить через get_category_by_keyword или get_model_categories",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    keyword = new
-                                    {
-                                        type = "string",
-                                        description = "Ключевое слово для поиска. Примеры: 'Стены', 'Окна', 'Уровни'"
-                                    }
-                                },
-                                required = new[] { "keyword" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_elements_by_category",
-                            description = "Возвращает все element ID элементов, принадлежащих указанной категории Revit. Примеры: все стены, все двери, все уровни." +
-                            "Если пользователь задал категорию именем, например Окна, то вызови комнаду get_category_by_keyword, чтобы определить id ктаегории. ",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    categoryId = new
-                                    {
-                                        type = "integer",
-                                        description = "ID встроенной категории Revit. Примеры: -2000011=Стены, -2000240=Уровни"
-                                    }
-                                },
-                                required = new[] { "categoryId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_model_categories",
-                            description = "Возвращает полный список всех категорий модели (системных и загружаемых). Используй ТОЛЬКО если get_category_by_keyword не нашёл нужную категорию — этот вызов может вернуть очень много данных.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },   // нет параметров
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_categories_from_elementids",
-                            description = "Для каждого element id из списка возвращает, к какой категории он принадлежит. Удобно для определения категорий набора элементов, полученных из других инструментов.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id, для которых нужно определить категории"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_element_types_for_elementids",
-                            description = "Для каждого element id возвращает его type id и имя типа. Позволяет узнать, к какому типу принадлежит каждый элемент — например, тип стены '200мм Кирпич' или тип двери 'ДВ-1'.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id для определения типов"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_elementids_for_specific_type_ids",
-                            description = "Обратная операция к get_element_types_for_elementids. По type id возвращает все экземпляры (element id) данного типа в модели. Полезно для поиска всех вхождений конкретного типа.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_typeIds = new  // ← typeIds, не elementIds!
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список TYPE ID (не element id!). Получи через get_element_types_for_elementids."
-                                    }
-                                },
-                                required = new[] { "list_typeIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_used_families_in_model",
-                            description = "Возвращает все семейства в модели Revit (как загружаемые, так и системные). " +
-                                          "Для каждого семейства возвращает: " +
-                                          "- FamilyId: уникальный идентификатор (для системных — отрицательный хэш имени) " +
-                                          "- FamilyName: имя семейства " +
-                                          "- IsLoadedFamily: true = загружаемое (дверь, окно, мебель), false = системное (стена, перекрытие, уровень) " +
-                                          "- IsPlacedInModel: true = размещено в модели (есть хотя бы один экземпляр) " +
-                                          "- InstanceCount: количество экземпляров в модели " +
-                                          "Дополнительно возвращает stats с общей статистикой: " +
-                                          "- loaded_families: количество загружаемых семейств " +
-                                          "- system_families: количество системных семейств " +
-                                          "- placed_families: количество размещённых семейств " +
-                                          "- unplaced_families: количество загруженных, но не размещённых (можно удалить) " +
-                                          "Полезно для: аудита семейств, поиска неиспользуемых элементов, анализа состава проекта.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_used_families_of_category",
-                            description = "Возвращает все загружаемые семейства конкретной категории. Аналогичен get_all_used_families_in_model (все те же праарметры возвращает), но возвращает только семейства нужной категории.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    categoryId = new
-                                    {
-                                        type = "integer",
-                                        description = "ID категории Revit (получить через get_category_by_keyword)."
-                                    }
-                                },
-                                required = new[] { "categoryId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_used_types_of_a_family",
-                            description = "По точному имени семейства возвращает все его типоразмеры (type). Работает как с загружаемыми, так и с системными семействами (стены, перекрытия). Имя должно совпадать точно.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    familyName = new
-                                    {
-                                        type = "string",
-                                        description = "Точное имя семейства. Пример: 'Базовая стена'. Чувствительно к регистру."
-                                    }
-                                },
-                                required = new[] { "familyName" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_elements_of_specific_families",
-                            description = "По списку точных имён семейств возвращает все element id экземпляров этих семейств в модели. Позволяет найти все вхождения нескольких семейств за один вызов.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    familyNames = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "string" },
-                                        description = "Список точных имён семейств. Пример: ['Базовая стена','Дверь ДВ-1']"
-                                    }
-                                },
-                                required = new[] { "familyNames" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_parameters_from_elementid",
-                            description = "Возвращает ВСЕ параметры (по каждому парметру это: id параметра, имя, значение, storageType - типзначения, " +
-                            "isReadOnly - только ли на чтение параметр (true) или нет(false)) одного конкретного элемента, " +
-                            "parType - определяет какой это параметр (параметр экезмпляра или типоразмера). " +
-                            "Это основной инструмент для изучения доступных параметров. " +
-                            "Рекомендуется вызывать первым перед массовым get_parameter_value_for_element_ids — чтобы узнать нужный idParameter. " +
-                            "Обрати внимание что единица измерения в Revit не метры или миллиметры, а футы и т.п." +
-                            "ВАЖНО: НЕ работает для элементов из связанных документов (Linked Files). ",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    elementId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id одного элемента или типа."
-                                    },
-                                    getIdValuesAsNames = new
-                                    {
-                                        type = "boolean",
-                                        description = "Если true — ElementId параметры возвращаются как имена связанных элементов; если false — как числовые ID."
-                                    }
-                                },
-                                required = new[] { "elementId", "getIdValuesAsNames" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_parameter_value_for_element_ids",
-                            description = "Получает значение одного конкретного параметра для большого списка элементов. Используется для массового извлечения данных после того, как нужный parameterId найден через get_parameters_from_elementid. Обрати внимание что единица измерения в Revit не метры или миллиметры, а футы",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id, для которых нужно получить значение параметра."
-                                    },
-                                    idParameter = new
-                                    {
-                                        type = "integer",
-                                        description = "ID параметра (получить через get_parameters_from_elementid)."
-                                    },
-                                    getIdValuesAsNames = new
-                                    {
-                                        type = "boolean",
-                                        description = "Если true — ElementId параметры возвращаются как имена связанных элементов; если false — как числовые ID."
-                                    }
-                                },
-                                required = new[] { "list_elementIds", "idParameter", "getIdValuesAsNames" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_additional_properties_from_elementid",
-                            description = "Возвращает дополнительные свойства одного элемента, доступные через Revit API классы (не через параметры). Используйте только если get_parameters_from_elementid не вернул нужные данные. Возвращает имена и значения свойств без их id.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    elementId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id одного элемента."
-                                    }
-                                },
-                                required = new[] { "elementId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_additional_property_for_all_elementids",
-                            description = "Массовая версия get_all_additional_properties_from_elementid — получает одно конкретное дополнительное свойство (по имени) доступное через Revit API классы (не через параметры) для списка элементов. Имя свойства должно совпадать точно.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id."
-                                    },
-                                    propertyName = new
-                                    {
-                                        type = "string",
-                                        description = "Точное имя свойства (как в get_all_additional_properties_from_elementid)."
-                                    }
-                                },
-                                required = new[] { "list_elementIds", "propertyName" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_revitlookup_like_properties",
-                            description = "Возвращает RevitLookup-подобную информацию по одному элементу: публичные свойства Revit API класса элемента и специальные сложные свойства. " +
-                            "Для IndependentTag дополнительно возвращает GetTaggedLocalElementIds() и GetTaggedElementIds() с ElementId элементов которые туда попали. Для Dimension " +
-                            "дополнительно возвращает References (свойство показывает к каким элементам привязан размер) с ElementId элементов которые туда попали. " +
-                            "Для View3D возвращает GetSectionBox(). Для ViewSheet возвращает GetAllViewports(), GetAllPlacedViews() и Outline. " +
-                            "Для Viewport возвращает GetBoxCenter(), GetBoxOutline(), GetLabelOutline(), GetLabelOffset() и GetLabelLineLength(). " +
-                            "Для Room возвращает GetBoundarySegments(). Для Group и AssemblyInstance возвращает GetMemberIds(), " +
-                            "когда суммируешь количество элементов, полученных через это свойство, по категории, то делай это максимально точно, а не приблизительно" +
-                            "Используй, когда нужно понять, какие данные доступны у элемента через RevitLookup/API, или когда обычные параметры не дали нужное свойство. " +
-                            "Значения сложных объектов преобразуются в безопасный текст, длинные значения обрезаются по maxValueLength.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    elementId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id элемента, который нужно исследовать."
-                                    },
-                                    maxValueLength = new
-                                    {
-                                        type = "integer",
-                                        description = "Максимальная длина текстового значения одного свойства. По умолчанию 1000, допустимый диапазон в коде ограничен от 100 до 10000."
-                                    }
-                                },
-                                required = new[] { "elementId" }
-                            }
-                        }
-                    },
-
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_location_for_element_ids",
-                            description = "Возвращает точку или кривую расположения для списка элементов. Для точечных объектов (колонны, двери) — координаты XYZ точки. Для линейных (стены, трубы) — начальная и конечная точки кривой.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id."
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_boundingboxes_for_element_ids",
-                            description = "Возвращает ограничивающий прямоугольник (BoundingBoxXYZ) для списка элементов. Минимальные и максимальные координаты XYZ. Габариты + расположение. Координаты в футах.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список Element ID"
-                                    },
-                                    idSheet = new
-                                    {
-                                        type = "integer",
-                                        description = "ID листа (опционально, для аннотаций/видов)"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_boundary_lines",
-                            description = @"Возвращает точные граничные линии (рёбра геометрии) для элементов Revit.
-
-                            ВОЗВРАЩАЕМЫЕ ДАННЫЕ:
-                            Для каждого element id возвращается:
-                            - ElementId: ID элемента
-                            - Lines: массив линий, каждая линия содержит:
-                                • StartX, StartY, StartZ - координаты начала линии (в футах)
-                                • EndX, EndY, EndZ - координаты конца линии (в футах)
-                                • Length - длина линии (в футах)
-                            - LineCount: количество найденных линий
-                            - Error: сообщение об ошибке (если есть)
-
-                            ОСОБЕННОСТИ:
-                            1. Координаты возвращаются в футах (1 фут = 304.8 мм)
-                            2. Для перевода в миллиметры умножьте на 304.8
-                            3. Для помещений используются границы, определённые через инструмент 'Границы помещения'
-                            4. Для криволинейных элементов (арки, дуги) линии аппроксимируются прямыми отрезками
-                            5. Возвращает ВСЮ геометрию элемента, включая вложенные семейства
-
-                            ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ:
-                            - 'Покажи все рёбра выбранной стены'
-                            - 'Найди длину нижнего ребра перекрытия'
-                            - 'Определи границы комнаты 101'
-                            - 'Проверь пересекаются ли эти две балки'
-                            - 'Получи форму колонны'
-
-                            ПРИМЕЧАНИЕ:
-                            - Не все элементы имеют геометрию (уровни, сетки, текстовые заметки вернут пустой результат)
-                            - Для сложной геометрии количество линий может быть большим (тысячи)
-                            - Для помещений рекомендуется использовать отдельный метод get_room_boundary_lines, если нужны только границы помещения",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id элементов. Поддерживаемые типы: стены (Walls), перекрытия (Floors), " +
-                                                        "колонны (Columns), балки (Beams), крыши (Roofs), фундаменты (Footings), " +
-                                                        "помещения (Rooms), семейства (FamilyInstances) - мебель, оборудование, сантехника, " +
-                                                        "а также любые другие элементы с 3D-геометрией."
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_room_boundary_lines",
-                            description = @"Специализированная команда для получения границ помещений Revit.
-
-                            ВОЗВРАЩАЕМЫЕ ДАННЫЕ:
-                            Для каждого помещения возвращается:
-                            - ElementId: ID помещения
-                            - Lines: массив линий границ, каждая линия содержит:
-                              • StartX, StartY, StartZ - координаты начала линии (в футах)
-                              • EndX, EndY, EndZ - координаты конца линии (в футах)
-                              • Length - длина линии (в футах)
-                            - LineCount: количество найденных линий
-                            - Error: сообщение об ошибке (если есть)
-
-                            ОСОБЕННОСТИ РАБОТЫ С ПОМЕЩЕНИЯМИ:
-                            1. Границы рассчитываются на основе настроек 'Границы помещения' в Revit:
-                               - Стены (включая многослойные)
-                               - Колонны
-                               - Перегородки
-                               - Ограждения
-                               - Виртуальные границы
-                            2. Учитываются вырезы в помещениях (колонны, шахты, ниши)
-                            3. Для помещений без границ (незамкнутый контур) возвращается ошибка
-                            4. Координаты возвращаются в футах (1 фут = 304.8 мм)
-                            5. Для перевода в миллиметры умножьте на 304.8
-                            6. Криволинейные границы (дуги) аппроксимируются прямыми отрезками
-
-                            ОТЛИЧИЯ ОТ get_boundary_lines:
-                            - get_boundary_lines: возвращает ВСЮ геометрию элемента (все рёбра 3D-тела)
-                            - get_room_boundary_lines: возвращает ТОЛЬКО границы помещения (2D-контур на уровне пола)
-                            - get_room_boundary_lines автоматически обрабатывает соединения между стенами
-                            - get_room_boundary_lines учитывает правила расчёта площади помещения Revit
-
-                            ПРИМЕРЫ ИСПОЛЬЗОВАНИЯ:
-                            - 'Покажи план помещения 101'
-                            - 'Рассчитай периметр комнаты Конференц-зал'
-                            - 'Найди все помещения с площадью больше 50 кв.м'
-                            - 'Проверь, какие комнаты граничат с коридором'
-                            - 'Построй 3D-модель планировки этажа'
-                            - 'Найди помещения неправильной формы'
-                            - 'Определи соседние помещения по общим границам'
-
-                            РАСЧЁТЫ НА ОСНОВЕ ГРАНИЦ:
-                            - Периметр помещения = сумма длин всех линий
-                            - Площадь помещения (можно также использовать стандартное свойство Room.Area)
-                            - Форма помещения (прямоугольное/непрямоугольное)
-                            - Количество углов помещения
-                            - Максимальные/минимальные размеры
-
-                            ПРИМЕЧАНИЯ:
-                            - Если помещение не размечено (Unplaced Room), команда вернёт ошибку
-                            - Для помещений на разных уровнях (Level) координата Z будет соответствовать высоте уровня
-                            - Для помещений с вырезами границы возвращаются с учётом всех отверстий
-                            - При использовании с большим количеством помещений может потребоваться время",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_roomIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список ID помещений. Примеры получения ID помещений: " +
-                                                     "1. Через get_elements_by_category с ID категории -2000050 (категория Rooms) " +
-                                                     "2. Через get_all_elements_shown_in_view для видов с помещениями " +
-                                                     "3. Через get_room_boundary_lines без параметров (вернёт все помещения) " +
-                                                     "Если параметр не указан или передан пустой массив, возвращаются все помещения модели. " +
-                                                     "Пример: list_roomIds = [123456, 789012, 345678]"
-                                    }
-                                },
-                                required = new string[] { }  // Необязательный параметр - можно вызывать без ID для получения всех помещений
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_host_id_for_element_ids",
-                            description = "Для размещённых элементов (окна, двери, сантехника) возвращает ID хост-элемента (стены, перекрытия).",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список ID размещённых элементов (окна, двери)"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_object_classes_from_elementids",
-                            description = "Возвращает полное имя C#-класса Revit API для каждого элемента. Позволяет узнать программный тип объекта.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_material_layers_from_types",
-                            description = "Для системных типов (WallType, FloorType, RoofType, CeilingType) возвращает слои конструкции: материал, толщину (в футах) и функцию слоя. Вход — TYPE id, не element id.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список TYPE id системных конструкций (WallType, FloorType, RoofType, CeilingType)."
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_model_file_info",
-                            description = "Возвращает информацию о файле текущей модели Revit: путь расположения и размер в МБ. " +
-                                          "Если открыта локальная копия центрального файла (workshared), дополнительно возвращает " +
-                                          "путь и размер центрального файла-хранилища. Полезно для мониторинга размеров модели, " +
-                                          "поиска путей к файлам, проверки использования дискового пространства.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },  // Нет входных параметров
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_project_units",
-                            description = "Возвращает все единицы измерения, настроенные в текущем проекте Revit. " +
-                                          "Включает типы: длина, площадь, объём, угол, масса, температура, стоимость и другие. " +
-                                          "Помогает правильно интерпретировать числовые значения параметров, так как Revit может " +
-                                          "использовать разные системы единиц (метрическую или имперскую). " +
-                                          "Возвращает для каждого типа: название типа, символ единицы и тип отображения. " +
-                                          "Для Revit 2023/2024 дополнительно возвращает технические идентификаторы нового API единиц: specTypeId, unitTypeId и symbolTypeId. " +
-                                          "Используйте эту команду перед анализом числовых параметров, чтобы понять, " +
-                                          "в каких единицах получены значения (например, при получении длины стены или площади помещения).",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_warnings_in_the_model",
-                            description = "Возвращает все предупреждения модели Revit. " +
-                                          "Анализирует документ и собирает информацию о проблемах: пересекающиеся стены, " +
-                                          "незамкнутые помещения, несоединенные элементы и т.д. " +
-                                          "Помогает выявлять и исправлять проблемы модели, повышая её качество. " +
-                                          "Возвращает для каждого предупреждения: описание (текст), серьезность (всегда 'Warning') " +
-                                          "и список ID элементов, связанных с этим предупреждением. " +
-                                          "Используйте эту команду для аудита модели перед экспортом или проверки целостности данных.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_workset_information",
-                            description = "Возвращает полную информацию о всех рабочих наборах (worksets) в текущем проекте Revit. " +
-                                          "Рабочие наборы используются для разделения модели на логические части при совместной работе (worksharing). " +
-                                          "Команда возвращает список всех наборов с детальной информацией о каждом: " +
-                                          "ID набора, имя, владелец (кто сейчас редактирует), редактируемость текущим пользователем, " +
-                                          "тип набора (пользовательский/семейства/виды/стандарты), статус открытия, является ли набором по умолчанию. " +
-                                          "Важно: команда работает только для общих (workshared) документов. Если документ не является общим, " +
-                                          "будет возвращена соответствующая ошибка. " +
-                                          "Поле isEditable показывает, может ли текущий пользователь редактировать элементы этого набора. " +
-                                          "Используйте эту команду для анализа текущего состояния рабочих наборов, проверки прав доступа, " +
-                                          "планирования совместной работы или аудита проекта.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_worksets_from_elementids",
-                            description = "Для каждого element id возвращает информацию о рабочем наборе (workset), в котором находится элемент. " +
-                                          "Позволяет быстро проверить принадлежность элементов к рабочим наборам и их редактируемость. " +
-                                          "Возвращает для каждого элемента: ID рабочего набора, имя рабочего набора, может ли текущий пользователь " +
-                                          "редактировать этот набор (isEditable), тип (пользовательский/семейства/виды/стандарты) и открыт ли рабочий набор. " +
-                                          "Полезно для: проверки прав доступа к элементам перед модификацией, анализа распределения элементов по рабочим наборам, " +
-                                          "выявления проблем с редактированием, аудита совместной работы. " +
-                                          "Важно: команда работает только для общих (workshared) документов. Для необщих документов будет возвращена ошибка. " +
-                                          "Если элемент не принадлежит рабочему набору (например, системный элемент), это будет указано в результате.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id элементов, для которых нужно определить рабочий набор. " +
-                                                     "Поддерживаются любые элементы Revit: стены, двери, семейства, виды и т.д."
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_worksharing_information_for_element_ids",
-                            description = "Расширенная версия get_worksets_from_elementids. Возвращает полную информацию о совместной работе для указанных элементов Revit: " +
-                                          "рабочий набор элемента, создатель элемента, текущий владелец, кто последний изменял элемент, статус редактирования. " +
-                                          "Использует WorksharingUtils.GetWorksharingTooltipInfo() для получения детальной информации [citation:4][citation:5]. " +
-                                          "Полезно для: аудита изменений в модели, выявления авторов элементов, проверки прав доступа, " +
-                                          "анализа истории изменений, решения конфликтов при совместной работе. " +
-                                          "Важно: команда работает только для общих (workshared) документов. " +
-                                          "Информация основана на локальном кэше и может быть немного устаревшей — это нормально для целей отображения пользователю [citation:2].",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id элементов для анализа"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_user_selection_in_revit",
-                            description = "Возвращает element id элементов, которые пользователь в данный момент выделил в Revit. " +
-                                          "Позволяет ИИ работать именно с теми элементами, на которые пользователь обратил внимание. " +
-                                          "Возвращает список ID выделенных элементов, а также базовую информацию о каждом (имя, категория). " +
-                                          "Полезно для: анализа выбранных элементов, выполнения операций с выделением, " +
-                                          "получения контекста для дальнейших запросов. " +
-                                          "Важно: если ничего не выделено, возвращается пустой список с соответствующим сообщением.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "set_user_selection_in_revit",
-                            description = "Устанавливает выделение элементов в Revit. Пользователь увидит подсвеченные элементы. " +
-                                          "ВАЖНО: ПЕРЕЗАПИСЫВАЕТ текущее выделение пользователя. " +
-                                          "Вызывать не более одного раза за рабочий процесс (после того как найдены нужные элементы). " +
-                                          "ТОЛЬКО element id экземпляров (не type id, не семейства, не категории). " +
-                                          "Документ должен быть тем же, из которого получены ID. " +
-                                          "Полезно для: визуальной индикации найденных элементов, подсветки проблемных элементов, " +
-                                          "помощи пользователю в навигации по модели. " +
-                                          "Возвращает success (успех) и количество выделенных элементов. " +
-                                          "Если переданные ID не являются element id экземпляров или не существуют, они будут пропущены с пояснением в ответе.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id экземпляров для выделения. " +
-                                                     "Только ID экземпляров (не типов, не семейств, не категорий). " +
-                                                     "Пример: [500, 501, 502] - выделит 3 элемента. " +
-                                                     "Если список пуст, выделение будет сброшено."
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_graphic_overrides_for_element_ids_in_view",
-                            description = "Возвращает графические переопределения конкретных элементов в указанном виде Revit. " +
-                                          "Переопределения имеют высший приоритет графики (переопределяют Object Styles, категории, фильтры). " +
-                                          "Возвращает информацию о цветах линий проекции и разреза, паттернах заливки, видимости, полутоне, прозрачности. " +
-                                          "ВАЖНО: НЕ работает для элементов из связанных документов (Linked Files). " +
-                                          "ТОЛЬКО для element id экземпляров (не type id!). " +
-                                          "Полезно для: аудита настроек видимости, проверки переопределений перед экспортом, " +
-                                          "выявления элементов с нестандартной графикой. " +
-                                          "Возвращает для каждого элемента: projection (линии проекции/поверхности), cut (линии разреза), " +
-                                          "is_hidden (скрыт ли), halftone (полутон), has_overrides (есть ли активные переопределения).",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id экземпляров элементов для проверки переопределений"
-                                    },
-                                    viewId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id вида, в котором проверяются переопределения"
-                                    }
-                                },
-                                required = new[] { "list_elementIds", "viewId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_graphic_filters_applied_to_views",
-                            description = "Возвращает все фильтры видов, применённые к указанным видам Revit. " +
-                                          "Для каждого фильтра возвращает: " +
-                                          "- filterId: ID фильтра " +
-                                          "- filterName: имя фильтра " +
-                                          "- categories: список ID категорий, к которым применяется фильтр " +
-                                          "- isFilterVisible: (bool) видимость элементов, прошедших фильтр (столбец 'Видимость'). Доступно для всех версий Revit 2014+. " +
-                                           "- isVisible: (bool) видимость элементов, прошедших фильтр (столбец 'Видимость'). " +
-                                          "- isEnabled: (bool|null) включён ли фильтр на виде (столбец 'Включить фильтр'), читается через View.GetIsFilterEnabled(filterId). " +
-                                          "- isEnabledAvailable: удалось ли получить статус включения фильтра через текущую версию Revit API. " +
-                                          "- isEnabledError: текст ошибки, если статус включения получить не удалось. " +
-                                          "- hasRules: есть ли у фильтра правила " +
-                                          "- ruleParameters: список ID параметров в правилах " +
-                                          "- revitVersion: версия Revit " +
-                                          "Не путайте isEnabled и isVisible: isEnabled отвечает за галочку включения фильтра, isVisible — за видимость элементов, прошедших фильтр. " +
-                                          "Полезно для: аудита настроек фильтров, проверки видимости элементов, анализа применённых фильтров.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id видов или листов Revit"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_all_parameter_filters_in_model",
-                            description = "Возвращает все фильтры видов (ParameterFilterElement) в текущей модели Revit. " +
-                                            "Фильтры видов используются для переопределения графики элементов на видах на основе их параметров. " +
-                                            "Выходные данные: " +
-                                            "- filterId: ID фильтра " +
-                                            "- filterName: имя фильтра " +
-                                            "- categories: список ID категорий, к которым применяется фильтр " +
-                                            "- hasRules: есть ли у фильтра правила фильтрации " +
-                                            "- ruleParameters: список ID параметров, участвующих в правилах фильтра " +
-                                            "Полезно для: аудита всех фильтров в проекте, поиска фильтров по категориям, " +
-                                            "понимания структуры фильтрации, подготовки данных для get_if_elements_pass_filter. " +
-                                            "Важно: команда не принимает параметров и возвращает все фильтры в документе.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_graphic_overrides_view_filters",
-                            description = "Возвращает графические настройки (переопределения) для конкретных фильтров в указанном виде Revit. " +
-                                          "Фильтры имеют средний приоритет графики — могут быть переопределены поэлементными настройками, " +
-                                          "но переопределяют настройки категорий и Object Styles. " +
-                                          "НЕ работает для элементов из связанных документов. " +
-                                          "Возвращает для каждого фильтра: " +
-                                          "- projection: настройки линий проекции (цвет, образец, вес), штриховка передней поверхности (образец, цвет, видимость (если значение false значит видимость выключена))," +
-                                          "штриховка задней поверхности (образец, цвет, видимость (если значение false значит видимость выключена)), прозрачность " +
-                                          "- cut: настройки линий сечения (цвет, образец, вес), штриховка переднего сечения (образец, цвет, видимость (если значение false значит видимость выключена))," +
-                                          "штриховка заднего сечения (образец, цвет, видимость (если значение false значит видимость выключена)) " +
-                                          "- halftone: полутон " +
-                                          "- has_overrides: есть ли активные переопределения " +
-                                          "Полезно для: аудита настроек фильтров, понимания графики в виде, диагностики конфликтов переопределений. " +
-                                          "Важно: фильтр должен быть применён к виду (иначе вернётся ошибка). " +
-                                          "Для получения списка фильтров, применённых к виду, используйте get_graphic_filters_applied_to_views." +
-                                          "ВАЖНО: При ответе пользователю ОБЯЗАТЕЛЬНО детально описывайте каждый параметр: " +
-                                          "- Для цвета штриховки указывайте значения RGB (красный, зеленый, синий) " +
-                                          "- Для видимости штриховки указывайте 'включена' (true) или 'выключена' (false) " +
-                                          "- Если параметр отсутствует (null), сообщайте, что переопределение не задано. " +
-                                          "НЕ сокращайте ответ. Выводите информацию о цвете и видимости для каждой штриховки.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_filterIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список filter id фильтров, для которых нужно получить графические переопределения"
-                                    },
-                                    viewId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id вида, в котором применены фильтры"
-                                    }
-                                },
-                                required = new[] { "list_filterIds", "viewId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_category_visibility_overrides_in_view",
-                            description = "Возвращает переопределения видимости по категориям на указанном виде Revit. " +
-                                          "Позволяет получить информацию о том, какие категории скрыты на виде, а также их графические переопределения " +
-                                          "(цвета линий, паттерны заливки, вес линий, прозрачность и т.д.). " +
-                                          "Для категорий импорта/DWG/CAD-подложек команда также проверяет подкатегории: category — это строка DWG/CAD-подложки или 'Импорт в семействах', а подкатегории — это слои внутри файла. " +
-                                          "Выходные данные: " +
-                                          "- categories_overrides: словарь, где ключ - ID категории, значение - информация о категории: " +
-                                          "    • category_id: ID категории " +
-                                          "    • category_name: имя категории (например, 'Стены', 'Двери', 'Окна') " +
-                                          "    • is_hidden: скрыта ли категория на виде (true/false) " +
-                                          "    • overrides: детальные настройки переопределений: " +
-                                          "        - projection: настройки проекции (линии, заливка поверхности, прозрачность) " +
-                                          "        - cut: настройки разреза (линии, заливка) " +
-                                          "        - halftone: полутон " +
-                                          "        - has_overrides: наличие активных переопределений (детальная разбивка по типам) " +
-                                          "- count: количество обработанных категорий " +
-                                          "- processed_successfully: количество успешно обработанных категорий " +
-                                          "- view_id: ID вида " +
-                                          "- view_name: имя вида " +
-                                          "- view_type: тип вида " +
-                                          "Поддерживаемые типы видов: планы этажей, планы потолков, 3D-виды, чертёжные виды, фасады, разрезы. " +
-                                          "Полезно для: аудита настроек видимости, диагностики проблем с отображением элементов, " +
-                                          "проверки, почему определённые категории не видны на виде.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    viewId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id вида, для которого нужно получить переопределения категорий"
-                                    }
-                                },
-                                required = new[] { "viewId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_workset_visibility_in_view",
-                            description = "Возвращает информацию о видимости рабочих наборов на указанном виде Revit. " +
-                                          "Работает только для общих (workshared) документов. " +
-                                          "Выходные данные: " +
-                                          "- view_id: ID вида " +
-                                          "- view_name: имя вида " +
-                                          "- view_type: тип вида " +
-                                          "- workset_visibility: список рабочих наборов с информацией о видимости " +
-                                          "- count: количество рабочих наборов " +
-                                          "Для каждого рабочего набора возвращается: " +
-                                          "- workset_id: ID рабочего набора " +
-                                          "- workset_name: имя рабочего набора " +
-                                          "- visibility_status: статус переопределения на виде (Visible/Hidden/UseGlobalSetting) " +
-                                          "- visibility_status_ru: статус на русском (показать/скрыть/использовать глобальную настройку видимости (видимый/невидимый)) " +
-                                          "- globally_visible: глобальная настройка видимости рабочего набора (IsVisibleByDefault) " +
-                                          "Полезно для: проверки настроек видимости рабочих наборов на видах, диагностики проблем с отображением элементов, " +
-                                          "аудита совместной работы.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    viewId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id вида, для которого нужно получить информацию о видимости рабочих наборов"
-                                    }
-                                },
-                                required = new[] { "viewId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_link_graphics_overrides_in_view",
-                            description = "Возвращает информацию о графических переопределениях связанных файлов (RevitLinkInstance) на указанном виде Revit. " +
-                                          "Команда доступна ТОЛЬКО для Revit 2024 и выше. Для более старых версий будет возвращено сообщение о недоступности. " +
-                                          "Позволяет определить настройки видимости, полутона и режима отображения для каждого связанного файла на виде. " +
-                                          "Выходные данные: " +
-                                          "- success: успешность выполнения " +
-                                          "- revit_version: версия Revit (для проверки совместимости) " +
-                                          "- view_id: ID вида " +
-                                          "- view_name: имя вида " +
-                                          "- view_type: тип вида " +
-                                          "- link_overrides: список связанных файлов с информацией о переопределениях " +
-                                          "- count: количество связанных файлов " +
-                                          "Для каждого связанного файла возвращается: " +
-                                          "- link_instance_id: ID экземпляра связанного файла " +
-                                          "- link_type_id: ID типа связанного файла (RevitLinkType) " +
-                                          "- link_name: имя связанного файла " +
-                                          "- is_hidden: скрыт ли связанный файл на виде (true/false) " +
-                                          "- is_halftone: включён ли режим полутона (true/false) " +
-                                          "- display_setting: режим отображения на русском (по основному виду/по связанному виду/пользовательский) " +
-                                          "- linked_view: информация о связанном виде (если display_setting = по связанному виду): " +
-                                          "    • view_id: ID вида " +
-                                          "    • view_name: имя вида " +
-                                          "    • view_type: тип вида " +
-                                          "Важно: команда работает только для Revit 2024 и выше. " +
-                                          "Поддерживаемые типы видов: планы этажей, планы потолков, 3D-виды, чертёжные виды, фасады, разрезы. " +
-                                          "Полезно для: аудита настроек связанных файлов, диагностики проблем с отображением, " +
-                                          "проверки, почему связанные элементы не видны на виде.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    viewId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id вида, для которого нужно получить переопределения связанных файлов"
-                                    }
-                                },
-                                required = new[] { "viewId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_detailed_link_graphics_overrides_in_view",
-                            description = "Возвращает только дополнительные подробные данные о настройках отображения связанных файлов (RevitLinkInstance) " +
-                                          "на указанном виде Revit, не дублируя данные из get_link_graphics_overrides_in_view. " +
-                                          "Эта команда является дополнением к get_link_graphics_overrides_in_view: базовая команда возвращает краткую информацию о связи и " +
-                                          "режиме отображения, а эта команда возвращает только подробные настройки фактически используемого вида. " +
-                                          "Команда доступна ТОЛЬКО для Revit 2024 и выше. Для более старых версий возвращается сообщение о недоступности. " +
-                                          "Команда внутри определяет режим отображения связи, но не возвращает его повторно, потому что это уже есть в get_link_graphics_overrides_in_view. " +
-                                          "Если режим отображения по связанному виду или пользовательский и задан LinkedViewId, команда получает linkedDoc через RevitLinkInstance.GetLinkDocument() " +
-                                          "и читает настройки выбранного linked view внутри linkedDoc. " +
-                                          "Для каждого связанного файла возвращается только: " +
-                                          "- link_instance_id: ID экземпляра связанного файла для сопоставления с результатом get_link_graphics_overrides_in_view " +
-                                          "- link_type_id: ID типа связанного файла " +
-                                          "- details_key: ключ для получения подробных данных из общего блока details_by_key; одинаковые details не дублируются для каждой связи " +
-                                          "- details_source: источник детальных данных (host_view, linked_view или not_available) " +
-                                          "- api_limitations: ограничения Revit API или причины, почему часть деталей недоступна. " +
-                                          "Подробные настройки фактически используемых видов возвращаются один раз в корневом блоке details_by_key. " +
-                                           "В каждом объекте details_by_key возвращаются: " +
-                                           "- view: информация о виде-источнике " +
-                                           "- changed_model_categories: только скрытые категории модели или категории модели с графическими переопределениями; отсутствующая категория считается видимой без переопределений " +
-                                           "- changed_annotation_categories: только скрытые категории аннотаций или категории аннотаций с графическими переопределениями; отсутствующая категория считается видимой без переопределений " +
-                                           "- changed_analytical_categories: только скрытые категории аналитической модели или категории аналитической модели с графическими переопределениями; отсутствующая категория считается видимой без переопределений " +
-                                           "- changed_import_categories: только скрытые категории импорта/DWG/CAD-подложек или категории импорта/DWG/CAD-подложек с графическими переопределениями; category — это строка DWG/CAD-подложки, subcategories — это слои внутри этого файла " +
-                                           "- filters: фильтры вида, их видимость, включенность, категории, правила и компактные графические переопределения " +
-                                           "- worksets: рабочие наборы, режим видимости и фактическая видимость. " +
-                                          "Важно: Revit API 2024 напрямую раскрывает только LinkVisibilityType и LinkedViewId для связи. Внутренние вкладки окна пользовательской " +
-                                          "настройки связи не раскрываются напрямую, поэтому для режима Пользовательский команда возвращает доступный верхний уровень и реконструкцию " +
-                                          "по linked view, если он задан.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    viewId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id вида, для которого нужно получить подробные настройки отображения связанных файлов"
-                                    }
-                                },
-                                required = new[] { "viewId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_viewports_and_schedules_on_sheets",
-                            description = "Возвращает все объекты, размещённые на указанных листах Revit: видовые экраны (viewport), спецификации (schedules), а также другие элементы: текст, размеры, штампы, линии детализации, облака ревизий, изображения, семейства. " +
-                                          "Позволяет получить полную структуру листа и понять, какие объекты на нём расположены. " +
-                                          "Выходные данные для каждого листа: " +
-                                          "- sheet_name: имя листа " +
-                                          "- sheet_number: номер листа " +
-                                          "- contents: список всех объектов на листе (единый массив) " +
-                                          "- count: общее количество объектов " +
-                                          "- viewports_count: количество видовых экранов " +
-                                          "- schedules_count: количество спецификаций " +
-                                          "- other_elements_count: количество остальных элементов " +
-                                          "Для КАЖДОГО ОБЪЕКТА (в массиве contents) возвращается: " +
-                                          "- viewportId: ID объекта (видового экрана, спецификации или элемента) " +
-                                          "- referencedViewId: ID ссылочного вида (только для видовых экранов и спецификаций, для остальных элементов = null) " +
-                                          "- viewName: имя вида/спецификации или содержимое элемента (текст, размер и т.д.). У текстовых примечаний поле viewName содержит текст данного примечания" +
-                                          "- type: тип объекта на русском языке (План этажа, Разрез, 3D вид, Спецификация, Текст, Размер, Основная надпись (штамп), Линия детализации, Облако ревизии, Изображение, Семейство и т.д.) " +
-                                          "Важно: команда возвращает ВСЕ объекты на листе в одном массиве contents, включая виды, спецификации, текст, размеры, штампы и другие элементы. " +
-                                          "Это позволяет получить полную картину содержимого листа для анализа и аудита документации. " +
-                                          "Полезно для: анализа состава листов, проверки правильности размещения видов и элементов, аудита документации, " +
-                                          "поиска текстовых пометок, проверки наличия штампов, выявления пустых листов.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id листов (ViewSheet) для анализа"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_schedules_info_and_columns",
-                            description = @"Анализирует спецификацию Revit и возвращает полную информацию о её структуре: столбцы, фильтры, параметры.
-
-                    ВОЗВРАЩАЕМЫЕ ДАННЫЕ:
-
-                    Для каждой спецификации (scheduleId):
-                    - scheduleId: ID спецификации (ViewSchedule)
-                    - scheduleName: имя спецификации
-                    - categoryId: ID категории (например, -2000011 для стен)
-                    - categoryName: имя категории (например, 'Стены')
-                    - rowCount: количество строк данных в спецификации
-                    - columns: список столбцов
-                    - columnsCount: количество столбцов
-                    - filters: список фильтров
-                    - filtersCount: количество фильтров
-                    - hasFilters: наличие активных фильтров
-
-                    Для КАЖДОГО СТОЛБЦА (columns):
-                    - header: заголовок столбца (что видит пользователь)
-                    - parameterName: техническое имя параметра
-                    - parameterId: ID параметра (-1 для вычисляемых полей)
-                    - isHidden: скрыт ли столбец
-                    - isCalculated: является ли вычисляемым (формула/процент/количество)
-                    - isCombinedParameter: объединённый ли параметр (несколько полей в одном)
-                    - fieldType: тип поля (Formula/Percentage/Count/CombinedParameter и т.д.)
-                    - fieldTypeDescription: понятное описание типа поля
-                    - calculatedType: подтип вычисляемого поля (Formula/Percentage/Count)
-                    - percentageOfField: для поля Percentage — имя поля, от которого считается процент
-                    - percentageByField: для поля Percentage — имя поля для группировки
-                    - combinedParameters: для CombinedParameter — список объединяемых параметров:
-                        • parameterId: ID параметра
-                        • parameterName: имя параметра
-                        • prefix: префикс перед значением
-                        • separator: разделитель между параметрами
-                        • suffix: суффикс после значения
-                        • sample: образец отображения
-
-                    Для КАЖДОГО ФИЛЬТРА (filters):
-                    - fieldId: ID поля, к которому применён фильтр
-                    - fieldName: имя поля
-                    - fieldParameterId: ID параметра (если доступен)
-                    - filterType: тип сравнения (Equal/GreaterThan/Contains и т.д.)
-                    - filterTypeDescription: понятное описание (равно/больше/содержит)
-                    - value: значение фильтра (строка/число/объект с id,name)
-                    - valueType: тип значения (String/Integer/Double/ElementId/Null)
-
-                    ПРАВИЛА:
-                    - Фильтры работают по принципу 'И' (AND) — элемент должен удовлетворять ВСЕМ условиям.
-                    - isCalculated = true → parameterId = -1, значения таких полей уже есть в get_all_elements_shown_in_view.
-                    - isCombinedParameter = true → значения формируются из нескольких параметров.
-
-                    АЛГОРИТМ РАБОТЫ СО СПЕЦИФИКАЦИЕЙ:
-                    1. Вызвать get_schedules_info_and_columns — получить структуру
-                    2. Вызвать get_all_elements_shown_in_view с ID спецификации — получить строки
-                    3. Для parameterId != -1: get_parameter_value_for_element_ids
-                    4. Для parameterId = -1: значения уже есть в get_all_elements_shown_in_view (поле 'name')",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id спецификаций (ViewSchedule) для анализа"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_schedule_sorting_info",
-                            description = "Возвращает информацию о правилах сортировки и группировки в спецификации Revit. " +
-                                          "Выходные данные: scheduleId, scheduleName, hasSorting, sortLevelsCount, sorting, note. " +
-                                          "Для КАЖДОГО УРОВНЯ СОРТИРОВКИ (sorting): " +
-                                          "- level: уровень сортировки (1, 2, 3...) " +
-                                          "- fieldId: ID поля сортировки " +
-                                          "- fieldName: имя поля " +
-                                          "- parameterId: ID параметра (если доступен) " +
-                                          "- fieldType: тип поля " +
-                                          "- sortOrder: направление сортировки (по возрастанию/убыванию) " +
-                                          "- showBlankRow: показывать ли пустую строку " +
-                                          "- showHeader: показывать ли заголовок группы " +
-                                          "- showFooter: показывать ли итоги по группе " +
-                                          "- showFooterCount: показывать ли количество в итогах группы " +
-                                          "- showFooterTitle: показывать ли заголовок в итогах группы " +
-                                          "- showGrandTotal: показывать ли общий итог " +
-                                          "- showGrandTotalCount: показывать ли количество в общем итоге " +
-                                          "- showGrandTotalTitle: показывать ли заголовок общего итога " +
-                                          "- grandTitle: текст заголовка общего итога " +
-                                          "- isItemized: надо ли группировать элементы попавшие в спецификацию (каждый элемент в отдельной строке) " +
-                                          "Полезно для: анализа структуры спецификации, понимания порядка строк, проверки настроек группировки и итогов.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список ID спецификаций (ViewSchedule)"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    //new
-                    //{
-                    //    type = "function",
-                    //    function = new
-                    //    {
-                    //        name = "get_schedule_rows_with_elements",
-                    //        description = "Возвращает все строки спецификации Revit с данными по каждому видимому столбцу и списком ID элементов, связанных со спецификацией. " +
-                    //                      "Выходные данные: " +
-                    //                      "- success: успешность выполнения " +
-                    //                      "- schedule_id: ID спецификации " +
-                    //                      "- schedule_name: имя спецификации " +
-                    //                      "- is_itemized: детализирована ли спецификация (true = одна строка = один элемент) " +
-                    //                      "- row_count: количество строк данных " +
-                    //                      "- column_count: количество видимых столбцов " +
-                    //                      "- total_columns: общее количество столбцов (включая скрытые) " +
-                    //                      "- hidden_columns_count: количество скрытых столбцов " +
-                    //                      "- headers: список заголовков видимых столбцов " +
-                    //                      "- rows: список строк с данными. Для каждой строки: " +
-                    //                      "    • row_index: индекс строки " +
-                    //                      "    • values: словарь (заголовок столбца → значение ячейки) " +
-                    //                      "- element_ids: список ID всех элементов Revit, связанных со спецификацией " +
-                    //                      "Особенности: " +
-                    //                      "- При запросе пользвотееля отсчет строк надо начинать от 1 (то есть 1 строка с данными начинается с 1 и далее 2, 3, 4), пропуская при этом заловок и пустые строки" +
-                    //                      "- Скрытые столбцы автоматически исключаются из результата. " +
-                    //                      "- Значения возвращаются в том виде, как их видит пользователь. " +
-                    //                      "- Для детализированных спецификаций (is_itemized = true) порядок строк соответствует порядку element_ids. " +
-                    //                      "- Для сгруппированных спецификаций (is_itemized = false) одна строка может соответствовать нескольким элементам. " +
-                    //                      "Полезно для: экспорта данных спецификации, анализа содержимого, получения ID элементов для дальнейшей обработки.",
-                    //        parameters = new
-                    //        {
-                    //            type = "object",
-                    //            properties = new
-                    //            {
-                    //                scheduleId = new
-                    //                {
-                    //                    type = "integer",
-                    //                    description = "ID спецификации (ViewSchedule)"
-                    //                }
-                    //            },
-                    //            required = new[] { "scheduleId" }
-                    //        }
-                    //    }
-                    //},
-
-
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_if_elements_pass_filter",
-                            description = "Проверяет, проходит ли каждый элемент из списка через условие заданного фильтра видов (ParameterFilterElement). " +
-                                          "Фильтры видов используются в Revit для переопределения графики элементов на видах на основе их параметров. " +
-                                          "Возвращает для каждого elementId булево значение: true — элемент соответствует правилам фильтра, false — не соответствует. " +
-                                          "Полезно для: проверки корректности работы фильтра, поиска элементов, которые должны попадать под фильтр, " +
-                                          "диагностики несоответствий в настройках фильтрации, аудита видимости элементов на видах. " +
-                                          "Как это работает: метод использует ElementFilter.PassesFilter() для проверки каждого элемента. " +
-                                          "Возвращает: filter_results (словарь elementId -> bool), count (общее количество), passed_count (количество прошедших), " +
-                                          "failed_count (количество не прошедших), not_found_count (не найденные элементы), " +
-                                          "filter_info (информация о фильтре: id фильтра, имя, список целевые категории и заданы ли правило в фильтре). " +
-                                          "Важно: фильтр должен существовать в документе. ID фильтра можно получить через команды: " +
-                                          "- get_graphic_filters_applied_to_views (получить фильтры, применённые к виду) " +
-                                          "- get_all_parameter_filters (получить все фильтры в документе). " +
-                                          "Пример использования: сначала получите ID фильтра из вида, затем проверьте конкретные элементы.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    filterId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id фильтра видов (ParameterFilterElement)"
-                                    },
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список element id элементов для проверки"
-                                    }
-                                },
-                                required = new[] { "filterId", "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "set_view_section_box_to_elements",
-                            description = "Подрезает 3D вид по границам указанных элементов с отступом 500 мм. " +
-                                          "Важно: перед вызовом команды пользователь должен открыть 3D вид. " +
-                                          "Если открыт не 3D вид, команда вернёт ошибку с просьбой открыть 3D вид. " +
-                                          "Команда автоматически включает Section Box на виде и устанавливает его границы " +
-                                          "по расширенному bounding box'у переданных элементов. " +
-                                          "Параметры: " +
-                                          "- list_elementIds: список ID элементов, по которым будет подрезан вид " +
-                                          "После успешного выполнения вид будет подрезан. " +
-                                          "Возвращает: success (bool), message (строка с результатом), " +
-                                          "elements_processed (количество обработанных элементов), " +
-                                          "invalid_ids (список некорректных ID, если есть).",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    list_elementIds = new
-                                    {
-                                        type = "array",
-                                        items = new { type = "integer" },
-                                        description = "Список ID элементов, по которым нужно подрезать 3D вид"
-                                    }
-                                },
-                                required = new[] { "list_elementIds" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_journal_entries_since",
-                            description = "Извлекает записи из журналов Revit за заданный диапазон времени. " +
-                                          "Журналы Revit хранятся в %LOCALAPPDATA%\\Autodesk\\Revit\\<версия>\\Journals\\ " +
-                                          "Команда просматривает последние 10 журналов от самого свежего к предыдущим и возвращает данные только из тех журналов, где есть записи в указанном диапазоне. " +
-                                          "Если endDateTime указан, возвращаются только записи от dateTime до endDateTime включительно. Если endDateTime не указан, возвращаются записи от dateTime до конца доступных журналов. " +
-                                          "Чтобы не перегружать контекст ИИ, поле entries ограничено по размеру и при необходимости содержит последние найденные записи с пометкой об обрезке. " +
-                                          "Входные параметры: " +
-                                          "- dateTime: дата и время начала в формате (день.месяц.год час:минута). " +
-                                          "- endDateTime: необязательная дата и время конца диапазона в таком же формате. " +
-                                          "  Поддерживаемые форматы: " +
-                                          "  • '26 марта' или '26 марта 2026' (время = 00:00) " +
-                                          "  • '26.03.2026' или '26.03.2026 14:30' " +
-                                          "  • '26.03' (год = текущий, время = 00:00) " +
-                                          "Если время не указано, используется время 00:00 сегодняшнего числа. " +
-                                          "Возвращает: " +
-                                          "- success: успешность выполнения " +
-                                          "- journal_files: список просмотренных файлов журнала с диагностикой по каждому файлу " +
-                                           "- target_date: обработанная дата начала " +
-                                          "- end_date: обработанная дата конца или null, если конец не задан " +
-                                          "- entries: текст журналов в заданном диапазоне, ограниченный по размеру " +
-                                          "- entry_count: количество найденных записей " +
-                                          "- total_size_bytes: полный размер найденного текста в байтах до обрезки " +
-                                          "- scanned_journal_count: количество просмотренных файлов " +
-                                          "- matched_journal_count: количество журналов, в которых найдены записи диапазона " +
-                                          "- entries_truncated: был ли текст entries обрезан из-за лимита контекста " +
-                                          "- max_entries_chars: лимит символов для entries " +
-                                          "- journal_files[].debug_info: ДИАГНОСТИЧЕСКАЯ ИНФОРМАЦИЯ (для отладки). Содержит: " +
-                                          "    • Всего строк с датами в журнале " +
-                                          "    • Первую дату в журнале " +
-                                          "    • Последнюю дату в журнале " +
-                                          "    • Целевую дату поиска " +
-                                          "    • Был ли начат сбор записей " +
-                                          "    • Количество найденных записей " +
-                                          "  Если entry_count = 0, эта информация поможет понять причину: " +
-                                          "  - целевая дата позже последней записи в журнале, " +
-                                          "  - или в журнале нет записей с датами, " +
-                                          "  - или формат даты в журнале не распознан. " +
-                                          "- message: человеко-читаемое сообщение о результате " +
-                                          "Важно: если извлечённый текст превышает 200 КБ, он автоматически обрезается. " +
-                                          "Полезно для: анализа ошибок Revit, поиска проблем в сессии, аудита действий пользователя.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    dateTime = new
-                                    {
-                                        type = "string",
-                                        description = "Дата и время начала извлечения. Примеры: '26 марта', '26.03.2026 14:30'"
-                                    },
-                                    endDateTime = new
-                                    {
-                                        type = "string",
-                                        description = "Необязательная дата и время конца извлечения. Примеры: '26.03.2026 14:45'. Если не указано, чтение идет до конца доступных журналов."
-                                    }
-                                },
-                                required = new[] { "dateTime" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_revit_links_in_model",
-                            description = "Возвращает список всех связанных файлов RevitLinkInstance в текущей модели. " +
-                                          "Команда определяет, подгружена ли связь, через linkInstance.GetLinkDocument(): " +
-                                          "если linked_document_title/path доступны и is_loaded = true, связь загружена; " +
-                                          "если linkedDoc = null, is_loaded = false. " +
-                                          "Выходные данные: links и count. Для каждой связи возвращается: " +
-                                          "link_instance_id, link_type_id, link_instance_name, link_type_name, linked_document_title, linked_document_path, is_loaded, transform. " +
-                                          "transform содержит origin, basisX, basisY, basisZ с координатами x/y/z. Используйте link_instance_id из этой команды для последующих команд по элементам связи.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_revit_link_elements",
-                            description = "Возвращает элементы внутри указанного связанного файла RevitLinkInstance. " +
-                                          "Команда работает с элементами связанного документа, поэтому ID элементов из ответа являются linked_element_id, а не ID элементов основной модели. " +
-                                          "Используйте пагинацию: limit по умолчанию 300 и не может быть больше 300, offset задает смещение. " +
-                                         "Выходные данные: link_instance_id, linked_document_title, total_count, returned_count, limit, offset, has_more, elements. " +
-                                          "Для каждого элемента в elements возвращается: linked_element_id, name, category, class_name, type_id. " +
-                                          "Если has_more = true, для следующей страницы вызовите команду с offset = offset + returned_count.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    linkInstanceId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id экземпляра связи RevitLinkInstance в основной модели"
-                                    },
-                                    limit = new
-                                    {
-                                        type = "integer",
-                                        description = "Максимальное количество элементов в ответе. По умолчанию 300, максимум 300."
-                                    },
-                                    offset = new
-                                    {
-                                        type = "integer",
-                                        description = "Смещение для пагинации. Для первой страницы 0."
-                                    }
-                                },
-                                required = new[] { "linkInstanceId" }
-                            }
-                        }
-                    },
-
-                    new 
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_revit_link_categories",
-                            description = "Возвращает список категорий элементов внутри указанного связанного файла RevitLinkInstance. " +
-                                          "Команда анализирует только загруженную связь: is_loaded определяется через linkInstance.GetLinkDocument(); если linkedDoc = null, вернется ошибка. " +
-                                          "Выходные данные: link_instance_id, linked_document_title, categories, count, total_elements_count. " +
-                                          "Для каждой категории возвращается: category_id, category_name, count (количество элементов данной категории). " +
-                                          "Используйте category_id из этой команды для последующих команд получения элементов связи по категории.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    linkInstanceId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id экземпляра связи RevitLinkInstance в основной модели"
-                                    }
-                                },
-                                required = new[] { "linkInstanceId" }
-                            }
-                        }
-                    },
-
-                    new 
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_revit_link_elements_by_category",
-                            description = "Возвращает элементы указанной категории внутри связанного файла RevitLinkInstance. " +
-                                          "Команда работает только с загруженной связью через linkInstance.GetLinkDocument(). " +
-                                          "Основной способ фильтрации — categoryId из get_revit_link_categories; categoryName можно использовать как запасной вариант, но имя зависит от языка Revit. " +
-                                          "Используйте пагинацию: limit по умолчанию 300 и не может быть больше 300, offset задает смещение. " +
-                                          "Выходные данные: link_instance_id, linked_document_title, category_id, category_name, total_count, returned_count, limit, offset, has_more, elements. " +
-                                          "Для каждого элемента в elements возвращается: linked_element_id, name, category, class_name, type_id.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    linkInstanceId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id экземпляра связи RevitLinkInstance в основной модели"
-                                    },
-                                    categoryId = new
-                                    {
-                                        type = "integer",
-                                        description = "ID категории из связанного документа. Лучше брать из get_revit_link_categories."
-                                    },
-                                    categoryName = new
-                                    {
-                                        type = "string",
-                                        description = "Имя категории как запасной вариант, если categoryId неизвестен"
-                                    },
-                                    limit = new
-                                    {
-                                        type = "integer",
-                                        description = "Максимальное количество элементов в ответе. По умолчанию 300, максимум 300."
-                                    },
-                                    offset = new
-                                    {
-                                        type = "integer",
-                                        description = "Смещение для пагинации. Для первой страницы 0."
-                                    }
-                                },
-                                required = new[] { "linkInstanceId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_selected_revit_link_element_id",
-                           description = "Запускает интерактивный выбор одного или нескольких элементов внутри связанного файла Revit. " +
-                                          "Важно: обычное текущее выделение Revit через Selection.GetElementIds() не дает надежно ID элементов внутри связи, поэтому команда использует Selection.PickObjects(ObjectType.LinkedElement). " +
-                                          "После вызова пользователь должен выбрать элементы внутри связи в Revit и нажать Готово. " +
-                                          "Выходные данные: selected_linked_elements и count. Для совместимости link_instance_id и linked_element_id содержат первый выбранный элемент. " +
-                                          "Каждый объект в selected_linked_elements содержит: link_instance_id, link_type_id, link_instance_name, link_type_name, linked_document_title, linked_document_path, is_loaded, linked_element_id, linked_element. " +
-                                          "linked_element содержит linked_element_id, name, category, class_name, type_id, если связанный документ загружен.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new { },
-                                required = new string[] { }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_revit_link_element_properties",
-                            description = "Возвращает объединенные свойства элемента внутри связанного файла Revit. " +
-                                          "Используйте эту команду для linked-элементов вместо get_parameters_from_elementid, get_parameter_value_for_element_ids, " +
-                                          "get_all_additional_properties_from_elementid, get_additional_property_for_all_elementids и get_revitlookup_like_properties. " +
-                                          "Команда принимает пару linkInstanceId + linkedElementId, получает linkedDoc через RevitLinkInstance.GetLinkDocument(), " +
-                                          "а затем читает параметры, дополнительные свойства и RevitLookup-like свойства уже из linkedDoc. " +
-                                          "Выходные данные: контекст связи, linked_element, parameters, additional_properties, revitlookup_like_properties. " +
-                                          "Если указан parameterId, дополнительно вернется parameter_value. Если указан additionalPropertyName, дополнительно вернется additional_property_value.",
-                            parameters = new
-                            {
-                                type = "object",
-                                properties = new
-                                {
-                                    linkInstanceId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id экземпляра связи RevitLinkInstance в основной модели"
-                                    },
-                                    linkedElementId = new
-                                    {
-                                        type = "integer",
-                                        description = "Element id элемента внутри связанного документа"
-                                    },
-                                    getIdValuesAsNames = new
-                                    {
-                                        type = "boolean",
-                                        description = "Если true, ElementId-значения параметров по возможности преобразуются в имена элементов внутри linkedDoc"
-                                    },
-                                    maxValueLength = new
-                                    {
-                                        type = "integer",
-                                        description = "Максимальная длина значения для RevitLookup-like свойств. По умолчанию 1000, максимум 10000."
-                                    },
-                                    parameterId = new
-                                    {
-                                        type = "integer",
-                                        description = "Опционально: ID конкретного параметра для точечного чтения значения"
-                                    },
-                                    additionalPropertyName = new
-                                    {
-                                        type = "string",
-                                        description = "Опционально: имя конкретного дополнительного свойства для точечного чтения значения"
-                                    }
-                                },
-                                required = new[] { "linkInstanceId", "linkedElementId" }
-                            }
-                        }
-                    },
-
-                    new
-                    {
-                        type = "function",
-                        function = new
-                        {
-                            name = "get_titleblock_family_parameters_description",
-                            description = "Возвращает статический справочный текст с описанием параметров семейства основной надписи. " +
-                                          "Используйте эту команду, когда пользователь спрашивает про параметры основной надписи/штампа листа. " +
-                                          "Команда ничего не вычисляет в Revit и не требует входных параметров: она возвращает заранее подготовленное описание, на основе которого нужно ответить пользователю.",
-                            parameters = new
-                            {
-                                type = "object",
-                                 properties = new { }
-                            }
-                        }
-                    }
-
-
-
-                    //new
-                    //{
-                    //    type = "function",
-                    //    function = new
-                    //    {
-                    //        name = "get_document_switched",
-                    //        description = "Переключает контекст всех последующих вызовов на связанный документ (Revit Link) или возвращает обратно к основному. " +
-                    //                      "Позволяет исследовать содержимое вложенных файлов (связанных моделей Revit или IFC). " +
-                    //                      "ВАЖНО: После переключения на связанный документ, все последующие команды будут работать с этим документом. " +
-                    //                      "Для возврата к основному документу используйте switchMainDoc = true. " +
-                    //                      "Параметры: " +
-                    //                      "- elementId: ID элемента RevitLinkInstance (связи) для переключения на связанный документ " +
-                    //                      "- switchMainDoc: true — вернуться в основной документ (игнорирует elementId) " +
-                    //                      "Возвращает: " +
-                    //                      "- success: успешность операции " +
-                    //                      "- current_document: название текущего активного документа после переключения " +
-                    //                      "- language_of_model: язык интерфейса переключённого документа " +
-                    //                      "- link_info: информация о связи (имя файла, трансформация) " +
-                    //                      "Примеры использования: " +
-                    //                      "1. Переключиться на связанную модель: get_document_switched(elementId=12345) " +
-                    //                      "2. Вернуться к основному документу: get_document_switched(switchMainDoc=true) " +
-                    //                      "Полезно для: анализа элементов в связанных моделях, проверки коллизий, аудита ссылок, " +
-                    //                      "работы с IFC-файлами, импортированными в Revit.",
-                    //        parameters = new
-                    //        {
-                    //            type = "object",
-                    //            properties = new
-                    //            {
-                    //                elementId = new
-                    //                {
-                    //                    type = "integer",
-                    //                    description = "Element id RevitLinkInstance для переключения на связанный документ. По умолчанию -1."
-                    //                },
-                    //                switchMainDoc = new
-                    //                {
-                    //                    type = "boolean",
-                    //                    description = "true — вернуться в основной документ. По умолчанию false."
-                    //                }
-                    //            },
-                    //            required = new string[] { }
-                    //        }
-                    //    }
-                    //}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            //===========================================   конец   команд    ======================================        
-        };
-
-
+            JArray mcpToolsArray = await GetMcpOpenAiCompatibleToolsAsync(cancellationToken);
 
             string modelName = _connectionType == ConnectionType.OnlineAPI ? "deepseek-v4-flash" : "qwen3-8b";
             var requestBody = new
@@ -3738,7 +1433,7 @@ namespace KPLN_CoordiantorAI.Forms
                 messages = messagesWithSystem,
                 temperature = 0.7,
                 //max_tokens = 4000,
-                tools = toolsArray
+                tools = mcpToolsArray
             };
 
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(requestBody);
@@ -3752,7 +1447,8 @@ namespace KPLN_CoordiantorAI.Forms
                 { "connectionType", _connectionType },
                 { "jsonLength", json.Length },
                 { "messages", messagesWithSystem.Count },
-                { "tools", toolsArray.Length },
+                { "tools", mcpToolsArray.Count },
+                { "toolsSource", "mcp_tools_list" },
                 { "timeoutSeconds", _httpClient.Timeout.TotalSeconds }
             });
 
@@ -3796,13 +1492,32 @@ namespace KPLN_CoordiantorAI.Forms
 
             if (!response.IsSuccessStatusCode)
             {
-                string errorMsg = $"HTTP {response.StatusCode}: {responseJson}";
-                return errorMsg;  // ← Возвращаем ПОЛНУЮ ошибку, а не обрезанную!
+                string message = BuildHttpApiErrorMessage(response, responseJson, json.Length);
+                return JsonConvert.SerializeObject(new
+                {
+                    error = new
+                    {
+                        code = "ai_http_error",
+                        message = message,
+                        statusCode = (int)response.StatusCode,
+                        requestJsonLength = json.Length,
+                        responsePreview = TruncateForDiagnostics(responseJson, 1000)
+                    }
+                });
             }
 
             if (!responseJson.TrimStart().StartsWith("{"))
             {
-                return $"Не JSON: {responseJson.Substring(0, Math.Min(500, responseJson.Length))}...";
+                return JsonConvert.SerializeObject(new
+                {
+                    error = new
+                    {
+                        code = "ai_non_json_response",
+                        message = "AI API returned a non-JSON response.",
+                        requestJsonLength = json.Length,
+                        responsePreview = TruncateForDiagnostics(responseJson, 1000)
+                    }
+                });
             }
 
 
@@ -3860,6 +1575,34 @@ namespace KPLN_CoordiantorAI.Forms
                 });
                 return responseJson;  // Если не JSON — возвращаем как текст
             }
+        }
+
+        private static string BuildHttpApiErrorMessage(HttpResponseMessage response, string responseJson, int requestJsonLength)
+        {
+            string statusText = response == null
+                ? "unknown"
+                : ((int)response.StatusCode).ToString() + " " + response.StatusCode;
+
+            string message = "AI API returned HTTP " + statusText + ".";
+            if (requestJsonLength > 1000000)
+                message += " The request payload is very large and may exceed the model/provider context or request-size limit.";
+
+            string preview = TruncateForDiagnostics(responseJson, 500);
+            if (!string.IsNullOrWhiteSpace(preview))
+                message += " Response preview: " + preview;
+
+            return message;
+        }
+
+        private static string TruncateForDiagnostics(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            if (maxLength <= 0 || value.Length <= maxLength)
+                return value;
+
+            return value.Substring(0, maxLength) + "...";
         }
 
 
@@ -4188,3 +1931,5 @@ namespace KPLN_CoordiantorAI.Forms
 
     }
 }
+
+
