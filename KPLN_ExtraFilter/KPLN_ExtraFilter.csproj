@@ -138,6 +138,7 @@
     <Compile Include="ExternalEventHandler\UnsubViewActHandler.cs" />
     <Compile Include="ExternalEventHandler\ViewActivatedHandler.cs" />
     <Compile Include="ExternalEventHandler\SelectionChangedHandler.cs" />
+    <Compile Include="ExternalEventHandler\SelectionByModelSubscriptionHandler.cs" />
     <Compile Include="ExternalEventHandler\UnsubEventHandler.cs" />
     <Compile Include="Forms\Commands\RelayCommand.cs" />
     <Compile Include="Common\SelectionSearchFilter.cs" />
