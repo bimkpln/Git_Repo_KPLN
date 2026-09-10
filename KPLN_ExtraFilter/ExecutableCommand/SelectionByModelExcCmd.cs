@@ -42,7 +42,7 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                         resultIDToSelect = userSelFromFormIDs.ToArray();
                         break;
                     case SelectFilterMode.AddCurrent:
-                        IEnumerable<ElementId> userSelFromDocIDs = _entity.UserSelElems.Select(el => el.Id);
+                        IEnumerable<ElementId> userSelFromDocIDs = GetCurrentSelectionElementIds(uiDoc, doc);
                         resultIDToSelect = userSelFromDocIDs.Union(userSelFromFormIDs).ToArray();
                         break;
                 }
@@ -59,6 +59,22 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 
                 return Result.Cancelled;
             }
+        }
+        private static IEnumerable<ElementId> GetCurrentSelectionElementIds(UIDocument uiDoc, Document doc)
+        {
+            ICollection<ElementId> selectedIds = uiDoc.Selection.GetElementIds();
+            List<ElementId> result = new List<ElementId>(selectedIds);
+
+            Group[] groupsInSelection = selectedIds
+                .Select(id => doc.GetElement(id))
+                .Where(el => el is Group)
+                .Cast<Group>()
+                .ToArray();
+
+            foreach (Group group in groupsInSelection)
+                result.AddRange(group.GetMemberIds());
+
+            return result;
         }
     }
 }

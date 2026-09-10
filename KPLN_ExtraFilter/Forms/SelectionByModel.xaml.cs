@@ -3,6 +3,7 @@ using Autodesk.Revit.UI.Events;
 using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.ViewModels;
+using System.ComponentModel;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,10 +15,15 @@ namespace KPLN_ExtraFilter.Forms
     {
         private static SelectionByModel _currentInstance;
 
+        private readonly UIApplication _uiapp;
+        private readonly bool _isUpdateble;
+        private bool _isViewChangedSubscribed;
+
         private readonly ExternalEvent _viewExtEv;
         private ViewActivatedHandler _viewHandler;
 
 #if !Debug2020 && !Revit2020
+        private bool _isSelectionChangedSubscribed;
         private readonly ExternalEvent _selExtEv;
         private SelectionChangedHandler _selHandler;
 #endif
@@ -26,6 +32,9 @@ namespace KPLN_ExtraFilter.Forms
 
         public SelectionByModel(UIApplication uiapp, ViewFilterMode viewFilterMode, bool isUpdateble)
         {
+            _uiapp = uiapp;
+            _isUpdateble = isUpdateble;
+
             CurrentSelectionByModelVM = new SelectionByModelVM(this, uiapp, viewFilterMode, isUpdateble);
 
             InitializeComponent();
@@ -46,25 +55,32 @@ namespace KPLN_ExtraFilter.Forms
                     _viewHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
                 });
 
-                ExternalEvent unsubViewExtEv = FormEventSubscriptionHelper.CreateViewUnsubscribeEvent(OnViewChanged);
-                FormEventSubscriptionHelper.SubscribeViewChanged(uiapp, this, OnViewChanged, unsubViewExtEv);
-
 #if !Debug2020 && !Revit2020
                 _selExtEv = FormEventSubscriptionHelper.CreateSelectionChangedEvent(handler =>
                 {
                     _selHandler = handler;
                     _selHandler.CurrentSelByModelVM = CurrentSelectionByModelVM;
                 });
-
-                ExternalEvent unsubSelExtEv = FormEventSubscriptionHelper.CreateSelectionUnsubscribeEvent(OnSelectionChanged);
-                FormEventSubscriptionHelper.SubscribeSelectionChanged(uiapp, this, OnSelectionChanged, unsubSelExtEv);
 #endif
+
+                CurrentSelectionByModelVM.CurrentSelectionByModelM.PropertyChanged += OnModelPropertyChanged;
+                UpdateEventSubscriptions();
             }
             #endregion
 
             _currentInstance = this;
             Closed += (sender, args) =>
             {
+                if (isUpdateble)
+                {
+                    CurrentSelectionByModelVM.CurrentSelectionByModelM.PropertyChanged -= OnModelPropertyChanged;
+                    SetViewChangedSubscription(false);
+
+#if !Debug2020 && !Revit2020
+                    SetSelectionChangedSubscription(false);
+#endif
+                }
+
                 if (ReferenceEquals(_currentInstance, this))
                     _currentInstance = null;
             };
@@ -99,6 +115,65 @@ namespace KPLN_ExtraFilter.Forms
         /// </summary>
         public SelectionByModelVM CurrentSelectionByModelVM { get; set; }
 
+        private void OnModelPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SelectionByModelM.Where_ViewDocFilterMode))
+                UpdateEventSubscriptions();
+        }
+
+        private void UpdateEventSubscriptions()
+        {
+            if (!_isUpdateble || CurrentSelectionByModelVM?.CurrentSelectionByModelM == null)
+                return;
+
+            ViewFilterMode mode = CurrentSelectionByModelVM.CurrentSelectionByModelM.Where_ViewDocFilterMode;
+
+            SetViewChangedSubscription(mode == ViewFilterMode.CurrentView);
+
+#if !Debug2020 && !Revit2020
+            SetSelectionChangedSubscription(mode == ViewFilterMode.UserSelection);
+#endif
+        }
+
+        private void SetViewChangedSubscription(bool shouldSubscribe)
+        {
+            if (_uiapp == null)
+                return;
+
+            if (shouldSubscribe && !_isViewChangedSubscribed)
+            {
+                _uiapp.ViewActivated += OnViewChanged;
+                _isViewChangedSubscribed = true;
+                return;
+            }
+
+            if (!shouldSubscribe && _isViewChangedSubscribed)
+            {
+                _uiapp.ViewActivated -= OnViewChanged;
+                _isViewChangedSubscribed = false;
+            }
+        }
+
+#if !Debug2020 && !Revit2020
+        private void SetSelectionChangedSubscription(bool shouldSubscribe)
+        {
+            if (_uiapp == null)
+                return;
+
+            if (shouldSubscribe && !_isSelectionChangedSubscribed)
+            {
+                _uiapp.SelectionChanged += OnSelectionChanged;
+                _isSelectionChangedSubscribed = true;
+                return;
+            }
+
+            if (!shouldSubscribe && _isSelectionChangedSubscribed)
+            {
+                _uiapp.SelectionChanged -= OnSelectionChanged;
+                _isSelectionChangedSubscribed = false;
+            }
+        }
+#endif
         private void OnViewChanged(object sender, ViewActivatedEventArgs e) => _viewExtEv?.Raise();
 
 #if !Debug2020 && !Revit2020
