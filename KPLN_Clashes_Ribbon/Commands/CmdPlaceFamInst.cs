@@ -190,14 +190,14 @@ namespace KPLN_Clashes_Ribbon.Commands
             HashSet<XYZ> xyzToCreate = new HashSet<XYZ>(new ComparerByXYZ());
 
             Transform docTRans = doc.ActiveProjectLocation.GetTotalTransform();
-            
-            //// Уточняю трансофрм, если БТП была смещена
-            //var docBP = new FilteredElementCollector(doc)
-            //    .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
-            //    .FirstOrDefault();
-            //var docBPBBox = docBP.get_BoundingBox(null);
-            ////if (!docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
-            ////    docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
+
+            // Уточняю трансофрм, если БТП была смещена
+            var docBP = new FilteredElementCollector(doc)
+                .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                .FirstOrDefault();
+            var docBPBBox = docBP?.get_BoundingBox(null);
+            if (docBPBBox != null && !docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
+                docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
 
 
             // Проверка есть открытый док в списке с ошибками
