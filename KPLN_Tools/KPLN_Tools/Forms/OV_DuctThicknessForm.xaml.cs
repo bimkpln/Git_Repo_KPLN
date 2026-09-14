@@ -67,7 +67,7 @@ namespace KPLN_Tools.Forms
         {
             Task.Run(() => { SaveConfig(); });
 
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandDuctThickness_Start(CurrentDuctThicknessEntity, _elementsToSet));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandDuctThickness_Start(_doc, CurrentDuctThicknessEntity, _elementsToSet));
 
             Close();
         }

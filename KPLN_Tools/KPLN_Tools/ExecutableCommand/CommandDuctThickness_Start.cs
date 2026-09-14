@@ -9,16 +9,14 @@ using KPLN_Tools.Common.OVVK_System;
 using KPLN_Tools.ExternalCommands;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace KPLN_Tools.ExecutableCommand
 {
     internal class CommandDuctThickness_Start : IExecutableCommand
     {
+        private readonly Document _doc;
         private readonly DuctThicknessEntity _currentDuctThicknessEntity;
         private readonly Element[] _elementsToSet;
 
@@ -34,8 +32,9 @@ namespace KPLN_Tools.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandDuctThickness_Start(DuctThicknessEntity ductThicknessEntity, Element[] elementsToSet)
+        public CommandDuctThickness_Start(Document doc, DuctThicknessEntity ductThicknessEntity, Element[] elementsToSet)
         {
+            _doc = doc;
             _currentDuctThicknessEntity = ductThicknessEntity;
             _elementsToSet = elementsToSet;
 
@@ -67,7 +66,7 @@ namespace KPLN_Tools.ExecutableCommand
                     {
                         HtmlOutput.PrintMsgDict("ОШИБКА", MessageType.Critical, _errorDict);
                         HtmlOutput.PrintMsgDict("ВНИМАНИЕ", MessageType.Warning, _warningDict);
-                
+
                         MessageBox.Show(
                             $"Скрипт отработал, но есть замечания к некоторым элементам. Список выведен отдельным окном",
                             "Внимание",
@@ -127,9 +126,9 @@ namespace KPLN_Tools.ExecutableCommand
                     Parameter systemType = elem.get_Parameter(BuiltInParameter.RBS_DUCT_SYSTEM_TYPE_PARAM);
                     Parameter systemAbbrev = elem.get_Parameter(BuiltInParameter.RBS_DUCT_PIPE_SYSTEM_ABBREVIATION_PARAM);
 
-                    if (systemType == null 
+                    if (systemType == null
                         || systemAbbrev == null
-                        || systemType.AsValueString().Contains("Не определено") 
+                        || systemType.AsValueString().Contains("Не определено")
                         || systemType.AsValueString().Contains("Нет системы")
                         || string.IsNullOrEmpty(systemAbbrev.AsString()))
                         HtmlOutput.SetMsgDict_ByMsg("Не определена система. Толщина НЕ записана", elem.Id, _errorDict);
@@ -160,7 +159,7 @@ namespace KPLN_Tools.ExecutableCommand
                         {
                             double maxRoundConnRadius = roundConn.Max(c => c.Radius);
                             double maxRoundConn = maxRoundConnRadius * 2;
-                            double maxRectConn = rectConn.Select(c => Math.Max(c.Height, c.Width)).Max();
+                            double maxRectConn = rectConn.Max(c => Math.Max(c.Height, c.Width));
                             if (maxRoundConn > maxRectConn)
                                 SetThicknessData_RoundConnector(paramToSet, insulutionType, systemAbbrev, maxRoundConn);
                             else
@@ -174,7 +173,7 @@ namespace KPLN_Tools.ExecutableCommand
                         }
                         else
                         {
-                            double maxRectConn = rectConn.Select(c => Math.Max(c.Height, c.Width)).Max();
+                            double maxRectConn = rectConn.Max(c => Math.Max(c.Height, c.Width));
                             SetThicknessData_RectangularConnector(paramToSet, insulutionType, systemAbbrev, maxRectConn);
                         }
                     }
@@ -195,10 +194,10 @@ namespace KPLN_Tools.ExecutableCommand
 
         private void SetThicknessData_RoundConnector(Parameter paramToSet, Parameter insulutionType, Parameter systemAbbrev, double maxSize)
         {
-            double maxSize_mm = maxSize * 304.8;
+            double maxSize_mm = Math.Round(maxSize * 304.8, 0);
             // Воздуховоды/соед. детали в огнезащ. изоляции, или противодымных систем
-            if ((insulutionType != null 
-                    && !string.IsNullOrEmpty(insulutionType.AsString()) 
+            if ((insulutionType != null
+                    && !string.IsNullOrEmpty(insulutionType.AsString())
                     && insulutionType.AsString().ToLower().Contains(_currentDuctThicknessEntity.PartOfInsulationName.ToLower()))
                 || _currentDuctThicknessEntity.PartsOfSystemName.Any(part => systemAbbrev.AsString().ToLower().Contains(part.ToLower())))
             {
@@ -231,7 +230,7 @@ namespace KPLN_Tools.ExecutableCommand
 
         private void SetThicknessData_RectangularConnector(Parameter paramToSet, Parameter insulutionType, Parameter systemAbbrev, double maxSize)
         {
-            double maxSize_mm = maxSize * 304.8;
+            double maxSize_mm = Math.Round(maxSize * 304.8, 0);
             // Воздуховоды / соед.детали в огнезащ. изоляции, или противодымных систем
             if ((insulutionType != null
                     && !string.IsNullOrEmpty(insulutionType.AsString())
@@ -240,8 +239,10 @@ namespace KPLN_Tools.ExecutableCommand
             {
                 if (maxSize_mm < 1250)
                     paramToSet.Set(0.8 / 304.8);
-                else
+                else if (maxSize_mm >= 1250 && maxSize_mm <= 2000)
                     paramToSet.Set(0.9 / 304.8);
+                else
+                    paramToSet.Set(1.2 / 304.8);
             }
             // Воздуховоды/соед. детали общеобменных систем 
             else
@@ -250,8 +251,10 @@ namespace KPLN_Tools.ExecutableCommand
                     paramToSet.Set(0.5 / 304.8);
                 else if (maxSize_mm >= 300 && maxSize_mm < 1250)
                     paramToSet.Set(0.7 / 304.8);
-                else
+                else if (maxSize_mm >= 1250 && maxSize_mm <= 2000)
                     paramToSet.Set(0.9 / 304.8);
+                else
+                    paramToSet.Set(1.2 / 304.8);
             }
         }
     }
