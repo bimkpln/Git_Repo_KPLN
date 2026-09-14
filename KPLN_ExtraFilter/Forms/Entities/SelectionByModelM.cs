@@ -81,12 +81,16 @@ namespace KPLN_ExtraFilter.Forms.Entities
         public SelectionByModelM(UIApplication uiapp, ViewFilterMode viewFilterMode)
         {
             UIApp = uiapp;
+            // Сет параметра для обработки поля, чтобы не дёргать обертку у поля
+            _where_ViewDocFilterMode = viewFilterMode;
+            
+            
             Doc = uiapp.ActiveUIDocument.Document;
             IsWorkshared = Doc.IsWorkshared || Doc.IsDetached;
             DocActiveView = Doc.ActiveView;
 
+
             UserSelElems = GetElemsFromGroup(UIApp, Doc);
-            Where_ViewDocFilterMode = viewFilterMode;
         }
 
         public UIApplication UIApp { get; set; }

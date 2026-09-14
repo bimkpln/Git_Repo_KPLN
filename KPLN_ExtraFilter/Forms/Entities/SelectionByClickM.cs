@@ -100,6 +100,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
             set
             {
                 _sameFamily = value;
+                // Бывает что параметр BuiltInParameter.ELEM_FAMILY_PARAM одинаковый у разных семейств, но разные категории.
+                // Поэтому если включен фильтр по семейству, то фильтр по категории тоже должен быть включен
+                What_SameCategory = value;
+
                 NotifyPropertyChanged();
                 NotifyPropertyChanged(nameof(CanRun));
             }
