@@ -455,9 +455,11 @@ namespace KPLN_Looker
             if (!doc.IsFamilyDocument)
             {
                 string docFilePath = MonitoredDocFilePath_ExceptARKon(doc);
-                
+
                 // Обновляю с заходом в БД, если другой проект
-                if (!docFilePath.Equals(_currentMonitoredDocFilePath_ExceptARKon))
+                if (string.IsNullOrEmpty(docFilePath))
+                    CurrentDBProject = null;
+                else if (!docFilePath.Equals(_currentMonitoredDocFilePath_ExceptARKon))
                 {
                     string fileFullName = KPLN_Library_DBWorker.FactoryParts.SQLite.SQLiteDocService.GetFileFullName(doc);
                     CurrentDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(fileFullName, RevitVersion);
