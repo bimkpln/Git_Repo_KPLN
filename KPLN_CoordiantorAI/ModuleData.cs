@@ -29,6 +29,16 @@ namespace KPLN_CoordiantorAI
         public static int RevitVersion { get; set; }
 
         /// <summary>
+        /// MCP endpoint that belongs to this Revit process.
+        /// </summary>
+        public static string McpEndpoint { get; set; }
+
+        /// <summary>
+        /// Stable identifier of this Revit process for its current lifetime.
+        /// </summary>
+        public static string McpInstanceId { get; set; }
+
+        /// <summary>
         /// Ссылка на основное окно Revit 
         /// </summary>
         public static System.IntPtr RevitMainWindowHandle { get; set; }

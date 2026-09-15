@@ -4,12 +4,13 @@
 
 This project is moving to a single MCP-based architecture for Revit tools.
 
-Both scenarios should use the same local Revit MCP server:
+Both scenarios use the same MCP tool architecture. Every running Revit process owns
+its own local MCP server:
 
 ```text
 Revit -> "Work with model" WPF tab -> Internal MCP Client -> Revit MCP Server -> Revit API
 
-Claude/Cursor/VS Code/Codex -> MCP -> Revit MCP Server -> Revit API
+Claude/Cursor/VS Code/Codex -> MCP stdio proxy -> selected Revit MCP Server -> Revit API
 ```
 
 MCP is the source of truth for Revit tool discovery and execution. If the internal LLM still needs OpenAI-compatible `tools`, that format is only an adapter for the model, not a separate Revit tool architecture.
@@ -19,23 +20,30 @@ MCP is the source of truth for Revit tool discovery and execution. If the intern
 Implemented:
 
 - shared MCP tool contracts;
-- one shared MCP registry for all 55 Revit tools;
+- one shared MCP registry for 55 Revit tools and 3 WPF-only attachment tools;
 - one shared executor for all registered read-only and UI-changing tools;
 - `ExternalEvent` wrapper for safe Revit API execution;
-- local HTTP JSON-RPC endpoint inside Revit;
+- per-process local HTTP JSON-RPC endpoint inside Revit;
+- automatic registration and discovery of all running Revit processes;
 - internal MCP client used by the WPF "Work with model" tab for `tools/list` and `tools/call`;
 - stdio proxy exe for external MCP hosts;
 - consistent structured MCP errors and user-facing error messages;
 - pagination for potentially large tool results;
 - a limit of five real tool executions per model response in the WPF agent loop;
 - shared `DiagnosticLogger` and grouped `ChatLogger` records with scenario markers;
+- structured per-user SQLite history for the WPF "Work with model" tab;
 - user-facing WPF progress statuses that do not expose model chain-of-thought.
+- explicit file attachments in the WPF chat, including DOCX, with local text extraction, search and paged reading.
 
-Endpoint:
+Endpoint allocation:
 
 ```text
-http://127.0.0.1:48731/mcp/
+http://127.0.0.1:<first-free-port-in-48731-48799>/mcp/
 ```
+
+The first Revit process normally receives port `48731`, the second receives
+`48732`, and so on. The WPF client receives the endpoint directly from its own
+Revit process and never falls back to another process.
 
 ## Supported MCP Methods
 
@@ -54,10 +62,11 @@ This repository includes a small proxy executable:
 ExternalMcpStdioProxy\RevitMcpStdioProxy.csproj
 ```
 
-The proxy does not call the Revit API directly. It forwards MCP JSON-RPC messages to the Revit HTTP endpoint:
+The proxy does not call the Revit API directly. By default it discovers registered
+Revit processes and forwards MCP JSON-RPC messages to the selected process endpoint.
 
 ```text
-http://127.0.0.1:48731/mcp/
+%LOCALAPPDATA%\KPLN\CoordinatorAI\MCP\instances\*.json
 ```
 
 Development build example. For actual external agent setup, use the distributed executable and stable local path from "External MCP Host Configuration" below:
@@ -78,7 +87,8 @@ external_mcp
 
 You can override this label with the `REVIT_MCP_CLIENT_NAME` environment variable if the same proxy is used from another host.
 
-If the Revit MCP endpoint ever changes, pass it explicitly:
+Automatic discovery is the recommended mode. An explicit endpoint is still
+supported for diagnostics and backwards compatibility:
 
 ```json
 {
@@ -95,6 +105,41 @@ If the Revit MCP endpoint ever changes, pass it explicitly:
 ```
 
 Revit must be running with the plugin loaded before the external MCP host can call Revit tools.
+
+### Selecting a Revit Process
+
+The stdio proxy adds three routing tools:
+
+- `list_revit_instances` lists live registered Revit processes with version, PID,
+  model name, window title, endpoint, and instance id;
+- `select_revit_instance` selects the exact process for subsequent Revit tools;
+- `get_selected_revit_instance` returns the current selection.
+
+If exactly one matching Revit process is running, the proxy selects it
+automatically. If several processes are running, a normal Revit tool call returns
+`REVIT_INSTANCE_REQUIRED` until `select_revit_instance` is called.
+
+The proxy never silently switches to another Revit after selection. If the
+selected process closes, calls return `REVIT_INSTANCE_UNAVAILABLE`.
+
+During staged deployment, if no instance registrations exist and no selector was
+configured, the proxy tries the legacy endpoint
+`http://127.0.0.1:48731/mcp/`. This keeps one-process installations working,
+but exact process selection requires the updated Revit plugin and its instance
+registrations.
+
+Optional startup selectors are available when separate MCP server entries are
+preferred:
+
+```text
+--instance-id <instance_id>
+--process-id <pid>
+--revit-version 2024
+--model "Project name.rvt"
+```
+
+Selectors can be combined. They must resolve to exactly one live process before a
+Revit tool is executed.
 
 ## External MCP Host Configuration
 
@@ -135,7 +180,7 @@ It is configured to place a local build in the same `%LOCALAPPDATA%\KPLN\Coordin
 All external agents connect by the same principle:
 
 ```text
-Agent -> stdio MCP -> RevitMcpStdioProxy.exe -> http://127.0.0.1:48731/mcp/ -> Revit
+Agent -> stdio MCP -> RevitMcpStdioProxy.exe -> selected registered endpoint -> Revit
 ```
 
 Before connecting an external agent:
@@ -143,23 +188,24 @@ Before connecting an external agent:
 - start Revit;
 - open or create a Revit model;
 - make sure the plugin is loaded;
-- check that the local MCP endpoint responds.
+- check that the required Revit process appears in the local instance registry.
 
-Endpoint check:
+Instance discovery check:
 
 ```powershell
-Invoke-WebRequest "http://127.0.0.1:48731/mcp/" -TimeoutSec 5
+$instancesPath = Join-Path $env:LOCALAPPDATA "KPLN\CoordinatorAI\MCP\instances"
+Get-ChildItem -LiteralPath $instancesPath -Filter "*.json" |
+  ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json } |
+  Format-Table revit_version, process_id, instance_id, endpoint
 ```
 
-Expected response:
+Example:
 
-```json
-{
-  "name": "revit-mcp",
-  "status": "running",
-  "endpoint": "http://127.0.0.1:48731/mcp/",
-  "tools": 55
-}
+```text
+revit_version process_id instance_id                       endpoint
+------------- ---------- -----------                       --------
+2020          37588      1d8f...                           http://127.0.0.1:48731/mcp/
+2024          3132       a24b...                           http://127.0.0.1:48732/mcp/
 ```
 
 ### Codex
@@ -351,7 +397,8 @@ Environment:
 If an external agent does not see Revit tools:
 
 - check that Revit is open and the plugin has loaded;
-- check `http://127.0.0.1:48731/mcp/`;
+- check the JSON registrations in
+  `%LOCALAPPDATA%\KPLN\CoordinatorAI\MCP\instances`;
 - check that `RevitMcpStdioProxy.exe` exists in `%LOCALAPPDATA%\KPLN\CoordinatorAI\MCP`;
 - restart the external agent after changing its config;
 - make sure the config points to the local installed proxy path, not to the repository `bin\Debug` path.
@@ -423,8 +470,18 @@ Currently registered tools:
 After Revit starts and loads the plugin:
 
 ```powershell
-Invoke-WebRequest "http://127.0.0.1:48731/mcp/" -TimeoutSec 5
+$instancesPath = Join-Path $env:LOCALAPPDATA "KPLN\CoordinatorAI\MCP\instances"
+$instance = Get-ChildItem -LiteralPath $instancesPath -Filter "*.json" |
+  ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json } |
+  Where-Object { $_.revit_version -eq 2024 } |
+  Select-Object -First 1
+
+$endpoint = $instance.endpoint
+Invoke-WebRequest $endpoint -TimeoutSec 5
 ```
+
+Change `2024` to the required Revit version. If several processes of the same
+version are running, select the registration by `process_id` or `instance_id`.
 
 Expected response:
 
@@ -432,10 +489,16 @@ Expected response:
 {
   "name": "revit-mcp",
   "status": "running",
-  "endpoint": "http://127.0.0.1:48731/mcp/",
-  "tools": 55
+  "endpoint": "http://127.0.0.1:48732/mcp/",
+  "instance_id": "a24b...",
+  "process_id": 3132,
+  "revit_version": 2024,
+  "tools": 55,
+  "wpf_tools": 58
 }
 ```
+
+`tools` is the number visible to external MCP hosts. `wpf_tools` also includes the three internal file-attachment tools.
 
 ## tools/list Check
 
@@ -447,7 +510,7 @@ $body = @{
   params = @{}
 } | ConvertTo-Json -Depth 10
 
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json" -Body $body |
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json" -Body $body |
   ConvertTo-Json -Depth 20
 ```
 
@@ -464,7 +527,7 @@ $body = @{
   }
 } | ConvertTo-Json -Depth 10
 
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json" -Body $body |
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json" -Body $body |
   ConvertTo-Json -Depth 20
 ```
 
@@ -488,7 +551,7 @@ $body = @{
   }
 } | ConvertTo-Json -Depth 10
 
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json; charset=utf-8" -Body $body |
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json; charset=utf-8" -Body $body |
   ConvertTo-Json -Depth 30
 ```
 
@@ -515,6 +578,8 @@ For element/list-based tools:
 
 The default and maximum page size is `200` items. Use `next_offset` from the previous response to request the next page.
 
+`get_viewports_and_schedules_on_sheets` is an intentional exception: it processes one sheet per page. Pagination is applied to the input sheet ids before any sheet content is collected, and the same `list_elementIds` must be sent again with `next_offset`. Elements owned by the sheet are collected with `ElementOwnerViewFilter` instead of a view-specific collector, avoiding unnecessary background initialization of every sheet. The one-sheet boundary gives Revit a safe opportunity to process WPF cancellation between heavy sheets.
+
 Example:
 
 ```powershell
@@ -532,7 +597,7 @@ $body = @{
   }
 } | ConvertTo-Json -Depth 10
 
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json; charset=utf-8" -Body $body |
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json; charset=utf-8" -Body $body |
   ConvertTo-Json -Depth 20
 ```
 
@@ -578,7 +643,7 @@ $body = @{
   }
 } | ConvertTo-Json -Depth 10
 
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json; charset=utf-8" -Body $body |
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json; charset=utf-8" -Body $body |
   ConvertTo-Json -Depth 20
 ```
 
@@ -665,12 +730,63 @@ During request processing, the WPF tab shows short progress/status messages such
 
 These messages are generated by the application code through `IModelProgressReporter`. They are not model chain-of-thought and do not expose raw JSON, tool arguments, HTTP details, stack traces, or MCP transport internals.
 
+## WPF File Attachments
+
+The paperclip button in the "Work with model" tab attaches only files explicitly selected by the user. A separate warning dialog is not displayed. The disclosure retained for documentation is:
+
+> Будут доступны только файлы, которые вы сейчас выберете.
+>
+> Для анализа содержимое выбранных файлов может отправляться модели порциями до 200 КБ.
+>
+> Адрес модели: настроенный пользователем API endpoint или локальный сервер.
+>
+> Пути к файлам модели не передаются. Доступ действует до удаления файла или закрытия этого окна.
+
+Supported files are DOCX, text, Markdown, CSV/TSV, JSON/JSONL, XML/YAML, logs, configuration files and common source-code formats. Legacy binary DOC files are not supported. A file is limited to 50 MB, and one WPF chat can hold no more than 10 attachments.
+
+The model initially receives only the attachment `file_id`, file name, extension and size. The absolute filesystem path and file content are not placed in the initial prompt. Content is obtained later through these internal MCP tools:
+
+- `get_attached_files` lists metadata for the current WPF attachment scope;
+- `search_attached_file` searches text and returns matching line previews;
+- `read_attached_file` reads at most 204800 characters per page and returns `has_more` and `next_offset`.
+
+DOCX files are opened as read-only Open XML packages without starting Microsoft Word. Paragraphs, tables, headers, footers, footnotes and endnotes are converted to plain text. Embedded images, drawings, charts, equations and other non-text objects are not extracted or OCR-processed. Extracted Word text is limited to 10 million characters and cached only for the lifetime of the current WPF window, with a 20 million character total cache limit.
+
+When the user asks to process a complete file, the model must continue reading pages until `has_more` is `false`. The files are opened read-only with sharing enabled. Removing an attachment or closing the WPF window revokes its in-memory `file_id` and scope.
+
+The three attachment tools are omitted from external MCP `tools/list` responses and direct external calls are rejected. They are available only to the internal `wpf_window` scenario. File contents are treated as untrusted reference data, not as instructions for the model.
+
+## WPF Image Attachments
+
+The WPF chat accepts PNG, JPG/JPEG, WEBP and BMP images through the paperclip button. An image already copied to the Windows clipboard can be attached by pressing `Ctrl+V` while the message input is focused. Attached images are shown as removable thumbnails above the input.
+
+Clipboard images are temporarily stored as PNG files under:
+
+```text
+%LOCALAPPDATA%\KPLN\CoordinatorAI\Attachments\<session-id>\
+```
+
+Only explicitly selected or pasted images are registered. Absolute paths, image bytes and Base64 data are not written to `ChatLogger` or `DiagnosticLogger`. Temporary clipboard files are deleted when the image is removed, after a successful answer, or when the WPF window closes.
+
+One question can contain up to 5 images. An original image is limited to 15 MB. Before transmission, metadata is removed by re-encoding, the longest side is reduced to at most 2048 pixels, and the prepared image is limited to 8 MB. PNG is retained for screenshots when practical; oversized PNG data falls back to JPEG quality 85.
+
+Images are model input rather than Revit API operations. They are sent in the current user message as OpenAI-compatible multimodal `image_url` data. Revit discovery and actions continue to use the shared MCP `tools/list` and `tools/call` architecture. After the final answer, the multimodal history entry is replaced with text so the same Base64 image is not resent in later questions.
+
+The configured API model must support OpenAI-compatible vision input. If it rejects an image request, the WPF error points the user to check vision support. Text-only models cannot inspect attached images.
+
+## WPF Request Cancellation
+
+While a request is active, the `Отправить` button becomes `Отменить`. Pressing it cancels the current model HTTP request, stops subsequent model rounds and tool calls, removes an MCP tool call that is still waiting for Revit `ExternalEvent`, discards partial tool-chain messages, and restores the normal input state.
+
+Revit API commands execute synchronously on Revit's main UI thread. Revit does not provide a safe general-purpose way to terminate arbitrary API code in the middle of such a call. If a tool is already inside synchronous Revit API execution, it finishes at the next safe return point; its result is discarded and no following tools are started. Long-running tools should therefore check cancellation cooperatively if finer-grained interruption is added later.
+
 ## Diagnostics
 
-Check the port:
+Check the allocated MCP ports:
 
 ```powershell
-Get-NetTCPConnection -LocalPort 48731 -ErrorAction SilentlyContinue
+Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+  Where-Object { $_.LocalPort -ge 48731 -and $_.LocalPort -le 48799 }
 ```
 
 Main diagnostic log:
@@ -679,7 +795,7 @@ Main diagnostic log:
 C:\Users\mtarchokov\AppData\Local\KPLN\CoordinatorAI\Diagnostics\<UserName>_diagnostic_YYYY-MM-DD.txt
 ```
 
-MCP diagnostics are written to the same `DiagnosticLogger` file as the rest of the plugin diagnostics. MCP lines are marked with `[MCP]`; transport-specific lines can also contain `[MCP_TRANSPORT]`.
+MCP diagnostics are written to the same `DiagnosticLogger` file as the rest of the plugin diagnostics. MCP lines are marked with `[MCP]`; transport-specific lines can also contain `[MCP_TRANSPORT]`. Tool-call records include `InstanceId`, `RevitVersion`, and `ProcessId` so calls from simultaneous Revit processes can be distinguished.
 
 This log contains useful MCP events: server start/stop, startup failures, `tools/call` begin/end, `tools/call` errors, invalid JSON, unsupported MCP methods, non-standard HTTP listener errors, and Revit API / `ExternalEvent` errors that pass through MCP.
 
@@ -692,14 +808,14 @@ For JSON requests without an explicit `charset`, the transport first reads the b
 Windows PowerShell 5.1 can corrupt Cyrillic string request bodies before they reach the server when `charset` is omitted. Once the bytes are already `?`, the server cannot restore the original word. For Cyrillic arguments in Windows PowerShell 5.1, either specify UTF-8 in `ContentType`:
 
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json; charset=utf-8" -Body $body
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json; charset=utf-8" -Body $body
 ```
 
 or send explicit UTF-8 bytes:
 
 ```powershell
 $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
-Invoke-RestMethod -Uri "http://127.0.0.1:48731/mcp/" -Method Post -ContentType "application/json; charset=utf-8" -Body $bytes
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json; charset=utf-8" -Body $bytes
 ```
 
 The transport still protects JSON request decoding with UTF-8 defaults and fallback encoding detection, but these low-level decisions are not written to the normal diagnostic log.
@@ -711,6 +827,69 @@ System.MissingMethodException: Method not found: JToken.ToString(Newtonsoft.Json
 ```
 
 then Revit loaded a different `Newtonsoft.Json` version than the one used during compilation. The transport avoids `JToken.ToString(Formatting.None)` and uses `JsonConvert.SerializeObject(...)` for compatibility.
+
+## Structured SQL History
+
+The WPF "Work with model" tab writes structured request history to SQLite in parallel with the existing text `ChatLogger`. The text log has not been removed. External MCP hosts continue to use the existing MCP diagnostics and grouped `ChatLogger` records; they do not create `ModelChatRequests` rows.
+
+Each Windows user receives a separate database:
+
+```text
+Z:\Отдел BIM\Тарчоков Мухамед\2. Плагины\1. Собственные плагины\0. Shared Plugins\Logs\BimHelper\1. Логи в форме БД\CoordinatorAI_History_<UserName>.db
+```
+
+The database and its schema are created automatically when the WPF tab opens. The implementation uses the existing `System.Data.SQLite` dependency and keeps five application tables:
+
+### ModelChatSessions
+
+One row represents one opened WPF chat session. It contains `SessionId`, `UserName`, `StartedAt`, `EndedAt`, `RevitVersion`, `RevitProcessId`, `PluginVersion`, `ModelName`, and `ConnectionType`.
+
+### ModelChatRequests
+
+One row represents one user question and its complete processing lifecycle. It contains:
+
+- request identity and relation to the session: `RequestId`, `SessionId`;
+- timing: `RequestTime`, `ResponseTime`, `DurationMs`;
+- content and outcome: `UserQuestion`, `FinalAnswer`, `Status`, `ErrorMessage`;
+- execution context: `Scenario`, `AiModelName`, `RevitVersion`, `RevitProcessId`, `ModelName`, `ViewName`;
+- unique tools used by the request: `UsedToolNamesJson`;
+- usage and calculated cost: `CacheHitTokens`, `CacheMissTokens`, `CompletionTokens`, `Cost`.
+
+`Status` changes from `Processing` to `Completed`, `Cancelled`, or `Failed`. `Scenario` is currently `wpf_window`. `UsedToolNamesJson` is a JSON array of the MCP tools that were actually executed, in first-call order and without duplicate names. Tools skipped by the five-tools-per-model-response limit are not included.
+
+Token values are accumulated across all model API rounds required to answer one user question. They are written only when every relevant online API response provides a complete usage breakdown. Missing usage data is stored as SQL `NULL`, not as zero. For a local model, `Cost` is zero; token fields can remain `NULL` when the local server does not report them.
+
+For supported DeepSeek models, `Cost` is the calculated API consumption in US dollars for the whole request. The calculation separately prices cache-hit input, cache-miss input, and completion tokens, then sums all API rounds. It uses the requested billing model and the request start time, including the configured weekday peak/off-peak periods. This is an estimate based on the rates encoded in the plugin, not a provider invoice or bank charge. If the model is unknown or usage is incomplete, `Cost` remains `NULL`. Pricing changes must be synchronized with the official [DeepSeek pricing documentation](https://api-docs.deepseek.com/quick_start/pricing/).
+
+### ModelAttachments
+
+One row represents one file or image attached to a request. It contains `Id`, `RequestId`, `AttachmentType`, `FileName`, `FileExtension`, `ContentType`, `SizeBytes`, `Width`, and `Height`.
+
+Only attachment metadata is stored. File contents, image bytes, Base64 data, and absolute local paths are not written to the database.
+
+### ToolDefinitions
+
+This reference table is synchronized from `RevitMcpToolRegistry` when the WPF tab opens. It contains `ToolId`, `ToolName`, `Description`, `OperationType`, `IsReadOnly`, `SupportsPagination`, `PaginationUnit`, and `DefaultPageSize`.
+
+`OperationType` uses the registry area, for example `ViewContext`, `Visibility`, `Categories`, `Families`, `Parameters`, `Geometry`, `ModelInfo`, `Files`, `Worksets`, `Selection`, `Schedules`, `Journal`, or `Links`. Pagination metadata describes the unit and default page size used by each tool; unsupported values remain `NULL`.
+
+### ModelAnswerFeedback
+
+Each completed answer in the WPF "Work with model" tab has controls for a positive or negative rating and an optional comment. A negative rating can also include one reason: incorrect answer, incomplete answer, misunderstood question, Revit data failure, wrong Revit action, slow response, or other.
+
+Feedback is stored in the same per-user SQLite database as the request history. `ModelAnswerFeedback` contains `FeedbackId`, `RequestId`, `Rating`, `ReasonCode`, and `Comment`. `RequestId` is unique, so changing a rating updates the existing feedback instead of creating a duplicate. Removing the selected rating deletes its feedback row.
+
+Question text, final answer, model metadata, tool names, tokens, and cost are not duplicated in the feedback table. Reports can obtain them by joining `ModelAnswerFeedback.RequestId` to `ModelChatRequests.RequestId`.
+
+Feedback has no `CreatedAt` or `UpdatedAt` columns. If the network database is unavailable, the plugin does not create a local feedback queue or write the feedback elsewhere. The WPF panel reports that the feedback could not be saved, while the technical exception is written to `DiagnosticLogger` as `MODEL_FEEDBACK.SAVE_ERROR` or `MODEL_FEEDBACK.DELETE_ERROR`.
+
+### Time, Migration, and Failures
+
+`StartedAt`, `EndedAt`, `RequestTime`, and `ResponseTime` are stored in Moscow time using the exact format `yyyy-MM-dd HH:mm:ss`. They contain no milliseconds, `T`, or `Z`. Existing UTC/ISO values are normalized automatically when the WPF tab next opens.
+
+On database initialization, requests with missing `Cost` are recalculated when all three token fields, the model name, and request time are available. Rows without trustworthy usage data remain unchanged.
+
+SQLite logging failures do not interrupt the user's model request. They are written to the regular `DiagnosticLogger` with events such as `MODEL_HISTORY.SESSION_START_ERROR`, `MODEL_HISTORY.SESSION_END_ERROR`, and `MODEL_HISTORY.REQUEST_SAVE_ERROR`.
 
 ## Revit API Constraint
 

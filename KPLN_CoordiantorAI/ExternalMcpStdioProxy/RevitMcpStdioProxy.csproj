@@ -42,6 +42,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="ProxyOptions.cs" />
+    <Compile Include="RevitInstanceDiscovery.cs" />
+    <Compile Include="RevitMcpRouter.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

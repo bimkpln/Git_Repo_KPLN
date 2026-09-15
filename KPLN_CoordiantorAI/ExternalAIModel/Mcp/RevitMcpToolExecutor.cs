@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_CoordiantorAI.Common;
@@ -21,8 +22,12 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             _uiDocument = uiDocument;
         }
 
-        public RevitMcpToolCallResponse Execute(string toolName, JObject arguments)
+        public RevitMcpToolCallResponse Execute(
+            string toolName,
+            JObject arguments,
+            CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!RevitMcpToolRegistry.TryGet(toolName, out RevitMcpToolDefinition definition))
             {
                 return CreateErrorResponse(
@@ -61,7 +66,11 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             {
                 JObject safeArguments = arguments ?? new JObject();
                 ValidateArguments(definition, safeArguments);
-                object rawResult = ExecuteRegisteredTool(definition.Name, safeArguments);
+                object rawResult = ExecuteRegisteredTool(
+                    definition.Name,
+                    safeArguments,
+                    cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
                 JToken result = ToJToken(rawResult);
 
                 RevitMcpToolCallResponse toolResultError = TryCreateToolResultErrorResponse(definition.Name, result);
@@ -76,6 +85,10 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                     ToolName = definition.Name,
                     Result = result
                 };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (RevitMcpToolArgumentException ex)
             {
@@ -105,7 +118,10 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                     new JObject { { "toolName", definition.Name } });
             }
         }
-        private object ExecuteRegisteredTool(string toolName, JObject arguments)
+        private object ExecuteRegisteredTool(
+            string toolName,
+            JObject arguments,
+            CancellationToken cancellationToken)
         {
             switch (toolName)
             {
@@ -169,7 +185,9 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 case "get_all_elements_of_specific_families":
                     return Commands.GetAllElementsOfSpecificFamilies(
                         _document,
-                        GetStringList(arguments, "familyNames"));
+                        GetStringList(arguments, "familyNames"),
+                        NormalizeItemLimit(GetInt(arguments, "limit", 200)),
+                        NormalizeOffset(GetInt(arguments, "offset")));
 
                 case "get_parameters_from_elementid":
                     return Commands.GetParametersFromElementId(
@@ -317,7 +335,10 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 case "get_viewports_and_schedules_on_sheets":
                     return Commands.GetViewportsAndSchedulesOnSheets(
                         _document,
-                        GetIntList(arguments, "list_elementIds"));
+                        GetIntList(arguments, "list_elementIds"),
+                        GetInt(arguments, "limit", 1),
+                        GetInt(arguments, "offset"),
+                        cancellationToken);
 
                 case "get_schedules_info_and_columns":
                     return Commands.GetSchedulesInfoAndColumns(
@@ -515,6 +536,14 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             {
                 return AddItemsAliasIfNeeded(result, "elements");
             }
+
+            // This command paginates while collecting model data, before JSON serialization.
+            if (string.Equals(toolName, "get_all_elements_of_specific_families", StringComparison.OrdinalIgnoreCase))
+                return result;
+
+            // This command paginates the input before Revit opens a sheet view.
+            if (string.Equals(toolName, "get_viewports_and_schedules_on_sheets", StringComparison.OrdinalIgnoreCase))
+                return result;
 
             string collectionProperty = GetPaginatedCollectionProperty(toolName);
             if (collectionProperty == null)

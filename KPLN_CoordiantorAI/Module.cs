@@ -23,6 +23,9 @@ namespace KPLN_CoordiantorAI
                 _mcpServer = null;
             }
 
+            ModuleData.McpEndpoint = null;
+            ModuleData.McpInstanceId = null;
+
             return Result.Succeeded;
         }
 
@@ -87,9 +90,15 @@ namespace KPLN_CoordiantorAI
             try
             {
                 RevitMcpDiagnosticLogger.Log("Module.StartMcpServer begin.");
-                _mcpServer = new RevitMcpServer();
+                _mcpServer = new RevitMcpServer(ModuleData.RevitVersion);
                 _mcpServer.Start();
-                RevitMcpDiagnosticLogger.Log("Module.StartMcpServer success.");
+                ModuleData.McpEndpoint = _mcpServer.Endpoint;
+                ModuleData.McpInstanceId = _mcpServer.InstanceId;
+                RevitMcpDiagnosticLogger.Log(
+                    "Module.StartMcpServer success. Endpoint="
+                    + ModuleData.McpEndpoint
+                    + ", InstanceId="
+                    + ModuleData.McpInstanceId);
             }
             catch (System.Exception ex)
             {
@@ -100,6 +109,9 @@ namespace KPLN_CoordiantorAI
                     _mcpServer.Dispose();
                     _mcpServer = null;
                 }
+
+                ModuleData.McpEndpoint = null;
+                ModuleData.McpInstanceId = null;
             }
         }
 
