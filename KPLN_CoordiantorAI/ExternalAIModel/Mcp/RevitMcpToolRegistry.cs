@@ -22,7 +22,7 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             Tool("get_all_used_families_in_model", "Families", "Returns used families in the model with pagination.", PagedProps()),
             Tool("get_all_used_families_of_category", "Families", "Returns used families for a category with pagination.", PagedProps(new JProperty("categoryId", Int("Category id.")), "categoryId")),
             Tool("get_all_used_types_of_a_family", "Families", "Returns all used types of a family with pagination.", PagedProps(new JProperty("familyName", Str("Exact family name.")), "familyName")),
-            Tool("get_all_elements_of_specific_families", "Families", "Returns elements for exact family names with pagination.", PagedProps(new JProperty("familyNames", StrArray("Family names.")), "familyNames")),
+            Tool("get_all_elements_of_specific_families", "Families", "Returns a page of elements for exact family names. Continue with next_offset while has_more is true.", PagedProps(new JProperty("familyNames", StrArray("Exact family names.")), "familyNames")),
 
             Tool("get_parameters_from_elementid", "Parameters", "Returns parameters for one element or type.", Props(new[] { new JProperty("elementId", Int("Element id.")), new JProperty("getIdValuesAsNames", Bool("Resolve ElementId values as names.")) }, "elementId")),
             Tool("get_parameter_value_for_element_ids", "Parameters", "Returns one parameter value for element ids with pagination.", PagedProps(new[] { new JProperty("list_elementIds", IntArray("Element ids.")), new JProperty("idParameter", Int("Parameter id.")), new JProperty("getIdValuesAsNames", Bool("Resolve ElementId values as names.")) }, "list_elementIds", "idParameter")),
@@ -43,6 +43,24 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             Tool("get_all_project_units", "ModelInfo", "Returns project units."),
             Tool("get_all_warnings_in_the_model", "ModelInfo", "Returns all warnings in the current Revit model with pagination.", PagedProps()),
 
+            Tool("get_attached_files", "Files", "WPF-only. Lists supported files explicitly attached by the user in the Revit chat, including DOCX documents. Returns metadata and file_id values, never filesystem paths.",
+                Props(new JProperty("scope_id", Str("Attachment scope id provided in the WPF system context.")), "scope_id")),
+            Tool("search_attached_file", "Files", "WPF-only. Searches extracted text from an attached supported file, including DOCX, without loading the whole file into model context. Continue with next_start_line while has_more is true.", Props(new[]
+            {
+                new JProperty("scope_id", Str("Attachment scope id provided in the WPF system context.")),
+                new JProperty("file_id", Str("Attachment id returned in the WPF context or by get_attached_files.")),
+                new JProperty("query", Str("Text to find, case-insensitive.")),
+                new JProperty("start_line", Int("First line to search. Default 1.")),
+                new JProperty("max_results", Int("Maximum matches to return. Default 20 and maximum 50."))
+            }, "scope_id", "file_id", "query")),
+            Tool("read_attached_file", "Files", "WPF-only. Reads a page of extracted text from an explicitly attached supported file, including DOCX. Continue with next_offset while has_more is true; read all pages only when the user explicitly asks for the whole file.", Props(new[]
+            {
+                new JProperty("scope_id", Str("Attachment scope id provided in the WPF system context.")),
+                new JProperty("file_id", Str("Attachment id returned in the WPF context or by get_attached_files.")),
+                new JProperty("offset", Int("Character offset. Default 0.")),
+                new JProperty("limit", Int("Maximum characters to return. Default and maximum 204800."))
+            }, "scope_id", "file_id")),
+
             Tool("get_all_workset_information", "Worksets", "Returns workset information for the current model."),
             Tool("get_worksets_from_elementids", "Worksets", "Returns workset information for element ids with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Element ids.")), "list_elementIds")),
             Tool("get_worksharing_information_for_element_ids", "Worksets", "Returns worksharing information for element ids with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Element ids.")), "list_elementIds")),
@@ -62,7 +80,12 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             Tool("get_phase_visibility_settings", "Visibility", "Returns the view phase, discipline, assigned phase filter settings and phase status for supplied elements. Visibility conclusions cover phase rules only. Revit API 2020/2023/2024 does not expose the phase-status graphic overrides from the Phasing dialog, including colors, line settings, patterns, halftone and materials; tell the user to inspect those settings manually in Revit when they may affect the answer. Element results are paginated.", PagedProps(new[] { new JProperty("viewId", Int("View id. Optional; defaults to the active view.")), new JProperty("list_elementIds", IntArray("Optional element ids whose phase status should be evaluated.")), new JProperty("includeAllFilters", Bool("Include every phase filter defined in the model. Default false.")) })),
             Tool("get_if_elements_pass_filter", "Visibility", "Checks whether element ids pass a parameter filter with pagination.", PagedProps(new[] { new JProperty("filterId", Int("Filter id.")), new JProperty("list_elementIds", IntArray("Element ids.")) }, "filterId", "list_elementIds")),
 
-            Tool("get_viewports_and_schedules_on_sheets", "Schedules", "Returns viewports, schedules and other elements placed on sheets with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Sheet element ids.")), "list_elementIds")),
+            Tool("get_viewports_and_schedules_on_sheets", "Schedules", "Returns viewports, schedules and other elements placed on sheets. This heavy command processes one sheet per page so Revit can remain cancellable between sheets. Continue with next_offset while has_more is true.", Props(new[]
+            {
+                new JProperty("list_elementIds", IntArray("Sheet element ids. Resend the same list for every page.")),
+                new JProperty("limit", Int("Page size. Default and maximum 1 sheet.")),
+                new JProperty("offset", Int("Sheet offset. Default 0; use next_offset for the next page."))
+            }, "list_elementIds")),
             Tool("get_schedules_info_and_columns", "Schedules", "Returns schedule structure, fields, filters and columns with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Schedule element ids.")), "list_elementIds")),
             Tool("get_schedule_sorting_info", "Schedules", "Returns schedule sorting and grouping information with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Schedule element ids.")), "list_elementIds")),
 
@@ -72,7 +95,7 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             Tool("get_revit_link_elements", "Links", "Returns elements from a loaded Revit link with pagination.", Props(new[] { new JProperty("linkInstanceId", Int("RevitLinkInstance id.")), new JProperty("limit", Int("Page size. Default and maximum 200.")), new JProperty("offset", Int("Offset. Default 0.")) }, "linkInstanceId")),
             Tool("get_revit_link_categories", "Links", "Returns categories inside a loaded Revit link with pagination.", PagedProps(new JProperty("linkInstanceId", Int("RevitLinkInstance id.")), "linkInstanceId")),
             Tool("get_revit_link_elements_by_category", "Links", "Returns elements from a loaded Revit link filtered by category with pagination.", Props(new[] { new JProperty("linkInstanceId", Int("RevitLinkInstance id.")), new JProperty("categoryId", Int("Linked category id.")), new JProperty("categoryName", Str("Linked category name fallback.")), new JProperty("limit", Int("Page size. Default and maximum 200.")), new JProperty("offset", Int("Offset. Default 0.")) }, "linkInstanceId")),
-            UiTool("get_selected_revit_link_element_id", "Links", "Prompts the user to select linked elements in Revit and returns their ids."),
+            UiTool("get_selected_revit_link_element_id", "Links", "Returns ids and basic information for linked elements already selected in Revit. In Revit 2023 and 2024, linked elements must be selected before this tool is called; the tool does not start interactive selection. Revit 2020 uses interactive selection because linked-element preselection references are unavailable."),
             Tool("get_revit_link_element_properties", "Links", "Returns properties for an element inside a loaded Revit link.", Props(new[] { new JProperty("linkInstanceId", Int("RevitLinkInstance id.")), new JProperty("linkedElementId", Int("Element id inside linked document.")), new JProperty("getIdValuesAsNames", Bool("Resolve ElementId values as names.")), new JProperty("maxValueLength", Int("Maximum string value length. Default 1000.")), new JProperty("parameterId", Int("Optional parameter id.")), new JProperty("additionalPropertyName", Str("Optional public property name.")) }, "linkInstanceId", "linkedElementId"))
         };
 
@@ -95,9 +118,12 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             return ToolsByName.TryGetValue(toolName, out definition);
         }
 
-        public static JArray ToMcpToolsArray()
+        public static JArray ToMcpToolsArray(bool includeWpfOnlyFileTools = true)
         {
-            return new JArray(Tools.Select(i => i.ToMcpToolObject()));
+            IEnumerable<RevitMcpToolDefinition> visibleTools = includeWpfOnlyFileTools
+                ? Tools
+                : Tools.Where(i => !RevitMcpFileAttachmentService.IsFileTool(i.Name));
+            return new JArray(visibleTools.Select(i => i.ToMcpToolObject()));
         }
 
         private static RevitMcpToolDefinition Tool(string name, string area, string description)

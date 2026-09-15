@@ -16,6 +16,7 @@ using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;  
 
 namespace KPLN_CoordiantorAI.ExternalModel
@@ -1215,50 +1216,134 @@ namespace KPLN_CoordiantorAI.ExternalModel
             public List<int> ElementIds { get; set; }
         }
 
-        public static object GetAllElementsOfSpecificFamilies(Document doc, List<string> familyNames)
+        public static object GetAllElementsOfSpecificFamilies(
+            Document doc,
+            List<string> familyNames,
+            int limit = 200,
+            int offset = 0)
         {
-            var elementsPerFamily = new Dictionary<string, List<int>>();
+            const int maxExecutionMilliseconds = 15000;
+
+            if (limit <= 0)
+                limit = 200;
+
+            if (limit > 200)
+                limit = 200;
+
+            if (offset < 0)
+                offset = 0;
+
+            var elementsPerFamily = new Dictionary<string, List<int>>(StringComparer.Ordinal);
+            var items = new List<object>();
 
             if (familyNames == null || familyNames.Count == 0)
-                return new { elements_per_family = elementsPerFamily };
+            {
+                return new
+                {
+                    elements_per_family = elementsPerFamily,
+                    items = items,
+                    count = 0,
+                    total_count = 0,
+                    returned_count = 0,
+                    limit = limit,
+                    offset = offset,
+                    has_more = false,
+                    next_offset = (int?)null
+                };
+            }
 
-            // Для быстрых точных совпадений по имени семейства
-            var familyNameSet = new HashSet<string>(familyNames);
-
-            // 1) Берём ВСЕ типы во всём проекте
-            var allTypes = new FilteredElementCollector(doc)
-                .WhereElementIsElementType()
-                .Cast<ElementType>();
-
-            // 2) Отбираем только типы нужных семейств по точному FamilyName
-            var typesOfFamilies = allTypes
-                .Where(t => !string.IsNullOrEmpty(t.FamilyName))
-                .Where(t => familyNameSet.Contains(t.FamilyName))
+            List<string> requestedFamilyNames = familyNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
                 .ToList();
 
-            // 3) Для каждого типа — находим все экземпляры этого типа
-            foreach (var type in typesOfFamilies)
+            var familyNameSet = new HashSet<string>(requestedFamilyNames, StringComparer.Ordinal);
+            var familyOrder = requestedFamilyNames
+                .Select((name, index) => new { name, index })
+                .ToDictionary(item => item.name, item => item.index, StringComparer.Ordinal);
+            var familyNameByTypeId = new Dictionary<int, string>();
+            var matchingElements = new List<KeyValuePair<string, int>>();
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            foreach (ElementType type in new FilteredElementCollector(doc)
+                .WhereElementIsElementType()
+                .OfType<ElementType>())
             {
+                ThrowIfFamilySearchTimedOut(stopwatch, maxExecutionMilliseconds);
+
                 string familyName = type.FamilyName;
-                if (!elementsPerFamily.TryGetValue(familyName, out var list))
+                if (!string.IsNullOrEmpty(familyName) && familyNameSet.Contains(familyName))
+                    familyNameByTypeId[IDHelper.ElIdInt(type.Id)] = familyName;
+            }
+
+            // Scan model instances once. The previous implementation repeated a full
+            // model scan for every matching type, which could block Revit for minutes.
+            foreach (Element element in new FilteredElementCollector(doc)
+                .WhereElementIsNotElementType())
+            {
+                ThrowIfFamilySearchTimedOut(stopwatch, maxExecutionMilliseconds);
+
+                int typeId = IDHelper.ElIdInt(element.GetTypeId());
+                if (familyNameByTypeId.TryGetValue(typeId, out string familyName))
                 {
-                    list = new List<int>();
-                    elementsPerFamily[familyName] = list;
+                    matchingElements.Add(new KeyValuePair<string, int>(
+                        familyName,
+                        IDHelper.ElIdInt(element.Id)));
+                }
+            }
+
+            List<KeyValuePair<string, int>> orderedMatches = matchingElements
+                .OrderBy(item => familyOrder[item.Key])
+                .ThenBy(item => item.Value)
+                .ToList();
+
+            List<KeyValuePair<string, int>> page = orderedMatches
+                .Skip(offset)
+                .Take(limit)
+                .ToList();
+
+            foreach (KeyValuePair<string, int> item in page)
+            {
+                if (!elementsPerFamily.TryGetValue(item.Key, out List<int> elementIds))
+                {
+                    elementIds = new List<int>();
+                    elementsPerFamily[item.Key] = elementIds;
                 }
 
-                // Коллектор только по этому TypeId
-                var instancesOfType = new FilteredElementCollector(doc)
-                    .WhereElementIsNotElementType()
-                    .Where(e => IDHelper.ElIdInt(e.GetTypeId()) == IDHelper.ElIdInt(type.Id));
-
-                foreach (var inst in instancesOfType)
-                    list.Add(IDHelper.ElIdInt(inst.Id));
+                elementIds.Add(item.Value);
+                items.Add(new
+                {
+                    key = item.Key,
+                    value = item.Value
+                });
             }
+
+            bool hasMore = offset + page.Count < orderedMatches.Count;
 
             return new
             {
-                elements_per_family = elementsPerFamily
+                elements_per_family = elementsPerFamily,
+                items = items,
+                count = page.Count,
+                total_count = orderedMatches.Count,
+                returned_count = page.Count,
+                limit = limit,
+                offset = offset,
+                has_more = hasMore,
+                next_offset = hasMore ? (int?)(offset + page.Count) : null,
+                elapsed_ms = stopwatch.ElapsedMilliseconds
             };
+        }
+
+        private static void ThrowIfFamilySearchTimedOut(Stopwatch stopwatch, int maxExecutionMilliseconds)
+        {
+            if (stopwatch.ElapsedMilliseconds <= maxExecutionMilliseconds)
+                return;
+
+            throw new TimeoutException(
+                "The family element search exceeded "
+                + maxExecutionMilliseconds
+                + " ms. Narrow the familyNames list and retry.");
         }
 
 
@@ -6819,10 +6904,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #region 34_get_viewports_and_schedules_on_sheets   
 
-        public static object GetViewportsAndSchedulesOnSheets(Document doc, List<int> sheetElementIds)
+        public static object GetViewportsAndSchedulesOnSheets(
+            Document doc,
+            List<int> sheetElementIds,
+            int limit,
+            int offset,
+            CancellationToken cancellationToken)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // Проверяем входные параметры
                 if (sheetElementIds == null || sheetElementIds.Count == 0)
                 {
@@ -6830,17 +6921,31 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         error = "Список sheetElementIds пуст или не указан",
                         sheet_contents = new Dictionary<int, object>(),
-                        count = 0
+                        items = new object[0],
+                        count = 0,
+                        total_count = 0,
+                        limit = 1,
+                        offset = 0,
+                        has_more = false,
+                        next_offset = (int?)null
                     };
                 }
 
+                List<int> distinctSheetIds = sheetElementIds.Distinct().ToList();
+                int pageLimit = limit <= 0 ? 1 : Math.Min(limit, 1);
+                int pageOffset = Math.Max(0, offset);
+                List<int> pageSheetIds = distinctSheetIds
+                    .Skip(pageOffset)
+                    .Take(pageLimit)
+                    .ToList();
                 var result = new Dictionary<int, object>();
                 int processedCount = 0;
                 int notFoundCount = 0;
                 int notSheetCount = 0;
 
-                foreach (int sheetId in sheetElementIds.Distinct())
+                foreach (int sheetId in pageSheetIds)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         ElementId elemId = IDHelper.ToElementId(sheetId);
@@ -6875,6 +6980,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                         foreach (ElementId viewportId in viewportIds)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             Viewport viewport = doc.GetElement(viewportId) as Viewport;
                             if (viewport == null) continue;
 
@@ -6896,13 +7002,18 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         // 2. Получаем все спецификации и легенды на листе
                         // Используем фильтрованный сборщик для поиска ScheduleSheetInstance на листе
                         // ScheduleSheetInstance — это элемент, представляющий спецификацию, размещённую на листе
-                        var scheduleInstances = new FilteredElementCollector(doc, sheet.Id)
-                            .OfClass(typeof(ScheduleSheetInstance))
-                            .Cast<ScheduleSheetInstance>()
+                        cancellationToken.ThrowIfCancellationRequested();
+                        IList<Element> allElementsOnSheet = new FilteredElementCollector(doc)
+                            .WherePasses(new ElementOwnerViewFilter(sheet.Id))
+                            .WhereElementIsNotElementType()
+                            .ToElements();
+                        var scheduleInstances = allElementsOnSheet
+                            .OfType<ScheduleSheetInstance>()
                             .ToList();
 
                         foreach (ScheduleSheetInstance scheduleInstance in scheduleInstances)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             // Получаем ссылочный вид (саму спецификацию)
                             ElementId scheduleViewId = scheduleInstance.ScheduleId;
                             ViewSchedule schedule = doc.GetElement(scheduleViewId) as ViewSchedule;
@@ -6920,10 +7031,6 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         }
 
                         // 3. Получаем оставшиеся типы
-                        var allElementsOnSheet = new FilteredElementCollector(doc, sheet.Id)
-                            .WhereElementIsNotElementType()
-                            .ToElements();
-
                         // Создаём HashSet ID уже добавленных элементов (видовые экраны + спецификации)
                         var addedElementIds = new HashSet<int>();
 
@@ -6938,6 +7045,7 @@ namespace KPLN_CoordiantorAI.ExternalModel
                         // Проходим по всем элементам на листе и добавляем те, которые ещё не добавлены
                         foreach (Element elem in allElementsOnSheet)
                         {
+                            cancellationToken.ThrowIfCancellationRequested();
                             int ElemId = IDHelper.ElIdInt(elem.Id);
 
                             // Пропускаем уже добавленные элементы
@@ -6974,6 +7082,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                         processedCount++;
                     }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         result[sheetId] = new
@@ -6983,14 +7095,31 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     }
                 }
 
+                bool hasMore = pageOffset + pageSheetIds.Count < distinctSheetIds.Count;
                 return new
                 {
                     sheet_contents = result,
+                    items = result.Select(pair => new
+                    {
+                        sheet_id = pair.Key,
+                        data = pair.Value
+                    }).ToList(),
                     count = result.Count,
+                    total_count = distinctSheetIds.Count,
+                    limit = pageLimit,
+                    offset = pageOffset,
+                    has_more = hasMore,
+                    next_offset = hasMore
+                        ? (int?)(pageOffset + pageSheetIds.Count)
+                        : null,
                     processed_successfully = processedCount,
                     not_found = notFoundCount,
                     not_sheets = notSheetCount
                 };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -6998,7 +7127,13 @@ namespace KPLN_CoordiantorAI.ExternalModel
                 {
                     error = $"Ошибка при получении содержимого листов: {ex.Message}",
                     sheet_contents = new Dictionary<int, object>(),
-                    count = 0
+                    items = new object[0],
+                    count = 0,
+                    total_count = 0,
+                    limit = 1,
+                    offset = Math.Max(0, offset),
+                    has_more = false,
+                    next_offset = (int?)null
                 };
             }
         }
@@ -8994,9 +9129,31 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     };
                 }
 
-                IList<Reference> pickedReferences = uiDoc.Selection.PickObjects(
-                    Autodesk.Revit.UI.Selection.ObjectType.LinkedElement,
-                    "Select one or more elements inside a Revit linked file, then click Finish.");
+                IList<Reference> pickedReferences = GetPreselectedLinkedElementReferences(doc, uiDoc);
+                bool usedPreselection = pickedReferences.Count > 0;
+
+#if Revit2020 || Debug2020
+                if (!usedPreselection)
+                {
+                    pickedReferences = uiDoc.Selection.PickObjects(
+                        Autodesk.Revit.UI.Selection.ObjectType.LinkedElement,
+                        "Select one or more elements inside a Revit linked file, then click Finish.");
+                }
+#else
+                if (!usedPreselection)
+                {
+                    return new
+                    {
+                        success = false,
+                        error = "No linked elements are preselected. Select one or more elements inside a loaded Revit link before calling this tool.",
+                        link_instance_id = (int?)null,
+                        linked_element_id = (int?)null,
+                        selected_linked_elements = new List<object>(),
+                        count = 0,
+                        selection_source = "preselection"
+                    };
+                }
+#endif
 
                 if (pickedReferences == null || pickedReferences.Count == 0)
                 {
@@ -9025,7 +9182,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     linked_element_id = firstReference != null ? (int?)IDHelper.ElIdInt(firstReference.LinkedElementId) : null,
                     selected_linked_elements = selectedLinkedElements,
                     count = selectedLinkedElements.Count,
-                    message = $"Selected {selectedLinkedElements.Count} linked element(s)."
+                    selection_source = usedPreselection ? "preselection" : "interactive_pick",
+                    message = usedPreselection
+                        ? $"Used {selectedLinkedElements.Count} preselected linked element(s)."
+                        : $"Selected {selectedLinkedElements.Count} linked element(s)."
                 };
             }
             catch (Autodesk.Revit.Exceptions.OperationCanceledException)
@@ -9053,6 +9213,33 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     count = 0
                 };
             }
+        }
+
+        private static IList<Reference> GetPreselectedLinkedElementReferences(Document doc, UIDocument uiDoc)
+        {
+            List<Reference> linkedReferences = new List<Reference>();
+
+#if !Revit2020 && !Debug2020
+            IList<Reference> selectedReferences = uiDoc.Selection.GetReferences();
+            if (selectedReferences == null)
+                return linkedReferences;
+
+            foreach (Reference selectedReference in selectedReferences)
+            {
+                if (selectedReference == null ||
+                    selectedReference.ElementId == null ||
+                    selectedReference.LinkedElementId == null ||
+                    selectedReference.LinkedElementId == ElementId.InvalidElementId)
+                    continue;
+
+                RevitLinkInstance linkInstance = doc.GetElement(selectedReference.ElementId) as RevitLinkInstance;
+                Document linkedDocument = linkInstance != null ? linkInstance.GetLinkDocument() : null;
+                if (linkedDocument != null && linkedDocument.GetElement(selectedReference.LinkedElementId) != null)
+                    linkedReferences.Add(selectedReference);
+            }
+#endif
+
+            return linkedReferences;
         }
 
         private static object FormatPickedLinkedElementReference(Document doc, Reference pickedReference)

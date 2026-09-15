@@ -16,14 +16,22 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
 
         private readonly string _prefix;
         private readonly RevitMcpExternalEventHandler _externalEventHandler;
+        private readonly string _instanceId;
+        private readonly int _revitVersion;
         private HttpListener _listener;
         private CancellationTokenSource _cancellation;
         private Task _listenTask;
 
-        public RevitMcpTransport(string prefix, RevitMcpExternalEventHandler externalEventHandler)
+        public RevitMcpTransport(
+            string prefix,
+            RevitMcpExternalEventHandler externalEventHandler,
+            string instanceId,
+            int revitVersion)
         {
             _prefix = prefix;
             _externalEventHandler = externalEventHandler;
+            _instanceId = instanceId;
+            _revitVersion = revitVersion;
         }
 
         public bool IsRunning
@@ -57,8 +65,11 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             }
             catch (Exception ex)
             {
-                RevitMcpDiagnosticLogger.LogException("Transport.Start failed", ex);
-                Stop();
+                HttpListenerException listenerException = ex as HttpListenerException;
+                if (listenerException == null || !IsEndpointConflict(listenerException))
+                    RevitMcpDiagnosticLogger.LogException("Transport.Start failed", ex);
+
+                StopCore();
                 throw;
             }
         }
@@ -67,6 +78,13 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
         {
             RevitMcpDiagnosticLogger.Log("Transport.Stop requested.");
 
+            StopCore();
+
+            RevitMcpDiagnosticLogger.Log("Transport.Stop completed.");
+        }
+
+        private void StopCore()
+        {
             try
             {
                 if (_cancellation != null)
@@ -89,8 +107,16 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 _listener = null;
                 _cancellation = null;
                 _listenTask = null;
-                RevitMcpDiagnosticLogger.Log("Transport.Stop completed.");
             }
+        }
+
+        internal static bool IsEndpointConflict(HttpListenerException exception)
+        {
+            if (exception == null)
+                return false;
+
+            int errorCode = exception.NativeErrorCode;
+            return errorCode == 32 || errorCode == 183 || errorCode == 10048;
         }
 
         private async Task ListenLoop(CancellationToken cancellationToken)
@@ -247,11 +273,11 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 case "tools/list":
                     return CreateResult(id, new JObject
                     {
-                        { "tools", RevitMcpToolRegistry.ToMcpToolsArray() }
+                        { "tools", RevitMcpToolRegistry.ToMcpToolsArray(IsWpfScenario(scenario)) }
                     });
 
                 case "tools/call":
-                    return CreateResult(id, await HandleToolCallAsync(id, scenario, parameters, cancellationToken));
+                    return CreateResult(id, await HandleToolCallAsync(id, scenario, parameters, httpRequest, cancellationToken));
 
                 case "notifications/initialized":
                     return CreateResult(id, new JObject());
@@ -268,11 +294,21 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 ? DefaultProtocolVersion
                 : parameters["protocolVersion"].ToString();
 
+            JObject serverInfo = new JObject
+            {
+                { "name", "revit-mcp" },
+                { "version", "0.1.0" },
+                { "instanceId", _instanceId },
+                { "revitVersion", _revitVersion },
+                { "processId", Process.GetCurrentProcess().Id },
+                { "endpoint", _prefix }
+            };
+
             return new JObject
             {
                 { "protocolVersion", protocolVersion },
                 { "capabilities", new JObject { { "tools", new JObject() } } },
-                { "serverInfo", new JObject { { "name", "revit-mcp" }, { "version", "0.1.0" } } }
+                { "serverInfo", serverInfo }
             };
         }
 
@@ -280,6 +316,7 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             JToken id,
             string scenario,
             JObject parameters,
+            HttpListenerRequest httpRequest,
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -291,33 +328,65 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             bool isInternalWpf = IsWpfScenario(scenario);
             RevitMcpInteractionLogger interactionLogger = isInternalWpf ? null : new RevitMcpInteractionLogger(scenario);
             Stopwatch stopwatch = Stopwatch.StartNew();
+            CancellationToken requestCancellationToken =
+                RevitMcpRequestCancellationRegistry.GetToken(ResolveRequestScope(httpRequest));
+            CancellationTokenSource linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                requestCancellationToken);
 
-            RevitMcpDiagnosticLogger.Log("tools/call begin. ToolName=" + (toolName ?? "<null>") + ", scenario=" + scenario + ", requestId=" + requestId);
+            RevitMcpDiagnosticLogger.Log("tools/call begin. ToolName=" + (toolName ?? "<null>") + ", scenario=" + scenario + ", requestId=" + requestId + GetInstanceLogSuffix());
             if (interactionLogger != null)
                 interactionLogger.LogToolStart(requestId, toolName, arguments, toolArea);
 
             RevitMcpToolCallResponse toolResponse;
             try
             {
-                toolResponse = await _externalEventHandler.ExecuteToolAsync(
-                    null,
-                    null,
-                    toolName,
-                    arguments);
+                if (RevitMcpFileAttachmentService.IsFileTool(toolName))
+                {
+                    toolResponse = isInternalWpf
+                        ? RevitMcpFileAttachmentService.ExecuteTool(
+                            toolName,
+                            arguments,
+                            linkedCancellation.Token)
+                        : CreateFileAccessDeniedResponse(toolName);
+                }
+                else
+                {
+                    toolResponse = await _externalEventHandler.ExecuteToolAsync(
+                        null,
+                        null,
+                        toolName,
+                        arguments,
+                        linkedCancellation.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                stopwatch.Stop();
+                toolResponse = CreateRequestCanceledResponse(toolName);
+                RevitMcpDiagnosticLogger.Log(
+                    "tools/call canceled. ToolName=" + (toolName ?? "<null>")
+                    + ", scenario=" + scenario
+                    + ", requestId=" + requestId
+                    + GetInstanceLogSuffix());
             }
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                RevitMcpDiagnosticLogger.LogException("tools/call error. ToolName=" + (toolName ?? "<null>") + ", scenario=" + scenario + ", requestId=" + requestId, ex);
+                RevitMcpDiagnosticLogger.LogException("tools/call error. ToolName=" + (toolName ?? "<null>") + ", scenario=" + scenario + ", requestId=" + requestId + GetInstanceLogSuffix(), ex);
                 if (interactionLogger != null)
                     interactionLogger.LogToolError(requestId, toolName, arguments, ex, stopwatch.ElapsedMilliseconds, toolArea);
                 throw;
             }
+            finally
+            {
+                linkedCancellation.Dispose();
+            }
 
             stopwatch.Stop();
-            RevitMcpDiagnosticLogger.Log("tools/call end. ToolName=" + (toolName ?? "<null>") + ", Success=" + toolResponse.Success + ", scenario=" + scenario + ", requestId=" + requestId);
+            RevitMcpDiagnosticLogger.Log("tools/call end. ToolName=" + (toolName ?? "<null>") + ", Success=" + toolResponse.Success + ", scenario=" + scenario + ", requestId=" + requestId + GetInstanceLogSuffix());
             if (!toolResponse.Success)
-                RevitMcpDiagnosticLogger.Log("tools/call error result. ToolName=" + (toolName ?? "<null>") + ", scenario=" + scenario + ", requestId=" + requestId + ", ErrorCode=" + (toolResponse.Error == null ? string.Empty : toolResponse.Error.Code) + ", Message=" + (toolResponse.Error == null ? string.Empty : toolResponse.Error.Message));
+                RevitMcpDiagnosticLogger.Log("tools/call error result. ToolName=" + (toolName ?? "<null>") + ", scenario=" + scenario + ", requestId=" + requestId + ", ErrorCode=" + (toolResponse.Error == null ? string.Empty : toolResponse.Error.Code) + ", Message=" + (toolResponse.Error == null ? string.Empty : toolResponse.Error.Message) + GetInstanceLogSuffix());
             if (interactionLogger != null)
                 interactionLogger.LogToolEnd(requestId, toolName, arguments, toolResponse, stopwatch.ElapsedMilliseconds, toolArea);
 
@@ -348,6 +417,36 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             return result;
         }
 
+        private static RevitMcpToolCallResponse CreateFileAccessDeniedResponse(string toolName)
+        {
+            return new RevitMcpToolCallResponse
+            {
+                Success = false,
+                ToolName = toolName,
+                Error = new RevitMcpToolExecutionError
+                {
+                    Code = "attachment_access_denied",
+                    Message = "WPF chat attachments can only be read by the wpf_window MCP scenario.",
+                    Details = new JObject { { "toolName", toolName ?? string.Empty } }
+                }
+            };
+        }
+
+        private static RevitMcpToolCallResponse CreateRequestCanceledResponse(string toolName)
+        {
+            return new RevitMcpToolCallResponse
+            {
+                Success = false,
+                ToolName = toolName,
+                Error = new RevitMcpToolExecutionError
+                {
+                    Code = "request_cancelled",
+                    Message = "The WPF request was cancelled by the user.",
+                    Details = new JObject { { "toolName", toolName ?? string.Empty } }
+                }
+            };
+        }
+
         private JObject CreateStatusObject()
         {
             return new JObject
@@ -355,7 +454,11 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 { "name", "revit-mcp" },
                 { "status", IsRunning ? "running" : "stopped" },
                 { "endpoint", _prefix },
-                { "tools", RevitMcpToolRegistry.GetAll().Count }
+                { "instance_id", _instanceId },
+                { "process_id", Process.GetCurrentProcess().Id },
+                { "revit_version", _revitVersion },
+                { "tools", RevitMcpToolRegistry.ToMcpToolsArray(false).Count },
+                { "wpf_tools", RevitMcpToolRegistry.GetAll().Count }
             };
         }
 
@@ -634,6 +737,25 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             return "external_mcp";
         }
 
+        private static string ResolveRequestScope(HttpListenerRequest request)
+        {
+            try
+            {
+                string value = request == null
+                    ? null
+                    : request.Headers["X-Revit-MCP-Request-Scope"];
+                if (string.IsNullOrWhiteSpace(value))
+                    return null;
+
+                value = value.Trim();
+                return value.Length <= 128 ? value : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static string NormalizeScenario(string value)
         {
             value = (value ?? string.Empty).Trim().ToLowerInvariant();
@@ -653,6 +775,16 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
         private static bool IsWpfScenario(string scenario)
         {
             return string.Equals(scenario, "wpf_window", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private string GetInstanceLogSuffix()
+        {
+            return ", InstanceId="
+                + (_instanceId ?? string.Empty)
+                + ", RevitVersion="
+                + _revitVersion
+                + ", ProcessId="
+                + Process.GetCurrentProcess().Id;
         }
 
         private static string CreateDiagnosticRequestId(JToken id)

@@ -3,7 +3,6 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using KPLN_CoordiantorAI.ExternalAIModel.Mcp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -13,17 +12,36 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.McpClient
     {
         private readonly HttpClient _httpClient;
         private readonly string _endpoint;
+        private readonly string _requestScopeId;
         private int _nextRequestId = 1;
         private bool _disposed;
 
         public InternalMcpClient()
-            : this(RevitMcpServer.DefaultEndpoint)
+            : this(ResolveCurrentProcessEndpoint(), null)
         {
         }
 
+        private static string ResolveCurrentProcessEndpoint()
+        {
+            if (string.IsNullOrWhiteSpace(ModuleData.McpEndpoint))
+            {
+                throw new InvalidOperationException(
+                    "The MCP server for this Revit process is not running. "
+                    + "Restart Revit and check the Coordinator AI diagnostic log.");
+            }
+
+            return ModuleData.McpEndpoint;
+        }
+
         public InternalMcpClient(string endpoint)
+            : this(endpoint, null)
+        {
+        }
+
+        public InternalMcpClient(string endpoint, string requestScopeId)
         {
             _endpoint = endpoint;
+            _requestScopeId = requestScopeId;
             _httpClient = new HttpClient();
             _httpClient.Timeout = TimeSpan.FromMinutes(5);
         }
@@ -87,6 +105,8 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.McpClient
             {
                 httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
                 httpRequest.Headers.Add("X-Revit-MCP-Client", "wpf_window");
+                if (!string.IsNullOrWhiteSpace(_requestScopeId))
+                    httpRequest.Headers.Add("X-Revit-MCP-Request-Scope", _requestScopeId);
 
                 using (HttpResponseMessage httpResponse = await _httpClient.SendAsync(httpRequest, cancellationToken))
                 {

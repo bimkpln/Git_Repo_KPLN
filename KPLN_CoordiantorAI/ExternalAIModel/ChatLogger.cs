@@ -228,10 +228,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
         public void LogWithTokens(
             string question,
             string answer,
-            int cacheHitTokens,
-            int cacheMissTokens,
-            int completionTokens,
-            int totalTokens,
+            long cacheHitTokens,
+            long cacheMissTokens,
+            long completionTokens,
+            long totalTokens,
             double usdToRubRate = USD_TO_RUB_RATE)
         {
             DateTime timestamp = DateTime.Now;
@@ -261,10 +261,10 @@ namespace KPLN_CoordiantorAI.ExternalModel
         public void LogWithTokens(
             string question,
             string answer,
-            int cacheHitTokens,
-            int cacheMissTokens,
-            int completionTokens,
-            int totalTokens,
+            long cacheHitTokens,
+            long cacheMissTokens,
+            long completionTokens,
+            long totalTokens,
             DateTime requestTime,
             DateTime responseTime,
             string revitModelName,

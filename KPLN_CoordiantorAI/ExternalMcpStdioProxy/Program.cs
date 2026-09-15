@@ -9,7 +9,6 @@ namespace RevitMcpStdioProxy
 {
     internal static class Program
     {
-        private const string DefaultEndpoint = "http://127.0.0.1:48731/mcp/";
         private static readonly JavaScriptSerializer Serializer = new JavaScriptSerializer();
 
         private static async Task<int> Main(string[] args)
@@ -17,12 +16,23 @@ namespace RevitMcpStdioProxy
             Console.InputEncoding = Encoding.UTF8;
             Console.OutputEncoding = new UTF8Encoding(false);
 
-            string endpoint = ResolveEndpoint(args);
-            Console.Error.WriteLine("Revit MCP stdio proxy started. Endpoint=" + endpoint);
+            ProxyOptions options;
+            try
+            {
+                options = ProxyOptions.Parse(args);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("Invalid proxy configuration: " + ex.Message);
+                return 2;
+            }
+
+            Console.Error.WriteLine("Revit MCP stdio proxy started. Mode=" + options.Describe());
 
             using (HttpClient client = new HttpClient())
             {
                 client.Timeout = TimeSpan.FromMinutes(10);
+                RevitMcpRouter router = new RevitMcpRouter(client, options);
 
                 string line;
                 while ((line = Console.ReadLine()) != null)
@@ -34,8 +44,8 @@ namespace RevitMcpStdioProxy
 
                     try
                     {
-                        string responseJson = await ForwardToRevitAsync(client, endpoint, line);
-                        if (metadata.HasId)
+                        string responseJson = await router.HandleAsync(line);
+                        if (metadata.HasId && !string.IsNullOrWhiteSpace(responseJson))
                         {
                             Console.WriteLine(responseJson);
                             Console.Out.Flush();
@@ -43,10 +53,18 @@ namespace RevitMcpStdioProxy
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine("Proxy request failed: " + ex.GetType().Name + ": " + ex.Message);
+                        Console.Error.WriteLine(
+                            "Proxy request failed: "
+                            + ex.GetType().Name
+                            + ": "
+                            + ex.Message);
                         if (metadata.HasId)
                         {
-                            Console.WriteLine(CreateJsonRpcError(metadata.IdJson, -32000, "Revit MCP proxy error: " + ex.Message));
+                            Console.WriteLine(
+                                CreateJsonRpcError(
+                                    metadata.IdJson,
+                                    -32000,
+                                    "Revit MCP proxy error: " + ex.Message));
                             Console.Out.Flush();
                         }
                     }
@@ -57,54 +75,6 @@ namespace RevitMcpStdioProxy
             return 0;
         }
 
-        private static string ResolveEndpoint(string[] args)
-        {
-            for (int i = 0; args != null && i < args.Length - 1; i++)
-            {
-                if (string.Equals(args[i], "--endpoint", StringComparison.OrdinalIgnoreCase))
-                    return NormalizeEndpoint(args[i + 1]);
-            }
-
-            string envEndpoint = Environment.GetEnvironmentVariable("REVIT_MCP_ENDPOINT");
-            if (!string.IsNullOrWhiteSpace(envEndpoint))
-                return NormalizeEndpoint(envEndpoint);
-
-            return DefaultEndpoint;
-        }
-
-        private static string NormalizeEndpoint(string endpoint)
-        {
-            if (string.IsNullOrWhiteSpace(endpoint))
-                return DefaultEndpoint;
-
-            endpoint = endpoint.Trim();
-            return endpoint.EndsWith("/", StringComparison.Ordinal) ? endpoint : endpoint + "/";
-        }
-
-        private static async Task<string> ForwardToRevitAsync(HttpClient client, string endpoint, string json)
-        {
-            using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, endpoint))
-            {
-                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
-                request.Headers.Add("X-Revit-MCP-Client", ResolveClientName());
-
-                using (HttpResponseMessage response = await client.SendAsync(request))
-                {
-                    string responseJson = await response.Content.ReadAsStringAsync();
-                    if (!response.IsSuccessStatusCode)
-                        throw new InvalidOperationException("HTTP " + (int)response.StatusCode + ": " + responseJson);
-
-                    return responseJson;
-                }
-            }
-        }
-
-        private static string ResolveClientName()
-        {
-            string value = Environment.GetEnvironmentVariable("REVIT_MCP_CLIENT_NAME");
-            return string.IsNullOrWhiteSpace(value) ? "external_mcp" : value.Trim();
-        }
-
         private static RequestMetadata ReadRequestMetadata(string json)
         {
             try
@@ -112,7 +82,7 @@ namespace RevitMcpStdioProxy
                 object parsed = Serializer.DeserializeObject(json);
                 Dictionary<string, object> obj = parsed as Dictionary<string, object>;
                 if (obj == null || !obj.ContainsKey("id"))
-                    return new RequestMetadata(false, "null");
+                    return new RequestMetadata(obj == null, "null");
 
                 return new RequestMetadata(true, Serializer.Serialize(obj["id"]));
             }

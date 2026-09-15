@@ -94,6 +94,8 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Transactions" />
     <Reference Include="System.Windows.Forms" />
@@ -144,10 +146,15 @@
     <Compile Include="ExternalAIModel\Commands.cs" />
     <Compile Include="ExternalAIModel\Connection.cs" />
     <Compile Include="ExternalAIModel\DiagnosticLogger.cs" />
+    <Compile Include="ExternalAIModel\ModelChatLegacyLogReader.cs" />
+    <Compile Include="ExternalAIModel\ModelChatHistoryRepository.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpContracts.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpDiagnosticLogger.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpExternalEventHandler.cs" />
+    <Compile Include="ExternalAIModel\Mcp\RevitMcpFileAttachmentService.cs" />
+    <Compile Include="ExternalAIModel\Mcp\RevitMcpImageAttachmentService.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpInteractionLogger.cs" />
+    <Compile Include="ExternalAIModel\Mcp\RevitMcpInstanceRegistry.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpSecurity.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpToolArgumentException.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpServer.cs" />
@@ -173,6 +180,7 @@
     <Compile Include="Forms\ExternalModelWindow.xaml.cs">
       <DependentUpon>ExternalModelWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\ModelChatHistoryWindow.cs" />
     <Compile Include="Forms\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
