@@ -45,7 +45,7 @@
     <OutputPath>bin\Debug\2020\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
-    <OutputPath>bin\Debug\2023\</OutputPath>
+    <OutputPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_Tools_OVVK\KPLN_Tools_OVVK\bin\Debug\2023\</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
     <OutputPath>bin\Debug\2024\</OutputPath>
@@ -151,6 +151,7 @@
     </When>
   </Choose>
   <ItemGroup>
+    <Compile Include="Common\IDHelper.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
@@ -164,6 +165,7 @@
     <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
     <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
+    <Compile Include="ExternalCommands\Command_VentilationSettingsConfigurator.cs" />
     <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
@@ -204,6 +206,9 @@
     </Compile>
     <Compile Include="Forms\ScheduleSubForm.xaml.cs">
       <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\VentilationSettingsConfiguratorMain.xaml.cs">
+      <DependentUpon>VentilationSettingsConfiguratorMain.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -270,10 +275,18 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Forms\VentilationSettingsConfiguratorMain.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\ventilationSettingsConfiguratorBig.png" />
+    <EmbeddedResource Include="Imagens\ventilationSettingsConfiguratorSmall.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
