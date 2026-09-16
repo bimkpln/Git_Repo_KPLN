@@ -151,16 +151,22 @@ namespace KPLN_Loader.Services.Abstract
             if (currentUser.IsDebugMode)
             {
                 return ExecuteQuery<Module>(
-                    $"SELECT * FROM {MainDB_Tables.Modules} " +
-                    $"WHERE {nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
-                    $"AND ({nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR {nameof(Module.IsDebugMode)} = {SqlTrueLiteral});");
+                    $"SELECT * FROM {MainDB_Tables.Modules} m " +
+                    $"WHERE m.{nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
+                    $"AND EXISTS (SELECT 1 FROM {MainDB_Tables.ModulesMatrix} mm " +
+                    $"WHERE mm.{nameof(Module)}Id = m.{nameof(Module.Id)} " +
+                    $"AND (mm.{nameof(Module.SubDepartmentId)} = 1 OR mm.{nameof(Module.SubDepartmentId)} = @{nameof(User.SubDepartmentId)})) " +
+                    $"AND (m.{nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR m.{nameof(Module.IsDebugMode)} = {SqlTrueLiteral});",
+                    new { currentUser.SubDepartmentId });
             }
 
             return ExecuteQuery<Module>(
-                $"SELECT * FROM {MainDB_Tables.Modules} " +
-                $"WHERE {nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
-                $"AND ({nameof(Module.SubDepartmentId)} = 1 OR {nameof(Module.SubDepartmentId)} = @{nameof(User.SubDepartmentId)}) " +
-                $"AND ({nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR {nameof(Module.IsDebugMode)} = {SqlFalseLiteral});",
+                $"SELECT * FROM {MainDB_Tables.Modules} m " +
+                $"WHERE m.{nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
+                $"AND EXISTS (SELECT 1 FROM {MainDB_Tables.ModulesMatrix} mm " +
+                $"WHERE mm.{nameof(Module)}Id = m.{nameof(Module.Id)} " +
+                $"AND (mm.{nameof(Module.SubDepartmentId)} = 1 OR mm.{nameof(Module.SubDepartmentId)} = @{nameof(User.SubDepartmentId)})) " +
+                $"AND (m.{nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR m.{nameof(Module.IsDebugMode)} = {SqlFalseLiteral});",
                 new { currentUser.SubDepartmentId });
         }
 

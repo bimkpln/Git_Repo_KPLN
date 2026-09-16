@@ -8,6 +8,7 @@
         Documents,
         LoaderDescriptions,
         Modules,
+        ModulesMatrix,
         Projects,
         ProjectsMatrix,
         SubDepartments,
