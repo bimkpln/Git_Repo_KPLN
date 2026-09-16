@@ -142,12 +142,6 @@
   <data name="dimHeplerSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\dimHeplerSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="ductThicknessBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\ductThicknessBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="ductThicknessSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\ductThicknessSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="gnsAreaBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\gnsAreaBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -172,18 +166,6 @@
   <data name="monitorMainSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\monitorMainSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="ozkDuctAccessoryBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\ozkDuctAccessoryBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="ozkDuctAccessorySmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\ozkDuctAccessorySmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="pipeThicknessBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\pipeThicknessBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="pipeThicknessSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\pipeThicknessSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="searchUserBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\searchUserBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -201,12 +183,6 @@
   </data>
   <data name="ssSystemsSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\ssSystemsSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="systemMangerBig" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\systemMangerBig.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="systemMangerSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Imagens\systemMangerSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="wipeSmall" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Imagens\wipeSmall.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

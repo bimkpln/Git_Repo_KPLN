@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -84,10 +84,6 @@
     <Reference Include="KPLN_Loader">
       <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
       <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Office.Interop.Excel, Version=15.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Office.Interop.Excel.15.0.4795.1001\lib\net20\Microsoft.Office.Interop.Excel.dll</HintPath>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
@@ -211,13 +207,10 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\IDHelper.cs" />
-    <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_AR_Furniture3DFrom2D.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
-    <Compile Include="Common\ScheduleHelper.cs" />
-    <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
     <Compile Include="ExternalCommands\Command_hiddenElementsFilter.cs" />
     <Compile Include="ExternalCommands\Command_KR_expitVolume.cs" />
     <Compile Include="ExternalCommands\Command_KR_IFCRebarMark.cs" />
@@ -227,14 +220,9 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_PreSetData.cs" />
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
-    <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AutoSaveConfig.cs" />
-    <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\AUPT_TagPlacerForm.xaml.cs">
-      <DependentUpon>AUPT_TagPlacerForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\EvacuationRoutesDialog.xaml.cs">
       <DependentUpon>EvacuationRoutesDialog.xaml</DependentUpon>
@@ -257,9 +245,7 @@
     <Compile Include="Forms\HiddenElementsFilterWindow.xaml.cs">
       <DependentUpon>HiddenElementsFilterWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\Models\AUPTTagPlacerM.cs" />
     <Compile Include="Forms\Models\AutoSaveM.cs" />
-    <Compile Include="Forms\Models\AUPTTagPlacerVM.cs" />
     <Compile Include="Forms\Models\AutoSaveVM.cs" />
     <Compile Include="Forms\NodeManagerChangeCategoryWindow.xaml.cs">
       <DependentUpon>NodeManagerChangeCategoryWindow.xaml</DependentUpon>
@@ -293,24 +279,13 @@
     <Compile Include="Common\HolesManager\IOSHoleDTO.cs" />
     <Compile Include="Common\HolesManager\IOSHolesPrepareManager.cs" />
     <Compile Include="Common\HolesManager\IOSShaftPrepareManager.cs" />
-    <Compile Include="Common\OVVK_System\DuctThicknessEntity.cs" />
-    <Compile Include="Common\OVVK_System\OVVK_MergeSystem.cs" />
-    <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
-    <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
-    <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
     <Compile Include="Common\RibbonItemExtensions.cs" />
     <Compile Include="Common\DimensionDTO.cs" />
     <Compile Include="Common\StaticAvailable.cs" />
     <Compile Include="Common\LinkManager\LoadRLI_Service.cs" />
-    <Compile Include="ExecutableCommand\CommandShowElement.cs" />
-    <Compile Include="ExecutableCommand\CommandSystemManager_VMUpdater.cs" />
-    <Compile Include="ExecutableCommand\CommandSystemManager_MergeSystem.cs" />
-    <Compile Include="ExecutableCommand\CommandSystemManager_ViewCreator.cs" />
     <Compile Include="ExecutableCommand\CommandLinkChanger_Start.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_CheckParams.cs" />
     <Compile Include="ExecutableCommand\CommandExtraMonitoring_SetParams.cs" />
-    <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
-    <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AR_PyatnGraph.cs" />
     <Compile Include="ExternalCommands\Command_AR_TEPDesign.cs" />
     <Compile Include="ExternalCommands\Command_KR_WSofLinks.cs" />
@@ -320,11 +295,7 @@
     <Compile Include="ExternalCommands\CommandSendMsgToBitrix.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AR_GNSBound.cs" />
     <Compile Include="ExternalCommands\Command_FillInParametersSS.cs" />
-    <Compile Include="ExternalCommands\Command_OVVK_SystemManager.cs" />
-    <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
-    <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
     <Compile Include="ExternalCommands\Command_SETLinkChanger.cs" />
-    <Compile Include="ExternalCommands\Command_OVVK_PipeThickness.cs" />
     <Compile Include="ExternalCommands\CommandExtraMonitoring.cs" />
     <Compile Include="ExternalCommands\Command_KR_SMNX_RebarHelper.cs" />
     <Compile Include="ExternalCommands\CommandHolesManagerIOS.cs" />
@@ -332,7 +303,6 @@
     <Compile Include="ExternalCommands\CommandDimensionHelper.cs" />
     <Compile Include="ExternalCommands\CommandSearchRevitUser.cs" />
     <Compile Include="ExternalCommands\CommandTagWiper.cs" />
-    <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
     <Compile Include="Forms\AR_PyatnGraph_Main.xaml.cs">
       <DependentUpon>AR_PyatnGraph_Main.xaml</DependentUpon>
     </Compile>
@@ -353,36 +323,17 @@
     <Compile Include="Forms\Models\AR_PyatnGraph_VM.cs" />
     <Compile Include="Forms\Models\Core\IRLinkUserControl.cs" />
     <Compile Include="Forms\Models\Core\RelayCommand.cs" />
-    <Compile Include="Forms\Models\OVVK_SystemManager_VM.cs" />
     <Compile Include="Forms\Models\Core\VM_UserEntity.cs" />
-    <Compile Include="Forms\Models\ScheduleFormM.cs" />
-    <Compile Include="Forms\Models\ScheduleFormVM.cs" />
-    <Compile Include="Forms\Models\ScheduleSubFormVM.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_VM.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\NodeManagerManageTagsWindow.xaml.cs">
       <DependentUpon>NodeManagerManageTagsWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OVVK_MergeSystemsForm.xaml.cs">
-      <DependentUpon>OVVK_MergeSystemsForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OVVK_SystemManagerForm.xaml.cs">
-      <DependentUpon>OVVK_SystemManagerForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OV_DuctThicknessForm.xaml.cs">
-      <DependentUpon>OV_DuctThicknessForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ScanProgressWindow.xaml.cs">
       <DependentUpon>ScanProgressWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\AutosaveForm.xaml.cs">
       <DependentUpon>AutosaveForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ScheduleSubForm.xaml.cs">
-      <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ScheduleMainForm.xaml.cs">
-      <DependentUpon>ScheduleMainForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\RLinkUpdateContent.xaml.cs">
       <DependentUpon>RLinkUpdateContent.xaml</DependentUpon>
@@ -407,12 +358,6 @@
     </Compile>
     <Compile Include="Forms\RLinkManagerForm.xaml.cs">
       <DependentUpon>RLinkManagerForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OV_OZKDuctAccessoryForm.xaml.cs">
-      <DependentUpon>OV_OZKDuctAccessoryForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\OVVK_PipeThicknessForm.xaml.cs">
-      <DependentUpon>OVVK_PipeThicknessForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SendMsgToBitrix.xaml.cs">
       <DependentUpon>SendMsgToBitrix.xaml</DependentUpon>
@@ -442,23 +387,15 @@
     <EmbeddedResource Include="Imagens\monitorMainBig.png" />
     <EmbeddedResource Include="Imagens\monitorMainSmall.png" />
     <EmbeddedResource Include="Imagens\ssSystemsSmall.png" />
-    <EmbeddedResource Include="Imagens\pipeThicknessBig.png" />
-    <EmbeddedResource Include="Imagens\pipeThicknessSmall.png" />
     <EmbeddedResource Include="Imagens\changeLevelBig.png" />
     <EmbeddedResource Include="Imagens\changeLevelSmall.png" />
     <EmbeddedResource Include="Imagens\smlt_Small.png" />
-    <EmbeddedResource Include="Imagens\ductThicknessBig.png" />
-    <EmbeddedResource Include="Imagens\ductThicknessSmall.png" />
-    <EmbeddedResource Include="Imagens\ozkDuctAccessoryBig.png" />
-    <EmbeddedResource Include="Imagens\ozkDuctAccessorySmall.png" />
     <EmbeddedResource Include="Imagens\linkChangeBig.png" />
     <EmbeddedResource Include="Imagens\linkChangeSmall.png" />
     <EmbeddedResource Include="Imagens\FillInParamBig.png" />
     <EmbeddedResource Include="Imagens\FillInParamSmall.png" />
     <EmbeddedResource Include="Imagens\sendMsgBig.png" />
     <EmbeddedResource Include="Imagens\sendMsgSmall.png" />
-    <EmbeddedResource Include="Imagens\systemMangerBig.png" />
-    <EmbeddedResource Include="Imagens\systemMangerSmall.png" />
     <EmbeddedResource Include="Imagens\gnsAreaBig.png" />
     <EmbeddedResource Include="Imagens\gnsAreaSmall.png" />
     <EmbeddedResource Include="Imagens\TEPDesignBig.png" />
@@ -470,10 +407,6 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
-    <Page Include="Forms\AUPT_TagPlacerForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -527,10 +460,6 @@
     <Resource Include="Imagens\eomMain32_dark.png" />
     <Resource Include="Imagens\krMain16.png" />
     <Resource Include="Imagens\krMain32.png" />
-    <Resource Include="Imagens\ovvkMain16.png" />
-    <Resource Include="Imagens\ovvkMain16_dark.png" />
-    <Resource Include="Imagens\ovvkMain32.png" />
-    <Resource Include="Imagens\ovvkMain32_dark.png" />
     <Resource Include="Imagens\ssMain16.png" />
     <Resource Include="Imagens\ssMain16_dark.png" />
     <Resource Include="Imagens\ssMain32.png" />
@@ -551,8 +480,6 @@
     <EmbeddedResource Include="Imagens\SpecSumBig.png" />
     <EmbeddedResource Include="Imagens\SpecSumSmall.png" />
     <EmbeddedResource Include="Imagens\diskBig.png" />
-    <EmbeddedResource Include="Imagens\auptTagBig.png" />
-    <EmbeddedResource Include="Imagens\auptTagSmall.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DBig.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DBig_dark.png" />
     <EmbeddedResource Include="Imagens\furniture2DFrom3DSmall.png" />
@@ -621,26 +548,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\OVVK_MergeSystemsForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\OVVK_SystemManagerForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\OV_DuctThicknessForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\ScheduleSubForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\ScheduleMainForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Page Include="Forms\RLinkUpdateContent.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -670,14 +577,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\RLinkManagerForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\OV_OZKDuctAccessoryForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\OVVK_PipeThicknessForm.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

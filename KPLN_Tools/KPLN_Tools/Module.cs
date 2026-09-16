@@ -52,7 +52,34 @@ namespace KPLN_Tools
             else
                 mPanel = application.CreateRibbonPanel(tabName, panelMName);
 
-            //Добавляю выпадающий список pullDown
+            #region Отдельные кнопки (голова)
+            PushButtonData autoSaveConfig = CreateBtnData(
+            ExtCmd_AutoSaveConfig.PluginName,
+            ExtCmd_AutoSaveConfig.PluginName,
+            "Настроить автосохранение локальной копии модели. ВАЖНО: синхронизация при этом не происходит, только сохранение локальной копии. " +
+            "Если нужно внести изменения в модель из хранилища после вылета Revit - откройте последнюю локальную копию и произведите синхронизацию вручную",
+            string.Format(
+                "Возможности:\n " +
+                    "1. Вкл/выкл функцию автосохранения локальной копии.\n" +
+                    "2. Настройка частоты автосохранения.\n" +
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                ModuleData.Date,
+                ModuleData.Version,
+                ModuleData.ModuleName
+            ),
+            typeof(ExtCmd_AutoSaveConfig).FullName,
+            "KPLN_Tools.Imagens.diskBig.png",
+            "KPLN_Tools.Imagens.diskBig.png",
+            "http://moodle/mod/book/view.php?id=502&chapterid=1301#:~:text=%D0%9E%D0%A2%D0%94%D0%95%D0%9B%D0%AC%D0%9D%D0%AB%D0%99%20%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%90%D0%92%D0%A2%D0%9E%D0%A1%D0%9E%D0%A5%D0%A0%D0%90%D0%9D%D0%95%D0%9D%D0%98%D0%95%22",
+            true);
+
+            panel.AddItem(autoSaveConfig);
+
+            var ascRI = panel.GetItems().FirstOrDefault(item => item.Name.Equals(ExtCmd_AutoSaveConfig.PluginName));
+            SetRIShowText(ascRI, false);
+            #endregion
+
+
             #region Общие инструменты
             PulldownButton sharedPullDownBtn = CreatePulldownButtonInRibbon("Общие",
                 "Общие",
@@ -432,156 +459,6 @@ namespace KPLN_Tools
             }
             #endregion
 
-            #region Инструменты ОВВК
-            if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 4
-                || SQLiteMainService.CurrentUserDBSubDepartment.Id == 5
-                || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
-            {
-                PulldownButton ovvkToolsPullDownBtn = CreatePulldownButtonInRibbon(
-                    "Плагины ОВВК",
-                    "Плагины ОВВК",
-                    "ОВВК: Коллекция плагинов для автоматизации задач",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName),
-                    "ovvkMain",
-                    panel,
-                false);
-
-                PushButtonData ovvk_pipeThickness = CreateBtnData(
-                    Command_OVVK_PipeThickness.PluginName,
-                    Command_OVVK_PipeThickness.PluginName,
-                    "Заполняет толщину труб по выбранной конфигурации",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_OVVK_PipeThickness).FullName,
-                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
-                    "KPLN_Tools.Imagens.pipeThicknessSmall.png",
-                    "http://moodle");
-
-                PushButtonData ovvk_systemManager = CreateBtnData(
-                    Command_OVVK_SystemManager.PluginName,
-                    Command_OVVK_SystemManager.PluginName,
-                    "Управление системами в проекте",
-                    string.Format(
-                        "Функционал:" +
-                            "\n1. Обновляет имя систем;" +
-                            "\n2. Объединяет системы в группы для специфицирования и генерации видов;" +
-                            "\n3. Генерация видов." +
-                            "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_OVVK_SystemManager).FullName,
-                    "KPLN_Tools.Imagens.systemMangerSmall.png",
-                    "KPLN_Tools.Imagens.systemMangerSmall.png",
-                    "http://moodle");
-
-                PushButtonData ov_ductThickness = CreateBtnData(
-                    Command_OV_DuctThickness.PluginName,
-                    Command_OV_DuctThickness.PluginName,
-                    "Заполняет толщину воздуховодов в зависимости от типа системы и наличия изоляцияя/огнезащиты согласно СП.60 и СП.7",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_OV_DuctThickness).FullName,
-                    "KPLN_Tools.Imagens.ductThicknessSmall.png",
-                    "KPLN_Tools.Imagens.ductThicknessSmall.png",
-                    "http://moodle/mod/book/view.php?id=502&chapterid=1301");
-
-                PushButtonData ov_ozkDuctAccessory = CreateBtnData(
-                    Command_OV_OZKDuctAccessory.PluginName,
-                    Command_OV_OZKDuctAccessory.PluginName,
-                    "Заполняет данные по ОЗК клапанам",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_OV_OZKDuctAccessory).FullName,
-                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
-                    "KPLN_Tools.Imagens.ozkDuctAccessorySmall.png",
-                    "http://moodle");
-
-#if Revit2020 || Debug2020
-                PushButtonData set_InsulationPipes = CreateBtnData(
-                    "ОВВК: СЕТ_Изоляция",
-                    "ОВВК: СЕТ_Изоляция",
-                    "(ИСПРАВЛЕННАЯ ВЕРСИЯ СМЛТ): Заполняет данные по изоляции",
-                    string.Format(
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(Command_SET_InsulationPipes).FullName,
-                    "KPLN_Tools.Imagens.smlt_Small.png",
-                    "KPLN_Tools.Imagens.smlt_Small.png",
-                    "http://moodle");
-
-                ovvkToolsPullDownBtn.AddPushButton(set_InsulationPipes);
-#endif
-
-                PushButtonData ovvk_autonumber = CreateBtnData(
-                ExtCmd_ScheduleIncrementor.PluginName,
-                ExtCmd_ScheduleIncrementor.PluginName,
-                "Нумерация позици в спецификации на +1 от начального значения",
-                string.Format(
-                    "Алгоритм запуска:\n" +
-                        "1. Открываем спецификацию;\n" +
-                        "2. Запускаем и находим нужный столбец..\n\n" +
-                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                    ModuleData.Date,
-                    ModuleData.Version,
-                    ModuleData.ModuleName
-                ),
-                typeof(ExtCmd_ScheduleIncrementor).FullName,
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "KPLN_Tools.Imagens.autonumberSmall.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=687");
-
-                PushButtonData auptTagPlacer = CreateBtnData(
-                    ExtCmd_AUPT_TagPlacer.PluginName,
-                    ExtCmd_AUPT_TagPlacer.PluginName,
-                    "АУПТ: Расставляет автоматические марки для ответвлений",
-                    string.Format(
-                        "Алгоритм запуска:\n" +
-                            "1. Открываем план, на котором нужно промаркировать трубы систем АУПТ;\n" +
-                            "2. Запускаем и настраиваем правила маркировки.\n\n" +
-                        "Логика работы:\n" +
-                            "0. Управляемая логика вынесена в стартовое окно;\n" +
-                            "1. Игнорируются вертикальные участки на планах (до 80°);\n" +
-                            "2. Марка поворачивается параллельно трубе;\n" +
-                            "3. Марка ставиться по центру участка (учитывая врезки и др. соединители);\n\n" +
-                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(ExtCmd_AUPT_TagPlacer).FullName,
-                    "KPLN_Tools.Imagens.auptTagSmall.png",
-                    "KPLN_Tools.Imagens.auptTagSmall.png",
-                    "http://moodle/mod/book/view.php?id=502&chapterid=1301");
-
-                ovvkToolsPullDownBtn.AddPushButton(ovvk_pipeThickness);
-                ovvkToolsPullDownBtn.AddPushButton(ov_ductThickness);
-                ovvkToolsPullDownBtn.AddPushButton(ov_ozkDuctAccessory);
-                ovvkToolsPullDownBtn.AddPushButton(ovvk_systemManager);
-                ovvkToolsPullDownBtn.AddPushButton(ovvk_autonumber);
-                ovvkToolsPullDownBtn.AddPushButton(auptTagPlacer);
-            }
-            #endregion
 
             #region Инструменты СС
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id == 7 || SQLiteMainService.CurrentUserDBSubDepartment.Id == 8)
@@ -691,7 +568,7 @@ namespace KPLN_Tools
 
             #endregion
 
-            #region Отдельные кнопки
+            #region Отдельные кнопки (хвост)
             // Отверстия только для ИОС
             if (SQLiteMainService.CurrentUserDBSubDepartment.Id != 2 && SQLiteMainService.CurrentUserDBSubDepartment.Id != 3)
             {
@@ -728,32 +605,6 @@ namespace KPLN_Tools
 
                 holesPullDownBtn.AddPushButton(holesManagerIOS);
             }
-
-            PushButtonData autoSaveConfig = CreateBtnData(
-                    ExtCmd_AutoSaveConfig.PluginName,
-                    ExtCmd_AutoSaveConfig.PluginName,
-                    "Настроить автосохранение локальной копии модели. ВАЖНО: синхронизация при этом не происходит, только сохранение локальной копии. " +
-                    "Если нужно внести изменения в модель из хранилища после вылета Revit - откройте последнюю локальную копию и произведите синхронизацию вручную",
-                    string.Format(
-                        "Возможности:\n " +
-                            "1. Вкл/выкл функцию автосохранения локальной копии.\n" +
-                            "2. Настройка частоты автосохранения.\n" +
-                            "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
-                        ModuleData.Date,
-                        ModuleData.Version,
-                        ModuleData.ModuleName
-                    ),
-                    typeof(ExtCmd_AutoSaveConfig).FullName,
-                    "KPLN_Tools.Imagens.diskBig.png",
-                    "KPLN_Tools.Imagens.diskBig.png",
-                    "http://moodle/mod/book/view.php?id=502&chapterid=1301#:~:text=%D0%9E%D0%A2%D0%94%D0%95%D0%9B%D0%AC%D0%9D%D0%AB%D0%99%20%D0%9F%D0%9B%D0%90%D0%93%D0%98%D0%9D%20%22%D0%90%D0%92%D0%A2%D0%9E%D0%A1%D0%9E%D0%A5%D0%A0%D0%90%D0%9D%D0%95%D0%9D%D0%98%D0%95%22",
-                    true);
-
-            panel.AddItem(autoSaveConfig);
-
-            var ascRI = panel.GetItems().FirstOrDefault(item => item.Name.Equals(ExtCmd_AutoSaveConfig.PluginName));
-            SetRIShowText(ascRI, false);
-
 
             // Только для 20 версии, т.к.для более новых появилось событие изменения выбора пользователем
 #if Revit2020 || Debug2020
