@@ -191,13 +191,16 @@ namespace KPLN_Clashes_Ribbon.Commands
 
             Transform docTRans = doc.ActiveProjectLocation.GetTotalTransform();
 
-            // Уточняю трансофрм, если БТП была смещена
-            var docBP = new FilteredElementCollector(doc)
-                .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
-                .FirstOrDefault();
-            var docBPBBox = docBP?.get_BoundingBox(null);
-            if (docBPBBox != null && !docBPBBox.Max.IsAlmostEqualTo(XYZ.Zero, 0.1))
-                docTRans *= (Transform.CreateTranslation(docBPBBox.Max).Inverse);
+            // Уточняю трансофрм на значение БТП, если Origin != XYZ.Zero
+            if (docTRans.Origin.IsAlmostEqualTo(XYZ.Zero, 0.1))
+            {
+                var docBP = new FilteredElementCollector(doc)
+                    .OfCategory(BuiltInCategory.OST_ProjectBasePoint)
+                    .FirstOrDefault();
+                
+                var docBPBBox = docBP?.get_BoundingBox(null);
+                docTRans *= Transform.CreateTranslation(docBPBBox.Max).Inverse;
+            }
 
 
             // Проверка есть открытый док в списке с ошибками
@@ -389,6 +392,8 @@ namespace KPLN_Clashes_Ribbon.Commands
 
             return searchSymbol;
         }
+
+        private static bool IsAlmostEqual_Double(double db1, double db2, double tolerance) => Math.Abs(db1 - db2) <= tolerance;
     }
 }
 
