@@ -12,6 +12,7 @@
         ResizeMode="NoResize"
         Topmost="True"
         Title="KPLN: Толщина стенки труб"
+        Background="#2B2F38"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <ResourceDictionary>

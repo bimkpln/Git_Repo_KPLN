@@ -11,6 +11,7 @@
         SizeToContent="WidthAndHeight"
         ResizeMode="CanResizeWithGrip"
         Title="KPLN: ОВВК_Менеджер систем"
+        Background="#2B2F38"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <ResourceDictionary>

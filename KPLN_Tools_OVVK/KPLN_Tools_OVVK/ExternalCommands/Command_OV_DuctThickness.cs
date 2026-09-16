@@ -44,7 +44,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 
             OV_DuctThicknessForm form = new OV_DuctThicknessForm(doc, docElemsColl);
             WindowHandleSearch.MainWindowHandle.SetAsOwner(form);
-            form.ShowDialog();
+            form.Show();
 
             return Result.Succeeded;
         }

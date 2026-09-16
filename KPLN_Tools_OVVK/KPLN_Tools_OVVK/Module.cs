@@ -47,7 +47,7 @@ namespace KPLN_Tools_OVVK
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
                 typeof(Command_OVVK_PipeThickness).FullName,
                 "KPLN_Tools_OVVK.Imagens.pipeThicknessSmall.png",
-                "KPLN_Tools_OVVK.Imagens.pipeThicknessBig.png",
+                "KPLN_Tools_OVVK.Imagens.pipeThicknessSmall.png",
                 "http://moodle");
 
             PushButtonData ovvkSystemManager = CreateBtnData(
@@ -57,7 +57,7 @@ namespace KPLN_Tools_OVVK
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
                 typeof(Command_OVVK_SystemManager).FullName,
                 "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
-                "KPLN_Tools_OVVK.Imagens.systemMangerBig.png",
+                "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
                 "http://moodle");
 
             PushButtonData ovDuctThickness = CreateBtnData(
@@ -67,7 +67,7 @@ namespace KPLN_Tools_OVVK
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
                 typeof(Command_OV_DuctThickness).FullName,
                 "KPLN_Tools_OVVK.Imagens.ductThicknessSmall.png",
-                "KPLN_Tools_OVVK.Imagens.ductThicknessBig.png",
+                "KPLN_Tools_OVVK.Imagens.ductThicknessSmall.png",
                 "http://moodle");
 
             PushButtonData ovOzkDuctAccessory = CreateBtnData(
@@ -77,7 +77,7 @@ namespace KPLN_Tools_OVVK
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
                 typeof(Command_OV_OZKDuctAccessory).FullName,
                 "KPLN_Tools_OVVK.Imagens.ozkDuctAccessorySmall.png",
-                "KPLN_Tools_OVVK.Imagens.ozkDuctAccessoryBig.png",
+                "KPLN_Tools_OVVK.Imagens.ozkDuctAccessorySmall.png",
                 "http://moodle");
 
             #if Revit2020 || Debug2020
@@ -110,7 +110,7 @@ namespace KPLN_Tools_OVVK
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
                 typeof(ExtCmd_AUPT_TagPlacer).FullName,
                 "KPLN_Tools_OVVK.Imagens.auptTagSmall.png",
-                "KPLN_Tools_OVVK.Imagens.auptTagBig.png",
+                "KPLN_Tools_OVVK.Imagens.auptTagSmall.png",
                 "http://moodle");
 
             ovvkToolsPullDownBtn.AddPushButton(ovvkPipeThickness);

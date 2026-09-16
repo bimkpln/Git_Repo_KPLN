@@ -6,11 +6,12 @@
         xmlns:local="clr-namespace:KPLN_Tools_OVVK.Forms"
         mc:Ignorable="d" 
         SizeToContent="Height"
-        Width="450"
-        Height="215"
+        Width="550"
+        Height="235"
         ResizeMode="NoResize"
         Topmost="True"
         Title="KPLN: Толщина стенки воздуховодов по СП"
+        Background="#2B2F38"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <ResourceDictionary>
@@ -42,7 +43,7 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
                 <Setter Property="HorizontalAlignment" Value="Left"/>
             </Style>
-            <Style x:Key="TBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource TXB}">
+            <Style x:Key="TBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource KPLN_TextBox}">
                 <Setter Property="FontSize" Value="12"/>
                 <Setter Property="Margin" Value="5,0,5,0"/>
                 <Setter Property="Padding" Value="5"/>
@@ -74,7 +75,7 @@
         <Grid
             Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="235"/>
+                <ColumnDefinition Width="335"/>
                 <ColumnDefinition Width="200"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
@@ -108,7 +109,7 @@
 
             <TextBlock
                 Grid.Row="1"
-                Text="Индивидуальная часть имени типа огнезащитного материала:"
+                Text="Индивидуальная часть имени типа огнезащитного материала. ВАЖНО: чувствителен к регистру."
                 Style="{StaticResource TBlock}"/>
             <TextBox
                 Grid.Row="1"
@@ -137,12 +138,12 @@
 
             <TextBlock
                 Grid.Row="2"
-                Text="Индивидуальная часть параметра 'Имя системы' (если несколько, то через '~'):"
+                Text="Индивидуальная часть параметра 'Тип системы', для определния систем ДУ/ПД. Если вариантов несколько, то перечисли через '~', если нужны исключения - в начале имени добавляй '!'. ВАЖНО: чувствителен к регистру."
                 Style="{StaticResource TBlock}"/>
             <TextBox
                 Grid.Row="2"
                 Grid.Column="1"
-                Text="{Binding PartOfSystemName}"
+                Text="{Binding PartOfSystemTypeName}"
                 Style="{StaticResource TBox}">
                 <TextBox.ToolTip>
                     <StackPanel
@@ -152,10 +153,7 @@
                             Text="1. Находишь в диспетчере проекта категорию 'Системы воздуховодов'"/>
                         <TextBlock
                             TextWrapping="Wrap"
-                            Text="2. Проверяешь свойства типов ВСЕХ систем, чтобы у параметра 'Сокращение' была индивидуальная часть (в шаблоне ОВиК это '_Противодым._')"/>
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Text="3. Если были неточности - перед запуском данного плагина ОБЯЗАТЕЛЬНО нужно обновить значения 'Имя системы'. Это выполняется отдельным плагином"/>
+                            Text="2. Анализируешь список всех типов систем и выбираешь правило, которое выделит из них системы дымоудаления"/>
                     </StackPanel>
                 </TextBox.ToolTip>
             </TextBox>

@@ -42,7 +42,7 @@ namespace KPLN_Tools_OVVK.Forms
                 {
                     ParameterName = "КП_И_Толщина стенки",
                     PartOfInsulationName = "EI",
-                    PartOfSystemName = "_Противодым._",
+                    PartOfSystemTypeName = "ДУ~ПД",
                 };
             }
             #endregion
@@ -67,7 +67,7 @@ namespace KPLN_Tools_OVVK.Forms
         {
             Task.Run(() => { SaveConfig(); });
 
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandDuctThickness_Start(_doc, CurrentDuctThicknessEntity, _elementsToSet));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandDuctThickness_Start(CurrentDuctThicknessEntity, _elementsToSet));
 
             Close();
         }

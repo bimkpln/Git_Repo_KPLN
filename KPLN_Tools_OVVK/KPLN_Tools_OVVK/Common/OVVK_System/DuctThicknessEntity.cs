@@ -43,7 +43,7 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
         /// <summary>
         /// Общее поле для ввода
         /// </summary>
-        public string PartOfSystemName
+        public string PartOfSystemTypeName
         {
             get => _partOfSystemName;
             set
@@ -53,16 +53,16 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                 
                 string[] splitedSysName = _partOfSystemName.Split('~');
                 if (splitedSysName.Length > 1)
-                    PartsOfSystemName = splitedSysName;
+                    PartsOfSystemTypeName = splitedSysName;
                 else
-                    PartsOfSystemName = new string[1] { _partOfSystemName };
+                    PartsOfSystemTypeName = new string[1] { _partOfSystemName };
             }
         }
 
         /// <summary>
         /// Расчлененное на части имена систем
         /// </summary>
-        public string[] PartsOfSystemName { get; private set; }
+        public string[] PartsOfSystemTypeName { get; private set; }
 
         public object ToJson()
         {
@@ -70,7 +70,7 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             {
                 this.ParameterName,
                 this.PartOfInsulationName,
-                this.PartOfSystemName
+                this.PartOfSystemTypeName
             };
         }
 
