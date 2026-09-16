@@ -60,6 +60,27 @@ namespace KPLN_Tools_OVVK
                 "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
                 "http://moodle");
 
+
+
+
+
+            PushButtonData ventilationSettingsConfigurator = CreateBtnData(
+                Command_VentilationSettingsConfigurator.PluginName,
+                Command_VentilationSettingsConfigurator.PluginName,
+                "Плагин-конфигуратор семейств вент установок",
+                string.Format(
+                    "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName
+                ),
+                typeof(Command_VentilationSettingsConfigurator).FullName,
+                "KPLN_Tools_OVVK.Imagens.ventilationSettingsConfiguratorSmall.png",
+                "KPLN_Tools_OVVK.Imagens.ventilationSettingsConfiguratorSmall.png",
+                "http://moodle");
+
+
+
+
+
+
             PushButtonData ovDuctThickness = CreateBtnData(
                 Command_OV_DuctThickness.PluginName,
                 Command_OV_DuctThickness.PluginName,
@@ -117,6 +138,7 @@ namespace KPLN_Tools_OVVK
             ovvkToolsPullDownBtn.AddPushButton(ovDuctThickness);
             ovvkToolsPullDownBtn.AddPushButton(ovOzkDuctAccessory);
             ovvkToolsPullDownBtn.AddPushButton(ovvkSystemManager);
+            ovvkToolsPullDownBtn.AddPushButton(ventilationSettingsConfigurator);
             ovvkToolsPullDownBtn.AddPushButton(ovvkAutonumber);
             ovvkToolsPullDownBtn.AddPushButton(auptTagPlacer);
 
