@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_Tools_OVVK", "KPLN_Tools_OVVK\KPLN_Tools_OVVK.csproj", "{B456569D-067D-4D40-A3F7-06BE2A9A5848}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug2020|x64 = Debug2020|x64
+		Debug2023|x64 = Debug2023|x64
+		Debug2024|x64 = Debug2024|x64
+		Revit2020|x64 = Revit2020|x64
+		Revit2023|x64 = Revit2023|x64
+		Revit2024|x64 = Revit2024|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Debug2020|x64.ActiveCfg = Debug2020|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Debug2020|x64.Build.0 = Debug2020|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Debug2023|x64.ActiveCfg = Debug2023|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Debug2023|x64.Build.0 = Debug2023|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Debug2024|x64.ActiveCfg = Debug2024|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Debug2024|x64.Build.0 = Debug2024|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Revit2020|x64.ActiveCfg = Revit2020|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Revit2020|x64.Build.0 = Revit2020|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Revit2023|x64.ActiveCfg = Revit2023|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Revit2023|x64.Build.0 = Revit2023|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Revit2024|x64.ActiveCfg = Revit2024|x64
+		{B456569D-067D-4D40-A3F7-06BE2A9A5848}.Revit2024|x64.Build.0 = Revit2024|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2990DC33-6E7B-4225-904A-7C4E85B1BFA6}
+	EndGlobalSection
+EndGlobal
