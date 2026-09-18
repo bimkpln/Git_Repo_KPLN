@@ -556,9 +556,11 @@ namespace KPLN_ExtraFilter.Forms.Entities
                     fic = new FilteredElementCollector(Doc);
                     break;
                 case ViewFilterMode.UserSelection:
+                    // Проверяем текущее выделение Revit, а не сохранённый список окна.
+                    _userSelElems = GetElemsFromGroup(UIApp, Doc);
                     if (UserSelElems != null && UserSelElems.Any())
                     {
-                        fic = new FilteredElementCollector(Doc, GetElemsFromGroup(UIApp, Doc).Select(el => el.Id).ToArray());
+                        fic = new FilteredElementCollector(Doc, UserSelElems.Select(el => el.Id).ToArray());
                         break;
                     }
                     else

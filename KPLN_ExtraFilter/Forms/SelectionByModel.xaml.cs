@@ -157,6 +157,19 @@ namespace KPLN_ExtraFilter.Forms
 
         private void CHB_Where_Workset_Checked(object sender, RoutedEventArgs e) => this.CB_FilterWS.Focus();
 
+        private void TreeElement_Collapsed(object sender, RoutedEventArgs e)
+        {
+            if (!(e.OriginalSource is TreeViewItem item)
+                || !(item.DataContext is TreeElementEntity entity)
+                || entity.IsChecked.HasValue)
+                return;
+
+            // Оставляем видимым путь до строки с галкой.
+            e.Handled = true;
+            entity.CollapseToSelection();
+            item.SetCurrentValue(TreeViewItem.IsExpandedProperty, true);
+        }
+
         /// <summary>
         /// Отлов клика по элементу дерева, для добавления управления Shift'ом
         /// </summary>

@@ -45,8 +45,12 @@
         <TreeView 
             Grid.Column="0" 
             Margin="5"
+            TreeViewItem.Collapsed="TreeElement_Collapsed"
             ItemsSource="{Binding CurrentSelectionByModelM.TreeElemEntities}">
             <TreeView.Resources>
+                <Style TargetType="{x:Type TreeViewItem}">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                </Style>
                 <HierarchicalDataTemplate 
                     DataType="{x:Type local2:TreeElementEntity}"
                     ItemsSource="{Binding TEE_ChildrenColl}">
@@ -54,7 +58,8 @@
                         Orientation="Horizontal" 
                         VerticalAlignment="Center">
                         <CheckBox 
-                            IsChecked="{Binding IsChecked, Mode=TwoWay}" 
+                            IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                            IsThreeState="False"
                             Click="TreeElementCheckBox_Click"
                             Margin="3,0,5,0"/>
                         <TextBlock 
@@ -498,6 +503,13 @@
                      IsEnabled="{Binding CurrentSelectionByModelM.CanRun}" 
                      Height="30"/>
                 
+                <Button
+                    Style="{StaticResource BTN}"
+                    Content="Снять галки в дереве"
+                    Command="{Binding ClearTreeSelectionCmd}"
+                    ToolTip="Снимает все галки в дереве этого окна. Не влияет на выбор элементов в модели."
+                    Height="30"/>
+
                 <Button 
                     Style="{StaticResource BTN}"
                     Content="Сбросить настройки окна" 

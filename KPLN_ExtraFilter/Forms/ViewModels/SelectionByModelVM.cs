@@ -41,6 +41,7 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
 
             DropUserParamCmd = new RelayCommand<object>(_ => DropUserParam());
             ModelSelectionCmd = new RelayCommand<object>(_ => ModelSelection());
+            ClearTreeSelectionCmd = new RelayCommand<object>(_ => ClearTreeSelection());
             UpdateTreeElemsCmd = new RelayCommand<object>(_ => UpdateTreeElems());
 
             AddCategoryCmd = new RelayCommand<object>(_ => AddCategory());
@@ -59,6 +60,11 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         /// Комманда: Создать новую выборку в модели
         /// </summary>
         public ICommand ModelSelectionCmd { get; }
+
+        /// <summary>
+        /// Команда: Снять все галки в дереве
+        /// </summary>
+        public ICommand ClearTreeSelectionCmd { get; }
 
         /// <summary>
         /// Комманда: Сброс выбора
@@ -115,6 +121,8 @@ namespace KPLN_ExtraFilter.Forms.ViewModels
         public void ModelSelection() => KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new SelectionByModelExcCmd(CurrentSelectionByModelM));
 
         public void UpdateTreeElems() => CurrentSelectionByModelM.SetUserSelElems();
+
+        public void ClearTreeSelection() => TreeElementEntity.ClearChecksFromTreeElemColl(CurrentSelectionByModelM.TreeElemEntities);
 
         public void AddCategory()
         {

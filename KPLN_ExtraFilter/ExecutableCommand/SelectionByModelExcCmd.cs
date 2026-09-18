@@ -50,7 +50,8 @@ namespace KPLN_ExtraFilter.ExecutableCommand
                 if (resultIDToSelect != null)
                 {
                     uiDoc.Selection.SetElementIds(resultIDToSelect);
-                    _entity.UserSelElems = uiDoc.Selection.GetElementIds().Select(id => doc.GetElement(id));
+                    if (_entity.Where_ViewDocFilterMode == ViewFilterMode.UserSelection)
+                        _entity.UserSelElems = uiDoc.Selection.GetElementIds().Select(id => doc.GetElement(id));
                 }
 
                 return Result.Succeeded;

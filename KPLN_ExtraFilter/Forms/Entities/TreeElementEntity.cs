@@ -14,7 +14,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private bool _isChecked;
+        private bool? _isChecked = false;
         private bool _isExpanded;
 
         private TreeElementEntity() { }
@@ -69,19 +69,19 @@ namespace KPLN_ExtraFilter.Forms.Entities
         }
 
         /// <summary>
-        /// Группа/элемент выбран
+        /// Группа/элемент выбран: null означает частичный выбор
         /// </summary>
-        public bool IsChecked
+        public bool? IsChecked
         {
             get => _isChecked;
             set
             {
-                if (_isChecked == value)
+                if (!value.HasValue || _isChecked == value)
                     return;
 
                 _isChecked = value;
                 NotifyPropertyChanged();
-                UpdateChildrenCheck(value);
+                UpdateChildrenCheck(value.Value);
                 UpdateSubParentCheck();
             }
         }
@@ -297,12 +297,42 @@ namespace KPLN_ExtraFilter.Forms.Entities
             {
                 if (treeEnt.TEE_ChildrenColl == null || treeEnt.TEE_ChildrenColl.Count() == 0)
                 {
-                    if (treeEnt.TEE_Element != null && treeEnt.IsChecked)
+                    if (treeEnt.TEE_Element != null && treeEnt.IsChecked == true)
                         rElems.Add(treeEnt.TEE_Element);
                 }
                 else
                     GetAllCheckedRevitElemsFromTreeElemColl(treeEnt.TEE_ChildrenColl, ref rElems);
             }
+        }
+
+        /// <summary>
+        /// Снять все галки, включая частично выбранные ветки
+        /// </summary>
+        public static void ClearChecksFromTreeElemColl(IEnumerable<TreeElementEntity> treeElementEntities)
+        {
+            if (treeElementEntities == null)
+                return;
+
+            foreach (TreeElementEntity treeEnt in treeElementEntities)
+            {
+                treeEnt._isChecked = false;
+                treeEnt.NotifyPropertyChanged(nameof(IsChecked));
+                treeEnt.UpdateChildrenCheck(false);
+            }
+        }
+
+        /// <summary>
+        /// Свернуть поддерево, оставив раскрытыми только пути к выбранным веткам
+        /// </summary>
+        public void CollapseToSelection()
+        {
+            if (TEE_ChildrenColl != null)
+            {
+                foreach (TreeElementEntity child in TEE_ChildrenColl)
+                    child.CollapseToSelection();
+            }
+
+            IsExpanded = !IsChecked.HasValue;
         }
 
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = "") =>
@@ -354,9 +384,9 @@ namespace KPLN_ExtraFilter.Forms.Entities
             bool allUnchecked = true;
             foreach (var child in TEE_Parent.TEE_ChildrenColl)
             {
-                if (child.IsChecked)
+                if (child.IsChecked != false)
                     allUnchecked = false;
-                else
+                if (child.IsChecked != true)
                     allChecked = false;
             }
 
@@ -365,9 +395,11 @@ namespace KPLN_ExtraFilter.Forms.Entities
             else if (allUnchecked)
                 TEE_Parent._isChecked = false;
             else
-                return; // змешаны стан — нічога не мяняем
+                TEE_Parent._isChecked = null;
 
             TEE_Parent.NotifyPropertyChanged(nameof(IsChecked));
+            if (!TEE_Parent._isChecked.HasValue)
+                TEE_Parent.IsExpanded = true;
             TEE_Parent.UpdateSubParentCheck();
         }
     }
