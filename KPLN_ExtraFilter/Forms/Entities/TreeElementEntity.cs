@@ -222,6 +222,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
             List<TreeElementEntity> result = new List<TreeElementEntity>();
 
             string noParamData = "<Параметр отсутсвует>";
+            string noValueParamData = "<Параметр пустой (HasValue = false)>";
             string emptyParamData = "<Параметр пустой>";
             ParamEntity[] paramEntities = paramMColl.Select(pm => pm.ParamM_SelectedParameter).ToArray();
 
@@ -244,7 +245,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
                         if (param == null)
                             value = noParamData;
                         else if (!param.HasValue)
-                            value = emptyParamData;
+                            value = noValueParamData;
                         else
                             value = DocWorker.GetParamValueInSI(doc, param);
 

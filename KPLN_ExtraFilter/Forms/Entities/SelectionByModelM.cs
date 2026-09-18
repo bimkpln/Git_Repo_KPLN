@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
 using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
@@ -53,7 +54,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         private View _docActiveView;
         private IEnumerable<Element> _userSelElems;
         private Element[] _where_UserSelElems;
-        private bool _only3D;
+        private bool _only3D = true;
         private bool _where_Workset;
         private WSEntity _where_SelectedWorkset;
         private bool _whereCategoryFilter;
@@ -83,8 +84,8 @@ namespace KPLN_ExtraFilter.Forms.Entities
             UIApp = uiapp;
             // Сет параметра для обработки поля, чтобы не дёргать обертку у поля
             _where_ViewDocFilterMode = viewFilterMode;
-            
-            
+
+
             Doc = uiapp.ActiveUIDocument.Document;
             IsWorkshared = Doc.IsWorkshared || Doc.IsDetached;
             DocActiveView = Doc.ActiveView;
@@ -94,7 +95,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
         }
 
         public UIApplication UIApp { get; set; }
-        
+
         public Document Doc { get; set; }
 
         public View DocActiveView
@@ -591,9 +592,10 @@ namespace KPLN_ExtraFilter.Forms.Entities
 
             List<Element> elemsNoCat = fic.Where(el => el.Category != null).ToList();
 
+            List<Element> elemsWithCat = elemsNoCat;
+
 
             // Поиск по значению параметра
-            IEnumerable<Element> elemsWithCat = elemsNoCat;
             if (Where_Category && Where_SelectedCategories.All(c => c.CatM_SelectedCategory != null))
             {
                 List<ElementFilter> catFilters = Where_SelectedCategories
@@ -604,16 +606,20 @@ namespace KPLN_ExtraFilter.Forms.Entities
                 if (catFilters.Count > 0)
                 {
                     var orFilter = new LogicalOrFilter(catFilters);
-                    elemsWithCat = fic.WherePasses(orFilter).Where(e => e.Category != null);
+                    elemsWithCat = fic.WherePasses(orFilter).Where(e => e.Category != null).ToList();
                 }
             }
+            
+
+            // Убиваю fic
+            fic.Dispose();
 
 
             // Фильтр по 3Д
             if (Where_Only3D)
             {
-                elemsNoCat = elemsNoCat.Where(el => el.Category.CategoryType == CategoryType.Model).ToList();
-                elemsWithCat = elemsWithCat.Where(el => el.Category.CategoryType == CategoryType.Model);
+                elemsNoCat = elemsNoCat.Where(el => IsModelElem(el)).ToList();
+                elemsWithCat = elemsWithCat.Where(el => IsModelElem(el)).ToList();
             }
 
 
@@ -621,7 +627,7 @@ namespace KPLN_ExtraFilter.Forms.Entities
             if (Belong_Group)
             {
                 elemsNoCat = elemsNoCat.Where(el => el.GroupId.Equals(ElementId.InvalidElementId)).ToList();
-                elemsWithCat = elemsWithCat.Where(el => el.GroupId.Equals(ElementId.InvalidElementId));
+                elemsWithCat = elemsWithCat.Where(el => el.GroupId.Equals(ElementId.InvalidElementId)).ToList();
             }
 
 
@@ -657,6 +663,75 @@ namespace KPLN_ExtraFilter.Forms.Entities
             SetUserSelElems();
             UpdateCanRunANDUserHelp();
         }
+
+#if Debug2020 || Revit2020
+        /// <summary>
+        /// Уточнение элементов в более понятном пользователю что есть 3D-элемент
+        /// </summary>
+        /// <returns></returns>
+        private static bool IsModelElem(Element el) =>
+            el.Category.CategoryType == CategoryType.Model
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeCurvesCenterLine
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_PipeFittingCenterLine
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_FlexPipeCurvesCenterLine
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_DuctCurvesCenterLine
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_DuctFittingCenterLine
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_FlexDuctCurvesCenterLine
+            && el.Category.Id.IntegerValue != (int)BuiltInCategory.OST_Cameras
+            && !(el is DetailLine)
+            && !(el is View)
+            && !(el is BasePoint)
+            && !(el is InternalOrigin)
+            && !(el is Zone)
+            && !(el is SunAndShadowSettings)
+            && !(el is MEPSystem)
+            && !(el is Material)
+            && !(el is PropertySetElement);
+#else
+        /// <summary>
+        /// Уточнение элементов в более понятном пользователю что есть 3D-элемент
+        /// </summary>
+        /// <returns></returns>
+        private static bool IsModelElem(Element el) =>
+            el.Category.CategoryType == CategoryType.Model
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_PipeCurvesCenterLine
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_PipeFittingCenterLine
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_FlexPipeCurvesCenterLine
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_DuctCurvesCenterLine
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_DuctFittingCenterLine
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_FlexDuctCurvesCenterLine
+            && el.Category.BuiltInCategory != BuiltInCategory.OST_Cameras
+            && !(el is DetailLine)
+            && !(el is View)
+            && !(el is BasePoint)
+            && !(el is InternalOrigin)
+            && !(el is Zone)
+            && !(el is SunAndShadowSettings)
+            && !(el is MEPSystem)
+            && !(el is Material)
+            && !(el is PropertySetElement);
+
+        private static bool HasSurfaceGeometry(GeometryElement geometry)
+        {
+            if (geometry == null)
+                return false;
+
+            foreach (GeometryObject obj in geometry)
+            {
+                if (obj is Solid solid && solid.Faces.Size > 0)
+                    return true;
+
+                if (obj is Mesh mesh && mesh.NumTriangles > 0)
+                    return true;
+
+                if (obj is GeometryInstance instance
+                    && HasSurfaceGeometry(instance.GetInstanceGeometry()))
+                    return true;
+            }
+
+            return false;
+        }
+#endif
 
         /// <summary>
         /// Перезагрузить список параметров для фильтрации по значению
