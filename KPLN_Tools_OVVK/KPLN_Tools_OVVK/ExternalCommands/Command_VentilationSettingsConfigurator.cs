@@ -902,15 +902,31 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             { return Blocks[index].IsConnector ? Blocks[index].Width : Blocks[index].IsValve ? Blocks[0].Width : InstallationWidth; }
             internal DimensionValue BlockHeight(int index)
             { return Blocks[index].IsConnector ? Blocks[index].Height : Blocks[index].IsValve ? Blocks[0].Height : InstallationHeight; }
+            private IEnumerable<int> InactiveLengthSlots()
+            {
+                var active = new HashSet<int>(Enumerable.Range(0, Blocks.Count).Select(SlotAt));
+                for (int slot = 1; slot <= 12; slot++)
+                    if (!active.Contains(slot) && !Catalog.Dependencies.IsCalculated(DimensionParameterName(slot, "Длина")))
+                        yield return slot;
+            }
+            internal bool NeedsInactiveLengthReset
+            {
+                get
+                {
+                    return InactiveLengthSlots().Any(slot => !DimensionValue.IsFinite(Catalog[slot].DefaultLengthMm)
+                    || Math.Abs(Catalog[slot].DefaultLengthMm - 1.0) > 0.000001);
+                }
+            }
             internal Dictionary<string, double> DimensionAssignments()
             {
                 Validate();
                 var result = new Dictionary<string, double>();
-                // Скрытые позиции сохраняют исходные значения семейства. Записываем
-                // только размеры блоков, которые действительно представлены в интерфейсе.
                 foreach (var dimension in Dimensions())
                     if (!dimension.Value.IsCalculated) result[dimension.Key] = dimension.Value.Millimeters(dimension.Key);
                     else result.Remove(dimension.Key);
+                // Отключённый клапан и скрытые промежуточные позиции имеют длину 1 мм.
+                // Видимые блоки сохраняют заданную длину, в том числе вручную изменённый пустой блок.
+                foreach (int slot in InactiveLengthSlots()) result[DimensionParameterName(slot, "Длина")] = 1.0;
                 return result;
             }
             internal Dictionary<int, SectionTypeChoice> SectionAssignments()
@@ -1649,6 +1665,9 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     bool unchanged = !deleting && !request.IsDirty && persistedName != null && SamePath(outputPath, request.OutputPath) && existing != null;
                     if (unchanged && existing != null && !existing.Types.Any(t => t.PersistedName == persistedName))
                         throw new InvalidOperationException("В семействе больше нет типа «" + persistedName + "».");
+                    // Явное «Сохранить» исправляет и ранее созданный тип с длинами скрытых блоков из шаблона.
+                    if (unchanged && existing.Types.Any(t => t.PersistedName == persistedName
+                        && (t.Configuration == null || t.Configuration.NeedsInactiveLengthReset))) unchanged = false;
                     if (unchanged && openFamily == null)
                     {
                         savedFamily = existing; warning = string.Empty;
