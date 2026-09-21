@@ -1,4 +1,7 @@
-﻿#if Revit2020 || Debug2020 || Revit2021 || Debug2021 || Revit2022 || Debug2022 || Revit2023 || Debug2023
+﻿// Версионные ветки сосредоточены только в этом файле.
+// Используйте символ RevitYYYY или DebugYYYY для версии подключённых RevitAPI.dll.
+// Если символ не задан, сохраняется современная ветка (Revit 2024+).
+#if Revit2020 || Debug2020 || Revit2021 || Debug2021 || Revit2022 || Debug2022 || Revit2023 || Debug2023
 #define KPLN_ELEMENT_ID_INT32
 #endif
 #if Revit2020 || Debug2020 || Revit2021 || Debug2021 || Revit2022 || Debug2022
@@ -23,6 +26,8 @@ namespace KPLN_Tools_OVVK.Common
 #endif
         }
 
+        // Для 64-битных ID лучше использовать ElIdValue. checked предотвращает
+        // молчаливое усечение больших идентификаторов в существующих int-вызовах.
         internal static int ElIdInt(ElementId id) { return checked((int)ElIdValue(id)); }
 
         internal static ElementId CreateElementId(long value)
@@ -72,6 +77,7 @@ namespace KPLN_Tools_OVVK.Common
 #endif
         }
 
+        // Единицы числовых параметров берём из самого семейства, включая электрические величины.
         internal static double FromParameterUnits(FamilyParameter parameter, double value)
         {
 #if KPLN_LEGACY_UNITS

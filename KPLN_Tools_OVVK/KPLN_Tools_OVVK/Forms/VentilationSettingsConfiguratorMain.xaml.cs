@@ -9,15 +9,14 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
-using ComboBox = System.Windows.Controls.ComboBox;
+using System.Windows.Data;
+using System.Windows.Input;
 using Command = KPLN_Tools_OVVK.ExternalCommands.Command_VentilationSettingsConfigurator;
-using Document = Autodesk.Revit.DB.Document;
+using ComboBox = System.Windows.Controls.ComboBox;
 using TextBox = System.Windows.Controls.TextBox;
+using Document = Autodesk.Revit.DB.Document;
 
 namespace KPLN_Tools_OVVK.Forms
 {
@@ -30,6 +29,7 @@ namespace KPLN_Tools_OVVK.Forms
         private string _workingFamilyPath;
         private string _workingSourcePath;
         private string _familyContextKey;
+        private Command.ProjectItem _headerProject;
         private sealed class WorkspaceState
         {
             internal Command.FamilyPackage Family;
@@ -74,11 +74,25 @@ namespace KPLN_Tools_OVVK.Forms
             SetBusy(false);
         }
 
-        internal void SetProject(Command.ProjectMatch match, string openFilePath)
+        internal void SetProject(Command.ProjectMatch match)
         {
-            // Только снимок данных: свойства Revit Document интерфейс не читает.
-            string project = match.Project == null ? Command.UnknownProjectName : match.Project.DisplayName;
-            ProjectHeaderTextBlock.Text = project + " - " + openFilePath;
+            // В заголовке показываем рабочее семейство, а не путь активной модели RVT.
+            _headerProject = match.Project;
+            UpdateProjectHeader();
+        }
+
+        private void UpdateProjectHeader()
+        {
+            bool known = _headerProject != null && !_headerProject.IsUnknown;
+            string project = known ? _headerProject.DisplayName : Command.UnknownProjectName;
+            string familyPath = known ? null : _lastSavedPath ?? _workingFamilyPath;
+            if (known)
+            {
+                try { familyPath = Command.ProjectFamilyStorage.GetPath(_headerProject); }
+                // Ошибку аббревиатуры отдельно выводит загрузчик семейства.
+                catch (InvalidOperationException) { }
+            }
+            ProjectHeaderTextBlock.Text = project + (string.IsNullOrWhiteSpace(familyPath) ? string.Empty : " - " + familyPath);
             ProjectHeaderTextBlock.ToolTip = ProjectHeaderTextBlock.Text;
         }
 
@@ -130,6 +144,7 @@ namespace KPLN_Tools_OVVK.Forms
             }
             _currentType = selected;
             _lastSavedPath = selected.SavedPath;
+            UpdateProjectHeader();
             _switchingType = true;
             try
             {
@@ -300,11 +315,11 @@ namespace KPLN_Tools_OVVK.Forms
             layout.Children.Add(report); dialog.Content = layout; dialog.ShowDialog();
         }
 
-        internal string ChooseOutputPath(string projectCode, string familyPath, bool knownProject)
+        internal string ChooseOutputPath(string projectCode, string familyPath)
         {
             var dialog = new SaveFileDialog
             {
-                Title = knownProject ? "Папка проекта пока не задана — куда сохранить семейство" : "Куда сохранить семейство",
+                Title = "Куда сохранить семейство",
                 Filter = "Семейство Revit (*.rfa)|*.rfa",
                 DefaultExt = ".rfa",
                 AddExtension = true,
@@ -334,6 +349,7 @@ namespace KPLN_Tools_OVVK.Forms
         {
             string previous = _currentType.SavedPath;
             _lastSavedPath = _workingFamilyPath = family.Path; _workingSourcePath = family.SourcePath ?? family.Path;
+            UpdateProjectHeader();
             _sectionCatalog = family.Catalog;
             _currentType.Name = typeName; _currentType.PersistedName = typeName; _currentType.SavedPath = family.Path; _currentType.SourcePath = family.SourcePath ?? family.Path; _currentType.MarkSaved();
             foreach (var item in _types.Where(t => !t.IsCreate && t != _currentType))
@@ -361,6 +377,7 @@ namespace KPLN_Tools_OVVK.Forms
         {
             if (deleted != null && _types.Contains(deleted)) RemoveTypeFromList(deleted);
             _workingFamilyPath = _lastSavedPath = family.Path; _workingSourcePath = family.SourcePath ?? family.Path;
+            UpdateProjectHeader();
             _sectionCatalog = family.Catalog;
             foreach (var item in _types.Where(t => !t.IsCreate))
             {
@@ -446,6 +463,7 @@ namespace KPLN_Tools_OVVK.Forms
                 _types.Clear(); _types.Add(new Command.FamilyTypeItem { IsCreate = true });
                 _currentType = null; _configuration = null; _selectedSection = null;
                 _sectionCatalog = family.Catalog; _lastSavedPath = _workingFamilyPath = family.Path; _workingSourcePath = family.SourcePath ?? family.Path;
+                UpdateProjectHeader();
                 foreach (var item in family.Types) _types.Add(item);
                 TypeNameTextBox.Clear(); SectionBlocksPanel.Children.Clear(); SelectedSectionPanel.Children.Clear();
                 ConfigurationTabs.Visibility = Visibility.Collapsed; NoTypeTextBlock.Visibility = Visibility.Visible;
@@ -720,12 +738,41 @@ namespace KPLN_Tools_OVVK.Forms
                 int index = i;
                 int slot = _configuration.SlotAt(i);
                 var block = _configuration.Blocks[i];
+                bool selected = ReferenceEquals(block, _selectedSection);
+                var accent = new SolidColorBrush(Color.FromRgb(52, 121, 197));
+                var selectedText = new SolidColorBrush(Color.FromRgb(29, 78, 123));
                 var content = new Grid();
                 content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
                 content.RowDefinitions.Add(new RowDefinition { Height = new GridLength(38) });
                 string title = _configuration.BlockTitle(i);
                 var label = new StackPanel();
-                label.Children.Add(new TextBlock { Text = title, FontSize = 10, Foreground = Brushes.SlateGray, Margin = new Thickness(0, 0, 0, 5) });
+                // Порядок видимых блоков, включая соединители и клапан, не номер параметра семейства.
+                label.Children.Add(new Border
+                {
+                    Width = 22,
+                    Height = 22,
+                    CornerRadius = new CornerRadius(11),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Margin = new Thickness(0, 0, 0, 5),
+                    Background = selected ? accent : new SolidColorBrush(Color.FromRgb(221, 229, 239)),
+                    Child = new TextBlock
+                    {
+                        Text = (index + 1).ToString(),
+                        FontSize = 11,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = selected ? Brushes.White : new SolidColorBrush(Color.FromRgb(67, 85, 105)),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center
+                    }
+                });
+                label.Children.Add(new TextBlock
+                {
+                    Text = title,
+                    FontSize = 10,
+                    TextAlignment = TextAlignment.Center,
+                    Foreground = selected ? selectedText : Brushes.SlateGray,
+                    Margin = new Thickness(0, 0, 0, 5)
+                });
                 label.Children.Add(new TextBlock
                 {
                     Text = block.Type == null ? "Состав не задан" : block.Type.TypeName,
@@ -733,17 +780,12 @@ namespace KPLN_Tools_OVVK.Forms
                     TextTrimming = TextTrimming.CharacterEllipsis,
                     FontSize = 11,
                     FontWeight = FontWeights.SemiBold,
-                    Height = 35
+                    Height = 35,
+                    TextAlignment = TextAlignment.Center,
+                    Foreground = selected ? selectedText : new SolidColorBrush(Color.FromRgb(32, 51, 74))
                 });
-                var select = new Button
-                {
-                    Content = label,
-                    Background = Brushes.Transparent,
-                    BorderThickness = new Thickness(0),
-                    HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                    Padding = new Thickness(3),
-                    MinHeight = 0
-                };
+                var select = new Button { Content = label, Style = (Style)FindResource("SectionSelectButtonStyle") };
+                System.Windows.Automation.AutomationProperties.SetName(select, (index + 1) + ". " + title + ": " + (block.Type?.TypeName ?? "Состав не задан"));
                 select.Click += (s, e) => { _selectedSection = block; RenderBlocks(); RenderSelectedSection(); };
                 if (!block.IsFixed)
                 {
@@ -771,13 +813,14 @@ namespace KPLN_Tools_OVVK.Forms
                 var border = new Border
                 {
                     Child = content,
-                    Height = 116,
+                    Height = 146,
                     Padding = new Thickness(2),
                     Margin = new Thickness(2, 0, 2, 0),
-                    BorderThickness = new Thickness(1),
+                    BorderThickness = new Thickness(selected ? 2 : 1),
                     CornerRadius = new CornerRadius(6),
-                    BorderBrush = ReferenceEquals(block, _selectedSection) ? new SolidColorBrush(Color.FromRgb(36, 79, 120)) : Brushes.LightSlateGray,
-                    Background = block.IsValve ? new SolidColorBrush(Color.FromRgb(237, 247, 247))
+                    BorderBrush = selected ? accent : Brushes.LightSlateGray,
+                    Background = selected ? new SolidColorBrush(Color.FromRgb(220, 235, 255))
+                        : block.IsValve ? new SolidColorBrush(Color.FromRgb(237, 247, 247))
                         : block.IsConnector ? new SolidColorBrush(Color.FromRgb(237, 243, 248)) : Brushes.White,
                     AllowDrop = !block.IsFixed
                 };
@@ -1061,6 +1104,7 @@ namespace KPLN_Tools_OVVK.Forms
         private void RaiseRequest(Command.FamilyRequest request)
         {
             if (_externalEvent == null) throw new InvalidOperationException("Окно конфигуратора уже закрыто.");
+            request.ContextKey = _familyContextKey;
             _handler.PendingRequest = request;
             SetBusy(true);
             SetStatus("Ожидание Revit. Если выполняется другая команда, завершите её.", false);
