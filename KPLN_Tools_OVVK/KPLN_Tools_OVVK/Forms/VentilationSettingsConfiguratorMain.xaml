@@ -96,6 +96,33 @@
             <Setter Property="MinHeight" Value="36"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+        <Style x:Key="SectionSelectButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="3"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="SectionButtonBorder" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}" CornerRadius="4" BorderThickness="1" BorderBrush="Transparent">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="SectionButtonBorder" Property="BorderBrush" Value="#3479C5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="IconButtonStyle" TargetType="Button">
             <Setter Property="Padding" Value="0"/>
             <Setter Property="MinHeight" Value="0"/>
@@ -169,7 +196,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel>
                 <TextBlock Text="Конфигуратор вент. установок" FontSize="23" FontWeight="SemiBold" Foreground="#182C40"/>
-                <TextBlock x:Name="ProjectHeaderTextBlock" Text="Неизвестно - Нет открытого файла"
+                <TextBlock x:Name="ProjectHeaderTextBlock" Text="Неизвестно"
                            Margin="0,7,0,0" Foreground="#586777" TextWrapping="Wrap"
                            MaxHeight="52" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
@@ -254,7 +281,7 @@
                                 <TextBox Text="{Binding Description, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,16"/>
                                 <TextBlock Text="Код изделия" Foreground="#586777" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding ProductCode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,16"/>
-                                <TextBlock Text="Масса Текст" Foreground="#586777" Margin="0,0,0,5"/>
+                                <TextBlock Text="Масса" Foreground="#586777" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding MassText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                             </StackPanel>
                         </ScrollViewer>

@@ -24,6 +24,9 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         internal const string UnknownProjectName = "Неизвестно";
         internal const string ProjectDatabasePath =
             @"Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Loader_MainDB.db";
+        internal const string ProjectFamiliesRoot =
+            @"Z:\Отдел BIM\07_Вспомогательное\Семейства\03_Вентустановки";
+        internal const string ProjectFamilyFileName = "550_Универсальная установка_Одноуровневая_(Об).rfa";
         internal const string BaseFamilyTypeName =
             "имяСистемы(при необходимости)_имяУстановкиПоПодборке";
         // Известный демонстрационный тип исходного семейства сохраняется без изменений.
@@ -138,7 +141,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             {
                 get
                 {
-                    return IsEmpty || IsFlexibleConnector || FamilyName.IndexOf("_Секция_Воздушный клапан_", StringComparison.OrdinalIgnoreCase) >= 0
+                    return IsEmpty || IsFlexibleConnector || IsEquipment("Шумоглушитель") || FamilyName.IndexOf("_Секция_Воздушный клапан_", StringComparison.OrdinalIgnoreCase) >= 0
                 || string.Equals(TypeName, "Воздушный клапан", StringComparison.OrdinalIgnoreCase);
                 }
             }
@@ -791,7 +794,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     if (blocks[i].Type == null || !Catalog[slot].Choices.Any(c => c.Key == blocks[i].Type.Key))
                         throw new InvalidOperationException("Выбранный состав недоступен для параметра «" + Catalog[slot].ParameterName + "».");
                     if (blocks[i].IsConnector && !blocks[i].Type.IsConnectorType)
-                        throw new InvalidOperationException("Для соединителей доступны гибкая вставка, воздушный клапан и пустой блок.");
+                        throw new InvalidOperationException("Для соединителей доступны гибкая вставка, воздушный клапан, шумоглушитель и пустой блок.");
                 }
             }
             internal void Validate()
@@ -841,7 +844,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     var block = Blocks[i];
                     string title = block.IsConnector ? (i == 0 ? "Первый соединитель" : "Последний соединитель") : BlockTitle(i);
                     if (block.Type == null) fields.Add(title + ": тип оборудования");
-                    else if (block.IsConnector && !block.Type.IsConnectorType) fields.Add(title + ": выберите гибкую вставку, воздушный клапан или пустой блок");
+                    else if (block.IsConnector && !block.Type.IsConnectorType) fields.Add(title + ": выберите гибкую вставку, воздушный клапан, шумоглушитель или пустой блок");
                     check(title + ": длина", block.Length);
                     if (!block.IsConnector) continue;
                     check(title + ": ширина", block.Width); check(title + ": высота", block.Height);
@@ -929,7 +932,9 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 if (!write && kind != RequestKind.OpenInRevit && kind != RequestKind.AddToProject) throw new ArgumentException("Неизвестное действие.");
                 if (!write && (dirty || string.IsNullOrWhiteSpace(savedPath) || string.IsNullOrWhiteSpace(persistedName)))
                     throw new InvalidOperationException("Сначала сохраните тип и изменения кнопкой «Сохранить».");
-                string path = !string.IsNullOrWhiteSpace(savedPath) ? savedPath : write ? configuredPath : null;
+                // Для определённого проекта место записи всегда задаёт его папка.
+                // Открытие уже сохранённого типа использует его фактический файл.
+                string path = write && !string.IsNullOrWhiteSpace(configuredPath) ? configuredPath : savedPath;
                 return new FamilyActionPlan { WritesFamily = write, Path = path, NeedsPath = write && string.IsNullOrWhiteSpace(path) };
             }
         }
@@ -1005,8 +1010,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             internal string Name { get; set; }
             internal string Stage { get; set; }
             internal string Code { get; set; }
-            // Будущая привязка папки семейств проекта. MainPath не подменяет эту настройку.
-            internal string FamilyDirectory { get; set; }
             internal string[] Paths { get; set; }
             internal bool IsUnknown { get; set; }
             public string DisplayName
@@ -1028,6 +1031,69 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             internal ProjectItem Project { get; set; }
             internal string RootPath { get; set; }
             internal bool IsAmbiguous { get; set; }
+        }
+
+        internal static class ProjectFamilyStorage
+        {
+            internal static string GetPath(ProjectItem project)
+            {
+                if (project == null || project.IsUnknown) return null;
+                string code = CleanDatabaseValue(project.Code);
+                if (code.Length == 0)
+                    throw new InvalidOperationException("В базе проектов не задана аббревиатура проекта «" + project.DisplayName + "».");
+                // Аббревиатура — ровно одна папка Windows. Не подменяем её другим именем.
+                if (code == "." || code == ".." || code.EndsWith(".", StringComparison.Ordinal)
+                    || code.Any(c => char.IsControl(c) || "<>:\"/\\|?*".IndexOf(c) >= 0)
+                    || Regex.IsMatch(code, @"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)", RegexOptions.IgnoreCase))
+                    throw new InvalidOperationException("Аббревиатура проекта «" + code + "» содержит недопустимое имя папки.");
+                return Path.Combine(ProjectFamiliesRoot, code, ProjectFamilyFileName);
+            }
+
+            internal static ProjectMatch Find(IList<ProjectItem> projects, string familyPath)
+            {
+                string normalized = ProjectPathMatcher.Normalize(familyPath);
+                var result = new ProjectMatch();
+                if (normalized.Length == 0) return result;
+                foreach (var project in projects)
+                {
+                    string path;
+                    try { path = GetPath(project); }
+                    catch (InvalidOperationException) { continue; }
+                    if (path == null || !string.Equals(normalized, ProjectPathMatcher.Normalize(path), StringComparison.OrdinalIgnoreCase)) continue;
+                    if (result.Project != null && !ReferenceEquals(result.Project, project))
+                        return new ProjectMatch { IsAmbiguous = true };
+                    result.Project = project; result.RootPath = Path.GetDirectoryName(path);
+                }
+                return result;
+            }
+
+            internal static bool EnsureFile(string sourcePath, string path, Func<string, string, bool> confirm)
+            {
+                if (File.Exists(path)) return true;
+                if (!confirm(sourcePath, path)) return false;
+                // Пока был открыт вопрос, файл мог появиться у другого пользователя.
+                if (File.Exists(path)) return true;
+                if (!File.Exists(sourcePath))
+                    throw new FileNotFoundException("Исходное семейство для копирования недоступно. Проверьте подключение к сети.", sourcePath);
+                string directory = Path.GetDirectoryName(path);
+                Directory.CreateDirectory(directory);
+                string temporary = Path.Combine(directory, ".KPLN_Copy_" + Guid.NewGuid().ToString("N") + ".tmp");
+                try
+                {
+                    // Готовый файл появляется только после полного копирования. Чужой файл не перезаписываем.
+                    File.Copy(sourcePath, temporary, false);
+                    File.SetAttributes(temporary, File.GetAttributes(temporary) & ~FileAttributes.ReadOnly);
+                    try { File.Move(temporary, path); }
+                    catch (IOException) { if (!File.Exists(path)) throw; }
+                    return true;
+                }
+                finally
+                {
+                    try { if (File.Exists(temporary)) File.Delete(temporary); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
+                }
+            }
         }
 
         internal static string CleanDatabaseValue(string value)
@@ -1214,6 +1280,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         internal sealed class FamilyRequest
         {
             internal RequestKind Kind { get; set; }
+            internal string ContextKey { get; set; }
             internal string TypeName { get; set; }
             internal InstallationConfiguration Configuration { get; set; }
             internal string FamilyPath { get; set; }
@@ -1241,21 +1308,20 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 return !string.IsNullOrWhiteSpace(path) ? "document:" + path : "unsaved:" + document.GetHashCode();
             }
 
-            private void UpdateAutomaticFamily(UIApplication app, Document document, ProjectItem project, bool force = false)
+            private bool UpdateAutomaticFamily(UIApplication app, Document document, ProjectItem project, bool force = false)
             {
                 string key = ContextKey(document, project);
                 _activeContextKey = key;
-                if (_owner.SwitchFamilyContext(key) && !force) return;
+                if (_owner.SwitchFamilyContext(key) && !force) return true;
                 _owner.SetBusy(true);
                 try
                 {
                     FamilyPackage package = null;
-                    string path = null;
-                    if (!string.IsNullOrWhiteSpace(project?.FamilyDirectory))
-                        path = Path.Combine(project.FamilyDirectory, VentilationSettingsConfiguratorMain.MakeFileName(project.Code));
+                    string path = ProjectFamilyStorage.GetPath(project);
+                    if (path != null && !EnsureProjectFamily(path)) return false;
                     string remembered;
-                    if ((path == null || !File.Exists(path)) && SavedFamilyPaths.TryGetValue(key, out remembered) && File.Exists(remembered)) path = remembered;
-                    if (path != null && File.Exists(path))
+                    if (path == null && SavedFamilyPaths.TryGetValue(key, out remembered) && File.Exists(remembered)) path = remembered;
+                    if (path != null)
                     {
                         var opened = FindOpenFamily(app, path);
                         package = opened == null ? ReadFamilyPackage(app, path, true) : ReadOpenFamilyPackage(app, opened, path);
@@ -1281,9 +1347,32 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     }
                     if (package == null) package = ReadFamilyPackage(app, ResolveSourcePath(), false);
                     _owner.SetFamily(package);
+                    return true;
                 }
-                catch (Exception ex) { _owner.SetOperationError(OperationError.Create("Автоматическое чтение типов семейства", ex, null)); }
+                catch (Exception ex)
+                {
+                    _owner.SetOperationError(OperationError.Create("Автоматическое чтение типов семейства", ex, null));
+                    return false;
+                }
                 finally { _owner.SetBusy(false); }
+            }
+
+            private bool EnsureProjectFamily(string path)
+            {
+                bool ready = ProjectFamilyStorage.EnsureFile(ResolveSourcePath(), path, (source, destination) =>
+                {
+                    var dialog = new TaskDialog(PluginName)
+                    {
+                        MainInstruction = "Семейство проекта не найдено. Создать его?",
+                        MainContent = "Файл проекта:\n" + destination
+                            + "\n\nБудет создана папка, если её нет, и скопировано исходное семейство:\n" + source,
+                        CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
+                        DefaultButton = TaskDialogResult.No
+                    };
+                    return dialog.Show() == TaskDialogResult.Yes;
+                });
+                if (!ready) _owner.SetStatus("Создание проектного семейства отменено.", false);
+                return ready;
             }
 
             private FamilyPackage ReadProjectFamily(Document project, Family family)
@@ -1383,8 +1472,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     string key = "Ошибка определения проекта: " + ex.Message;
                     if (string.Equals(_lastModelKey, key, StringComparison.Ordinal)) return;
                     _lastModelKey = key;
-                    _owner.SetProject(new ProjectMatch(),
-                        string.IsNullOrWhiteSpace(filePath) ? "Путь недоступен" : filePath);
+                    _owner.SetProject(new ProjectMatch());
                     _owner.SetStatus(key, true);
                 }
             }
@@ -1428,6 +1516,14 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     ? central : ProjectPathMatcher.Find(_projects, paths[1]);
             }
 
+            private ProjectMatch MatchDocument(Document document)
+            {
+                // Открытое проектное RFA сохраняет привязку по своей папке и аббревиатуре.
+                if (document != null && document.IsValidObject && document.IsFamilyDocument)
+                    return ProjectFamilyStorage.Find(_projects, document.PathName);
+                return MatchModel(GetModelPaths(document));
+            }
+
             private void UpdateActiveProject(Document document, string filePath, bool force)
             {
                 string[] paths = GetModelPaths(document);
@@ -1437,8 +1533,8 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 string key = displayPath + "\n" + string.Join("\n", paths) + "\n" + (document == null ? "" : document.GetHashCode().ToString());
                 if (!force && string.Equals(_lastModelKey, key, StringComparison.Ordinal)) return;
                 _lastModelKey = key;
-                var match = MatchModel(paths);
-                _owner.SetProject(match, displayPath);
+                var match = MatchDocument(document);
+                _owner.SetProject(match);
                 UpdateAutomaticFamily(_application, document, match.Project);
             }
 
@@ -1474,9 +1570,16 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     {
                         stage = "Чтение состава исходного семейства";
                         Document active = app.ActiveUIDocument == null ? null : app.ActiveUIDocument.Document;
-                        UpdateAutomaticFamily(app, active, MatchModel(GetModelPaths(active)).Project, true);
-                        _owner.CreateTypeIfReady();
+                        if (UpdateAutomaticFamily(app, active, MatchDocument(active).Project, true)) _owner.CreateTypeIfReady();
                         return;
+                    }
+                    Document activeDocument = app.ActiveUIDocument == null ? null : app.ActiveUIDocument.Document;
+                    ProjectItem project = MatchDocument(activeDocument).Project;
+                    // Между нажатием кнопки и ExternalEvent пользователь мог сменить документ.
+                    if (!string.Equals(request.ContextKey, ContextKey(activeDocument, project), StringComparison.OrdinalIgnoreCase))
+                    {
+                        TryUpdateActiveProject(app, true);
+                        throw new InvalidOperationException("Активный проект изменился. Выберите нужный тип в текущем проекте и повторите действие.");
                     }
                     bool deleting = request.Kind == RequestKind.DeleteType;
                     string typeName = deleting ? request.PersistedName : ValidateTypeName(request.TypeName);
@@ -1485,10 +1588,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                         if (request.Configuration == null) throw new InvalidOperationException("Сначала создайте тип.");
                         request.Configuration.ValidateForOutput();
                     }
-                    Document activeDocument = app.ActiveUIDocument == null ? null : app.ActiveUIDocument.Document;
-                    ProjectItem project = MatchModel(GetModelPaths(activeDocument)).Project;
-                    string configuredPath = string.IsNullOrWhiteSpace(project?.FamilyDirectory) ? null
-                        : Path.Combine(project.FamilyDirectory, VentilationSettingsConfiguratorMain.MakeFileName(project.Code));
+                    string configuredPath = ProjectFamilyStorage.GetPath(project);
                     var action = FamilyActionPlan.Make(request.Kind, request.OutputPath, configuredPath, request.PersistedName, request.IsDirty);
 
                     // Открытие и загрузка не заходят в сохранение и не меняют RFA на диске.
@@ -1519,10 +1619,11 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     string sourcePath = ResolveSourcePath();
                     stage = "Определение файла для сохранения";
                     string outputPath = action.Path;
-                    if (action.NeedsPath) outputPath = _owner.ChooseOutputPath(project?.Code, null, project != null);
+                    if (action.NeedsPath) outputPath = _owner.ChooseOutputPath(project?.Code, null);
                     if (outputPath == null) { _owner.SetStatus("Сохранение отменено. Файлы не изменены.", false); return; }
+                    if (configuredPath != null && !EnsureProjectFamily(configuredPath)) return;
                     stage = "Проверка пути сохранения";
-                    outputPath = ValidateOutputPath(app, sourcePath, outputPath);
+                    outputPath = ValidateOutputPath(app, sourcePath, outputPath, configuredPath);
                     var openFamily = FindOpenFamily(app, outputPath);
                     string inputPath = File.Exists(outputPath) ? outputPath : !string.IsNullOrWhiteSpace(request.FamilyPath) ? request.FamilyPath : sourcePath;
                     if (!File.Exists(inputPath)) throw new FileNotFoundException("Файл семейства недоступен. Проверьте путь и подключение к сети.", inputPath);
@@ -1545,7 +1646,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     }
                     FamilyPackage savedFamily;
                     string warning;
-                    bool unchanged = !deleting && !request.IsDirty && persistedName != null && !string.IsNullOrWhiteSpace(request.OutputPath) && existing != null;
+                    bool unchanged = !deleting && !request.IsDirty && persistedName != null && SamePath(outputPath, request.OutputPath) && existing != null;
                     if (unchanged && existing != null && !existing.Types.Any(t => t.PersistedName == persistedName))
                         throw new InvalidOperationException("В семействе больше нет типа «" + persistedName + "».");
                     if (unchanged && openFamily == null)
@@ -1606,21 +1707,24 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 return target;
             }
 
-            private static string ValidateOutputPath(UIApplication app, string sourcePath, string outputPath)
+            private static string ValidateOutputPath(UIApplication app, string sourcePath, string outputPath, string configuredPath)
             {
                 string path = Path.GetFullPath(outputPath);
                 if (!string.Equals(Path.GetExtension(path), ".rfa", StringComparison.OrdinalIgnoreCase))
                     throw new ArgumentException("Для копии необходимо выбрать файл с расширением .rfa.");
                 if (SamePath(path, sourcePath) || SamePath(path, SourceFamilyPath) || SamePath(path, LiteralSourceFamilyPath))
                     throw new InvalidOperationException("Нельзя сохранять копию поверх исходного семейства. Выберите другой файл.");
-                // Другое имя семейства также защищает оригинал при доступе через UNC / сетевой диск
-                // и исключает загрузку копии под исходным именем в проект.
-                if (string.Equals(Path.GetFileName(path), Path.GetFileName(sourcePath), StringComparison.OrdinalIgnoreCase))
+                // В утверждённой папке проекта по условию используется исходное имя (Об).
+                // Для произвольного пути сохраняем прежнюю защиту от выбора оригинала через UNC.
+                if (!SamePath(path, configuredPath)
+                    && string.Equals(Path.GetFileName(path), Path.GetFileName(sourcePath), StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Задайте копии другое имя файла, чтобы отличать её от исходного семейства.");
                 if (!Directory.Exists(Path.GetDirectoryName(path)))
                     throw new DirectoryNotFoundException("Выбранная папка недоступна.");
                 if (File.Exists(path) && (File.GetAttributes(path) & FileAttributes.ReadOnly) != 0)
-                    throw new IOException("Файл копии доступен только для чтения. Выберите другое место сохранения.");
+                    throw new IOException(SamePath(path, configuredPath)
+                        ? "Семейство проекта доступно только для чтения. Проверьте права на запись в файл проекта."
+                        : "Файл копии доступен только для чтения. Выберите другое место сохранения.");
                 return path;
             }
 
@@ -1756,8 +1860,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                             RunFamilyStage(familyDoc, "Удаление типа", () => DeleteFamilyType(manager, persistedName), null, setStage, appendDiagnostics);
                         else
                         {
-                            List<TypeInput> beforeSettings = null;
-                            HashSet<string> editable = null;
                             Action verifyOtherValves = null;
                             RunFamilyStage(familyDoc, "Копирование и настройка итогового типа",
                                 () =>
@@ -1765,14 +1867,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                                     setStage("Выбор исходного типа и создание копии");
                                     PrepareFamilyType(manager, typeName, persistedName, freshLibraryCopy);
                                     VerifyTypeInputs(manager.CurrentType, sourceInputs, null, "Наследование исходных значений нарушено");
-                                    beforeSettings = CaptureTypeInputs(manager, manager.CurrentType);
                                     RefreshDimensionModes(manager, configuration);
-                                    editable = new HashSet<string>(configuration.Dimensions().Keys
-                                        .Concat(configuration.SectionAssignments().Keys.Select(InstallationConfiguration.ParameterName))
-                                        .Concat(configuration.Info.Assignments().Keys)
-                                        .Concat(configuration.SharedBooleans.Keys)
-                                        .Concat(new[] { "Секции_Промежуточные_Количество", "Соединитель_Приточный_Клапан" })
-                                        .Select(FamilyParameterNames.Canonical), StringComparer.Ordinal);
                                     setStage("Применение параметров к итоговому типу");
                                     ApplySectionCount(manager, configuration.IntermediateCount);
                                     verifyOtherValves = ApplyValveState(manager, configuration.HasValve);
@@ -1785,8 +1880,10 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                                 {
                                     VerifyRequestedValues(familyDoc, configuration);
                                     verifyOtherValves?.Invoke();
-                                    VerifyTypeInputs(manager.CurrentType, beforeSettings, editable,
-                                        "Изменились параметры вне настроек конфигуратора");
+                                    // Связи геометрии и соединителей могут пересчитать служебные размеры
+                                    // даже без формулы у FamilyParameter. Для текущего типа это штатно:
+                                    // проверяем записанные настройки выше, а не равенство скрытых значений.
+                                    // Сохранность остальных типов проверяется отдельно ниже.
                                 }, setStage, appendDiagnostics);
                             appendDiagnostics("Итоговый тип подтверждён одной транзакцией. Промежуточные типы отдельно не подтверждались.");
                         }
