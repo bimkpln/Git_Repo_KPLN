@@ -25,6 +25,7 @@ namespace KPLN_UserDataAgent
         public Result Close()
         {
             SafeRun("Module.Close.Sync", () => _syncService?.SyncNow("Закрытие Revit"));
+            SafeRun("Module.Close.RibbonWrites", () => _pluginUsageTracker?.FlushOtherRibbonActivations());
             SafeRun("Module.Close.PluginSync", () => _pluginSyncService?.SyncNow("Закрытие Revit"));
             SafeDisposePluginUsage();
             SafeRun("Module.Close.DisposeSync", () => _syncService?.Dispose());

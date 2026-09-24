@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace KPLN_UserDataAgent.Services
 {
@@ -17,6 +18,8 @@ namespace KPLN_UserDataAgent.Services
         private readonly ErrorGuard _errorGuard;
         private readonly string _defaultTabName;
         private RecentPluginExecution _recentExecution;
+        private readonly object _otherWriteLock = new object();
+        private Task _otherWrites = Task.CompletedTask;
 
         public PluginUsageTracker(
             PluginUsageRepository repository,
@@ -78,6 +81,42 @@ namespace KPLN_UserDataAgent.Services
                 SafeQueueException("PluginUsage.BeginExecution", exception);
                 return EmptyDisposable.Instance;
             }
+        }
+
+        // Unknown ribbon buttons have no reliable execution lifetime. Record the
+        // activation only; do not attach unrelated subsequent model transactions.
+        public void RecordOtherRibbonActivation(string tabName, string panelName, string buttonName, string buttonId)
+        {
+            DateTime activatedAt = DateTime.Now;
+            lock (_otherWriteLock)
+            {
+                // One serial background queue, containing strings only. No Revit
+                // objects or network/database calls on the ribbon event thread.
+                _otherWrites = _otherWrites.ContinueWith(_ =>
+                {
+                    try
+                    {
+                        PluginUsageRecord record = PluginUsageRecord.Create(
+                            Guid.NewGuid().ToString("N"), "PluginStarted", tabName,
+                            panelName, buttonName, string.Empty, UserContextSnapshot.Current(),
+                            buttonId: buttonId, category: "Other");
+                        record.EventTime = activatedAt.ToString("yyyy.MM.dd. HH:mm:ss");
+                        _repository.InsertEvent(record);
+                        _syncService.RequestSyncSoon();
+                    }
+                    catch (Exception exception)
+                    {
+                        SafeQueueException("PluginUsage.OtherRibbonActivation", exception);
+                    }
+                }, TaskScheduler.Default);
+            }
+        }
+
+        public void FlushOtherRibbonActivations()
+        {
+            Task pending;
+            lock (_otherWriteLock) pending = _otherWrites;
+            pending.GetAwaiter().GetResult();
         }
 
         public void RecordDocumentChanged(string[] transactionNames, int addedCount, int modifiedCount, int deletedCount)
@@ -254,7 +293,9 @@ namespace KPLN_UserDataAgent.Services
                 userContext,
                 addedCount,
                 modifiedCount,
-                deletedCount);
+                deletedCount,
+                execution.ButtonId,
+                execution.Category);
             _repository.InsertEvent(record);
             _syncService.RequestSyncSoon();
         }
@@ -284,6 +325,8 @@ namespace KPLN_UserDataAgent.Services
             public string TabName { get; private set; }
             public string PanelName { get; private set; }
             public string ButtonName { get; private set; }
+            public string ButtonId { get; set; }
+            public string Category { get; set; }
         }
 
         private sealed class PendingPluginTransaction

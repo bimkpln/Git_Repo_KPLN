@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace KPLN_UserDataAgent.Services
 {
@@ -15,6 +15,8 @@ namespace KPLN_UserDataAgent.Services
         public string TabName { get; set; }
         public string PanelName { get; set; }
         public string ButtonName { get; set; }
+        public string ButtonId { get; set; }
+        public string Category { get; set; }
         public string TransactionName { get; set; }
         public int AddedCount { get; set; }
         public int ModifiedCount { get; set; }
@@ -30,7 +32,9 @@ namespace KPLN_UserDataAgent.Services
             UserContextSnapshot userContext,
             int addedCount = 0,
             int modifiedCount = 0,
-            int deletedCount = 0)
+            int deletedCount = 0,
+            string buttonId = "",
+            string category = "")
         {
             return new PluginUsageRecord
             {
@@ -43,6 +47,8 @@ namespace KPLN_UserDataAgent.Services
                 TabName = tabName ?? string.Empty,
                 PanelName = panelName ?? string.Empty,
                 ButtonName = buttonName ?? string.Empty,
+                ButtonId = buttonId ?? string.Empty,
+                Category = category ?? string.Empty,
                 TransactionName = transactionName ?? string.Empty,
                 AddedCount = addedCount,
                 ModifiedCount = modifiedCount,
