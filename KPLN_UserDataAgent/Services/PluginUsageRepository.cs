@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
 using System.IO;
@@ -178,11 +178,15 @@ namespace KPLN_UserDataAgent.Services
                 {
                     connection.Open();
                     ValidateLocalSchema(connection, null);
-                    EnsureLocalSchema(connection, null);
+                    bool legacyQueue = IsLegacyLocalQueueDatabasePath(databasePath);
+                    if (!legacyQueue) EnsureLocalSchema(connection, null);
                     ValidateLocalSchema(connection, null);
+                    Dictionary<string, LocalTableColumn> columns = ReadTableColumns(connection, null, "PluginEvents");
+                    string metadataSelect = (columns.ContainsKey("ButtonId") ? "ButtonId" : "'' AS ButtonId")
+                        + ", " + (columns.ContainsKey("Category") ? "Category" : "'' AS Category");
                     command.CommandText =
                         "SELECT Id, SyncId, RunId, EventType, EventTime, WindowsUser, DepartmentKey, " +
-                        "TabName, PanelName, ButtonName, TransactionName, AddedCount, ModifiedCount, DeletedCount " +
+                        "TabName, PanelName, ButtonName, " + metadataSelect + ", TransactionName, AddedCount, ModifiedCount, DeletedCount " +
                         "FROM PluginEvents " +
                         "WHERE IsSynced=0 " +
                         "ORDER BY Id " +
@@ -206,6 +210,8 @@ namespace KPLN_UserDataAgent.Services
                                 TabName = Convert.ToString(reader["TabName"]),
                                 PanelName = Convert.ToString(reader["PanelName"]),
                                 ButtonName = Convert.ToString(reader["ButtonName"]),
+                                ButtonId = Convert.ToString(reader["ButtonId"]),
+                                Category = Convert.ToString(reader["Category"]),
                                 TransactionName = Convert.ToString(reader["TransactionName"]),
                                 AddedCount = ReadInt(reader, "AddedCount"),
                                 ModifiedCount = ReadInt(reader, "ModifiedCount"),
@@ -338,6 +344,7 @@ namespace KPLN_UserDataAgent.Services
         private static void EnsureLocalSchema(SQLiteConnection connection, SQLiteTransaction transaction)
         {
             CreatePluginEventsTable(connection, transaction, true);
+            EnsureRibbonMetadataColumns(connection, transaction);
             ExecuteNonQuery(
                 connection,
                 transaction,
@@ -358,6 +365,7 @@ namespace KPLN_UserDataAgent.Services
         private static void CreateCentralSchema(SQLiteConnection connection, SQLiteTransaction transaction)
         {
             CreatePluginEventsTable(connection, transaction, false);
+            EnsureRibbonMetadataColumns(connection, transaction);
             EnsureColumn(connection, transaction, "PluginEvents", "PanelName", "TEXT NOT NULL DEFAULT ''");
             ExecuteNonQuery(
                 connection,
@@ -369,6 +377,12 @@ namespace KPLN_UserDataAgent.Services
                 transaction,
                 "CREATE INDEX IF NOT EXISTS IX_PluginEvents_Run " +
                 "ON PluginEvents(RunId);");
+        }
+
+        private static void EnsureRibbonMetadataColumns(SQLiteConnection connection, SQLiteTransaction transaction)
+        {
+            EnsureColumn(connection, transaction, "PluginEvents", "ButtonId", "TEXT NOT NULL DEFAULT ''");
+            EnsureColumn(connection, transaction, "PluginEvents", "Category", "TEXT NOT NULL DEFAULT ''");
         }
 
         private static void CreatePluginEventsTable(SQLiteConnection connection, SQLiteTransaction transaction, bool isLocal)
@@ -391,6 +405,8 @@ namespace KPLN_UserDataAgent.Services
                 "TabName TEXT NOT NULL, " +
                 "PanelName TEXT NOT NULL, " +
                 "ButtonName TEXT NOT NULL, " +
+                "ButtonId TEXT NOT NULL DEFAULT '', " +
+                "Category TEXT NOT NULL DEFAULT '', " +
                 "TransactionName TEXT NOT NULL, " +
                 "AddedCount INTEGER NOT NULL DEFAULT 0, " +
                 "ModifiedCount INTEGER NOT NULL DEFAULT 0, " +
@@ -440,6 +456,15 @@ namespace KPLN_UserDataAgent.Services
 
             foreach (LocalTableColumn actualColumn in actualColumns.Values)
             {
+                // These additive fields can be absent before migration. Do not
+                // treat an older database as corrupt and delete its pending rows.
+                if (string.Equals(actualColumn.Name, "ButtonId", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(actualColumn.Name, "Category", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!ColumnSchemaMatches(new LocalColumnDefinition(actualColumn.Name, "TEXT", true, 0), actualColumn))
+                        ThrowInvalidLocalSchema("Column mismatch PluginEvents." + actualColumn.Name + ".");
+                    continue;
+                }
                 if (!expectedByName.ContainsKey(actualColumn.Name))
                     ThrowInvalidLocalSchema("Unexpected column PluginEvents." + actualColumn.Name + ".");
             }
@@ -539,10 +564,10 @@ namespace KPLN_UserDataAgent.Services
                 command.Transaction = transaction;
                 command.CommandText =
                     "INSERT OR IGNORE INTO PluginEvents (" +
-                    "SyncId, RunId, EventType, EventTime, WindowsUser, DepartmentKey, TabName, PanelName, ButtonName, " +
+                    "SyncId, RunId, EventType, EventTime, WindowsUser, DepartmentKey, TabName, PanelName, ButtonName, ButtonId, Category, " +
                     "TransactionName, AddedCount, ModifiedCount, DeletedCount, IsSynced, SyncedAt" +
                     ") VALUES (" +
-                    "@SyncId, @RunId, @EventType, @EventTime, @WindowsUser, @DepartmentKey, @TabName, @PanelName, @ButtonName, " +
+                    "@SyncId, @RunId, @EventType, @EventTime, @WindowsUser, @DepartmentKey, @TabName, @PanelName, @ButtonName, @ButtonId, @Category, " +
                     "@TransactionName, @AddedCount, @ModifiedCount, @DeletedCount, 0, ''" +
                     ");";
                 AddPluginEventParameters(command, record);
@@ -560,10 +585,10 @@ namespace KPLN_UserDataAgent.Services
                 command.Transaction = transaction;
                 command.CommandText =
                     "INSERT OR IGNORE INTO PluginEvents (" +
-                    "SyncId, RunId, EventType, EventTime, WindowsUser, DepartmentKey, TabName, PanelName, ButtonName, " +
+                    "SyncId, RunId, EventType, EventTime, WindowsUser, DepartmentKey, TabName, PanelName, ButtonName, ButtonId, Category, " +
                     "TransactionName, AddedCount, ModifiedCount, DeletedCount" +
                     ") VALUES (" +
-                    "@SyncId, @RunId, @EventType, @EventTime, @WindowsUser, @DepartmentKey, @TabName, @PanelName, @ButtonName, " +
+                    "@SyncId, @RunId, @EventType, @EventTime, @WindowsUser, @DepartmentKey, @TabName, @PanelName, @ButtonName, @ButtonId, @Category, " +
                     "@TransactionName, @AddedCount, @ModifiedCount, @DeletedCount" +
                     ");";
                 AddPluginEventParameters(command, record);
@@ -582,6 +607,8 @@ namespace KPLN_UserDataAgent.Services
             command.Parameters.AddWithValue("@TabName", record.TabName ?? string.Empty);
             command.Parameters.AddWithValue("@PanelName", record.PanelName ?? string.Empty);
             command.Parameters.AddWithValue("@ButtonName", record.ButtonName ?? string.Empty);
+            command.Parameters.AddWithValue("@ButtonId", record.ButtonId ?? string.Empty);
+            command.Parameters.AddWithValue("@Category", record.Category ?? string.Empty);
             command.Parameters.AddWithValue("@TransactionName", record.TransactionName ?? string.Empty);
             command.Parameters.AddWithValue("@AddedCount", record.AddedCount);
             command.Parameters.AddWithValue("@ModifiedCount", record.ModifiedCount);
@@ -599,10 +626,39 @@ namespace KPLN_UserDataAgent.Services
                 paths.AddRange(Directory.GetFiles(directoryPath, archivePattern).OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
             }
 
+            // Do not alter the old queue's schema: an older Revit process may
+            // still be using it. SyncId makes concurrent central inserts safe.
+            string legacyPath = GetLegacyLocalDatabasePath();
+            if (legacyPath != null && !string.IsNullOrWhiteSpace(directoryPath) && Directory.Exists(directoryPath))
+            {
+                string legacyPattern = Path.GetFileNameWithoutExtension(legacyPath) + "_*" + Path.GetExtension(legacyPath);
+                paths.AddRange(Directory.GetFiles(directoryPath, legacyPattern).OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
+                if (File.Exists(legacyPath)) paths.Add(legacyPath);
+            }
             if (File.Exists(_localDatabasePath))
                 paths.Add(_localDatabasePath);
 
             return paths;
+        }
+
+        private string GetLegacyLocalDatabasePath()
+        {
+            const string currentName = "KPLN_UserDataAgentPlugin_v2_Local.db";
+            if (!string.Equals(Path.GetFileName(_localDatabasePath), currentName, StringComparison.OrdinalIgnoreCase))
+                return null;
+            return Path.Combine(Path.GetDirectoryName(_localDatabasePath), "KPLN_UserDataAgentPlugin_Local.db");
+        }
+
+        private bool IsLegacyLocalQueueDatabasePath(string path)
+        {
+            string legacy = GetLegacyLocalDatabasePath();
+            if (legacy == null) return false;
+            string name = Path.GetFileNameWithoutExtension(path);
+            string legacyName = Path.GetFileNameWithoutExtension(legacy);
+            return string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)),
+                    Path.GetDirectoryName(Path.GetFullPath(legacy)), StringComparison.OrdinalIgnoreCase)
+                && (string.Equals(name, legacyName, StringComparison.OrdinalIgnoreCase)
+                    || name.StartsWith(legacyName + "_", StringComparison.OrdinalIgnoreCase));
         }
 
         private void RotateLocalDatabaseIfNeeded()

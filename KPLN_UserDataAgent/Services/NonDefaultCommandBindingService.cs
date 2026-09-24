@@ -1,17 +1,21 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace KPLN_UserDataAgent.Services
 {
     internal sealed class NonDefaultCommandBindingService : IDisposable
     {
         private const string CustomCommandIdPrefix = "CustomCtrl_";
-        private const int ContinuousScanLimit = 20;
+        private const int ContinuousScanLimit = 3;
+        private static readonly TimeSpan InitialScanInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan PeriodicScanInterval = TimeSpan.FromSeconds(60);
         private static readonly TimeSpan FallbackExecutionWindow = TimeSpan.FromSeconds(60);
 
@@ -24,6 +28,21 @@ namespace KPLN_UserDataAgent.Services
             new Dictionary<string, NonDefaultCommandInfo>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, ActiveExecution> _activeExecutions =
             new Dictionary<string, ActiveExecution>(StringComparer.OrdinalIgnoreCase);
+
+        // Index by object identity: unrelated vendors may reuse the same ID.
+        private readonly Dictionary<object, NonDefaultCommandInfo> _ribbonItems =
+            new Dictionary<object, NonDefaultCommandInfo>(ReferenceComparer.Instance);
+        private readonly Dictionary<object, RibbonActivation> _otherActivations =
+            new Dictionary<object, RibbonActivation>(ReferenceComparer.Instance);
+        private readonly Dictionary<Type, Dictionary<string, PropertyInfo>> _properties =
+            new Dictionary<Type, Dictionary<string, PropertyInfo>>();
+        private readonly Dictionary<string, bool> _nativeCommandIds =
+            new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, bool> _bundledAssemblyCache =
+            new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private EventInfo _uiElementActivatedEvent;
+        private Delegate _uiElementActivatedHandler;
+        private bool _ribbonEventsAttached;
 
         private Type _componentManagerType;
         private PropertyInfo _ribbonProperty;
@@ -91,6 +110,16 @@ namespace KPLN_UserDataAgent.Services
                     }
                 }
 
+                if (_uiElementActivatedEvent != null && _uiElementActivatedHandler != null)
+                {
+                    try { _uiElementActivatedEvent.RemoveEventHandler(null, _uiElementActivatedHandler); }
+                    catch { }
+                }
+                _ribbonItems.Clear();
+                _otherActivations.Clear();
+                _properties.Clear();
+                _nativeCommandIds.Clear();
+                _bundledAssemblyCache.Clear();
                 _bindings.Clear();
                 _commandsById.Clear();
 
@@ -118,6 +147,8 @@ namespace KPLN_UserDataAgent.Services
             DateTime now = DateTime.Now;
             if (_scanCount < ContinuousScanLimit)
             {
+                if ((now - _lastScanTime) < InitialScanInterval)
+                    return false;
                 _scanCount++;
                 _lastScanTime = now;
                 return true;
@@ -134,6 +165,8 @@ namespace KPLN_UserDataAgent.Services
         {
             foreach (NonDefaultCommandInfo commandInfo in CollectNonDefaultCommands())
             {
+                if (!commandInfo.IsRegisteredExternal)
+                    continue;
                 _commandsById[commandInfo.Id] = commandInfo;
 
                 if (_bindings.ContainsKey(commandInfo.Id))
@@ -179,17 +212,12 @@ namespace KPLN_UserDataAgent.Services
             Dictionary<string, NonDefaultCommandInfo> result =
                 new Dictionary<string, NonDefaultCommandInfo>(StringComparer.OrdinalIgnoreCase);
 
+            _ribbonItems.Clear();
             foreach (object tab in Enumerate(GetPropertyValue(ribbon, "Tabs")))
             {
-                if (!GetBoolean(tab, "IsVisible", true))
-                    continue;
-
                 string tabName = Clean(FirstString(tab, "Title", "Text", "Name", "Id"));
                 foreach (object panel in Enumerate(GetPropertyValue(tab, "Panels")))
                 {
-                    if (!GetBoolean(panel, "IsVisible", true))
-                        continue;
-
                     object panelSource = GetPropertyValue(panel, "Source") ?? panel;
                     string panelName = Clean(FirstString(panelSource, "Title", "Text", "Name", "Id"));
                     object items = GetPropertyValue(panelSource, "Items") ?? GetPropertyValue(panel, "Items");
@@ -197,6 +225,12 @@ namespace KPLN_UserDataAgent.Services
                 }
             }
 
+            // Hidden contextual panels are indexed too, so selecting an element
+            // does not require another full scan before its first button click.
+            List<object> removed = new List<object>();
+            foreach (object item in _otherActivations.Keys)
+                if (!_ribbonItems.ContainsKey(item)) removed.Add(item);
+            foreach (object item in removed) _otherActivations.Remove(item);
             return result.Values;
         }
 
@@ -225,24 +259,29 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
-        private static void AddCommand(
+        private void AddCommand(
             object item,
             string tabName,
             string panelName,
             Dictionary<string, NonDefaultCommandInfo> commands)
         {
-            if (item == null || !GetBoolean(item, "IsVisible", true))
+            if (item == null || IsMenuContainer(item) || IsBundledAutodeskCommand(item))
                 return;
 
             string id = CleanCommandId(FirstString(item, "Id", "Name"));
-            if (!id.StartsWith(CustomCommandIdPrefix, StringComparison.OrdinalIgnoreCase))
+            bool registeredExternal = id.StartsWith(CustomCommandIdPrefix, StringComparison.OrdinalIgnoreCase);
+            // Preserve existing CustomCtrl_ support, but do not log text boxes,
+            // ribbon tabs, row breaks or other UIElementActivated notifications.
+            if (!registeredExternal && (!IsExecutableRibbonItem(item) || IsNativeButton(item, id)))
                 return;
 
             string commandName = Clean(FirstString(item, "Text", "ItemText", "Title", "AutomationName", "Name", "Id"));
             if (string.IsNullOrWhiteSpace(commandName))
                 commandName = id;
 
-            commands[id] = new NonDefaultCommandInfo(id, Clean(tabName), Clean(panelName), commandName);
+            NonDefaultCommandInfo info = new NonDefaultCommandInfo(id, Clean(tabName), Clean(panelName), commandName);
+            _ribbonItems[item] = info;
+            if (registeredExternal) commands[id] = info;
         }
 
         private void BeginExecution(NonDefaultCommandInfo commandInfo, bool isFallbackExecution)
@@ -287,34 +326,173 @@ namespace KPLN_UserDataAgent.Services
 
         private void OnRibbonItemExecuted(object sender, object args)
         {
+            HandleRibbonEvent(args, false);
+        }
+
+        private void OnRibbonUiElementActivated(object sender, object args)
+        {
+            HandleRibbonEvent(args, true);
+        }
+
+        private void HandleRibbonEvent(object args, bool activation)
+        {
             try
             {
+                if (_isDisposed) return;
                 object item = args == null ? null : GetPropertyValue(args, "Item");
-                if (item == null)
-                    return;
+                if (item == null || IsMenuContainer(item) || IsBundledAutodeskCommand(item)) return;
+                string id = CleanCommandId(FirstString(item, "Id", "Name"));
+                bool registeredExternal = id.StartsWith(CustomCommandIdPrefix, StringComparison.OrdinalIgnoreCase);
+                // The existing command binding / ItemExecuted route remains the
+                // only owner of registered add-in executions.
+                if (activation && registeredExternal) return;
+                if (!registeredExternal && (!IsExecutableRibbonItem(item) || IsNativeButton(item, id))) return;
 
-                string commandId = CleanCommandId(FirstString(item, "Id", "Name"));
-                if (string.IsNullOrWhiteSpace(commandId))
-                    return;
-
-                NonDefaultCommandInfo commandInfo;
-                if (!_commandsById.TryGetValue(commandId, out commandInfo))
+                NonDefaultCommandInfo info;
+                if (!_ribbonItems.TryGetValue(item, out info))
                 {
-                    foreach (NonDefaultCommandInfo refreshedCommandInfo in CollectNonDefaultCommands())
+                    // Only a previously unseen button causes this refresh.
+                    // Cache even unresolved QAT clones below, so repeated clicks
+                    // do not rescan the ribbon or lose a newly added panel name.
+                    foreach (NonDefaultCommandInfo discovered in CollectNonDefaultCommands())
+                        _commandsById[discovered.Id] = discovered;
+                    if (!_ribbonItems.TryGetValue(item, out info))
                     {
-                        _commandsById[refreshedCommandInfo.Id] = refreshedCommandInfo;
+                        // Event may be from a QAT clone or a just-created button.
+                        // Do not guess its source from the currently active tab.
+                        if (!registeredExternal || !_commandsById.TryGetValue(id, out info))
+                            info = new NonDefaultCommandInfo(id, string.Empty, string.Empty,
+                                Clean(FirstString(item, "Text", "ItemText", "Title", "AutomationName", "Name", "Id")));
+                        _ribbonItems[item] = info;
                     }
-
-                    if (!_commandsById.TryGetValue(commandId, out commandInfo))
-                        return;
+                }
+                if (registeredExternal)
+                {
+                    BeginExecution(info, true);
+                    return;
                 }
 
-                BeginExecution(commandInfo, true);
+                // UIElementActivated precedes the command and ItemExecuted may
+                // follow a long modal dialog. Pair callbacks, not a 2-second
+                // debounce that would lose two rapid real clicks.
+                RibbonActivation last;
+                if (!_otherActivations.TryGetValue(item, out last))
+                    _otherActivations[item] = last = new RibbonActivation();
+                if (activation)
+                {
+                    last.AwaitingExecuted = true;
+                }
+                else if (last.AwaitingExecuted)
+                {
+                    last.AwaitingExecuted = false;
+                    return;
+                }
+                _tracker.RecordOtherRibbonActivation(info.TabName, info.PanelName, info.CommandName, info.Id);
             }
             catch (Exception exception)
             {
-                SafeQueueException("NonDefaultCommandBindingService.ItemExecuted", exception);
+                SafeQueueException("NonDefaultCommandBindingService.RibbonEvent", exception);
             }
+        }
+
+        private static bool IsExecutableRibbonItem(object item)
+        {
+            for (Type type = item.GetType(); type != null; type = type.BaseType)
+                if (type.FullName == "Autodesk.Windows.RibbonButton"
+                    || type.FullName == "Autodesk.Windows.RibbonMenuItem") return true;
+            return false;
+        }
+
+        private bool IsMenuContainer(object item)
+        {
+            // Opening a drop-down is navigation, not a plug-in execution.
+            // RibbonMenuButton derives from RibbonButton, so checking only the
+            // latter also logged native menus such as Additional Settings.
+            for (Type type = item.GetType(); type != null; type = type.BaseType)
+            {
+                if (type.FullName == "Autodesk.Windows.RibbonListButton")
+                    return !GetBoolean(item, "IsSplit", false);
+                if (type.FullName == "Autodesk.Windows.RibbonMenuItem")
+                    return GetBoolean(item, "HasItems", false);
+            }
+            return false;
+        }
+
+        private bool IsNativeButton(object item, string id)
+        {
+            if (id.StartsWith(CustomCommandIdPrefix, StringComparison.OrdinalIgnoreCase)) return false;
+            object handler = GetPropertyValue(item, "CommandHandler");
+            if (handler != null)
+            {
+                Assembly assembly = handler.GetType().Assembly;
+                string name = assembly.GetName().Name;
+                // A third-party ICommand handler is positive evidence of an
+                // add-in even when the developer has chosen an ID_* identifier.
+                if (name != "UIFramework" && name != "RevitAPIUI" && name != "AdWindows")
+                    return false;
+                // Revit can attach its own generic/dummy handler to an add-in
+                // button. The handler's assembly alone does not make it native.
+            }
+            if (string.IsNullOrEmpty(id)) return false;
+            bool native;
+            if (_nativeCommandIds.TryGetValue(id, out native)) return native;
+            // ID_* alone is not sufficient: also require a registered Revit
+            // command. Lookup is cached, including misses, and never binds it.
+            native = false;
+            if (id.StartsWith("ID_", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    RevitCommandId command = RevitCommandId.LookupCommandId(id);
+                    native = command != null && command.Name.StartsWith("ID_", StringComparison.OrdinalIgnoreCase);
+                }
+                catch { }
+            }
+            _nativeCommandIds[id] = native;
+            return native;
+        }
+
+        private bool IsBundledAutodeskCommand(object item)
+        {
+            // ExternalCommandRibbonButton exposes the actual command assembly.
+            // CustomCtrl_ also covers Autodesk's bundled add-ins (Precast,
+            // eTransmit, etc.), so a custom ID alone cannot identify a vendor.
+            string assemblyPath = FirstString(item, "AssemblyAbsolutePath");
+            if (string.IsNullOrWhiteSpace(assemblyPath)) return false;
+            bool bundled;
+            if (_bundledAssemblyCache.TryGetValue(assemblyPath, out bundled)) return bundled;
+            bundled = false;
+            try
+            {
+                string fullPath = Path.GetFullPath(assemblyPath);
+                string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+                string hostDirectory = Path.GetDirectoryName(typeof(UIControlledApplication).Assembly.Location);
+                // Only inspect installed local files. No metadata reads from
+                // vendor network shares on Revit's UI thread. Cache per assembly.
+                bool installedWithHost = IsInsideDirectory(fullPath, hostDirectory)
+                    || (!string.IsNullOrWhiteSpace(programFiles)
+                        && IsInsideDirectory(fullPath, Path.Combine(programFiles, "Autodesk")));
+                if (installedWithHost && File.Exists(fullPath))
+                {
+                    string company = FileVersionInfo.GetVersionInfo(fullPath).CompanyName;
+                    bundled = !string.IsNullOrWhiteSpace(company)
+                        && company.Trim().StartsWith("Autodesk", StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Missing metadata is not proof of a native/bundled command.
+            }
+            _bundledAssemblyCache[assemblyPath] = bundled;
+            return bundled;
+        }
+
+        private static bool IsInsideDirectory(string filePath, string directory)
+        {
+            if (string.IsNullOrWhiteSpace(directory)) return false;
+            string prefix = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            return filePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
         }
 
         private void SafeQueueException(string source, Exception exception)
@@ -351,7 +529,7 @@ namespace KPLN_UserDataAgent.Services
 
         private void EnsureRibbonAccessors()
         {
-            if (_componentManagerType != null)
+            if (_ribbonEventsAttached)
                 return;
 
             _componentManagerType = FindType("Autodesk.Windows.ComponentManager");
@@ -365,12 +543,19 @@ namespace KPLN_UserDataAgent.Services
             _itemExecutedEvent = _componentManagerType.GetEvent("ItemExecuted", BindingFlags.Static | BindingFlags.Public);
             if (_itemExecutedEvent != null)
             {
-                _itemExecutedHandler = CreateEventHandler(_itemExecutedEvent.EventHandlerType);
+                _itemExecutedHandler = CreateEventHandler(_itemExecutedEvent.EventHandlerType, "OnRibbonItemExecuted");
                 _itemExecutedEvent.AddEventHandler(null, _itemExecutedHandler);
             }
+            _uiElementActivatedEvent = _componentManagerType.GetEvent("UIElementActivated", BindingFlags.Static | BindingFlags.Public);
+            if (_uiElementActivatedEvent != null)
+            {
+                _uiElementActivatedHandler = CreateEventHandler(_uiElementActivatedEvent.EventHandlerType, "OnRibbonUiElementActivated");
+                _uiElementActivatedEvent.AddEventHandler(null, _uiElementActivatedHandler);
+            }
+            _ribbonEventsAttached = true;
         }
 
-        private Delegate CreateEventHandler(Type eventHandlerType)
+        private Delegate CreateEventHandler(Type eventHandlerType, string methodName)
         {
             MethodInfo invokeMethod = eventHandlerType.GetMethod("Invoke");
             ParameterInfo[] parameters = invokeMethod.GetParameters();
@@ -380,7 +565,7 @@ namespace KPLN_UserDataAgent.Services
             ParameterExpression senderParameter = Expression.Parameter(parameters[0].ParameterType, "sender");
             ParameterExpression argsParameter = Expression.Parameter(parameters[1].ParameterType, "args");
             MethodInfo handlerMethod = GetType().GetMethod(
-                "OnRibbonItemExecuted",
+                methodName,
                 BindingFlags.Instance | BindingFlags.NonPublic);
 
             MethodCallExpression body = Expression.Call(
@@ -416,12 +601,21 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
-        private static object GetPropertyValue(object value, string propertyName)
+        private object GetPropertyValue(object value, string propertyName)
         {
             if (value == null || string.IsNullOrWhiteSpace(propertyName))
                 return null;
 
-            PropertyInfo property = value.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
+            Type type = value.GetType();
+            Dictionary<string, PropertyInfo> accessors;
+            if (!_properties.TryGetValue(type, out accessors))
+                _properties[type] = accessors = new Dictionary<string, PropertyInfo>(StringComparer.Ordinal);
+            PropertyInfo property;
+            if (!accessors.TryGetValue(propertyName, out property))
+            {
+                property = FindPublicProperty(type, propertyName);
+                accessors[propertyName] = property;
+            }
             if (property == null || property.GetIndexParameters().Length != 0)
                 return null;
 
@@ -435,13 +629,32 @@ namespace KPLN_UserDataAgent.Services
             }
         }
 
-        private static bool GetBoolean(object value, string propertyName, bool fallback)
+        private static PropertyInfo FindPublicProperty(Type type, string propertyName)
+        {
+            // UIFramework.TypeSelector hides RibbonList.Items with a different
+            // return type. GetProperty(name) throws AmbiguousMatchException for
+            // this real Revit control and used to abort the entire ribbon scan.
+            // Prefer the most-derived readable non-indexed declaration.
+            for (Type current = type; current != null; current = current.BaseType)
+            {
+                foreach (PropertyInfo property in current.GetProperties(
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
+                {
+                    if (property.Name == propertyName && property.GetGetMethod() != null
+                        && property.GetIndexParameters().Length == 0)
+                        return property;
+                }
+            }
+            return null;
+        }
+
+        private bool GetBoolean(object value, string propertyName, bool fallback)
         {
             object propertyValue = GetPropertyValue(value, propertyName);
             return propertyValue is bool ? (bool)propertyValue : fallback;
         }
 
-        private static string FirstString(object value, params string[] propertyNames)
+        private string FirstString(object value, params string[] propertyNames)
         {
             foreach (string propertyName in propertyNames)
             {
@@ -487,10 +700,23 @@ namespace KPLN_UserDataAgent.Services
                 CommandName = commandName ?? string.Empty;
             }
 
+            public bool IsRegisteredExternal => Id.StartsWith(CustomCommandIdPrefix, StringComparison.OrdinalIgnoreCase);
             public string Id { get; private set; }
             public string TabName { get; private set; }
             public string PanelName { get; private set; }
             public string CommandName { get; private set; }
+        }
+
+        private sealed class RibbonActivation
+        {
+            public bool AwaitingExecuted;
+        }
+
+        private sealed class ReferenceComparer : IEqualityComparer<object>
+        {
+            public static readonly ReferenceComparer Instance = new ReferenceComparer();
+            public new bool Equals(object x, object y) => ReferenceEquals(x, y);
+            public int GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
         }
 
         private sealed class BindingRegistration

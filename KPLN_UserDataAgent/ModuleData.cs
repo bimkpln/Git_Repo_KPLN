@@ -89,7 +89,7 @@ namespace KPLN_UserDataAgent
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "KPLN",
                     "UserDataAgent",
-                    "KPLN_UserDataAgentPlugin_Local.db");
+                    "KPLN_UserDataAgentPlugin_v2_Local.db");
             }
         }
 
