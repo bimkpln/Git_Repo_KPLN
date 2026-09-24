@@ -67,5 +67,23 @@ namespace KPLN_Tools.Common
             return parameter.Definition.GetDataType() == SpecTypeId.Number;
 #endif
         }
+
+        internal static bool IsLength(Parameter parameter)
+        {
+#if Debug2020 || Revit2020
+            return parameter.Definition.ParameterType == ParameterType.Length;
+#else
+            return parameter.Definition.GetDataType() == SpecTypeId.Length;
+#endif
+        }
+
+        internal static bool IsAngle(Parameter parameter)
+        {
+#if Debug2020 || Revit2020
+            return parameter.Definition.ParameterType == ParameterType.Angle;
+#else
+            return parameter.Definition.GetDataType() == SpecTypeId.Angle;
+#endif
+        }
     }
 }
