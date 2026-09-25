@@ -14,6 +14,8 @@ namespace KPLN_UserDataAgent.Services
     internal sealed class NonDefaultCommandBindingService : IDisposable
     {
         private const string CustomCommandIdPrefix = "CustomCtrl_";
+        private static readonly string[] TrackedPanelNames =
+            { "KPLN", "ModPlus", "Teslabim", "ЛИРА", "Lumion", "DKC", "dLab" };
         private const int ContinuousScanLimit = 3;
         private static readonly TimeSpan InitialScanInterval = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan PeriodicScanInterval = TimeSpan.FromSeconds(60);
@@ -281,7 +283,22 @@ namespace KPLN_UserDataAgent.Services
 
             NonDefaultCommandInfo info = new NonDefaultCommandInfo(id, Clean(tabName), Clean(panelName), commandName);
             _ribbonItems[item] = info;
-            if (registeredExternal) commands[id] = info;
+            if (registeredExternal && ShouldTrackCommand(info.PanelName, info.Id))
+                commands[id] = info;
+        }
+
+        internal static bool ShouldTrackCommand(string panelName, string commandId)
+        {
+            string id = CleanCommandId(commandId);
+            if (id.StartsWith("ExtCmd", StringComparison.OrdinalIgnoreCase)
+                || id.StartsWith("MODPLUS_", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            foreach (string name in TrackedPanelNames)
+                if ((panelName ?? string.Empty).IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+
+            return false;
         }
 
         private void BeginExecution(NonDefaultCommandInfo commandInfo, bool isFallbackExecution)
@@ -366,6 +383,7 @@ namespace KPLN_UserDataAgent.Services
                         _ribbonItems[item] = info;
                     }
                 }
+                if (!ShouldTrackCommand(info.PanelName, info.Id)) return;
                 if (registeredExternal)
                 {
                     BeginExecution(info, true);
