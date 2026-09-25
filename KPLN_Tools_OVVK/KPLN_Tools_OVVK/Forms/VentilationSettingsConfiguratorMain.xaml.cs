@@ -60,7 +60,6 @@ namespace KPLN_Tools_OVVK.Forms
         public VentilationSettingsConfiguratorMain(UIApplication uiapp, UIDocument uidoc)
         {
             InitializeComponent();
-            _types.Add(new Command.FamilyTypeItem { IsCreate = true });
             FamilyTypesListBox.ItemsSource = _types;
             new WindowInteropHelper(this).Owner = uiapp.MainWindowHandle;
             _handler = new Command.FamilyRequestHandler(this);
@@ -101,19 +100,14 @@ namespace KPLN_Tools_OVVK.Forms
             if (_switchingType || _isBusy) return;
             var selected = FamilyTypesListBox.SelectedItem as Command.FamilyTypeItem;
             if (selected == null) return;
-            if (selected.IsCreate)
-            {
-                if (_sectionCatalog == null)
-                {
-                    _switchingType = true;
-                    try { FamilyTypesListBox.SelectedItem = _currentType; }
-                    finally { _switchingType = false; }
-                    QueueRequest(Command.RequestKind.LoadSectionCatalog);
-                }
-                else CreateType();
-                return;
-            }
             SelectType(selected);
+        }
+
+        private void CreateType_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isBusy) return;
+            if (_sectionCatalog == null) QueueRequest(Command.RequestKind.LoadSectionCatalog);
+            else CreateType();
         }
 
         private void CreateType()
@@ -230,6 +224,7 @@ namespace KPLN_Tools_OVVK.Forms
         internal void SetBusy(bool value)
         {
             _isBusy = value;
+            CreateTypeButton.IsEnabled = !value;
             EditorPanel.IsEnabled = !value;
             OpenButton.IsEnabled = !value && _configuration != null;
             AddButton.IsEnabled = OpenButton.IsEnabled;
@@ -460,7 +455,7 @@ namespace KPLN_Tools_OVVK.Forms
             {
                 foreach (var block in _observedSections) block.PropertyChanged -= SectionChanged;
                 _observedSections.Clear(); ClearDimensionObservers(); ClearInfoObserver();
-                _types.Clear(); _types.Add(new Command.FamilyTypeItem { IsCreate = true });
+                _types.Clear();
                 _currentType = null; _configuration = null; _selectedSection = null;
                 _sectionCatalog = family.Catalog; _lastSavedPath = _workingFamilyPath = family.Path; _workingSourcePath = family.SourcePath ?? family.Path;
                 UpdateProjectHeader();
@@ -982,7 +977,7 @@ namespace KPLN_Tools_OVVK.Forms
                 Margin = new Thickness(0, 0, 0, 8)
             });
             // После перемещения секции используем объект из списка именно текущего параметра.
-            var choices = definition.Choices.Where(t => !_selectedSection.IsConnector || t.IsConnectorType).ToList();
+            var choices = definition.Choices.ToList();
             if (_selectedSection.Type != null)
             {
                 if (!choices.Any(t => t.Key == _selectedSection.Type.Key)) choices.Insert(0, _selectedSection.Type);
