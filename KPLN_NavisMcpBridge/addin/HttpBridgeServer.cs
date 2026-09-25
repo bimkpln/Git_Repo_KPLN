@@ -21,9 +21,11 @@ namespace KPLN_NavisMcpBridge
     ///   GET  /clash/tests
     ///   GET  /clash/tests/{testName}/results
     ///         ?includePaths=false&status=Active&includeItemBounds=true
-    ///          &includeSizes=true
+    ///          &includeSizes=true&includeMarks=true&includeWorksets=true
     ///   POST /clash/tests/{testName}/run
     ///   POST /clash/results/{testName}/{resultName}/status   body: {status, comment}
+    ///   POST /clash/results/{testName}/status   body: {updates: [{resultName, status}]}
+    ///   POST /clash/groups/{testName}/status   body: {groupNames, status, comment}
     ///   GET  /clash/tests/{testName}/export?format=html
     /// </summary>
     internal sealed class HttpBridgeServer
@@ -102,10 +104,15 @@ namespace KPLN_NavisMcpBridge
                 payload = Route(req);
                 status = 200;
             }
-            catch (InvalidOperationException ex)
+            catch (ResourceNotFoundException ex)
+            {
+                status = 404;
+                payload = new { error = ex.ToString() };
+            }
+            catch (StateConflictException ex)
             {
                 status = 409;
-                payload = new { error = ex.Message };
+                payload = new { error = ex.ToString() };
             }
             catch (NotImplementedException ex)
             {
@@ -141,7 +148,7 @@ namespace KPLN_NavisMcpBridge
             // (кириллица в именах тестов/результатов) декодирует %XX
             // побайтово как отдельные code point'ы, а не как байты UTF-8 —
             // многобайтовые символы превращаются в мусор, и поиск теста по
-            // имени падает с "не найден" (409), хотя тест точно есть.
+            // имени падает с "не найден" (404), хотя тест точно есть.
             // RawUrl отдаёт путь как есть (percent-encoded, не тронутый
             // Uri-парсером) — декодируем его сами через DecodeUtf8Percent.
             var rawTarget = req.RawUrl ?? "/";
@@ -179,7 +186,13 @@ namespace KPLN_NavisMcpBridge
                 // не берётся: габарит корпуса клапана или отвода систематически
                 // больше сечения воздуховода.
                 var includeSizes = req.QueryString["includeSizes"] == "true";
-                return _dispatcher.Run(() => ClashService.GetResults(DecodeUtf8Percent(m.Groups[1].Value), includePaths, status, includeItemBounds, includeSizes));
+                // includeMarks — параметр "Марка" с вкладки "Объект" для
+                // распознавания пилонов и других маркированных элементов.
+                var includeMarks = req.QueryString["includeMarks"] == "true";
+                // includeWorksets — параметр "Рабочий набор" с вкладки
+                // "Объект"; поиск поднимается по AncestorsAndSelf.
+                var includeWorksets = req.QueryString["includeWorksets"] == "true";
+                return _dispatcher.Run(() => ClashService.GetResults(DecodeUtf8Percent(m.Groups[1].Value), includePaths, status, includeItemBounds, includeSizes, includeMarks, includeWorksets));
             }
 
             if (method == "POST" && (m = Regex.Match(path, @"^/clash/tests/([^/]+)/run$")).Success)
@@ -197,6 +210,45 @@ namespace KPLN_NavisMcpBridge
                 return new { ok = true };
             }
 
+            if (method == "POST" && (m = Regex.Match(path, @"^/clash/results/([^/]+)/status$")).Success)
+            {
+                var body = ReadBody<BatchStatusUpdateBody>(req);
+                if (body == null || body.updates == null || body.updates.Count == 0)
+                    throw new ArgumentException("Пустой список updates");
+
+                var updates = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var item in body.updates)
+                {
+                    if (item == null || string.IsNullOrWhiteSpace(item.resultName) ||
+                        string.IsNullOrWhiteSpace(item.status))
+                        throw new ArgumentException("Каждый элемент updates должен содержать resultName и status");
+
+                    if (updates.TryGetValue(item.resultName, out var existing) &&
+                        !string.Equals(existing, item.status, StringComparison.OrdinalIgnoreCase))
+                        throw new ArgumentException(
+                            $"Для результата '{item.resultName}' переданы разные статусы");
+
+                    updates[item.resultName] = item.status;
+                }
+
+                return _dispatcher.Run(() => ClashService.SetResultStatuses(
+                    DecodeUtf8Percent(m.Groups[1].Value), updates));
+            }
+
+            if (method == "POST" && (m = Regex.Match(path, @"^/clash/groups/([^/]+)/status$")).Success)
+            {
+                var body = ReadBody<GroupStatusUpdateBody>(req);
+                if (body == null)
+                    throw new ArgumentException("Пустое тело запроса");
+
+                var updatedByGroup = _dispatcher.Run(() => ClashService.SetGroupStatuses(
+                    DecodeUtf8Percent(m.Groups[1].Value), body.groupNames,
+                    body.status, body.comment));
+                var total = 0;
+                foreach (var count in updatedByGroup.Values) total += count;
+                return new { ok = true, updated = total, groups = updatedByGroup };
+            }
+
             if (method == "GET" && (m = Regex.Match(path, @"^/clash/tests/([^/]+)/export$")).Success)
             {
                 var format = req.QueryString["format"] ?? "html";
@@ -204,7 +256,7 @@ namespace KPLN_NavisMcpBridge
                 return new { path = pathOut };
             }
 
-            throw new InvalidOperationException($"Неизвестный маршрут: {method} {path}");
+            throw new ResourceNotFoundException($"Неизвестный маршрут: {method} {path}");
         }
 
         /// <summary>
@@ -234,7 +286,7 @@ namespace KPLN_NavisMcpBridge
 
         private static T ReadBody<T>(HttpListenerRequest req)
         {
-            using var reader = new StreamReader(req.InputStream, req.ContentEncoding ?? Encoding.UTF8);
+            using var reader = new StreamReader(req.InputStream, Encoding.UTF8, true);
             var text = reader.ReadToEnd();
             return string.IsNullOrWhiteSpace(text) ? default : JsonConvert.DeserializeObject<T>(text);
         }
@@ -250,8 +302,26 @@ namespace KPLN_NavisMcpBridge
 
         private class StatusUpdateBody
         {
-            public string status;
-            public string comment;
+            public string status { get; set; }
+            public string comment { get; set; }
+        }
+
+        private class GroupStatusUpdateBody
+        {
+            public List<string> groupNames { get; set; }
+            public string status { get; set; }
+            public string comment { get; set; }
+        }
+
+        private class ResultStatusUpdateItem
+        {
+            public string resultName { get; set; }
+            public string status { get; set; }
+        }
+
+        private class BatchStatusUpdateBody
+        {
+            public List<ResultStatusUpdateItem> updates { get; set; }
         }
     }
 }

@@ -31,6 +31,7 @@ get_clash_test_results.
 import difflib
 import math
 import re
+from collections import Counter
 from urllib.parse import quote
 
 import httpx
@@ -46,8 +47,8 @@ FT2MM = 304.8
 mcp = FastMCP("KPLN_NavisMcpBridge")
 
 
-def _client() -> httpx.Client:
-    return httpx.Client(base_url=BRIDGE_URL, timeout=90.0)
+def _client(timeout: float = 90.0) -> httpx.Client:
+    return httpx.Client(base_url=BRIDGE_URL, timeout=timeout)
 
 
 def _q(name: str) -> str:
@@ -61,7 +62,47 @@ def _bridge_error_hint(exc: Exception) -> str:
             "Убедитесь, что Navisworks Manage 2020 запущен, документ открыт, "
             "и на вкладке Add-ins один раз нажата кнопка 'MCP Bridge'."
         )
+    if isinstance(exc, httpx.HTTPStatusError):
+        response = exc.response
+        body = response.text.strip()
+        try:
+            payload = response.json()
+            if isinstance(payload, dict) and payload.get("error"):
+                body = str(payload["error"])
+        except ValueError:
+            pass
+
+        detail = body or response.reason_phrase
+        return (
+            f"Navisworks bridge вернул HTTP {response.status_code} "
+            f"для {response.request.method} {response.request.url}: {detail}"
+        )
     return str(exc)
+
+def _status_bucket(status: str | None) -> str:
+    text = str(status or "").upper()
+    if "APPROVED" in text or "RESOLVED" in text or "REVIEWED" in text:
+        return "Accepted"
+    if "NEW" in text or "ACTIVE" in text:
+        return "Open"
+    return "Other"
+
+
+def _find_clash_test(tests: list[dict], test_name: str) -> dict:
+    for test in tests:
+        if test.get("Name") == test_name:
+            return test
+
+    names = [test.get("Name") for test in tests if test.get("Name")]
+    close = difflib.get_close_matches(test_name, names, n=5, cutoff=0.4)
+    raise RuntimeError(
+        f'ОТКАЗ: теста "{test_name}" нет в открытом документе.'
+        + (
+            "\nПохожие имена: " + ", ".join(f'"{name}"' for name in close)
+            if close
+            else "\nПолный список — list_clash_tests."
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +134,65 @@ def _center_mm(bound: dict) -> list[float]:
         (mx["Y"] + mn["Y"]) / 2.0 * FT2MM,
         (mx["Z"] + mn["Z"]) / 2.0 * FT2MM,
     ]
+
+
+def _wall_relation(
+    result: dict,
+    wall_geometry: dict | None,
+    mep_axis: list[float] | None,
+) -> dict:
+    """Raw geometry relation between a MEP axis and a wall in plan.
+
+    The wall axis comes from mesh PCA in the add-in, not from an axis-aligned
+    bounding box. This is essential for diagonal walls: their AABB can look
+    almost square and contains no usable wall direction.
+    """
+    out = {
+        "WallNormalAngle": None,
+        "WallEndDistance": None,
+        "WallPlanThickness": None,
+        "WallPlanReliability": None,
+        "WallPlanSource": None,
+        "WallBroadFaceDistance": None,
+        "WallEndFaceDistance": None,
+    }
+    if not wall_geometry:
+        return out
+
+    try:
+        axis_x = float(wall_geometry["AxisX"])
+        axis_y = float(wall_geometry["AxisY"])
+        center_x = float(wall_geometry["CenterX"]) * FT2MM
+        center_y = float(wall_geometry["CenterY"]) * FT2MM
+        half_length = float(wall_geometry["HalfLength"]) * FT2MM
+        half_thickness = float(wall_geometry["HalfThickness"]) * FT2MM
+        reliability = float(wall_geometry["Reliability"])
+    except (KeyError, TypeError, ValueError):
+        return out
+
+    out["WallPlanThickness"] = round(half_thickness * 2.0, 1)
+    out["WallPlanReliability"] = round(reliability, 2)
+    out["WallPlanSource"] = wall_geometry.get("Source")
+    broad_face = wall_geometry.get("NearestBroadFace")
+    end_face = wall_geometry.get("NearestEndFace")
+    if broad_face is not None:
+        out["WallBroadFaceDistance"] = round(float(broad_face) * FT2MM, 1)
+    if end_face is not None:
+        out["WallEndFaceDistance"] = round(float(end_face) * FT2MM, 1)
+
+    if mep_axis:
+        wall_normal = [-axis_y, axis_x, 0.0]
+        out["WallNormalAngle"] = round(_angle_deg(mep_axis, wall_normal), 2)
+
+    clash_bound = result.get("Bound")
+    if clash_bound:
+        clash_center = _center_mm(clash_bound)
+        dx = clash_center[0] - center_x
+        dy = clash_center[1] - center_y
+        along = abs(dx * axis_x + dy * axis_y)
+        out["WallEndDistance"] = round(max(0.0, half_length - along), 1)
+
+    return out
 
 
 def _axis(dims: list[float]) -> tuple[list[float] | None, float, float, float]:
@@ -301,6 +401,13 @@ def _metrics(result: dict) -> dict:
         "Len2": None,
         "Elong1": None,
         "Elong2": None,
+        "WallNormalAngle": None,
+        "WallEndDistance": None,
+        "WallPlanThickness": None,
+        "WallPlanReliability": None,
+        "WallPlanSource": None,
+        "WallBroadFaceDistance": None,
+        "WallEndFaceDistance": None,
         "GeomOk": False,
     }
 
@@ -364,6 +471,7 @@ def _metrics(result: dict) -> dict:
     struct_side = 1 if c1 in _STRUCT else (2 if c2 in _STRUCT else 0)
     if struct_side:
         mep_d = d2 if struct_side == 1 else d1
+        mep_axis = v2 if struct_side == 1 else v1
         thick = out["Thick1"] if struct_side == 1 else out["Thick2"]
         out["MepMinEdge"] = round(min(mep_d), 1)
         out["StructThick"] = thick
@@ -381,6 +489,13 @@ def _metrics(result: dict) -> dict:
         out["Through"] = (
             round(out["DistMm"], 1) >= round(thick * 0.95, 1) if thick else None
         )
+
+        wall_side = 1 if c1 == "стена" else (2 if c2 == "стена" else 0)
+        if wall_side:
+            wall_geometry = result.get(
+                "Item1PlanGeometry" if wall_side == 1 else "Item2PlanGeometry"
+            )
+            out.update(_wall_relation(result, wall_geometry, mep_axis))
     else:
         out["MepMinEdge"] = None
         out["StructThick"] = None
@@ -391,13 +506,121 @@ def _metrics(result: dict) -> dict:
 
     if struct_side:
         out["GeomNote"] = (
-            "в паре есть конструкция: Dia/Angle/Elong посчитаны по её "
-            "bounding box и СМЫСЛА НЕ ИМЕЮТ. Смотреть MepMinEdge (сечение "
-            "инженерного элемента), StructThick, Through и DistMm."
+            "в паре есть конструкция: общий Angle по двум AABB не использовать. "
+            "Для стены смотреть WallNormalAngle и WallEndDistance, рассчитанные "
+            "по mesh-PCA стены; для размера — SectionMax/MepMinEdge."
         )
 
-    out["GeomOk"] = out["Angle"] is not None and out["PerpRel"] is not None
+    if struct_side and (c1 == "стена" or c2 == "стена"):
+        out["GeomOk"] = (
+            out["WallNormalAngle"] is not None
+            and out["WallEndDistance"] is not None
+            and (out["WallPlanReliability"] or 0.0) >= 2.0
+        )
+    else:
+        out["GeomOk"] = out["Angle"] is not None and out["PerpRel"] is not None
     return out
+
+
+
+@mcp.tool()
+def get_bridge_health() -> dict:
+    """Проверить, отвечает ли локальный Navisworks HTTP-мост.
+
+    Это только диагностика транспорта и открытого Clash Detective: сервер не
+    применяет правила, пороги проекта и не принимает инженерные решения.
+    """
+    health = {
+        "bridge_url": BRIDGE_URL,
+        "ok": False,
+        "tests_available": False,
+        "test_count": 0,
+        "result_count_total": 0,
+        "test_status_counts": {},
+        "error": None,
+        "hint": None,
+    }
+    try:
+        with _client(timeout=10.0) as c:
+            r = c.get("/clash/tests")
+            r.raise_for_status()
+            tests = r.json()
+    except Exception as exc:
+        health["error"] = str(exc)
+        health["hint"] = _bridge_error_hint(exc)
+        return health
+
+    health["ok"] = True
+    health["tests_available"] = isinstance(tests, list)
+    health["test_count"] = len(tests) if isinstance(tests, list) else 0
+    health["result_count_total"] = sum(int(test.get("ResultCount") or 0) for test in tests)
+    health["test_status_counts"] = dict(Counter(str(test.get("Status") or "") for test in tests))
+    return health
+
+
+@mcp.tool()
+def get_clash_test_overview(test_name: str) -> dict:
+    """Краткая карточка теста Clash Detective без чтения всех результатов.
+
+    Возвращает только данные Navisworks: статус теста, количество результатов,
+    тип проверки и настроенный tolerance. Порогов проекта и вердиктов здесь нет.
+    """
+    try:
+        with _client() as c:
+            r = c.get("/clash/tests")
+            r.raise_for_status()
+            tests = r.json()
+    except Exception as exc:
+        raise RuntimeError(_bridge_error_hint(exc)) from exc
+
+    test = _find_clash_test(tests, test_name)
+    tolerance = test.get("Tolerance")
+    tolerance_mm = round(float(tolerance) * FT2MM, 1) if tolerance is not None else None
+    return {
+        "Name": test.get("Name"),
+        "Status": test.get("Status"),
+        "ResultCount": test.get("ResultCount"),
+        "Tolerance": tolerance,
+        "ToleranceMm": tolerance_mm,
+        "ToleranceType": test.get("ToleranceType"),
+        "TestType": test.get("TestType"),
+    }
+
+
+@mcp.tool()
+def get_clash_status_summary(test_name: str) -> dict:
+    """Сводка текущих статусов результатов без тяжёлых путей и геометрии.
+
+    Команда нужна для быстрой проверки после пакетных изменений и для оценки
+    объёма работы. Она не классифицирует коллизии и не предлагает статусы.
+    """
+    try:
+        with _client() as c:
+            tests_response = c.get("/clash/tests")
+            tests_response.raise_for_status()
+            test = _find_clash_test(tests_response.json(), test_name)
+
+            r = c.get(
+                f"/clash/tests/{_q(test_name)}/results",
+                params={"includePaths": "false"},
+            )
+            r.raise_for_status()
+            results = r.json()
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(_bridge_error_hint(exc)) from exc
+
+    status_counts = Counter(str(item.get("Status") or "") for item in results)
+    bucket_counts = Counter(_status_bucket(item.get("Status")) for item in results)
+    return {
+        "test_name": test.get("Name"),
+        "test_status": test.get("Status"),
+        "result_count_from_test": test.get("ResultCount"),
+        "rows_read": len(results),
+        "status_counts": dict(status_counts),
+        "status_bucket_counts": dict(bucket_counts),
+    }
 
 
 @mcp.tool()
@@ -423,6 +646,7 @@ def get_clash_test_results(
     offset: int = 0,
     include_item_bounds: bool = False,
     include_sizes: bool = False,
+    include_worksets: bool = False,
     include_metrics: bool = False,
     keep_raw_bounds: bool = False,
 ) -> list[dict]:
@@ -451,6 +675,14 @@ def get_clash_test_results(
                    или, если свойства нет, узкая грань габарита;
         MepMinEdge — узкая грань габарита элемента (запасной вариант);
         Through/StructThick — прошёл ли насквозь и толщина конструкции;
+        WallNormalAngle — угол оси инженерного элемента к нормали стены:
+                   0° — нормальный проход через широкую грань, 90° —
+                   продольное движение в плоскости стены;
+        WallEndDistance — расстояние центра коллизии до внешнего торца стены;
+        WallBroadFaceDistance/WallEndFaceDistance — расстояния до ближайшей
+                   широкой и торцевой/откосной mesh-грани рядом с коллизией;
+                   WallPlanThickness/WallPlanReliability/WallPlanSource
+                   описывают mesh-PCA, из которой восстановлена ось стены;
         DistMm   — Distance в миллиметрах;
         GeomOk   — удалось ли посчитать; GeomNote — почему нет / почему
                    ненадёжно (ббокс "union-of-N").
@@ -488,6 +720,11 @@ def get_clash_test_results(
     в футах. Нужен, если хочется считать геометрию самостоятельно;
     для обычного разбора берите include_metrics=True.
 
+    include_worksets=True добавляет Item1Workset/Item2Workset — значение
+    свойства "Рабочий набор" с вкладки "Объект". Мост ищет его у самого
+    clash-узла и выше по AncestorsAndSelf, потому что геометрия часто лежит
+    ниже Revit-элемента с параметрами.
+
     MCP-сервер не знает, обучен ли тест и какие проектные параметры нужны.
     Он только возвращает данные. Решение о применимости правил, запрос
     проектного порога и классификация результатов живут в skill."""
@@ -505,18 +742,9 @@ def get_clash_test_results(
                 query["includeItemBounds"] = "true"
             if need_sizes:
                 query["includeSizes"] = "true"
+            if include_worksets:
+                query["includeWorksets"] = "true"
             r = c.get(f"/clash/tests/{_q(test_name)}/results", params=query)
-            if r.status_code == 409:
-                names = [t.get("Name") for t in c.get("/clash/tests").json() if t.get("Name")]
-                close = difflib.get_close_matches(test_name, names, n=5, cutoff=0.4)
-                raise RuntimeError(
-                    f'ОТКАЗ: теста "{test_name}" нет в открытом документе.'
-                    + (
-                        "\nПохожие имена: " + ", ".join(f'"{n}"' for n in close)
-                        if close
-                        else "\nПолный список — list_clash_tests."
-                    )
-                )
             r.raise_for_status()
             results = r.json()
     except RuntimeError:
@@ -588,13 +816,65 @@ def set_clash_result_status(
 
 
 @mcp.tool()
+def set_clash_group_status(
+    test_name: str,
+    group_name: str,
+    status: str,
+) -> dict:
+    """Проставить один статус всем дочерним результатам группы Clash Detective
+    за один запрос к Navisworks.
+
+    Инструмент не решает, можно ли утверждать группу целиком. Вызывать его
+    следует только после проверки каждого дочернего результата применимым
+    ruleset и явного разрешения пользователя на запись.
+    """
+    return batch_set_clash_group_status(test_name, [group_name], status)
+
+
+@mcp.tool()
+def batch_set_clash_group_status(
+    test_name: str,
+    group_names: list[str],
+    status: str,
+) -> dict:
+    """Проставить один статус нескольким проверенным однородным группам.
+
+    В отличие от batch_set_clash_result_status, мост получает один HTTP-запрос
+    и за один проход по результатам теста обновляет все дочерние коллизии.
+    Возвращает число обновлённых результатов по каждой группе; нулевое значение
+    означает, что группа не найдена и требует отдельной проверки.
+    """
+    normalized = list(dict.fromkeys(name.strip() for name in group_names if name and name.strip()))
+    if not normalized:
+        raise ValueError("Не передано ни одного имени группы")
+
+    try:
+        with _client() as c:
+            r = c.post(
+                f"/clash/groups/{_q(test_name)}/status",
+                json={"groupNames": normalized, "status": status, "comment": ""},
+            )
+            r.raise_for_status()
+            payload = r.json()
+            counts = payload.get("groups", {})
+            return {
+                "test_name": test_name,
+                "status": status,
+                "updated": payload.get("updated", sum(counts.values())),
+                "groups": counts,
+                "missing": [name for name in normalized if not counts.get(name)],
+            }
+    except Exception as exc:
+        raise RuntimeError(_bridge_error_hint(exc)) from exc
+
+
+@mcp.tool()
 def batch_set_clash_result_status(
     test_name: str,
     updates: list[dict],
 ) -> dict:
     """Пакетно проставить статус нескольким результатам ОДНОГО теста Clash
-    Detective за один вызов инструмента — вместо цепочки вызовов
-    set_clash_result_status по одному на каждый результат.
+    Detective одним HTTP-запросом и одним проходом по результатам теста.
 
     updates — список объектов вида:
         [{"result_name": "<имя результата>", "status": "Approved"}]
@@ -604,54 +884,61 @@ def batch_set_clash_result_status(
     как и в set_clash_result_status, комментарии сейчас не реализованы на
     стороне аддина и вызывают 501 при непустом значении.
 
-    ВНИМАНИЕ: сам мост KPLN_NavisMcpBridge пакетного эндпоинта не имеет — это
-    обёртка на стороне MCP-сервера, которая внутри одного вызова инструмента
-    последовательно шлёт мосту по одному HTTP-запросу на каждый result_name
-    (тот же эндпоинт, что и set_clash_result_status). Экономится не сетевое
-    время, а количество ходов туда-обратно на уровне диалога/инструмента.
-
-    Пачки по ~40 штук — рабочий размер. Таймаут или разрыв соединения на
-    большой пачке НЕ означает провал: операция довыполняется в фоне,
-    надо подождать ~40 сек и проверить лёгким read-only вызовом, а не
-    слепо повторять пачку.
-
-    Ошибка на одном result_name не прерывает обработку остальных: такие
-    элементы попадают в "failed" с текстом ошибки, а не откатывают весь
-    пакет. Возвращает:
-        {"test_name": ..., "updated": [...], "failed": [{"result_name":..., "error":...}]}
+    Мост сопоставляет все имена за один перебор test.results() и меняет
+    найденные статусы внутри одного вызова главного потока Navisworks.
+    Ненайденные элементы возвращаются в missing, ошибки отдельных записей —
+    в failed; они не откатывают успешно применённые изменения.
 
     MCP-сервер не проверяет обученность теста и не выбирает статусы.
     Перед вызовом skill должен уже сформировать список изменений, а
     пользователь должен явно разрешить запись.
     """
-    updated: list[str] = []
+    normalized: list[dict] = []
     failed: list[dict] = []
+    seen: dict[str, str] = {}
+    for item in updates:
+        result_name = item.get("result_name")
+        status = item.get("status")
+        if not result_name or not status:
+            failed.append(
+                {"result_name": result_name, "error": "отсутствует result_name или status"}
+            )
+            continue
+        previous = seen.get(result_name)
+        if previous and previous.lower() != str(status).lower():
+            failed.append(
+                {"result_name": result_name, "error": "для результата переданы разные статусы"}
+            )
+            continue
+        if previous:
+            continue
+        seen[result_name] = str(status)
+        normalized.append({"resultName": result_name, "status": status})
+
+    if not normalized:
+        return {"test_name": test_name, "updated": [], "missing": [], "failed": failed}
+
     try:
-        with _client() as c:
-            for item in updates:
-                result_name = item.get("result_name")
-                status = item.get("status")
-                if not result_name or not status:
-                    failed.append(
-                        {
-                            "result_name": result_name,
-                            "error": "отсутствует result_name или status",
-                        }
-                    )
-                    continue
-                try:
-                    r = c.post(
-                        f"/clash/results/{_q(test_name)}/{_q(result_name)}/status",
-                        json={"status": status, "comment": ""},
-                    )
-                    r.raise_for_status()
-                    updated.append(result_name)
-                except Exception as item_exc:
-                    failed.append({"result_name": result_name, "error": str(item_exc)})
+        with _client(timeout=300.0) as c:
+            r = c.post(
+                f"/clash/results/{_q(test_name)}/status",
+                json={"updates": normalized},
+            )
+            r.raise_for_status()
+            payload = r.json()
     except Exception as exc:
         raise RuntimeError(_bridge_error_hint(exc)) from exc
 
-    return {"test_name": test_name, "updated": updated, "failed": failed}
+    failed.extend(
+        {"result_name": name, "error": error}
+        for name, error in (payload.get("failed") or {}).items()
+    )
+    return {
+        "test_name": test_name,
+        "updated": payload.get("updated", []),
+        "missing": payload.get("missing", []),
+        "failed": failed,
+    }
 
 
 @mcp.tool()

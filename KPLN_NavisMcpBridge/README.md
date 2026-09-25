@@ -130,6 +130,14 @@ ComApiBridge.State                        // сразу InwOpState10, каста
    результат или текст ошибки, доведём до рабочего состояния оставшиеся
    пункты.
 
+
+## Codex и Windows-пути
+
+Короткая памятка по путям, кавычкам и кодировке лежит в
+`docs/codex-windows-paths.md`. Важно: это документация для работы агента и
+разработчика, а не функциональность MCP-сервера. Сервер не получает
+произвольный доступ к файловой системе и остаётся мостом к данным Navisworks.
+
 ## Архитектура
 
 ```
@@ -145,6 +153,9 @@ server/navis_mcp_server.py    — MCP-сервер (stdio), тулы → HTTP-з
 
 ## MCP-тулы (server/navis_mcp_server.py)
 
+- `get_bridge_health()` — быстрая диагностика доступности локального HTTP-моста и Clash Detective
+- `get_clash_test_overview(test_name)` — карточка теста: статус, ResultCount, tolerance, тип
+- `get_clash_status_summary(test_name)` — компактные счётчики статусов результатов без путей и геометрии
 - `list_clash_tests()` — имя, статус, число результатов по каждому тесту
 - `get_clash_test_results(test_name)` — результаты теста
 - `run_clash_test(test_name)` — пересчитать тест

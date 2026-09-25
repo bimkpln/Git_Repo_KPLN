@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <!--
-      Три DLL из установки Navisworks Manage 2020
+      Четыре DLL из установки Navisworks Manage 2020
       (C:\Program Files\Autodesk\Navisworks Manage 2020\), лежат у вас прямо
       в корне проекта (на уровень выше этого .csproj — папка, которую вы
       подключили). Имена/версии подтверждены декомпиляцией присланных вами
@@ -33,6 +33,8 @@
         - Autodesk.Navisworks.ComApi.dll             (ComApiBridge — мост
           к COM-состоянию, только что нашли в этой сборке; изначальной
           "ComBridge.dll" отдельно правда не существует, как вы и говорили)
+        - Autodesk.Navisworks.Clash.dll              (управляемый Clash API,
+          включая настоящий объект ClashResultGroup)
       Copy Local = false: на машине с установленным Navisworks эти сборки
       уже есть рядом с navisworks.exe, копировать их в bundle не нужно.
     -->
@@ -46,6 +48,10 @@
     </Reference>
     <Reference Include="Autodesk.Navisworks.ComApi">
       <HintPath>..\Autodesk.Navisworks.ComApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Autodesk.Navisworks.Clash">
+      <HintPath>C:\Program Files\Autodesk\Navisworks Manage 2020\Autodesk.Navisworks.Clash.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

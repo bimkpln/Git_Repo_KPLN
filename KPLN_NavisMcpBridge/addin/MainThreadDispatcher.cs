@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace KPLN_NavisMcpBridge
@@ -14,25 +15,35 @@ namespace KPLN_NavisMcpBridge
     internal sealed class MainThreadDispatcher : IDisposable
     {
         private readonly Form _pump;
+        private readonly int _ownerThreadId;
 
         public MainThreadDispatcher()
         {
             // Form создаётся на текущем (главном) потоке — Execute() плагина
             // вызывается Navisworks именно там.
+            _ownerThreadId = Thread.CurrentThread.ManagedThreadId;
             _pump = new Form { ShowInTaskbar = false, WindowState = FormWindowState.Minimized };
-            _pump.CreateControl(); // форсируем создание handle сразу
+
+            // CreateControl() не гарантирует создание handle у невидимой
+            // формы. Без handle InvokeRequired на фоновом HTTP-потоке может
+            // вернуть false, после чего Navisworks API вызывается не из UI-
+            // потока и запрос зависает. Обращение к Handle создаёт его сразу
+            // на потоке-владельце.
+            _ = _pump.Handle;
         }
 
         public T Run<T>(Func<T> func)
         {
-            if (_pump.InvokeRequired)
+            ThrowIfDisposed();
+            if (Thread.CurrentThread.ManagedThreadId != _ownerThreadId)
                 return (T)_pump.Invoke(func);
             return func();
         }
 
         public void Run(Action action)
         {
-            if (_pump.InvokeRequired)
+            ThrowIfDisposed();
+            if (Thread.CurrentThread.ManagedThreadId != _ownerThreadId)
                 _pump.Invoke(action);
             else
                 action();
@@ -40,7 +51,19 @@ namespace KPLN_NavisMcpBridge
 
         public void Dispose()
         {
-            _pump.Invoke(new Action(() => _pump.Dispose()));
+            if (_pump.IsDisposed)
+                return;
+
+            if (Thread.CurrentThread.ManagedThreadId != _ownerThreadId)
+                _pump.Invoke(new Action(() => _pump.Dispose()));
+            else
+                _pump.Dispose();
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_pump.IsDisposed || !_pump.IsHandleCreated)
+                throw new ObjectDisposedException(nameof(MainThreadDispatcher));
         }
     }
 }
