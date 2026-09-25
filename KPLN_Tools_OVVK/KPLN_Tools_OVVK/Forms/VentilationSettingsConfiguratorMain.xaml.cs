@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Data;
 using System.Windows.Input;
 using Command = KPLN_Tools_OVVK.ExternalCommands.Command_VentilationSettingsConfigurator;
@@ -52,6 +53,10 @@ namespace KPLN_Tools_OVVK.Forms
         private WrapPanel _sectionParametersPanel;
         private readonly List<Command.BooleanValue> _observedBooleans = new List<Command.BooleanValue>();
         private Point _dragStart;
+        private static readonly string[] SectionIconNames = {
+            "Вентилятор", "Водяной нагреватель", "Водяной охладитель", "Воздушный клапан",
+            "Гибкая вставка", "Фильтр", "Шумоглушитель" };
+        private readonly Dictionary<string, ImageSource> _sectionIcons = new Dictionary<string, ImageSource>(StringComparer.Ordinal);
         internal bool IsBusy { get { return _isBusy; } }
         internal bool HasOperationError { get { return _hasOperationError; } }
         internal void CreateTypeIfReady() { if (_sectionCatalog != null) CreateType(); }
@@ -717,6 +722,62 @@ namespace KPLN_Tools_OVVK.Forms
             catch (Exception ex) { SyncSectionControls(); SetStatus(ex.Message, true); }
         }
 
+        private static string SectionIconFileName(Command.SectionTypeChoice type)
+        {
+            if (type == null || type.IsEmpty) return null;
+            // Вид оборудования определяет иконку независимо от позиции секции/соединителя.
+            foreach (string name in SectionIconNames)
+                if ((type.FamilyName ?? string.Empty).IndexOf("_Секция_" + name + "_", StringComparison.OrdinalIgnoreCase) >= 0
+                    || string.Equals(type.FamilyName, name, StringComparison.OrdinalIgnoreCase)) return name + ".png";
+            foreach (string name in SectionIconNames)
+                if (string.Equals(type.TypeName, name, StringComparison.OrdinalIgnoreCase)
+                    || (type.TypeName ?? string.Empty).StartsWith(name + "_", StringComparison.OrdinalIgnoreCase)) return name + ".png";
+            return string.Equals(type.TypeName, "Вставка гибкая", StringComparison.OrdinalIgnoreCase) ? "Гибкая вставка.png" : null;
+        }
+
+        private ImageSource SectionIcon(Command.SectionTypeChoice type)
+        {
+            string fileName = SectionIconFileName(type);
+            if (fileName == null) return null;
+            ImageSource image;
+            if (_sectionIcons.TryGetValue(fileName, out image)) return image;
+            // PNG в Imagens/VentilationConfigurator: Действие при сборке = EmbeddedResource.
+            // Префикс пространства имён проекта может отличаться от имени сборки.
+            var assembly = typeof(VentilationSettingsConfiguratorMain).Assembly;
+            string suffix = "Imagens.VentilationConfigurator." + fileName;
+            string resource = assembly.GetManifestResourceNames().FirstOrDefault(name =>
+                string.Equals(name, suffix, StringComparison.OrdinalIgnoreCase)
+                || name.EndsWith("." + suffix, StringComparison.OrdinalIgnoreCase));
+            image = null;
+            if (resource != null)
+            {
+                try
+                {
+                    using (Stream stream = assembly.GetManifestResourceStream(resource))
+                    {
+                        if (stream != null)
+                        {
+                            var bitmap = new BitmapImage();
+                            bitmap.BeginInit();
+                            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                            bitmap.DecodePixelWidth = 160;
+                            bitmap.StreamSource = stream;
+                            bitmap.EndInit();
+                            bitmap.Freeze();
+                            image = bitmap;
+                        }
+                    }
+                }
+                catch (Exception ex) when (ex is IOException || ex is FormatException || ex is NotSupportedException
+                    || ex is ArgumentException || ex is InvalidOperationException)
+                {
+                    // Отсутствующая или повреждённая иконка оставляет пустую область в карточке.
+                }
+            }
+            _sectionIcons[fileName] = image;
+            return image;
+        }
+
         private void RenderBlocks()
         {
             if (_configuration == null) return;
@@ -779,6 +840,19 @@ namespace KPLN_Tools_OVVK.Forms
                     TextAlignment = TextAlignment.Center,
                     Foreground = selected ? selectedText : new SolidColorBrush(Color.FromRgb(32, 51, 74))
                 });
+                // Одинаковая высота подписи и области иконки сохраняет общий уровень во всех карточках.
+                var icon = new Image
+                {
+                    Source = SectionIcon(block.Type),
+                    Width = 56,
+                    Height = 56,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    IsHitTestVisible = false
+                };
+                RenderOptions.SetBitmapScalingMode(icon, BitmapScalingMode.HighQuality);
+                label.Children.Add(new Border { Height = 64, Child = icon });
                 var select = new Button { Content = label, Style = (Style)FindResource("SectionSelectButtonStyle") };
                 System.Windows.Automation.AutomationProperties.SetName(select, (index + 1) + ". " + title + ": " + (block.Type?.TypeName ?? "Состав не задан"));
                 select.Click += (s, e) => { _selectedSection = block; RenderBlocks(); RenderSelectedSection(); };
@@ -805,11 +879,12 @@ namespace KPLN_Tools_OVVK.Forms
                 buttons.Children.Add(BlockButton("×", "Удалить секцию", !block.IsFixed && _configuration.SectionCount > _configuration.Minimum,
                     () => EditSections(() => _configuration.Remove(index))));
                 Grid.SetRow(buttons, 1); content.Children.Add(buttons);
+                // Сумма рамки и отступа всегда 4: выделение не сдвигает подписи и иконки.
                 var border = new Border
                 {
                     Child = content,
-                    Height = 146,
-                    Padding = new Thickness(2),
+                    Height = 212,
+                    Padding = new Thickness(selected ? 2 : 3),
                     Margin = new Thickness(2, 0, 2, 0),
                     BorderThickness = new Thickness(selected ? 2 : 1),
                     CornerRadius = new CornerRadius(6),
