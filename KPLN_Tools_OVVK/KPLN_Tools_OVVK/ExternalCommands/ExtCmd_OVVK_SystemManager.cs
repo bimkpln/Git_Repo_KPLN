@@ -12,7 +12,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class Command_OVVK_SystemManager : IExternalCommand
+    internal class ExtCmd_OVVK_SystemManager : IExternalCommand
     {
         internal const string PluginName = "Менеджер систем";
 

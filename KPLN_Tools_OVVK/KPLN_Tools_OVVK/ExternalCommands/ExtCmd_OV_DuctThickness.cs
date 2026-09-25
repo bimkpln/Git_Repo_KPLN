@@ -15,7 +15,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class Command_OV_DuctThickness : IExternalCommand
+    internal class ExtCmd_OV_DuctThickness : IExternalCommand
     {
         /// <summary>
         ///  GUID параметра для исключения перезаписи ("ТС_Перезаписать")

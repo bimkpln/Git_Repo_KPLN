@@ -47,7 +47,7 @@ namespace KPLN_Tools_OVVK.Forms
         private void RefreshBtn_Click(object sender, RoutedEventArgs e)
         {
             // Создаем тип
-            Type type = Type.GetType(typeof(ExternalCommands.Command_OV_OZKDuctAccessory).FullName, true);
+            Type type = Type.GetType(typeof(ExternalCommands.ExtCmd_OV_OZKDuctAccessory).FullName, true);
 
             // Создаем экземпляр типа
             object instance = Activator.CreateInstance(type);

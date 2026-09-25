@@ -14,14 +14,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Data;
 using System.Windows.Input;
-using Command = KPLN_Tools_OVVK.ExternalCommands.Command_VentilationSettingsConfigurator;
+using Command = KPLN_Tools_OVVK.ExternalCommands.ExtCmd_OV_VentConfigurator;
 using ComboBox = System.Windows.Controls.ComboBox;
 using TextBox = System.Windows.Controls.TextBox;
 using Document = Autodesk.Revit.DB.Document;
 
 namespace KPLN_Tools_OVVK.Forms
 {
-    public partial class VentilationSettingsConfiguratorMain : Window
+    public partial class OV_VentConfiguratorForm : Window
     {
         private readonly Command.FamilyRequestHandler _handler;
         private ExternalEvent _externalEvent;
@@ -62,7 +62,7 @@ namespace KPLN_Tools_OVVK.Forms
         internal void CreateTypeIfReady() { if (_sectionCatalog != null) CreateType(); }
 
         // Конструктор вызывается только из IExternalCommand.Execute — в контексте Revit API.
-        public VentilationSettingsConfiguratorMain(UIApplication uiapp, UIDocument uidoc)
+        public OV_VentConfiguratorForm(UIApplication uiapp, UIDocument uidoc)
         {
             InitializeComponent();
             FamilyTypesListBox.ItemsSource = _types;
@@ -743,7 +743,7 @@ namespace KPLN_Tools_OVVK.Forms
             if (_sectionIcons.TryGetValue(fileName, out image)) return image;
             // PNG в Imagens/VentilationConfigurator: Действие при сборке = EmbeddedResource.
             // Префикс пространства имён проекта может отличаться от имени сборки.
-            var assembly = typeof(VentilationSettingsConfiguratorMain).Assembly;
+            var assembly = typeof(OV_VentConfiguratorForm).Assembly;
             string suffix = "Imagens.VentilationConfigurator." + fileName;
             string resource = assembly.GetManifestResourceNames().FirstOrDefault(name =>
                 string.Equals(name, suffix, StringComparison.OrdinalIgnoreCase)

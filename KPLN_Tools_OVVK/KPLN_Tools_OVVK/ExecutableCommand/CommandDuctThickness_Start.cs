@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
+using KPLN_Library_ConfigWorker;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_PluginActivityWorker;
@@ -18,6 +19,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
     {
         private readonly DuctThicknessEntity _currentDuctThicknessEntity;
         private readonly Element[] _elementsToSet;
+        private readonly ConfigType _configType;
 
         private readonly ExtensibleStorageBuilder _extensibleStorageBuilder;
 
@@ -31,10 +33,11 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandDuctThickness_Start(DuctThicknessEntity ductThicknessEntity, Element[] elementsToSet)
+        public CommandDuctThickness_Start(DuctThicknessEntity ductThicknessEntity, Element[] elementsToSet, ConfigType configType)
         {
             _currentDuctThicknessEntity = ductThicknessEntity;
             _elementsToSet = elementsToSet;
+            _configType = configType;
 
             _extensibleStorageBuilder = new ExtensibleStorageBuilder(
                 new Guid("753380C4-DF00-40F8-9745-D53F328AC139"),
@@ -44,7 +47,33 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(Command_OV_DuctThickness.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+            Document doc = app.ActiveUIDocument?.Document;
+            if (doc == null || _elementsToSet.Any(element => !element.IsValidObject || !element.Document.Equals(doc)))
+            {
+                MessageBox.Show("Активный документ изменился. Запусти плагин заново в нужной модели.", "KPLN: Внимание");
+                return Result.Cancelled;
+            }
+
+            if (DuctProtectionParameters.AreAvailable(doc) != _currentDuctThicknessEntity.UseProtectionParameters)
+            {
+                MessageBox.Show("Набор параметров огнезащиты и дымозащиты изменился. Открой окно плагина заново.", "KPLN: Внимание");
+                return Result.Cancelled;
+            }
+
+            // Shared-конфиг обращается к Document: сохраняем в контексте Revit API, до транзакции.
+            try
+            {
+                ConfigService.SaveConfig<DuctThicknessEntity>(ModuleData.RevitVersion, doc,
+                    _configType, _currentDuctThicknessEntity, DuctThicknessEntity.ConfigName);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не удалось сохранить конфигурацию: {ex.Message}", "KPLN: Ошибка",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return Result.Failed;
+            }
+
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(ExtCmd_OV_DuctThickness.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"KPLN: Толщина воздуховодов"))
             {
@@ -98,7 +127,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                 if (paramToSet != null)
                 {
                     // Обход перезаписи значения по спец. параметру
-                    Parameter canReValueParam = elem.get_Parameter(Command_OV_DuctThickness.RevalueParamGuid);
+                    Parameter canReValueParam = elem.get_Parameter(ExtCmd_OV_DuctThickness.RevalueParamGuid);
                     if (canReValueParam != null && canReValueParam.HasValue && canReValueParam.AsInteger() != 1)
                     {
                         HtmlOutput.SetMsgDict_ByMsg("У элемента заблокирована запись значения плагином", elem.Id, _warningDict);
@@ -132,6 +161,23 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                         HtmlOutput.SetMsgDict_ByMsg("Не определена система. Толщина НЕ записана", elem.Id, _errorDict);
                     else
                     {
+                        bool isProtected;
+                        if (_currentDuctThicknessEntity.UseProtectionParameters)
+                        {
+                            if (!DuctProtectionParameters.TryIsProtected(elem, systemType, out isProtected, out string error))
+                            {
+                                HtmlOutput.SetMsgDict_ByMsg(error, elem.Id, _errorDict);
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            isProtected = (insulutionType != null
+                                && !string.IsNullOrEmpty(insulutionType.AsString())
+                                && insulutionType.AsString().Contains(_currentDuctThicknessEntity.PartOfInsulationName ?? string.Empty))
+                                || IsMatchingSystemType(systemType);
+                        }
+
                         List<Connector> roundConn = new List<Connector>();
                         List<Connector> rectConn = new List<Connector>();
 
@@ -159,20 +205,20 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                             double maxRoundConn = maxRoundConnRadius * 2;
                             double maxRectConn = rectConn.Max(c => Math.Max(c.Height, c.Width));
                             if (maxRoundConn > maxRectConn)
-                                SetThicknessData_RoundConnector(paramToSet, insulutionType, systemType, maxRoundConn);
+                                SetThicknessData_RoundConnector(paramToSet, isProtected, maxRoundConn);
                             else
-                                SetThicknessData_RectangularConnector(paramToSet, insulutionType, systemType, maxRectConn);
+                                SetThicknessData_RectangularConnector(paramToSet, isProtected, maxRectConn);
                         }
                         else if (roundConn.Count > 0)
                         {
                             double maxRoundConnRadius = roundConn.Max(c => c.Radius);
                             double maxRoundConn = maxRoundConnRadius * 2;
-                            SetThicknessData_RoundConnector(paramToSet, insulutionType, systemType, maxRoundConn);
+                            SetThicknessData_RoundConnector(paramToSet, isProtected, maxRoundConn);
                         }
                         else
                         {
                             double maxRectConn = rectConn.Max(c => Math.Max(c.Height, c.Width));
-                            SetThicknessData_RectangularConnector(paramToSet, insulutionType, systemType, maxRectConn);
+                            SetThicknessData_RectangularConnector(paramToSet, isProtected, maxRectConn);
                         }
                     }
                 }
@@ -190,14 +236,11 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             return true;
         }
 
-        private void SetThicknessData_RoundConnector(Parameter paramToSet, Parameter insulutionType, Parameter sysTypeParam, double maxSize)
+        private void SetThicknessData_RoundConnector(Parameter paramToSet, bool isProtected, double maxSize)
         {
             double maxSize_mm = Math.Round(maxSize * 304.8, 0);
             // Воздуховоды/соед. детали в огнезащ. изоляции, или противодымных систем
-            if ((insulutionType != null
-                    && !string.IsNullOrEmpty(insulutionType.AsString())
-                    && insulutionType.AsString().Contains(_currentDuctThicknessEntity.PartOfInsulationName))
-                || IsMatchingSystemType(sysTypeParam))
+            if (isProtected)
             {
                 if (maxSize_mm < 900)
                     paramToSet.Set(0.8 / 304.8);
@@ -226,14 +269,11 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             }
         }
 
-        private void SetThicknessData_RectangularConnector(Parameter paramToSet, Parameter insulutionType, Parameter systemType, double maxSize)
+        private void SetThicknessData_RectangularConnector(Parameter paramToSet, bool isProtected, double maxSize)
         {
             double maxSize_mm = Math.Round(maxSize * 304.8, 0);
             // Воздуховоды / соед.детали в огнезащ. изоляции, или противодымных систем
-            if ((insulutionType != null
-                    && !string.IsNullOrEmpty(insulutionType.AsString())
-                    && insulutionType.AsString().Contains(_currentDuctThicknessEntity.PartOfInsulationName))
-                || IsMatchingSystemType(systemType))
+            if (isProtected)
             {
                 if (maxSize_mm < 1250)
                     paramToSet.Set(0.8 / 304.8);

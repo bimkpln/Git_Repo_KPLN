@@ -28,7 +28,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         {
             app.DialogBoxShowing += DialogBoxShowingEvant;
 
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{Command_OVVK_SystemManager.PluginName}_Демонстрация", ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{ExtCmd_OVVK_SystemManager.PluginName}_Демонстрация", ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Демонстрация"))
             {

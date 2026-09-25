@@ -6,8 +6,6 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.ExecutableCommand;
-using System;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
@@ -17,7 +15,6 @@ namespace KPLN_Tools_OVVK.Forms
     {
         private readonly Document _doc;
         private readonly Element[] _elementsToSet;
-        private readonly string _cofigName = "OV_DuctThickness";
         private readonly ConfigType _configType = ConfigType.Local;
 
         public OV_DuctThicknessForm(Document doc, Element[] elementsToSet)
@@ -25,29 +22,33 @@ namespace KPLN_Tools_OVVK.Forms
             _doc = doc;
             _elementsToSet = elementsToSet;
 
-            ModelPath docModelPath = _doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
-            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-            DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
-
-            if (dBProject != null)
-                _configType = ConfigType.Shared;
+            ModelPath docModelPath = _doc.IsWorkshared ? _doc.GetWorksharingCentralModelPath() : null;
+            if (docModelPath != null)
+            {
+                string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
+                DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
+                if (dBProject != null)
+                    _configType = ConfigType.Shared;
+            }
 
             #region Заполняю поля окна в зависимости от наличия файла конфига
-            // Файл конфига присутсвует
-            if (ConfigService.ReadConfigFile<DuctThicknessEntity>(ModuleData.RevitVersion, doc, _configType, _cofigName) is DuctThicknessEntity ductThicknessEntity)
-                CurrentDuctThicknessEntity = ductThicknessEntity;
-            else
-            {
-                CurrentDuctThicknessEntity = new DuctThicknessEntity()
-                {
-                    ParameterName = "КП_И_Толщина стенки",
-                    PartOfInsulationName = "EI",
-                    PartOfSystemTypeName = "ДУ~ПД",
-                };
-            }
+            CurrentDuctThicknessEntity = ConfigService.ReadConfigFile<DuctThicknessEntity>(
+                ModuleData.RevitVersion, doc, _configType, DuctThicknessEntity.ConfigName) as DuctThicknessEntity;
+            if (CurrentDuctThicknessEntity == null && _configType == ConfigType.Shared)
+                CurrentDuctThicknessEntity = ConfigService.ReadConfigFile<DuctThicknessEntity>(
+                    ModuleData.RevitVersion, doc, ConfigType.Local, DuctThicknessEntity.ConfigName) as DuctThicknessEntity;
+            if (CurrentDuctThicknessEntity == null)
+                CurrentDuctThicknessEntity = new DuctThicknessEntity();
             #endregion
 
+            CurrentDuctThicknessEntity.UseProtectionParameters = DuctProtectionParameters.AreAvailable(doc);
+
             InitializeComponent();
+
+            LegacySettingsPanel.Visibility = CurrentDuctThicknessEntity.UseProtectionParameters
+                ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+            ProtectionParametersHelp.Visibility = CurrentDuctThicknessEntity.UseProtectionParameters
+                ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
 
             this.DataContext = CurrentDuctThicknessEntity;
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
@@ -65,9 +66,8 @@ namespace KPLN_Tools_OVVK.Forms
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
-            Task.Run(() => { SaveConfig(); });
-
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandDuctThickness_Start(CurrentDuctThicknessEntity, _elementsToSet));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(
+                new CommandDuctThickness_Start(CurrentDuctThicknessEntity, _elementsToSet, _configType));
 
             Close();
         }
@@ -80,10 +80,5 @@ namespace KPLN_Tools_OVVK.Forms
             if (paramForm.SelectedElement != null)
                 CurrentDuctThicknessEntity.ParameterName = paramForm.SelectedElement.Name;
         }
-
-        /// <summary>
-        /// Сериализация и сохранение файла-конфигурации
-        /// </summary>
-        private void SaveConfig() => ConfigService.SaveConfig<DuctThicknessEntity>(ModuleData.RevitVersion, _doc, _configType, CurrentDuctThicknessEntity, _cofigName);
     }
 }

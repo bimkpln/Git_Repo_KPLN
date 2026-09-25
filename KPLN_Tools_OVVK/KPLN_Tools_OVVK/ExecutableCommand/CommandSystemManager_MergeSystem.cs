@@ -33,7 +33,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{Command_OVVK_SystemManager.PluginName}_Объединение систем по параметру", ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{ExtCmd_OVVK_SystemManager.PluginName}_Объединение систем по параметру", ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction t = new Transaction(_viewModel.CurrentDoc, $"KPLN: Объединение систем"))
             {

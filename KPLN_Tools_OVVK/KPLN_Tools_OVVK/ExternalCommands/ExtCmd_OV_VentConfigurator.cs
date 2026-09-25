@@ -18,7 +18,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Command_VentilationSettingsConfigurator : IExternalCommand
+    public class ExtCmd_OV_VentConfigurator : IExternalCommand
     {
         internal const string PluginName = "Конфигуратор вент. установок";
         internal const string UnknownProjectName = "Неизвестно";
@@ -40,7 +40,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         private const string LiteralSourceFamilyPath =
             @"X:\BIM\3\_Семейства\4\_ОВиК\4\_ОВ2\_Вентиляция\550-596\_Инженерное оборудование\550\_Универсальная установка\_Одноуровневая\_(Об).rfa";
 
-        private static VentilationSettingsConfiguratorMain _window;
+        private static OV_VentConfiguratorForm _window;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
@@ -49,7 +49,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 if (_window == null || !_window.IsLoaded)
                 {
                     var uiapp = commandData.Application;
-                    var window = new VentilationSettingsConfiguratorMain(uiapp, uiapp.ActiveUIDocument);
+                    var window = new OV_VentConfiguratorForm(uiapp, uiapp.ActiveUIDocument);
                     _window = window;
                     window.Closed += (s, e) => { if (ReferenceEquals(_window, window)) _window = null; };
                     window.Show();
@@ -1377,7 +1377,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     }
                     else if (document != null && document.IsValidObject && !document.IsFamilyDocument)
                     {
-                        string expected = Path.GetFileNameWithoutExtension(VentilationSettingsConfiguratorMain.MakeFileName(project?.Code));
+                        string expected = Path.GetFileNameWithoutExtension(OV_VentConfiguratorForm.MakeFileName(project?.Code));
                         var families = new FilteredElementCollector(document).OfClass(typeof(Family)).Cast<Family>()
                             .Where(f => f.IsEditable && (f.Name.StartsWith("550_Универсальная установка_Одноуровневая_(", StringComparison.OrdinalIgnoreCase)
                                 || f.Name.StartsWith("Вентустановка_", StringComparison.OrdinalIgnoreCase))).ToList();
@@ -1644,14 +1644,14 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 _automaticReadDirectories.Clear();
             }
 
-            private readonly VentilationSettingsConfiguratorMain _owner;
-            private UIApplication _application;
+            private readonly OV_VentConfiguratorForm _owner;
+            private UIApplication _application; 
             private bool _stopTrackingRequested;
             private IList<ProjectItem> _projects = new List<ProjectItem>();
             private string _lastModelKey;
             internal FamilyRequest PendingRequest { get; set; }
 
-            internal FamilyRequestHandler(VentilationSettingsConfiguratorMain owner)
+            internal FamilyRequestHandler(OV_VentConfiguratorForm owner)
             {
                 _owner = owner;
             }

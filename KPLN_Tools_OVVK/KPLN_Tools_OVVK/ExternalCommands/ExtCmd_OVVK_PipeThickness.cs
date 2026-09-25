@@ -16,7 +16,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class Command_OVVK_PipeThickness : IExternalCommand
+    internal class ExtCmd_OVVK_PipeThickness : IExternalCommand
     {
         internal const string PluginName = "Толщина труб";
 

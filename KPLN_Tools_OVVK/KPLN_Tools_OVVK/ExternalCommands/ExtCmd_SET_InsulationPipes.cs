@@ -311,7 +311,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    public class Command_SET_InsulationPipes : IExternalCommand
+    public class ExtCmd_SET_InsulationPipes : IExternalCommand
     {
         public static string commandVersion = "1.5.0.0";
         public Document _doc;
@@ -727,7 +727,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     {
                         try
                         {
-                            diamOut = Command_SET_InsulationPipes.FindSizeNextPipe(list9, num1);
+                            diamOut = ExtCmd_SET_InsulationPipes.FindSizeNextPipe(list9, num1);
                         }
                         catch
                         {

@@ -7,9 +7,9 @@ using System.Windows.Media;
 
 namespace KPLN_Tools_OVVK.Forms
 {
-    public partial class ScheduleMainForm : Window
+    public partial class OVVK_ScheduleMainForm : Window
     {
-        public ScheduleMainForm(ScheduleFormM model, string vsName)
+        public OVVK_ScheduleMainForm(ScheduleFormM model, string vsName)
         {
             InitializeComponent();
 
@@ -48,7 +48,7 @@ namespace KPLN_Tools_OVVK.Forms
             string header = cell.Column.Header?.ToString() ?? string.Empty;
 
             // Открываем окно для редактирования
-            var dlg = new ScheduleSubForm(header, currentValue) { Owner = this };
+            var dlg = new OVVK_ScheduleSubForm(header, currentValue) { Owner = this };
 
             bool? result = dlg.ShowDialog();
             if (result == true)

@@ -13,7 +13,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class Command_OV_OZKDuctAccessory : IExternalCommand
+    internal class ExtCmd_OV_OZKDuctAccessory : IExternalCommand
     {
         internal const string PluginName = "ОВ: Клапаны ОЗК";
 

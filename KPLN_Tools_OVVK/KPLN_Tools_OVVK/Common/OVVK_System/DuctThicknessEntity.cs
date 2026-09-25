@@ -9,6 +9,8 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
     [Serializable]
     public class DuctThicknessEntity : INotifyPropertyChanged, IJsonSerializable
     {
+        internal const string ConfigName = "OV_DuctThickness";
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         private string _parameterName;
@@ -18,7 +20,16 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
         [JsonConstructor]
         public DuctThicknessEntity()
         {
+            ParameterName = "КП_И_Толщина стенки";
+            PartOfInsulationName = "EI";
+            PartOfSystemTypeName = "ДУ~ПД";
         }
+
+        /// <summary>
+        /// Режим определяется по текущему документу, а не по перенесённому конфигу.
+        /// </summary>
+        [JsonIgnore]
+        public bool UseProtectionParameters { get; internal set; }
 
         public string ParameterName
         {
@@ -48,14 +59,10 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             get => _partOfSystemName;
             set
             {
-                _partOfSystemName = value;
+                _partOfSystemName = value ?? string.Empty;
                 NotifyPropertyChanged();
                 
-                string[] splitedSysName = _partOfSystemName.Split('~');
-                if (splitedSysName.Length > 1)
-                    PartsOfSystemTypeName = splitedSysName;
-                else
-                    PartsOfSystemTypeName = new string[1] { _partOfSystemName };
+                PartsOfSystemTypeName = _partOfSystemName.Split('~');
             }
         }
 

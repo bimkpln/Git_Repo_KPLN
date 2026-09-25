@@ -156,17 +156,18 @@
     <Compile Include="Common\ScheduleHelper.cs" />
     <Compile Include="Common\TagsHelpers\TagPlacer.cs" />
     <Compile Include="Common\OVVK_System\DuctThicknessEntity.cs" />
+    <Compile Include="Common\OVVK_System\DuctProtectionParameters.cs" />
     <Compile Include="Common\OVVK_System\OVVK_MergeSystem.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
-    <Compile Include="ExternalCommands\Command_OVVK_PipeThickness.cs" />
-    <Compile Include="ExternalCommands\Command_OVVK_SystemManager.cs" />
-    <Compile Include="ExternalCommands\Command_OV_DuctThickness.cs" />
-    <Compile Include="ExternalCommands\Command_OV_OZKDuctAccessory.cs" />
-    <Compile Include="ExternalCommands\Command_SET_InsulationPipes.cs" />
-    <Compile Include="ExternalCommands\Command_VentilationSettingsConfigurator.cs" />
-    <Compile Include="ExternalCommands\ExtCmd_ScheduleIncrementor.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_OVVK_PipeThickness.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_OVVK_SystemManager.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_OV_DuctThickness.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_OV_OZKDuctAccessory.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_SET_InsulationPipes.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_OV_VentConfigurator.cs" />
+    <Compile Include="ExternalCommands\ExtCmd_OVVK_ScheduleIncrementor.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
     <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
     <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
@@ -201,14 +202,14 @@
     <Compile Include="Forms\OVVK_PipeThicknessForm.xaml.cs">
       <DependentUpon>OVVK_PipeThicknessForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ScheduleMainForm.xaml.cs">
-      <DependentUpon>ScheduleMainForm.xaml</DependentUpon>
+    <Compile Include="Forms\OVVK_ScheduleMainForm.xaml.cs">
+      <DependentUpon>OVVK_ScheduleMainForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\ScheduleSubForm.xaml.cs">
-      <DependentUpon>ScheduleSubForm.xaml</DependentUpon>
+    <Compile Include="Forms\OVVK_ScheduleSubForm.xaml.cs">
+      <DependentUpon>OVVK_ScheduleSubForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Forms\VentilationSettingsConfiguratorMain.xaml.cs">
-      <DependentUpon>VentilationSettingsConfiguratorMain.xaml</DependentUpon>
+    <Compile Include="Forms\OV_VentConfiguratorForm.xaml.cs">
+      <DependentUpon>OV_VentConfiguratorForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Module.cs" />
     <Compile Include="ModuleData.cs" />
@@ -267,15 +268,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ScheduleMainForm.xaml">
+    <Page Include="Forms\OVVK_ScheduleMainForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\ScheduleSubForm.xaml">
+    <Page Include="Forms\OVVK_ScheduleSubForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Forms\VentilationSettingsConfiguratorMain.xaml">
+    <Page Include="Forms\OV_VentConfiguratorForm.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_Tools_OVVK.Forms.ScheduleSubForm"
+﻿<Window x:Class="KPLN_Tools_OVVK.Forms.OVVK_ScheduleMainForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -6,12 +6,13 @@
         xmlns:local="clr-namespace:KPLN_Tools_OVVK.Forms"
         mc:Ignorable="d" 
         SizeToContent="WidthAndHeight"
-        Height="250"
-        Width="350"
+        MinHeight="300"
+        MaxHeight="900"
+        MinWidth="500"
+        MaxWidth="1200"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
-        FontFamily="Consolas, 'Segoe UI', monospace"
-        Background="#2B2F38">
+        Background="#FF292D36">
 
     <Window.InputBindings>
         <KeyBinding
@@ -30,47 +31,47 @@
 
     <Border
         Style="{StaticResource RCTG}">
-        <StackPanel Margin="10">
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Загаловак -->
             <TextBlock 
-                Text="{Binding Header}"
+                Grid.Row="0"
+                Text="{Binding Title}"
                 Style="{StaticResource TXT}"/>
 
-            <TextBlock 
-                Text="Приставка (не обязательно):"
-                Style="{StaticResource TXT}"/>
-            <TextBox 
-                Text="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}"
-                AcceptsReturn="True"
-                TextWrapping="Wrap"
-                VerticalScrollBarVisibility="Auto"
-                HorizontalScrollBarVisibility="Auto"/>
+            <!-- Табліца -->
+            <DataGrid 
+                x:Name="DG_Schedule"
+                Grid.Row="1"
+                ItemsSource="{Binding DataView}"
+                AutoGenerateColumns="True"
+                IsReadOnly="True"
+                HeadersVisibility="All"
+                CanUserAddRows="False"
+                CanUserDeleteRows="False"
+                CanUserReorderColumns="False"
+                CanUserResizeRows="True"
+                CanUserResizeColumns="True"
+                CanUserSortColumns="False"
+                AutoGeneratingColumn="DG_Schedule_AutoGeneratingColumn"
+                MouseDoubleClick="DG_Schedule_MouseDoubleClick"/>
 
-            <TextBlock 
-                Text="Номер:"
-                Style="{StaticResource TXT}"/>
-            <TextBox 
-                Text="{Binding StartNumber, UpdateSourceTrigger=PropertyChanged}"
-                AcceptsReturn="True"
-                TextWrapping="Wrap"
-                VerticalScrollBarVisibility="Auto"
-                HorizontalScrollBarVisibility="Auto"/>
-
-            <CheckBox
-                Content="Увеличить значение по столбцу на +1?"
-                IsChecked="{Binding AutoIncrement}"
-                Style="{StaticResource CHB}"/>
-
-            <StackPanel 
-                Orientation="Horizontal"
+            <!-- Кнопкі -->
+            <DockPanel 
+                Grid.Row="2"
                 HorizontalAlignment="Right"
                 Margin="0,5,0,0">
                 <Button 
-                    Content="OK"
+                    Content="Перенести"
                     Style="{StaticResource BTN}"
                     Width="80"
                     Height="30"
-                    IsDefault="True"
-                    Command="{Binding RunCmd}"
+                    Command="{Binding SetToRevitCmd}"
                     CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
                 <Button 
                     Content="Отмена"
@@ -79,7 +80,7 @@
                     Height="30"
                     Command="{Binding CloseWindowCmd}"
                     CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
-            </StackPanel>
-        </StackPanel>
+            </DockPanel>
+        </Grid>
     </Border>
 </Window>

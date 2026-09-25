@@ -1,4 +1,4 @@
-﻿<Window x:Class="KPLN_Tools_OVVK.Forms.VentilationSettingsConfiguratorMain"
+﻿<Window x:Class="KPLN_Tools_OVVK.Forms.OV_VentConfiguratorForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="KPLN. Конфигуратор вент. установок"

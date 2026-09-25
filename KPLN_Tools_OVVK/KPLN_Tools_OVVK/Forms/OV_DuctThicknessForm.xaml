@@ -1,10 +1,10 @@
-﻿<Window x:Class="KPLN_Tools_OVVK.Forms.OV_DuctThicknessForm"
+<Window x:Class="KPLN_Tools_OVVK.Forms.OV_DuctThicknessForm"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:KPLN_Tools_OVVK.Forms"
-        mc:Ignorable="d" 
+        mc:Ignorable="d"
         SizeToContent="Height"
         Width="550"
         Height="235"
@@ -60,7 +60,7 @@
             </Style>
         </ResourceDictionary>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -105,69 +105,91 @@
                         Click="BtnParamSearch_Click"/>
                 </StackPanel>
             </Grid>
-            
+
 
             <TextBlock
+                x:Name="ProtectionParametersHelp"
+                HorizontalAlignment="Stretch"
+                MaxWidth="Infinity"
                 Grid.Row="1"
-                Text="Индивидуальная часть имени типа огнезащитного материала. ВАЖНО: чувствителен к регистру."
+                Grid.ColumnSpan="2"
+                Visibility="Collapsed"
+                Foreground="Red"
+                Text="ВАЖНО: Перед запуском проверь корректность настройки галок для материалов изоляции воздуховодов &quot;ТС_Огнезащита&quot;  и для систем воздузоводов &quot;ТС_Дымозащита&quot;. Быстро это можно сделать через спецификации в группе &quot;0_Согласование тома&quot;"
                 Style="{StaticResource TBlock}"/>
-            <TextBox
-                Grid.Row="1"
-                Grid.Column="1"
-                Text="{Binding PartOfInsulationName}"
-                Style="{StaticResource TBox}">
-                <TextBox.ToolTip>
-                    <StackPanel
-                        Width="300">
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Text="1. Находишь в диспетчере проекта категорию 
-                                'Материалы изоляции воздуховодов'"/>
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Text="2. Типоразмеры, которые используются в качестве огнезащитных 
-                                материалов ОБЯЗАТЕЛЬНО должны содержать в имени типа данный блок"/>
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Text="Пример: EI90_Бизон; Thermaflex; K-Flex. Видим, что только тип 
-                                'EI90_Бизон' используется в качестве огнезащиты, указываем в данное 
-                                поле значение 'EI'"/>
-                    </StackPanel>
-                </TextBox.ToolTip>
-            </TextBox>
 
-            <TextBlock
-                Grid.Row="2"
-                Text="Индивидуальная часть параметра 'Тип системы', для определния систем ДУ/ПД. Если вариантов несколько, то перечисли через '~', если нужны исключения - в начале имени добавляй '!'. ВАЖНО: чувствителен к регистру."
-                Style="{StaticResource TBlock}"/>
-            <TextBox
-                Grid.Row="2"
-                Grid.Column="1"
-                Text="{Binding PartOfSystemTypeName}"
-                Style="{StaticResource TBox}">
-                <TextBox.ToolTip>
-                    <StackPanel
-                        Width="300">
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Text="1. Находишь в диспетчере проекта категорию 'Системы воздуховодов'"/>
-                        <TextBlock
-                            TextWrapping="Wrap"
-                            Text="2. Анализируешь список всех типов систем и выбираешь правило, которое выделит из них системы дымоудаления"/>
-                    </StackPanel>
-                </TextBox.ToolTip>
-            </TextBox>
+            <Grid x:Name="LegacySettingsPanel" Grid.Row="1" Grid.ColumnSpan="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="335"/>
+                    <ColumnDefinition Width="200"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock
+                    Grid.Row="0"
+                    Text="Индивидуальная часть имени типа огнезащитного материала. ВАЖНО: чувствителен к регистру."
+                    Style="{StaticResource TBlock}"/>
+                <TextBox
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    Text="{Binding PartOfInsulationName, UpdateSourceTrigger=PropertyChanged}"
+                    Style="{StaticResource TBox}">
+                    <TextBox.ToolTip>
+                        <StackPanel
+                            Width="300">
+                            <TextBlock
+                                TextWrapping="Wrap"
+                                Text="1. Находишь в диспетчере проекта категорию
+                                    'Материалы изоляции воздуховодов'"/>
+                            <TextBlock
+                                TextWrapping="Wrap"
+                                Text="2. Типоразмеры, которые используются в качестве огнезащитных
+                                    материалов ОБЯЗАТЕЛЬНО должны содержать в имени типа данный блок"/>
+                            <TextBlock
+                                TextWrapping="Wrap"
+                                Text="Пример: EI90_Бизон; Thermaflex; K-Flex. Видим, что только тип
+                                    'EI90_Бизон' используется в качестве огнезащиты, указываем в данное
+                                    поле значение 'EI'"/>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
+
+                <TextBlock
+                    Grid.Row="1"
+                    Text="Индивидуальная часть параметра 'Тип системы', для определния систем ДУ/ПД. Если вариантов несколько, то перечисли через '~', если нужны исключения - в начале имени добавляй '!'. ВАЖНО: чувствителен к регистру."
+                    Style="{StaticResource TBlock}"/>
+                <TextBox
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Text="{Binding PartOfSystemTypeName, UpdateSourceTrigger=PropertyChanged}"
+                    Style="{StaticResource TBox}">
+                    <TextBox.ToolTip>
+                        <StackPanel
+                            Width="300">
+                            <TextBlock
+                                TextWrapping="Wrap"
+                                Text="1. Находишь в диспетчере проекта категорию 'Системы воздуховодов'"/>
+                            <TextBlock
+                                TextWrapping="Wrap"
+                                Text="2. Анализируешь список всех типов систем и выбираешь правило, которое выделит из них системы дымоудаления"/>
+                        </StackPanel>
+                    </TextBox.ToolTip>
+                </TextBox>
+
+            </Grid>
 
         </Grid>
 
-        <DockPanel 
+        <DockPanel
             Grid.Row="2"
             HorizontalAlignment="Center"
             VerticalAlignment="Center">
 
-            <Button 
-                x:Name="StartBtn" 
-                Content="Выполнить" 
+            <Button
+                x:Name="StartBtn"
+                Content="Выполнить"
                 Click="StartBtn_Click"
                 Width="75"
                 BorderBrush="Green"

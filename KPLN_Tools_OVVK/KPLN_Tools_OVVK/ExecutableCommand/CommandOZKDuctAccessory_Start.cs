@@ -34,7 +34,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(Command_OV_OZKDuctAccessory.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
+            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(ExtCmd_OV_OZKDuctAccessory.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"KPLN: Клапаны ОЗК"))
             {

@@ -41,62 +41,53 @@ namespace KPLN_Tools_OVVK
                 false);
 
             PushButtonData ovvkPipeThickness = CreateBtnData(
-                Command_OVVK_PipeThickness.PluginName,
-                Command_OVVK_PipeThickness.PluginName,
+                ExtCmd_OVVK_PipeThickness.PluginName,
+                ExtCmd_OVVK_PipeThickness.PluginName,
                 "Заполнение толщины стенок труб по сортаменту",
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
-                typeof(Command_OVVK_PipeThickness).FullName,
+                typeof(ExtCmd_OVVK_PipeThickness).FullName,
                 "KPLN_Tools_OVVK.Imagens.pipeThicknessSmall.png",
                 "KPLN_Tools_OVVK.Imagens.pipeThicknessSmall.png",
                 "http://moodle");
 
             PushButtonData ovvkSystemManager = CreateBtnData(
-                Command_OVVK_SystemManager.PluginName,
-                Command_OVVK_SystemManager.PluginName,
+                ExtCmd_OVVK_SystemManager.PluginName,
+                ExtCmd_OVVK_SystemManager.PluginName,
                 "Менеджер систем ОВВК",
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
-                typeof(Command_OVVK_SystemManager).FullName,
+                typeof(ExtCmd_OVVK_SystemManager).FullName,
                 "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
                 "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
                 "http://moodle");
 
-
-
-
-
             PushButtonData ventilationSettingsConfigurator = CreateBtnData(
-                Command_VentilationSettingsConfigurator.PluginName,
-                Command_VentilationSettingsConfigurator.PluginName,
+                ExtCmd_OV_VentConfigurator.PluginName,
+                ExtCmd_OV_VentConfigurator.PluginName,
                 "Плагин-конфигуратор семейств вент установок",
                 string.Format(
                     "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName
                 ),
-                typeof(Command_VentilationSettingsConfigurator).FullName,
+                typeof(ExtCmd_OV_VentConfigurator).FullName,
                 "KPLN_Tools_OVVK.Imagens.ventilationSettingsConfiguratorSmall.png",
                 "KPLN_Tools_OVVK.Imagens.ventilationSettingsConfiguratorSmall.png",
                 "http://moodle");
 
-
-
-
-
-
             PushButtonData ovDuctThickness = CreateBtnData(
-                Command_OV_DuctThickness.PluginName,
-                Command_OV_DuctThickness.PluginName,
+                ExtCmd_OV_DuctThickness.PluginName,
+                ExtCmd_OV_DuctThickness.PluginName,
                 "Заполнение толщины стенок воздуховодов по СП",
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
-                typeof(Command_OV_DuctThickness).FullName,
+                typeof(ExtCmd_OV_DuctThickness).FullName,
                 "KPLN_Tools_OVVK.Imagens.ductThicknessSmall.png",
                 "KPLN_Tools_OVVK.Imagens.ductThicknessSmall.png",
                 "http://moodle");
 
             PushButtonData ovOzkDuctAccessory = CreateBtnData(
-                Command_OV_OZKDuctAccessory.PluginName,
-                Command_OV_OZKDuctAccessory.PluginName,
+                ExtCmd_OV_OZKDuctAccessory.PluginName,
+                ExtCmd_OV_OZKDuctAccessory.PluginName,
                 "Заполнение марок клапанов ОЗК",
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
-                typeof(Command_OV_OZKDuctAccessory).FullName,
+                typeof(ExtCmd_OV_OZKDuctAccessory).FullName,
                 "KPLN_Tools_OVVK.Imagens.ozkDuctAccessorySmall.png",
                 "KPLN_Tools_OVVK.Imagens.ozkDuctAccessorySmall.png",
                 "http://moodle");
@@ -107,7 +98,7 @@ namespace KPLN_Tools_OVVK
                 "СЕТ: Изоляция труб",
                 "Заполнение параметров изоляции труб",
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
-                typeof(Command_SET_InsulationPipes).FullName,
+                typeof(ExtCmd_SET_InsulationPipes).FullName,
                 "KPLN_Tools_OVVK.Imagens.FillInParamSmall.png",
                 "KPLN_Tools_OVVK.Imagens.FillInParamSmall.png",
                 "http://moodle");
@@ -115,11 +106,11 @@ namespace KPLN_Tools_OVVK
             #endif
 
             PushButtonData ovvkAutonumber = CreateBtnData(
-                ExtCmd_ScheduleIncrementor.PluginName,
-                ExtCmd_ScheduleIncrementor.PluginName,
+                ExtCmd_OVVK_ScheduleIncrementor.PluginName,
+                ExtCmd_OVVK_ScheduleIncrementor.PluginName,
                 "Нумерация спецификации ОВВК",
                 string.Format("Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}", ModuleData.Date, ModuleData.Version, ModuleData.ModuleName),
-                typeof(ExtCmd_ScheduleIncrementor).FullName,
+                typeof(ExtCmd_OVVK_ScheduleIncrementor).FullName,
                 "KPLN_Tools_OVVK.Imagens.autonumberSmall.png",
                 "KPLN_Tools_OVVK.Imagens.autonumberSmall.png",
                 "http://moodle");

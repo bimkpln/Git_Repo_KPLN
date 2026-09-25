@@ -12,7 +12,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class ExtCmd_ScheduleIncrementor : IExternalCommand
+    internal class ExtCmd_OVVK_ScheduleIncrementor : IExternalCommand
     {
         internal const string PluginName = "ОВВК: Нумерация";
 
@@ -73,7 +73,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 
                 // Читаю таблицу
                 var model = ScheduleHelper.ReadSchedule(se);
-                var window = new ScheduleMainForm(model, viewSchedule.Name);
+                var window = new OVVK_ScheduleMainForm(model, viewSchedule.Name);
 
 
                 // Привязка к окну ревит

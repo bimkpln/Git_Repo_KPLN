@@ -3,9 +3,9 @@ using System.Windows;
 
 namespace KPLN_Tools_OVVK.Forms
 {
-    public partial class ScheduleSubForm : Window
+    public partial class OVVK_ScheduleSubForm : Window
     {
-        public ScheduleSubForm(string header, string currentValue)
+        public OVVK_ScheduleSubForm(string header, string currentValue)
         {
             InitializeComponent();
 
