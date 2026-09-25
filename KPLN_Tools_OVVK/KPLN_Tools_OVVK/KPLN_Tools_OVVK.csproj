@@ -288,5 +288,14 @@
     <EmbeddedResource Include="Imagens\ventilationSettingsConfiguratorBig.png" />
     <EmbeddedResource Include="Imagens\ventilationSettingsConfiguratorSmall.png" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Вентилятор.png" />
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Водяной нагреватель.png" />
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Водяной охладитель.png" />
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Воздушный клапан.png" />
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Гибкая вставка.png" />
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Фильтр.png" />
+    <EmbeddedResource Include="Imagens\VentilationConfigurator\Шумоглушитель.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
