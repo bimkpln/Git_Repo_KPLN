@@ -370,6 +370,277 @@ def _parse_size(text: str | None) -> tuple[float | None, float | None]:
     return max(e[0] for e in edges), max(e[1] for e in edges)
 
 
+def _is_frame_path(path: str | None) -> bool:
+    p = (path or "").casefold()
+    return any(marker in p for marker in (
+        "нескаркас_балка", "/ каркас несущий /", "/ structural framing /",
+    ))
+
+
+def _mesh_frame_axis(geometry: dict | None) -> list[float] | None:
+    if not geometry or geometry.get("Usable") is not True or geometry.get("Reason"):
+        return None
+    if geometry.get("Source") not in ("mesh-surface-pca-row", "mesh-surface-pca-column"):
+        return None
+    try:
+        axis = [float(geometry["Axis"][k]) for k in ("X", "Y", "Z")]
+        ratio = float(geometry["Reliability"])
+        length = float(geometry["Length"])
+        width = float(geometry["TransverseSize"])
+        if not all(math.isfinite(x) for x in axis + [ratio, length, width]):
+            return None
+        norm = math.sqrt(sum(x * x for x in axis))
+        if abs(norm - 1.0) > 1e-4 or ratio < 4 or width <= 0 or length < 2 * width:
+            return None
+        return [x / norm for x in axis]
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+
+
+def _frame_metrics(result: dict, out: dict, frame1: bool, frame2: bool) -> dict:
+    # Structural framing never falls back to the cylindrical AABB approximation.
+    out.update({"MepMinEdge": None, "StructThick": None, "Through": None,
+                "SectionMin": None, "SectionMax": None, "SectionSource": None,
+                "FrameWallNormalAngle": None, "FrameAxis": None,
+                "FrameAxisSource": None, "FrameAxisReliability": None,
+                "FrameAxisReason": None, "FrameLengthMm": None})
+    for side, is_frame in ((1, frame1), (2, frame2)):
+        if is_frame:
+            out[f"Kind{side}"] = "каркас"
+    out["PairKind"] = "+".join(sorted([out["Kind1"], out["Kind2"]]))
+    if frame1 == frame2:
+        out["GeomNote"] = "Для пары каркас-каркас метрики труб неприменимы."
+        return out
+    side = 1 if frame1 else 2
+    geometry = result.get(f"Item{side}AxisGeometry")
+    axis = _mesh_frame_axis(geometry)
+    out["FrameAxisSource"] = (geometry or {}).get("Source")
+    out["FrameAxisReason"] = (geometry or {}).get("Reason") or (
+        None if axis else "missing-or-unusable-mesh-axis")
+    if axis:
+        out["FrameAxis"] = dict(zip(("X", "Y", "Z"), axis))
+        out["FrameAxisReliability"] = float(geometry["Reliability"])
+        out["FrameLengthMm"] = round(float(geometry["Length"]) * FT2MM, 1)
+    wall_side = 3 - side
+    wall = result.get(f"Item{wall_side}PlanGeometry")
+    wall_valid = False
+    if wall:
+        try:
+            values = [float(wall[k]) for k in (
+                "AxisX", "AxisY", "CenterX", "CenterY", "HalfLength", "HalfThickness", "Reliability")]
+            wall_valid = (all(math.isfinite(v) for v in values)
+                          and abs(math.hypot(*values[:2]) - 1) <= 1e-4
+                          and values[4] > 0 and values[5] > 0 and values[6] >= 2
+                          and wall.get("Source") in ("mesh-pca-row", "mesh-pca-column"))
+        except (KeyError, TypeError, ValueError, OverflowError):
+            pass
+    if wall_valid:
+        out.update(_wall_relation(result, wall, axis))
+        out["FrameWallNormalAngle"] = out["WallNormalAngle"]
+    out["GeomOk"] = axis is not None and wall_valid
+    out["GeomNote"] = (
+        "Каркас-стена: 3D-ось каркаса и ось стены получены из mesh. "
+        "FrameWallNormalAngle/WallNormalAngle: 90 = в плоскости стены, 0 = поперёк. "
+        "Это направление элементов, не длина их фактического пересечения."
+        if out["GeomOk"] else
+        "Нет надёжной mesh-оси каркаса или стены; направление по AABB не подставляется."
+    )
+    return out
+
+
+def _rectangular_section(text: str | None) -> tuple[float, float] | None:
+    if not isinstance(text, str):
+        return None
+    pattern = r"\s*(\d+(?:[.,]\d+)?)\s*(?:мм|mm)?\s*[xхХ×X]\s*(\d+(?:[.,]\d+)?)\s*(?:мм|mm)?\s*"
+    sizes = []
+    for part in re.split(r"\s*[-–—]\s*", text):
+        match = re.fullmatch(pattern, part, re.IGNORECASE)
+        if not match:
+            return None
+        size = tuple(sorted(float(x.replace(",", ".")) for x in match.groups()))
+        if not all(math.isfinite(x) and x > 0 for x in size):
+            return None
+        sizes.append(size)
+    return sizes[0] if sizes and all(s == sizes[0] for s in sizes) else None
+
+
+def _round_section(text: str | None) -> float | None:
+    if not isinstance(text, str):
+        return None
+    pattern = r"\s*[øØ⌀∅]\s*(\d+(?:[.,]\d+)?)\s*(?:мм|mm)?\s*"
+    sizes = []
+    for part in re.split(r"\s*[-–—]\s*", text):
+        match = re.fullmatch(pattern, part, re.IGNORECASE)
+        if not match:
+            return None
+        size = float(match.group(1).replace(",", "."))
+        if not math.isfinite(size) or size <= 0:
+            return None
+        sizes.append(size)
+    return sizes[0] if sizes and all(size == sizes[0] for size in sizes) else None
+
+
+def _positive_feet(value) -> float | None:
+    try:
+        value = float(value)
+        return value if math.isfinite(value) and value > 0 else None
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _nominal_duct_section(footprint: dict):
+    kind = footprint.get("ServiceKind")
+    source = footprint.get("NominalSizeSource")
+    if kind == "duct" and source == "Object/Height+Width":
+        width = _positive_feet(footprint.get("NominalWidth"))
+        height = _positive_feet(footprint.get("NominalHeight"))
+        if width is not None and height is not None:
+            a, b = sorted((width * FT2MM, height * FT2MM))
+            return "rectangular", a, b, source, 0.0
+    if kind == "duct" and source == "Object/Diameter":
+        diameter = _positive_feet(footprint.get("NominalDiameter"))
+        if diameter is not None:
+            diameter *= FT2MM
+            return "round", diameter, diameter, source, 0.0
+    if kind == "duct-insulation" and source == "Object/Duct Size":
+        text = footprint.get("NominalSize")
+        rectangular = _rectangular_section(text)
+        diameter = _round_section(text)
+        thickness = _positive_feet(footprint.get("InsulationThickness"))
+        if thickness is None:
+            return None
+        thickness *= FT2MM
+        if rectangular is not None:
+            a, b = sorted((rectangular[0] + 2 * thickness, rectangular[1] + 2 * thickness))
+            return "rectangular", a, b, source, thickness
+        if diameter is not None:
+            diameter += 2 * thickness
+            return "round", diameter, diameter, source, thickness
+    return None
+
+
+def _duct_ceiling_side(result: dict) -> int:
+    segments = [{s.strip().casefold() for s in (result.get(f"Item{i}Path") or "").split(" / ")} for i in (1, 2)]
+    for duct, ceiling in ((0, 1), (1, 0)):
+        duct_categories = {"воздуховоды", "ducts", "материалы изоляции воздуховодов",
+                           "duct insulations", "duct insulation", "изоляция воздуховода"}
+        if segments[duct] & duct_categories and segments[ceiling] & {"потолки", "ceilings"}:
+            return duct + 1
+    return 0
+
+
+def _duct_ceiling_metrics(result: dict, out: dict, side: int) -> dict:
+    out.update({"DuctSectionFootprintMatch": None, "DuctCeilingRelation": "unconfirmed",
+                "DuctSectionAreaMm2": None, "ClashFootprintAreaMm2": None,
+                "ClashFootprintMinMm": None, "ClashFootprintMaxMm": None,
+                "DuctSectionEdgeErrorsMm": None, "DuctSectionAreaErrorRatio": None,
+                "DuctSectionEdgeToleranceMm": None, "DuctSectionAreaToleranceRatio": .02,
+                "DuctSectionCheckSource": None, "DuctSectionPropertySource": None,
+                "DuctSectionShape": None, "InsulationThicknessMm": None,
+                "CeilingNormal": None,
+                "DuctSliceAreaMm2": None, "FullDuctSectionCovered": None,
+                "MepMinEdge": None, "StructThick": None, "Through": None,
+                "SectionMin": None, "SectionMax": None, "SectionSource": None})
+    footprint = result.get("DuctCeilingFootprint") or {}
+    section = _nominal_duct_section(footprint)
+    if section is None:
+        out["GeomNote"] = "Нет однозначного сечения в точных свойствах воздуховода или его изоляции."
+        return out
+    shape, a, b, property_source, insulation_thickness = section
+    expected_area = a * b if shape == "rectangular" else math.pi * a * a / 4
+    out.update(SectionMin=a, SectionMax=b, SectionSource=property_source,
+               DuctSectionShape=shape, InsulationThicknessMm=round(insulation_thickness, 3),
+               DuctSectionPropertySource=property_source, DuctSectionAreaMm2=expected_area)
+    if footprint.get("Usable") is not True or footprint.get("Source") != "duct-ceiling-mesh-section" or footprint.get("DuctSide") != side:
+        out["GeomNote"] = "Нет достоверного mesh-контура пересечения: " + (footprint.get("Reason") or "missing-footprint")
+        return out
+    try:
+        x, y = sorted(float(footprint[k]) * FT2MM for k in ("MinEdge", "MaxEdge"))
+        area = float(footprint["Area"]) * FT2MM ** 2
+        slice_area = float(footprint["DuctSliceArea"]) * FT2MM ** 2
+        normal = [float(footprint["Normal"][k]) for k in ("X", "Y", "Z")]
+        if not all(math.isfinite(v) for v in [x, y, area, slice_area] + normal) or min(x, y, area, slice_area) <= 0:
+            raise ValueError("invalid footprint")
+        if abs(math.sqrt(sum(v * v for v in normal)) - 1) > 1e-4 or area > x * y * 1.0001 or area > slice_area * 1.0001:
+            raise ValueError("inconsistent footprint")
+    except (KeyError, TypeError, ValueError, OverflowError):
+        out["GeomNote"] = "Некорректные размеры или площадь mesh-контура."
+        return out
+    # Measurement matching only; no clash status is selected here.
+    tolerances = [max(2.0, .02 * a), max(2.0, .02 * b)]
+    errors = [abs(x - a), abs(y - b)]
+    area_error = abs(area - expected_area) / expected_area
+    full_section = abs(area - slice_area) <= slice_area * .02
+    matched = full_section and all(e <= t for e, t in zip(errors, tolerances)) and area_error <= .02
+    out.update(DuctSectionFootprintMatch=matched,
+               DuctCeilingRelation="transverse-by-section" if matched else "unconfirmed",
+               ClashFootprintAreaMm2=round(area, 3), ClashFootprintMinMm=round(x, 3),
+               ClashFootprintMaxMm=round(y, 3), DuctSectionEdgeErrorsMm=[round(e, 3) for e in errors],
+               DuctSectionAreaErrorRatio=round(area_error, 8),
+               DuctSectionEdgeToleranceMm=tolerances,
+               DuctSectionCheckSource="object-section-properties+duct-ceiling-mesh-section",
+               DuctSliceAreaMm2=round(slice_area, 3), FullDuctSectionCovered=full_section,
+               CeilingNormal=dict(zip(("X", "Y", "Z"), normal)), GeomOk=matched)
+    out["GeomNote"] = (
+        "Обе стороны и площадь mesh-контура совпадают с сечением: поперечное пересечение по сечению."
+        if matched else "Контур не совпадает с сечением; это само по себе не доказывает продольность."
+    )
+    return out
+
+
+def _pipe_slab_metrics(result: dict, out: dict, pipe_side: int) -> dict:
+    """Normalize verified mesh measurements; do not decide clash status."""
+    section_min, section_max = _parse_size(result.get(f"Item{pipe_side}Size"))
+    out.update(SectionMin=section_min, SectionMax=section_max,
+               SectionSource="свойство Размер" if section_max else None,
+               SlabMetricsVersion="pipe-slab-mesh-1", SlabNormalAngle=None,
+               SlabEdgeContact=None, SlabFullSectionCovered=None, SlabSections=[],
+               SlabPipeAxis=None, SlabNormal=None, SlabOuterDiameterMm=None,
+               SlabThicknessMm=None, SlabPipeLengthMm=None, PipeId=None, SlabId=None)
+    geom = result.get("PipeSlabGeometry") or {}
+    if geom.get("Source") != "pipe-slab-mesh-1" or geom.get("Usable") is not True:
+        out["GeomNote"] = geom.get("Reason") or "missing-pipe-slab-mesh"
+        return out
+    def vector(value):
+        try:
+            values = [float(value[k]) for k in ("X", "Y", "Z")]
+            return values if all(math.isfinite(v) for v in values) else None
+        except (KeyError, TypeError, ValueError):
+            return None
+    def optional_mm(value):
+        feet = _positive_feet(value)
+        return feet * FT2MM if feet is not None else None
+    axis, normal = vector(geom.get("PipeAxis")), vector(geom.get("SlabNormal"))
+    radius = _positive_feet(geom.get("OuterRadius"))
+    if not axis or not normal or not radius or not geom.get("PipeId") or not geom.get("SlabId"):
+        out["GeomNote"] = "invalid-pipe-slab-mesh-fields"
+        return out
+    a_len, n_len = math.sqrt(sum(v*v for v in axis)), math.sqrt(sum(v*v for v in normal))
+    if a_len < 1e-9 or n_len < 1e-9:
+        out["GeomNote"] = "invalid-pipe-slab-axis-or-normal"
+        return out
+    sections = []
+    for section in geom.get("Sections") or []:
+        origin = vector(section.get("Origin"))
+        points = [vector(p) for p in section.get("Contour") or []]
+        if origin is None or len(points) < 3 or any(p is None for p in points):
+            out["GeomNote"] = "invalid-pipe-slab-section"
+            return out
+        sections.append({"origin_mm": [x*FT2MM for x in origin],
+                         "contour_mm": [[x*FT2MM for x in p] for p in points]})
+    dot = abs(sum(a*b for a,b in zip(axis, normal))) / (a_len*n_len)
+    out.update(SlabNormalAngle=math.degrees(math.acos(min(1.0, dot))),
+               SlabPipeAxis=[v/a_len for v in axis], SlabNormal=[v/n_len for v in normal],
+               SlabEdgeContact=geom.get("EdgeContact"),
+               SlabFullSectionCovered=geom.get("FullSectionCovered"),
+               SlabSections=sections, SlabOuterDiameterMm=2*radius*FT2MM,
+               SlabThicknessMm=optional_mm(geom.get("SlabThickness")),
+               SlabPipeLengthMm=optional_mm(geom.get("PipeLength")),
+               PipeId=geom["PipeId"], SlabId=geom["SlabId"],
+               GeomOk=True, GeomNote="verified-cylinder-and-closed-slab-mesh")
+    return out
+
+
 def _metrics(result: dict) -> dict:
     """Готовые геометрические метрики одной пары.
 
@@ -381,6 +652,7 @@ def _metrics(result: dict) -> dict:
     k1, k2 = _kind(p1), _kind(p2)
     c1, c2 = _class(p1), _class(p2)
     out: dict = {
+        "MetricsVersion": "duct-footprint-6",
         "Kind1": k1,
         "Kind2": k2,
         "PairKind": "+".join(sorted([k1, k2])),
@@ -410,6 +682,18 @@ def _metrics(result: dict) -> dict:
         "WallEndFaceDistance": None,
         "GeomOk": False,
     }
+
+    duct_ceiling_side = _duct_ceiling_side(result)
+    if duct_ceiling_side:
+        return _duct_ceiling_metrics(result, out, duct_ceiling_side)
+
+    if {c1, c2} == {"труба", "перекрытие"}:
+        return _pipe_slab_metrics(result, out, 1 if c1 == "труба" else 2)
+
+    frame1 = _is_frame_path(p1) or result.get("Item1AxisGeometry") is not None
+    frame2 = _is_frame_path(p2) or result.get("Item2AxisGeometry") is not None
+    if frame1 or frame2:
+        return _frame_metrics(result, out, frame1, frame2)
 
     b1, b2 = result.get("Item1Bound"), result.get("Item2Bound")
     if not b1 or not b2:
@@ -486,6 +770,20 @@ def _metrics(result: dict) -> dict:
             # вторая грань сечения по габариту не восстанавливается.
             out["SectionMin"] = out["MepMinEdge"]
             out["SectionMax"] = out["MepMinEdge"]
+        mep_side = 2 if struct_side == 1 else 1
+        mep_class = c2 if struct_side == 1 else c1
+        exact = result.get(f"Item{mep_side}DuctSection")
+        if exact is not None or mep_class == "изоляция воздуховода":
+            section = _nominal_duct_section(exact or {})
+            out.update(SectionMin=None, SectionMax=None, SectionSource=None,
+                       DuctSectionPropertySource=None, InsulationThicknessMm=None)
+            if section is not None:
+                shape, a, b, source, thickness = section
+                out.update(SectionMin=a, SectionMax=b, SectionSource=source,
+                           DuctSectionShape=shape, DuctSectionPropertySource=source,
+                           InsulationThicknessMm=thickness)
+            else:
+                out["SectionNote"] = "missing-exact-duct-section-or-insulation-thickness"
         out["Through"] = (
             round(out["DistMm"], 1) >= round(thick * 0.95, 1) if thick else None
         )
@@ -668,6 +966,19 @@ def get_clash_test_results(
         Dia1/Dia2, Len1/Len2, Elong1/Elong2 — диаметр, длина и вытянутость
                    (длина/диаметр) каждого элемента;
         Group    — имя группы коллизий Navisworks (или null);
+        GroupId / GroupIdentityKnown — GUID ближайшей родительской группы;
+                   известный null означает одиночный результат. Имена групп
+                   не используются вместо идентификаторов при сборе пучков труб.
+        PipeSlabGeometry — фактическая ось круглой прямой трубы, наружный радиус,
+                   нормаль и толщина замкнутой плиты, контакт с торцами/откосами,
+                   контуры сечений на обеих широких поверхностях (футы).
+                   SlabGeometryVersion/SlabMetricsVersion=pipe-slab-mesh-1.
+                   SlabPipeAxis/SlabNormal, SlabNormalAngle, SlabEdgeContact,
+                   SlabFullSectionCovered, SlabOuterDiameterMm, SlabThicknessMm,
+                   SlabPipeLengthMm, SlabSections (контуры/начала в мм), PipeId/SlabId.
+                   Короткая труба проверяется по цилиндру, не по длинной стороне AABB.
+                   Открытая/сложная плита, неполная сетка или неподтверждённый
+                   цилиндр дают GeomOk=false; без размерного автодопуска.
         Size1/Size2 — строка свойства "Размер" как есть;
         SectionMin/SectionMax — грани НОМИНАЛЬНОГО сечения из этой строки
                    ("ø200 мм-ø200 мм" -> 200/200; "300x200-300x200" ->
@@ -684,6 +995,36 @@ def get_clash_test_results(
                    WallPlanThickness/WallPlanReliability/WallPlanSource
                    описывают mesh-PCA, из которой восстановлена ось стены;
         DistMm   — Distance в миллиметрах;
+        Item1AxisGeometry/Item2AxisGeometry — 3D mesh-PCA каркаса: Axis,
+                   Center, Length/TransverseSize (футы), Reliability,
+                   TriangleCount, Source, Usable и Reason. Ось без направления
+                   движения: v и -v эквивалентны; знаки X/Y/Z сохраняются.
+                   Diagnostics: путь экземпляра, число своих/чужих фрагментов,
+                   число прочитанных треугольников, лимит вершин и bbox
+                   выбранных фрагментов/mesh/исходного ModelItem.
+                   GeometryVersion/MetricsVersion=duct-footprint-6 у
+                   обновлённых аддона и MCP-процесса.
+        DuctCeilingFootprint — фактический контур пересечения прямого
+                   воздуховода или его изоляции с mesh-поверхностью потолка: нормаль,
+                   обе грани (футы), площадь (кв. футы), Usable/Reason.
+        DuctSectionFootprintMatch — совпадение сторон/диаметра и площади.
+                   Прямой воздуховод: Объект -> Высота+Ширина или Диаметр.
+                   Изоляция: Объект -> Размер воздуховода плюс две толщины.
+                   Грани/диаметр: max(2 мм, 2%); площадь и полное покрытие: 2%.
+                   DuctCeilingRelation=transverse-by-section при совпадении
+                   и полном покрытии среза воздуховода потолком (FullDuctSectionCovered);
+                   несовпадение не доказывает продольность. Отсутствие mesh
+                   или размера даёт null, без подстановки площади AABB.
+                   ClashFootprintMinMm/MaxMm/AreaMm2, DuctSectionAreaMm2,
+                   DuctSectionEdgeErrorsMm/AreaErrorRatio раскрывают сравнение.
+        FrameWallNormalAngle — для каркаса со стеной угол 3D mesh-оси к
+                   нормали стены (0 поперёк, 90 в плоскости стены), также
+                   записывается в WallNormalAngle. Не глубина пересечения.
+                   FrameAxis/FrameAxisSource/FrameAxisReliability и
+                   FrameLengthMm описывают ось; FrameAxisReason — отказ.
+                   Нет достоверной mesh-оси — угол null, GeomOk=false,
+                   без подстановки оси трубы из AABB. Angle/PerpRel,
+                   Dia/Len/Elong и размеры отверстия для каркаса не считаются.
         GeomOk   — удалось ли посчитать; GeomNote — почему нет / почему
                    ненадёжно (ббокс "union-of-N").
     Пороги и вердикты сервер НЕ применяет — это дело навыка
@@ -800,9 +1141,11 @@ def set_clash_result_status(
     MCP-сервер не проверяет обученность теста и не принимает инженерное
     решение. Вызывать изменение статуса следует только после решения skill
     и явного пользовательского разрешения.
-    ВНИМАНИЕ: параметр comment пока не реализован на стороне аддина
-    (добавление комментария не удалось проверить без запуска в реальном
-    Navisworks) — если передать непустой comment, запрос вернёт ошибку 501."""
+    Непустой comment добавляется группе результата, либо самому одиночному
+    результату, с сохранением прежних комментариев. Статус меняется только
+    у указанной коллизии, не у её группы.
+    Одинаковый текст повторно не добавляется. Для комментариев без смены
+    статуса используйте batch_add_clash_result_comments."""
     try:
         with _client() as c:
             r = c.post(
@@ -813,6 +1156,86 @@ def set_clash_result_status(
             return "Статус обновлён"
     except Exception as exc:
         raise RuntimeError(_bridge_error_hint(exc)) from exc
+
+
+def _comment_result_names(test_name: str, result_names: list[str]) -> list[str]:
+    if not isinstance(test_name, str) or not test_name.strip():
+        raise ValueError("test_name must not be empty")
+    if not isinstance(result_names, list) or not result_names:
+        raise ValueError("result_names must be a nonempty list")
+    if any(not isinstance(name, str) or not name.strip() for name in result_names):
+        raise ValueError("Each result name must be a nonempty string")
+    return list(dict.fromkeys(result_names))
+
+
+@mcp.tool()
+def get_clash_comment_targets(test_name: str, result_names: list[str]) -> dict:
+    """Прочитать фактических адресатов комментария без изменения модели.
+
+    Для сгруппированной коллизии это ближайшая родительская группа, для
+    одиночной — сама коллизия. targets содержит kind, name, id, result_names
+    и comments владельца. Comments в get_clash_test_results остаются
+    собственными комментариями дочерней коллизии, без подмешивания групповых.
+    """
+    normalized = _comment_result_names(test_name, result_names)
+    try:
+        with _client() as c:
+            response = c.post(
+                f"/clash/results/{_q(test_name)}/comment-targets",
+                json={"resultNames": normalized},
+            )
+            response.raise_for_status()
+            targets = response.json()
+    except Exception as exc:
+        raise RuntimeError(_bridge_error_hint(exc)) from exc
+    return {"test_name": test_name, "targets": targets}
+
+
+@mcp.tool()
+def batch_add_clash_result_comments(
+    test_name: str,
+    result_names: list[str],
+    comment: str,
+) -> dict:
+    """Добавить один точный текст владельцам выбранных коллизий ОДНОГО теста.
+
+    Есть группа — запись в ближайшую родительскую группу, одна на группу.
+    Нет группы — запись в саму коллизию. Группы различаются по ID, не имени.
+    Не меняет статусы и не удаляет/переносит старые комментарии детей.
+    Один HTTP-запрос, обход результатов и транзакция. Адресаты дедуплицируются;
+    совпадение полного текста с существующим комментарием возвращает unchanged.
+    updated/unchanged содержат исходные имена коллизий, обслуженные адресатом.
+    targets показывает фактические записи: kind, name, id, result_names,
+    comments и outcome (updated/unchanged/failed). Число новых комментариев —
+    число targets с outcome=updated, а не длина updated. failed содержит
+    ошибки адресата для каждой затронутой исходной коллизии.
+    Ненайденный тест/результат: HTTP 404; неоднозначное имя: 409, без записи.
+    Нужна явная авторизация пользователя. После таймаута проверьте
+    get_clash_comment_targets; повтор того же текста не создаёт дублей.
+    """
+    if not isinstance(comment, str) or not comment.strip():
+        raise ValueError("comment must not be empty")
+    normalized = _comment_result_names(test_name, result_names)
+    try:
+        with _client(timeout=300.0) as c:
+            response = c.post(
+                f"/clash/results/{_q(test_name)}/comments",
+                json={"resultNames": normalized, "comment": comment},
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except Exception as exc:
+        raise RuntimeError(_bridge_error_hint(exc)) from exc
+    return {
+        "test_name": test_name,
+        "updated": payload.get("updated", []),
+        "unchanged": payload.get("unchanged", []),
+        "targets": payload.get("targets", []),
+        "failed": [
+            {"result_name": name, "error": error}
+            for name, error in (payload.get("failed") or {}).items()
+        ],
+    }
 
 
 @mcp.tool()
@@ -880,9 +1303,8 @@ def batch_set_clash_result_status(
         [{"result_name": "<имя результата>", "status": "Approved"}]
 
     status в каждом элементе — один из New, Active, Approved, Resolved,
-    Reviewed. Поле "comment" внутри элемента, если передано, игнорируется —
-    как и в set_clash_result_status, комментарии сейчас не реализованы на
-    стороне аддина и вызывают 501 при непустом значении.
+    Reviewed. Поле "comment" внутри элемента, если передано, игнорируется.
+    Для комментариев используйте batch_add_clash_result_comments.
 
     Мост сопоставляет все имена за один перебор test.results() и меняет
     найденные статусы внутри одного вызова главного потока Navisworks.

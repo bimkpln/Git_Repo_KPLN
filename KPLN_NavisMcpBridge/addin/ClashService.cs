@@ -110,6 +110,17 @@ namespace KPLN_NavisMcpBridge
         public string Item2BoundSource;
         public PlanGeometryDto Item1PlanGeometry;
         public PlanGeometryDto Item2PlanGeometry;
+        public AxisGeometryDto Item1AxisGeometry;
+        public AxisGeometryDto Item2AxisGeometry;
+        public string GeometryVersion = "duct-footprint-6";
+        public ClashFootprintDto DuctCeilingFootprint;
+        public DuctSectionDto Item1DuctSection;
+        public DuctSectionDto Item2DuctSection;
+        public string DuctSectionVersion = "object-section-1";
+        public string SlabGeometryVersion = "pipe-slab-mesh-1";
+        public PipeSlabDto PipeSlabGeometry;
+        public string GroupId;
+        public bool GroupIdentityKnown;
 
         /// <summary>
         /// Имя ГРУППЫ коллизий, в которую пользователь объединил этот
@@ -174,7 +185,7 @@ namespace KPLN_NavisMcpBridge
     /// C#-свойства (Path1, Path2, status, name, distance — без скобок).
     /// Перепутать легко, поэтому явно комментирую каждый вызов.
     /// </summary>
-    internal static class ClashService
+    internal static partial class ClashService
     {
         private static ComApi.InwOpState10 State => ComApiBridge.State;
 
@@ -326,7 +337,10 @@ namespace KPLN_NavisMcpBridge
         {
             var test = FindTest(testName);
             var list = new List<ClashResultDto>();
-            var planGeometryCache = new Dictionary<Guid, WallMeshAnalysis>();
+            var planGeometryCache = new Dictionary<string, WallMeshAnalysis>();
+            var frameGeometryCache = new Dictionary<string, AxisGeometryDto>();
+            var footprintMeshCache = new Dictionary<string, FootprintMesh>();
+            var groupIds = includeItemBounds ? ReadStableGroupIds(testName) : null;
 
             // Нормализуем фильтр так же, как в SetResultStatus: принимаем
             // и короткое имя ("Active"), и полное значение enum
@@ -389,6 +403,8 @@ namespace KPLN_NavisMcpBridge
                     Group = DescribeGroup(r)
                 };
                 list.Add(dto);
+                if (groupIds != null && groupIds.TryGetValue(dto.Name, out var groupId))
+                { dto.GroupId = groupId; dto.GroupIdentityKnown = true; }
 
                 if (includeItemBounds)
                 {
@@ -405,12 +421,22 @@ namespace KPLN_NavisMcpBridge
                     if (IsWallPath(item2Path))
                         list[list.Count - 1].Item2PlanGeometry =
                             DescribeCachedPlanGeometry(item2, b2.Bound, clashPoint, planGeometryCache);
+                    if (IsFramePath(item1Path))
+                        dto.Item1AxisGeometry = DescribeCachedFrameGeometry(item1, r.Path1, b1.Bound, frameGeometryCache);
+                    if (IsFramePath(item2Path))
+                        dto.Item2AxisGeometry = DescribeCachedFrameGeometry(item2, r.Path2, b2.Bound, frameGeometryCache);
+                    dto.DuctCeilingFootprint = DescribeDuctCeilingFootprint(item1, item2,
+                        item1Path, item2Path, clashPoint, footprintMeshCache);
+                    dto.PipeSlabGeometry = DescribePipeSlab(item1, item2,
+                        item1Path, item2Path, clashPoint, footprintMeshCache);
                 }
 
                 if (includeSizes)
                 {
                     list[list.Count - 1].Item1Size = DescribeModelItemGuiSize(item1);
                     list[list.Count - 1].Item2Size = DescribeModelItemGuiSize(item2);
+                    dto.Item1DuctSection = ReadExactDuctSection(item1, DuctServiceKind(item1Path));
+                    dto.Item2DuctSection = ReadExactDuctSection(item2, DuctServiceKind(item2Path));
                 }
 
                 if (includeMarks)
@@ -817,6 +843,8 @@ namespace KPLN_NavisMcpBridge
         {
             private readonly double[] _matrix;
             private readonly int _maxPoints;
+            public bool Truncated { get; private set; }
+            public bool LimitReached { get; private set; }
 
             public readonly List<Point3Dto> ColumnVectorPoints = new List<Point3Dto>();
             public readonly List<Point3Dto> RowVectorPoints = new List<Point3Dto>();
@@ -834,11 +862,11 @@ namespace KPLN_NavisMcpBridge
                 ComApi.InwSimpleVertex v2,
                 ComApi.InwSimpleVertex v3)
             {
-                if (ColumnVectorPoints.Count + 3 > _maxPoints) return;
+                if (ColumnVectorPoints.Count + 3 > _maxPoints) { Truncated = true; LimitReached = true; return; }
                 var a = ReadPoint(v1);
                 var b = ReadPoint(v2);
                 var c = ReadPoint(v3);
-                if (a == null || b == null || c == null) return;
+                if (a == null || b == null || c == null) { Truncated = true; return; }
 
                 var ca = TransformColumnVector(a.X, a.Y, a.Z, _matrix);
                 var cb = TransformColumnVector(b.X, b.Y, b.Z, _matrix);
@@ -907,50 +935,51 @@ namespace KPLN_NavisMcpBridge
             ModelItem item,
             BoundDto itemBound,
             Point3Dto clashPoint,
-            Dictionary<Guid, WallMeshAnalysis> cache)
+            Dictionary<string, WallMeshAnalysis> cache)
         {
             if (item == null || itemBound == null) return null;
 
-            Guid key;
-            try { key = item.InstanceGuid; }
-            catch { key = Guid.Empty; }
+            string key;
+            try { key = GeometryInstancePath.Read(ComApiBridge.ToInwOaPath(item).ArrayData); }
+            catch { return null; }
 
-            WallMeshAnalysis analysis = null;
-            if (key != Guid.Empty) cache.TryGetValue(key, out analysis);
-            if (analysis == null)
+            WallMeshAnalysis analysis;
+            if (!cache.TryGetValue(key, out analysis))
             {
-                analysis = DescribePlanGeometry(item, itemBound);
-                if (key != Guid.Empty) cache[key] = analysis;
+                analysis = DescribePlanGeometry(item);
+                cache[key] = analysis;
             }
             return DescribeLocalWallFaces(analysis, clashPoint);
         }
 
-        private static WallMeshAnalysis DescribePlanGeometry(ModelItem item, BoundDto itemBound)
+        private static WallMeshAnalysis DescribePlanGeometry(ModelItem item)
         {
             const int maxPoints = 30000;
             var columnPoints = new List<Point3Dto>();
             var rowPoints = new List<Point3Dto>();
             var columnTriangles = new List<Triangle3>();
             var rowTriangles = new List<Triangle3>();
+            var fragmentBounds = new List<BoundDto>();
 
             try
             {
                 foreach (var leaf in item.DescendantsAndSelf)
                 {
-                    if (!leaf.HasGeometry || columnPoints.Count >= maxPoints) continue;
+                    if (!leaf.HasGeometry) continue;
                     var path = ComApiBridge.ToInwOaPath(leaf);
-                    if (path == null) continue;
+                    if (path == null) return null;
 
-                    foreach (var obj in Enumerate(path.Fragments()))
+                    int skipped;
+                    foreach (var fragment in GetInstanceFragments(path, out skipped))
                     {
-                        var fragment = obj as ComApi.InwOaFragment3;
-                        if (fragment == null || columnPoints.Count >= maxPoints) continue;
-
+                        fragmentBounds.Add(DescribeBound(fragment.GetWorldBox()));
                         var matrix = ReadMatrix(fragment.GetLocalToWorldMatrix());
+                        if (matrix == null) return null;
                         var collector = new PrimitivePointCollector(
                             matrix, maxPoints - columnPoints.Count);
                         fragment.GenerateSimplePrimitives(
                             ComApi.nwEVertexProperty.eNONE, collector);
+                        if (collector.Truncated) return null;
                         columnPoints.AddRange(collector.ColumnVectorPoints);
                         rowPoints.AddRange(collector.RowVectorPoints);
                         columnTriangles.AddRange(collector.ColumnVectorTriangles);
@@ -964,11 +993,23 @@ namespace KPLN_NavisMcpBridge
             }
 
             if (columnPoints.Count < 6) return null;
-            var useColumn = BoundingScore(columnPoints, itemBound) <= BoundingScore(rowPoints, itemBound);
+            var target = MeshAxisFitter.UnionBounds(fragmentBounds);
+            var columnMatches = MeshAxisFitter.MatchesBounds(columnPoints, target);
+            var rowMatches = MeshAxisFitter.MatchesBounds(rowPoints, target);
+            if (!columnMatches && !rowMatches) return null;
+            var useColumn = columnMatches && !rowMatches;
+            var plan = FitPlanGeometry(useColumn ? columnPoints : rowPoints,
+                useColumn ? "mesh-pca-column" : "mesh-pca-row");
+            if (rowMatches && columnMatches)
+            {
+                var alternative = FitPlanGeometry(columnPoints, "mesh-pca-column");
+                if (plan == null || alternative == null ||
+                    Math.Abs(plan.AxisX * alternative.AxisX + plan.AxisY * alternative.AxisY) < 1 - 1e-6)
+                    return null;
+            }
             return new WallMeshAnalysis
             {
-                Plan = FitPlanGeometry(useColumn ? columnPoints : rowPoints,
-                    useColumn ? "mesh-pca-column" : "mesh-pca-row"),
+                Plan = plan,
                 Triangles = useColumn ? columnTriangles : rowTriangles
             };
         }
@@ -1324,47 +1365,6 @@ namespace KPLN_NavisMcpBridge
             test.RunTest(0, null);
         }
 
-        public static void SetResultStatus(string testName, string resultName, string status, string comment)
-        {
-            var test = FindTest(testName);
-            ComApi.InwOclTestResult found = null;
-            foreach (var obj in Enumerate(test.results()))
-            {
-                if (obj is ComApi.InwOclTestResult r && r.name == resultName)
-                {
-                    found = r;
-                    break;
-                }
-            }
-            if (found == null)
-                throw new ResourceNotFoundException($"Результат '{resultName}' в тесте '{testName}' не найден");
-
-            if (!string.IsNullOrEmpty(status))
-            {
-                // Значения enum COM-имперфейса сохраняют префикс eTestResultStatus_,
-                // например "eTestResultStatus_APPROVED" — подтверждено декомпиляцией.
-                var full = status.StartsWith("eTestResultStatus_") ? status : "eTestResultStatus_" + status;
-                if (Enum.TryParse<ComApi.nwETestResultStatus>(full, true, out var parsed))
-                    found.status = parsed;
-                else
-                    throw new ArgumentException(
-                        $"Неизвестный статус: {status}. Допустимые: New, Active, Approved, Resolved, Reviewed");
-            }
-
-            if (!string.IsNullOrEmpty(comment))
-            {
-                // ВНИМАНИЕ — не проверено запуском: создание нового InwOpComment
-                // в 2020 SDK, скорее всего, идёт через State.ObjectFactory(...),
-                // а не напрямую "new". Это единственная операция в файле, которую
-                // я не смог до конца проверить статически (нужен реальный тест
-                // внутри Navisworks) — сигнатуру ObjectFactory видно в металданных,
-                // но её enum-параметры (какой nwEObjectType выбрать) — нет.
-                throw new NotImplementedException(
-                    "Добавление комментария к результату клэша: нужно опробовать " +
-                    "State.ObjectFactory(...) внутри реального Navisworks 2020 — " +
-                    "статически проверить нельзя (см. README)");
-            }
-        }
 
         public static ResultStatusBatchDto SetResultStatuses(
             string testName,

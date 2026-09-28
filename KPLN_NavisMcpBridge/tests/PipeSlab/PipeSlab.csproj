@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../addin/DuctCeilingFootprint.cs" Link="DuctCeilingFootprint.cs" />
+    <Compile Include="../../addin/PipeSlabGeometry.cs" Link="PipeSlabGeometry.cs" />
+    <Compile Include="../../addin/FootprintMeshValidation.cs" Link="FootprintMeshValidation.cs" />
+  </ItemGroup>
+</Project>

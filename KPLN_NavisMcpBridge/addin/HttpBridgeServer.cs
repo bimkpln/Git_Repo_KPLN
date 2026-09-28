@@ -25,6 +25,8 @@ namespace KPLN_NavisMcpBridge
     ///   POST /clash/tests/{testName}/run
     ///   POST /clash/results/{testName}/{resultName}/status   body: {status, comment}
     ///   POST /clash/results/{testName}/status   body: {updates: [{resultName, status}]}
+    ///   POST /clash/results/{testName}/comments body: {resultNames, comment}
+    ///   POST /clash/results/{testName}/comment-targets body: {resultNames} (read-only)
     ///   POST /clash/groups/{testName}/status   body: {groupNames, status, comment}
     ///   GET  /clash/tests/{testName}/export?format=html
     /// </summary>
@@ -117,7 +119,17 @@ namespace KPLN_NavisMcpBridge
             catch (NotImplementedException ex)
             {
                 status = 501;
-                payload = new { error = ex.Message };
+                payload = new { error = ex.ToString() };
+            }
+            catch (ArgumentException ex)
+            {
+                status = 400;
+                payload = new { error = ex.ToString() };
+            }
+            catch (JsonException ex)
+            {
+                status = 400;
+                payload = new { error = ex.ToString() };
             }
             catch (Exception ex)
             {
@@ -204,6 +216,7 @@ namespace KPLN_NavisMcpBridge
             if (method == "POST" && (m = Regex.Match(path, @"^/clash/results/([^/]+)/([^/]+)/status$")).Success)
             {
                 var body = ReadBody<StatusUpdateBody>(req);
+                if (body == null) throw new ArgumentException("Empty request body");
                 _dispatcher.Run(() => ClashService.SetResultStatus(
                     DecodeUtf8Percent(m.Groups[1].Value), DecodeUtf8Percent(m.Groups[2].Value),
                     body.status, body.comment));
@@ -233,6 +246,22 @@ namespace KPLN_NavisMcpBridge
 
                 return _dispatcher.Run(() => ClashService.SetResultStatuses(
                     DecodeUtf8Percent(m.Groups[1].Value), updates));
+            }
+
+            if (method == "POST" && (m = Regex.Match(path, @"^/clash/results/([^/]+)/comment-targets$")).Success)
+            {
+                var body = ReadBody<ResultCommentsBody>(req);
+                if (body == null) throw new ArgumentException("Empty request body");
+                return _dispatcher.Run(() => ClashService.GetCommentTargets(
+                    DecodeUtf8Percent(m.Groups[1].Value), body.resultNames));
+            }
+
+            if (method == "POST" && (m = Regex.Match(path, @"^/clash/results/([^/]+)/comments$")).Success)
+            {
+                var body = ReadBody<ResultCommentsBody>(req);
+                if (body == null) throw new ArgumentException("Empty request body");
+                return _dispatcher.Run(() => ClashService.AddResultComments(
+                    DecodeUtf8Percent(m.Groups[1].Value), body.resultNames, body.comment));
             }
 
             if (method == "POST" && (m = Regex.Match(path, @"^/clash/groups/([^/]+)/status$")).Success)
@@ -303,6 +332,12 @@ namespace KPLN_NavisMcpBridge
         private class StatusUpdateBody
         {
             public string status { get; set; }
+            public string comment { get; set; }
+        }
+
+        private class ResultCommentsBody
+        {
+            public List<string> resultNames { get; set; }
             public string comment { get; set; }
         }
 
