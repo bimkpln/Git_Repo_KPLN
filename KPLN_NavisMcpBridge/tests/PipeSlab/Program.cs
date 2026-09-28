@@ -5,6 +5,11 @@ var tests = new (string, Action)[] {
     ("short pipe crosses one slab face", () => Normal(Shift(Cylinder(100,60),0,0,-100),Box(3000,3000,200))),
     ("very short pipe axis is not largest dimension", () => Normal(Shift(Cylinder(100,10),0,0,-100),Box(3000,3000,200))),
     ("uncapped straight pipe", () => Normal(Cylinder(100,500,false),Box(3000,3000,200))),
+    ("intermediate axial mesh rings", () => Normal(SegmentedCylinder(100,500,4),Box(3000,3000,200))),
+    ("separated coaxial pieces rejected", () => {
+        var p=Shift(Cylinder(100,200),0,0,-125);p.AddRange(Shift(Cylinder(100,200),0,0,125));
+        Check(!Measure(p,Box(3000,3000,200)).Usable,"gapped pipe pieces accepted");
+    }),
     ("hollow pipe", () => {
         var p=Cylinder(108,500,false);p.AddRange(Cylinder(100,500,false));Normal(p,Box(3000,3000,200));
     }),
@@ -63,6 +68,18 @@ static List<Point3Dto> Cylinder(double diameter,double length,bool capped=true) 
     for(int i=0;i<count;i++) {var a=2*Math.PI*i/count;var b=2*Math.PI*(i+1)/count;
         var p0=P(r*Math.Cos(a),r*Math.Sin(a),-h);var p1=P(r*Math.Cos(b),r*Math.Sin(b),-h);var p2=P(r*Math.Cos(a),r*Math.Sin(a),h);var p3=P(r*Math.Cos(b),r*Math.Sin(b),h);
         p.AddRange(new[]{p0,p1,p3,p0,p3,p2});if(capped)p.AddRange(new[]{P(0,0,-h),p1,p0,P(0,0,h),p2,p3});
+    }return p;
+}
+static List<Point3Dto> SegmentedCylinder(double diameter,double length,int segments) {
+    var p=new List<Point3Dto>();var r=diameter/2/304.8;var h=length/2/304.8;int count=32;
+    for(int s=0;s<segments;s++) {var z0=-h+2*h*s/segments;var z1=-h+2*h*(s+1)/segments;
+        for(int i=0;i<count;i++) {var a=2*Math.PI*i/count;var b=2*Math.PI*(i+1)/count;
+            var p0=P(r*Math.Cos(a),r*Math.Sin(a),z0);var p1=P(r*Math.Cos(b),r*Math.Sin(b),z0);
+            var p2=P(r*Math.Cos(a),r*Math.Sin(a),z1);var p3=P(r*Math.Cos(b),r*Math.Sin(b),z1);
+            p.AddRange(new[]{p0,p1,p3,p0,p3,p2});
+            if(s==0)p.AddRange(new[]{P(0,0,-h),p1,p0});
+            if(s==segments-1)p.AddRange(new[]{P(0,0,h),p2,p3});
+        }
     }return p;
 }
 static List<Point3Dto> RingSlab() {

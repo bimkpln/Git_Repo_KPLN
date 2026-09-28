@@ -38,8 +38,8 @@ namespace KPLN_NavisMcpBridge
         {
             var result = new PipeSlabDto();
             if (!Valid(pipe) || !Valid(slab) || !Finite(contact)) { result.Reason = "missing-or-invalid-mesh"; return result; }
-            var cylinder = FitCylinder(pipe);
-            if (cylinder == null) { result.Reason = "not-a-verified-straight-circular-pipe"; return result; }
+            var cylinder = FitCylinder(pipe, out var cylinderReason);
+            if (cylinder == null) { result.Reason = cylinderReason; return result; }
             result.PipeAxis = cylinder.Axis;
             result.AxisOrigin = cylinder.Origin;
             result.OuterRadius = cylinder.Radius;
@@ -111,13 +111,14 @@ namespace KPLN_NavisMcpBridge
             return Hull(points);
         }
 
-        private static Cylinder FitCylinder(IList<Point3Dto> mesh)
+        private static Cylinder FitCylinder(IList<Point3Dto> mesh, out string reason)
         {
+            reason = "not-a-verified-straight-circular-pipe";
             var faces = UniqueFaces(mesh);
             var normals = new List<Point3Dto>();
             foreach (var f in faces)
                 if (!normals.Any(n => Math.Abs(Dot(n, f.N)) > 1 - 1e-6)) normals.Add(f.N);
-            if (normals.Count < 5 || normals.Count > 256) return null;
+            if (normals.Count < 5 || normals.Count > 256) { reason = "pipe-normal-count-outside-cylinder-range"; return null; }
             var candidates = normals.ToList();
             // Cap normals work for very short pipes; crosses of lateral normals also
             // recover uncapped pipes. No longest-box or largest-PCA-axis assumption.
@@ -128,7 +129,7 @@ namespace KPLN_NavisMcpBridge
                     if (Dot(c, c) < 1e-4) continue;
                     c = Unit(c);
                     if (!candidates.Any(n => Math.Abs(Dot(n, c)) > 1 - 1e-6)) candidates.Add(c);
-                    if (candidates.Count > 512) return null;
+                    if (candidates.Count > 512) { reason = "pipe-axis-candidates-ambiguous"; return null; }
                 }
             Cylinder found = null;
             foreach (var axis in candidates)
@@ -165,15 +166,15 @@ namespace KPLN_NavisMcpBridge
                     Math.Abs(Radial(Project(p, origin, u, v), center) - radius) <= tolerance)).Sum(f => f.Area);
                 var perimeter = Enumerable.Range(0, hull.Count).Sum(i => Radial(hull[i], hull[(i + 1) % hull.Count]));
                 if (Math.Abs(outerArea - perimeter * (axial.Max() - axial.Min())) > perimeter * (axial.Max() - axial.Min()) * 1e-5) continue;
-                // Every lateral face must connect the same two endpoint rings. This
-                // rejects disconnected/coaxial bodies and capped intermediate segments.
-                if (lateral.Any(f => new[] { f.A, f.B, f.C }.Any(p => {
-                    var t = Dot(Sub(p, axisOrigin), axis);
-                    return Math.Abs(t - axial.Min()) > 1e-6 && Math.Abs(t - axial.Max()) > 1e-6;
-                }))) continue;
+                // Navisworks may tessellate one straight pipe with intermediate
+                // axial rings. The complete outer lateral-area check above proves
+                // continuous coverage of the full axial interval and still rejects
+                // a gap between disconnected coaxial pieces; intermediate vertices
+                // themselves are therefore valid cylinder evidence.
                 if (found != null && Math.Abs(Dot(found.Axis, axis)) < 1 - 1e-6) return null;
                 found = new Cylinder { Axis = axis, Origin = axisOrigin, Radius = radius, Low = axial.Min(), High = axial.Max() };
             }
+            if (found == null) reason = "pipe-mesh-does-not-form-one-complete-cylinder";
             return found;
         }
 
