@@ -1,0 +1,4 @@
+interface:
+  display_name: "KPLN Navisworks Clash Tolerances"
+  short_description: "Apply KPLN clash tolerance rules"
+  default_prompt: "Use $navisworks-clash-tolerances to review Navisworks Clash Detective results and train only reusable KPLN rules."
