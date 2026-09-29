@@ -6,6 +6,15 @@ var tests = new (string, Action)[] {
     ("very short pipe axis is not largest dimension", () => Normal(Shift(Cylinder(100,10),0,0,-100),Box(3000,3000,200))),
     ("uncapped straight pipe", () => Normal(Cylinder(100,500,false),Box(3000,3000,200))),
     ("intermediate axial mesh rings", () => Normal(SegmentedCylinder(100,500,4),Box(3000,3000,200))),
+    ("joined fragments with different tessellation", () => {
+        var p=Shift(Cylinder(100,250,false,16),0,0,-125);
+        p.AddRange(Shift(Cylinder(100,250,false,32),0,0,125));
+        Normal(p,Box(3000,3000,200));
+    }),
+    ("densely tessellated cylinder", () => Normal(Cylinder(100,500,true,512),Box(3000,3000,200))),
+    ("slightly noisy cylinder mesh", () => Normal(Noisy(SegmentedCylinder(100,500,4)),Box(3000,3000,200))),
+    ("per-triangle vertex noise is welded", () => Normal(OccurrenceNoise(SegmentedCylinder(100,500,4)),Box(3000,3000,200))),
+    ("noisy uncapped cylinder axis fit", () => Normal(Noisy(SegmentedCylinder(100,500,4,false)),Box(3000,3000,200))),
     ("separated coaxial pieces rejected", () => {
         var p=Shift(Cylinder(100,200),0,0,-125);p.AddRange(Shift(Cylinder(100,200),0,0,125));
         Check(!Measure(p,Box(3000,3000,200)).Usable,"gapped pipe pieces accepted");
@@ -63,25 +72,34 @@ static List<Point3Dto> Box(double x,double y,double z) {
     var p=new List<Point3Dto>();for(int i=0;i<8;i++)p.Add(P(((i&1)==0?-.5:.5)*x/304.8,((i&2)==0?-.5:.5)*y/304.8,((i&4)==0?-.5:.5)*z/304.8));
     return new[]{0,2,3,0,3,1,4,5,7,4,7,6,0,1,5,0,5,4,2,6,7,2,7,3,0,4,6,0,6,2,1,3,7,1,7,5}.Select(i=>p[i]).ToList();
 }
-static List<Point3Dto> Cylinder(double diameter,double length,bool capped=true) {
-    var p=new List<Point3Dto>();var r=diameter/2/304.8;var h=length/2/304.8;int count=32;
+static List<Point3Dto> Cylinder(double diameter,double length,bool capped=true,int count=32) {
+    var p=new List<Point3Dto>();var r=diameter/2/304.8;var h=length/2/304.8;
     for(int i=0;i<count;i++) {var a=2*Math.PI*i/count;var b=2*Math.PI*(i+1)/count;
         var p0=P(r*Math.Cos(a),r*Math.Sin(a),-h);var p1=P(r*Math.Cos(b),r*Math.Sin(b),-h);var p2=P(r*Math.Cos(a),r*Math.Sin(a),h);var p3=P(r*Math.Cos(b),r*Math.Sin(b),h);
         p.AddRange(new[]{p0,p1,p3,p0,p3,p2});if(capped)p.AddRange(new[]{P(0,0,-h),p1,p0,P(0,0,h),p2,p3});
     }return p;
 }
-static List<Point3Dto> SegmentedCylinder(double diameter,double length,int segments) {
+static List<Point3Dto> SegmentedCylinder(double diameter,double length,int segments,bool capped=true) {
     var p=new List<Point3Dto>();var r=diameter/2/304.8;var h=length/2/304.8;int count=32;
     for(int s=0;s<segments;s++) {var z0=-h+2*h*s/segments;var z1=-h+2*h*(s+1)/segments;
         for(int i=0;i<count;i++) {var a=2*Math.PI*i/count;var b=2*Math.PI*(i+1)/count;
             var p0=P(r*Math.Cos(a),r*Math.Sin(a),z0);var p1=P(r*Math.Cos(b),r*Math.Sin(b),z0);
             var p2=P(r*Math.Cos(a),r*Math.Sin(a),z1);var p3=P(r*Math.Cos(b),r*Math.Sin(b),z1);
             p.AddRange(new[]{p0,p1,p3,p0,p3,p2});
-            if(s==0)p.AddRange(new[]{P(0,0,-h),p1,p0});
-            if(s==segments-1)p.AddRange(new[]{P(0,0,h),p2,p3});
+            if(capped&&s==0)p.AddRange(new[]{P(0,0,-h),p1,p0});
+            if(capped&&s==segments-1)p.AddRange(new[]{P(0,0,h),p2,p3});
         }
     }return p;
 }
+static List<Point3Dto> Noisy(List<Point3Dto> points) => points.Select(p => {
+    var radius=Math.Sqrt(p.X*p.X+p.Y*p.Y);if(radius<1e-9)return p;
+    var angle=Math.Atan2(p.Y,p.X);var delta=.02/304.8*Math.Sin(angle*7+p.Z*13);
+    return P(p.X*(radius+delta)/radius,p.Y*(radius+delta)/radius,p.Z);
+}).ToList();
+static List<Point3Dto> OccurrenceNoise(List<Point3Dto> points) => points.Select((p,i) => {
+    var d=.001/304.8;
+    return P(p.X+d*Math.Sin(i*1.73),p.Y+d*Math.Sin(i*2.31),p.Z+d*Math.Sin(i*3.17));
+}).ToList();
 static List<Point3Dto> RingSlab() {
     var vertices=new List<Point3Dto>();
     foreach(var z in new[]{-100.0,100.0}) foreach(var r in new[]{1500.0,50.0})

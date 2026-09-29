@@ -155,8 +155,11 @@ def _wall_relation(
         "WallPlanSource": None,
         "WallBroadFaceDistance": None,
         "WallEndFaceDistance": None,
+        "WallGeometryReason": (wall_geometry or {}).get("Reason"),
     }
     if not wall_geometry:
+        return out
+    if wall_geometry.get("Usable") is False or wall_geometry.get("Reason"):
         return out
 
     try:
@@ -167,7 +170,16 @@ def _wall_relation(
         half_length = float(wall_geometry["HalfLength"]) * FT2MM
         half_thickness = float(wall_geometry["HalfThickness"]) * FT2MM
         reliability = float(wall_geometry["Reliability"])
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return out
+
+    values = [axis_x, axis_y, center_x, center_y, half_length, half_thickness, reliability]
+    if (not all(math.isfinite(value) for value in values)
+            or abs(math.hypot(axis_x, axis_y) - 1) > 1e-4
+            or half_length <= 0 or half_thickness <= 0 or reliability < 2
+            or wall_geometry.get("Source") not in (
+                "mesh-pca-row", "mesh-pca-column", "wall-instance-mesh-1")):
+        out["WallGeometryReason"] = "invalid-or-incomplete-wall-geometry"
         return out
 
     out["WallPlanThickness"] = round(half_thickness * 2.0, 1)
@@ -185,8 +197,10 @@ def _wall_relation(
         out["WallNormalAngle"] = round(_angle_deg(mep_axis, wall_normal), 2)
 
     clash_bound = result.get("Bound")
-    if clash_bound:
-        clash_center = _center_mm(clash_bound)
+    contact = result.get("Pt1") if wall_geometry.get("Source") == "wall-instance-mesh-1" else None
+    if contact or clash_bound:
+        clash_center = ([float(contact[k]) * FT2MM for k in ("X", "Y", "Z")]
+                        if contact else _center_mm(clash_bound))
         dx = clash_center[0] - center_x
         dy = clash_center[1] - center_y
         along = abs(dx * axis_x + dy * axis_y)
@@ -273,10 +287,15 @@ def _class(path: str | None) -> str:
     пути записывал 48 прямых участков из 62 в фасонину.
     """
     p = path or ""
+    segs = [x for x in p.split(" / ") if x.strip()]
+    category_names = {x.strip().casefold() for x in segs}
+    if category_names & {"потолки", "ceilings"}:
+        return "потолок"
+    if category_names & {"кабельные лотки", "cable trays"}:
+        return "лоток"
     if any(k in p for k in _FINISH_MARKERS):
         return "отделка"
 
-    segs = [x for x in p.split(" / ") if x.strip()]
     cat = segs[-3] if len(segs) >= 3 else ""
     if cat:
         if "изоляции воздуховод" in cat:
@@ -397,6 +416,68 @@ def _mesh_frame_axis(geometry: dict | None) -> list[float] | None:
         return None
 
 
+def _ceiling_service_sides(result: dict) -> tuple[int, int] | None:
+    paths = [result.get(f"Item{i}Path") for i in (1, 2)]
+    categories = [{s.strip().casefold() for s in (path or "").split(" / ")}
+                  for path in paths]
+    supported = {"воздуховод", "изоляция воздуховода", "труба", "изоляция трубы",
+                 "фасонина", "клапан", "лоток", "фитинг"}
+    for service_side, ceiling_side in ((1, 2), (2, 1)):
+        if (categories[ceiling_side - 1] & {"потолки", "ceilings"}
+                and _class(paths[service_side - 1]) in supported):
+            return service_side, ceiling_side
+    return None
+
+
+def _ceiling_plane_normal(geometry: dict | None) -> list[float] | None:
+    if (not geometry or geometry.get("Usable") is not True or geometry.get("Reason")
+            or geometry.get("Source") != "ceiling-mesh-plane-1"):
+        return None
+    try:
+        normal = [float(geometry["Normal"][key]) for key in ("X", "Y", "Z")]
+        reliability = float(geometry["DominantAreaRatio"])
+        if not all(math.isfinite(value) for value in normal + [reliability]) or reliability < 2:
+            return None
+        length = math.sqrt(sum(value * value for value in normal))
+        if abs(length - 1) > 1e-4:
+            return None
+        return [value / length for value in normal]
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
+
+
+def _attach_ceiling_service_geometry(result: dict, out: dict,
+                                     service_side: int, ceiling_side: int) -> dict:
+    axis_geometry = result.get(f"Item{service_side}AxisGeometry") or {}
+    plane_geometry = result.get(f"Item{ceiling_side}CeilingPlane") or {}
+    axis = _mesh_frame_axis(axis_geometry)
+    normal = _ceiling_plane_normal(plane_geometry)
+    ok = axis is not None and normal is not None
+    out.update({
+        "CeilingServiceMetricsVersion": "ceiling-service-mesh-1",
+        "MepAxis": dict(zip(("X", "Y", "Z"), axis)) if axis else None,
+        "MepAxisSource": axis_geometry.get("Source"),
+        "MepAxisReliability": axis_geometry.get("Reliability") if axis else None,
+        "MepAxisReason": axis_geometry.get("Reason") or (
+            None if axis else "missing-or-unusable-mesh-axis"),
+        "CeilingNormal": dict(zip(("X", "Y", "Z"), normal)) if normal else None,
+        "CeilingNormalSource": plane_geometry.get("Source"),
+        "CeilingNormalReliability": plane_geometry.get("DominantAreaRatio") if normal else None,
+        "CeilingNormalReason": plane_geometry.get("Reason") or (
+            None if normal else "missing-or-unusable-ceiling-plane"),
+        "CeilingDirectionGeomOk": ok,
+    })
+    out["GeomOk"] = bool(out.get("GeomOk")) or ok
+    direction_note = (
+        "Ось инженерного элемента и нормаль потолка получены из mesh."
+        if ok else
+        "Нет надёжной mesh-оси инженерного элемента или нормали потолка; AABB не подставляется."
+    )
+    previous = out.get("GeomNote")
+    out["GeomNote"] = f"{previous} {direction_note}".strip() if previous else direction_note
+    return out
+
+
 def _frame_metrics(result: dict, out: dict, frame1: bool, frame2: bool) -> dict:
     # Structural framing never falls back to the cylindrical AABB approximation.
     out.update({"MepMinEdge": None, "StructThick": None, "Through": None,
@@ -431,7 +512,8 @@ def _frame_metrics(result: dict, out: dict, frame1: bool, frame2: bool) -> dict:
             wall_valid = (all(math.isfinite(v) for v in values)
                           and abs(math.hypot(*values[:2]) - 1) <= 1e-4
                           and values[4] > 0 and values[5] > 0 and values[6] >= 2
-                          and wall.get("Source") in ("mesh-pca-row", "mesh-pca-column"))
+                          and wall.get("Usable") is not False and not wall.get("Reason")
+                          and wall.get("Source") in ("mesh-pca-row", "mesh-pca-column", "wall-instance-mesh-1"))
         except (KeyError, TypeError, ValueError, OverflowError):
             pass
     if wall_valid:
@@ -683,15 +765,23 @@ def _metrics(result: dict) -> dict:
         "GeomOk": False,
     }
 
+    ceiling_service_sides = _ceiling_service_sides(result)
     duct_ceiling_side = _duct_ceiling_side(result)
     if duct_ceiling_side:
-        return _duct_ceiling_metrics(result, out, duct_ceiling_side)
+        out = _duct_ceiling_metrics(result, out, duct_ceiling_side)
+        if ceiling_service_sides:
+            return _attach_ceiling_service_geometry(result, out, *ceiling_service_sides)
+        return out
+
+    if ceiling_service_sides:
+        return _attach_ceiling_service_geometry(result, out, *ceiling_service_sides)
 
     if {c1, c2} == {"труба", "перекрытие"}:
         return _pipe_slab_metrics(result, out, 1 if c1 == "труба" else 2)
 
-    frame1 = _is_frame_path(p1) or result.get("Item1AxisGeometry") is not None
-    frame2 = _is_frame_path(p2) or result.get("Item2AxisGeometry") is not None
+    # Mesh axes are also exported for services; geometry availability is not a category.
+    frame1 = _is_frame_path(p1)
+    frame2 = _is_frame_path(p2)
     if frame1 or frame2:
         return _frame_metrics(result, out, frame1, frame2)
 
@@ -793,6 +883,13 @@ def _metrics(result: dict) -> dict:
             wall_geometry = result.get(
                 "Item1PlanGeometry" if wall_side == 1 else "Item2PlanGeometry"
             )
+            service_geometry = result.get(f"Item{3 - wall_side}AxisGeometry")
+            if service_geometry is not None or result.get("WallGeometryVersion") == "wall-instance-mesh-1":
+                mep_axis = _mesh_frame_axis(service_geometry)
+                out["WallMepAxisSource"] = (service_geometry or {}).get("Source")
+                out["WallMepAxisReason"] = (service_geometry or {}).get("Reason") or (
+                    None if mep_axis else "missing-or-unusable-mesh-axis")
+                out["WallMepAxis"] = dict(zip(("X", "Y", "Z"), mep_axis)) if mep_axis else None
             out.update(_wall_relation(result, wall_geometry, mep_axis))
     else:
         out["MepMinEdge"] = None
@@ -805,8 +902,9 @@ def _metrics(result: dict) -> dict:
     if struct_side:
         out["GeomNote"] = (
             "в паре есть конструкция: общий Angle по двум AABB не использовать. "
-            "Для стены смотреть WallNormalAngle и WallEndDistance, рассчитанные "
-            "по mesh-PCA стены; для размера — SectionMax/MepMinEdge."
+            "Для стены смотреть WallNormalAngle и WallEndDistance по геометрии стены; "
+            "новый мост использует целый экземпляр стены и mesh-ось инженерного элемента. "
+            "Для размера — SectionMax/MepMinEdge."
         )
 
     if struct_side and (c1 == "стена" or c2 == "стена"):
@@ -992,10 +1090,11 @@ def get_clash_test_results(
         WallEndDistance — расстояние центра коллизии до внешнего торца стены;
         WallBroadFaceDistance/WallEndFaceDistance — расстояния до ближайшей
                    широкой и торцевой/откосной mesh-грани рядом с коллизией;
-                   WallPlanThickness/WallPlanReliability/WallPlanSource
+        WallPlanThickness/WallPlanReliability/WallPlanSource
                    описывают mesh-PCA, из которой восстановлена ось стены;
         DistMm   — Distance в миллиметрах;
-        Item1AxisGeometry/Item2AxisGeometry — 3D mesh-PCA каркаса: Axis,
+        Item1AxisGeometry/Item2AxisGeometry — 3D mesh-PCA каркаса и
+                   инженерных элементов в проверках потолка: Axis,
                    Center, Length/TransverseSize (футы), Reliability,
                    TriangleCount, Source, Usable и Reason. Ось без направления
                    движения: v и -v эквивалентны; знаки X/Y/Z сохраняются.
@@ -1004,6 +1103,13 @@ def get_clash_test_results(
                    выбранных фрагментов/mesh/исходного ModelItem.
                    GeometryVersion/MetricsVersion=duct-footprint-6 у
                    обновлённых аддона и MCP-процесса.
+        Item1CeilingPlane/Item2CeilingPlane — доминирующая mesh-плоскость
+                   элемента категории Потолки. Для пары потолок+инженерный
+                   элемент MCP выдаёт MepAxis и CeilingNormal только из
+                   подтверждённых mesh-измерений, с источниками и причинами
+                   отказа. CeilingServiceGeometryVersion и
+                   CeilingServiceMetricsVersion=ceiling-service-mesh-1.
+                   AABB не используется как направление.
         DuctCeilingFootprint — фактический контур пересечения прямого
                    воздуховода или его изоляции с mesh-поверхностью потолка: нормаль,
                    обе грани (футы), площадь (кв. футы), Usable/Reason.
@@ -1166,6 +1272,47 @@ def _comment_result_names(test_name: str, result_names: list[str]) -> list[str]:
     if any(not isinstance(name, str) or not name.strip() for name in result_names):
         raise ValueError("Each result name must be a nonempty string")
     return list(dict.fromkeys(result_names))
+
+
+@mcp.tool()
+def batch_rename_clash_tests(updates: list[dict], dry_run: bool = True) -> dict:
+    """Пакетно переименовать проверки Clash Detective без пересчёта результатов.
+
+    updates: [{"old_name": "точное старое имя", "new_name": "точное новое имя"}].
+    По умолчанию dry_run=True: проверить весь список и вернуть план без записи.
+    dry_run=False применяет явно разрешённое пользователем переименование одной
+    транзакцией. Меняются только имена проверок; статусы, результаты, комментарии
+    и настройки сохраняются. Повторяющиеся/пустые имена отклоняются; отсутствующий
+    тест даёт 404, неоднозначное или занятое имя — 409. Обмен именами и цепочки с
+    занятым новым именем не поддерживаются. Ошибка отменяет всю транзакцию.
+    Ответ updates содержит id, old_name, new_name и outcome:
+    planned / updated / unchanged. После таймаута сначала прочитайте list_clash_tests;
+    не повторяйте старый запрос вслепую. Документ на диск не сохраняется.
+    """
+    if not isinstance(dry_run, bool):
+        raise ValueError("dry_run must be a boolean")
+    if not isinstance(updates, list) or not updates:
+        raise ValueError("updates must be a nonempty list")
+    sources, destinations, normalized = set(), set(), []
+    for item in updates:
+        if not isinstance(item, dict) or set(item) != {"old_name", "new_name"}:
+            raise ValueError("Each update must contain exactly old_name and new_name")
+        old, new = item["old_name"], item["new_name"]
+        if any(not isinstance(name, str) or not name.strip() for name in (old, new)):
+            raise ValueError("Names must be nonempty strings")
+        if old in sources or new in destinations:
+            raise ValueError("Repeated source or destination name in updates")
+        sources.add(old)
+        destinations.add(new)
+        normalized.append({"oldName": old, "newName": new})
+    try:
+        with _client(timeout=300.0) as c:
+            response = c.post("/clash/tests/rename",
+                              json={"updates": normalized, "dryRun": dry_run})
+            response.raise_for_status()
+            return response.json()
+    except Exception as exc:
+        raise RuntimeError(_bridge_error_hint(exc)) from exc
 
 
 @mcp.tool()

@@ -60,6 +60,9 @@ namespace KPLN_NavisMcpBridge
         public string Source;
         public double? NearestBroadFace;
         public double? NearestEndFace;
+        public bool? Usable;
+        public string Reason;
+        public WallGeometryDiagnostics Diagnostics;
     }
 
     public class ClashResultDto
@@ -112,7 +115,11 @@ namespace KPLN_NavisMcpBridge
         public PlanGeometryDto Item2PlanGeometry;
         public AxisGeometryDto Item1AxisGeometry;
         public AxisGeometryDto Item2AxisGeometry;
+        public SurfacePlaneDto Item1CeilingPlane;
+        public SurfacePlaneDto Item2CeilingPlane;
+        public string CeilingServiceGeometryVersion = "ceiling-service-mesh-1";
         public string GeometryVersion = "duct-footprint-6";
+        public string WallGeometryVersion = "wall-instance-mesh-1";
         public ClashFootprintDto DuctCeilingFootprint;
         public DuctSectionDto Item1DuctSection;
         public DuctSectionDto Item2DuctSection;
@@ -421,10 +428,18 @@ namespace KPLN_NavisMcpBridge
                     if (IsWallPath(item2Path))
                         list[list.Count - 1].Item2PlanGeometry =
                             DescribeCachedPlanGeometry(item2, b2.Bound, clashPoint, planGeometryCache);
-                    if (IsFramePath(item1Path))
+                    if (IsFramePath(item1Path) || IsCeilingServicePath(item1Path))
                         dto.Item1AxisGeometry = DescribeCachedFrameGeometry(item1, r.Path1, b1.Bound, frameGeometryCache);
-                    if (IsFramePath(item2Path))
+                    if (IsFramePath(item2Path) || IsCeilingServicePath(item2Path))
                         dto.Item2AxisGeometry = DescribeCachedFrameGeometry(item2, r.Path2, b2.Bound, frameGeometryCache);
+                    if (IsWallPath(item1Path) && IsCeilingServicePath(item2Path))
+                        dto.Item2AxisGeometry = DescribeWallServiceAxis(item2, footprintMeshCache);
+                    if (IsWallPath(item2Path) && IsCeilingServicePath(item1Path))
+                        dto.Item1AxisGeometry = DescribeWallServiceAxis(item1, footprintMeshCache);
+                    if (IsCeilingPath(item1Path))
+                        dto.Item1CeilingPlane = DescribeCeilingPlane(item1, footprintMeshCache);
+                    if (IsCeilingPath(item2Path))
+                        dto.Item2CeilingPlane = DescribeCeilingPlane(item2, footprintMeshCache);
                     dto.DuctCeilingFootprint = DescribeDuctCeilingFootprint(item1, item2,
                         item1Path, item2Path, clashPoint, footprintMeshCache);
                     dto.PipeSlabGeometry = DescribePipeSlab(item1, item2,
@@ -931,95 +946,13 @@ namespace KPLN_NavisMcpBridge
             }
         }
 
-        private static PlanGeometryDto DescribeCachedPlanGeometry(
-            ModelItem item,
-            BoundDto itemBound,
-            Point3Dto clashPoint,
-            Dictionary<string, WallMeshAnalysis> cache)
-        {
-            if (item == null || itemBound == null) return null;
-
-            string key;
-            try { key = GeometryInstancePath.Read(ComApiBridge.ToInwOaPath(item).ArrayData); }
-            catch { return null; }
-
-            WallMeshAnalysis analysis;
-            if (!cache.TryGetValue(key, out analysis))
-            {
-                analysis = DescribePlanGeometry(item);
-                cache[key] = analysis;
-            }
-            return DescribeLocalWallFaces(analysis, clashPoint);
-        }
-
-        private static WallMeshAnalysis DescribePlanGeometry(ModelItem item)
-        {
-            const int maxPoints = 30000;
-            var columnPoints = new List<Point3Dto>();
-            var rowPoints = new List<Point3Dto>();
-            var columnTriangles = new List<Triangle3>();
-            var rowTriangles = new List<Triangle3>();
-            var fragmentBounds = new List<BoundDto>();
-
-            try
-            {
-                foreach (var leaf in item.DescendantsAndSelf)
-                {
-                    if (!leaf.HasGeometry) continue;
-                    var path = ComApiBridge.ToInwOaPath(leaf);
-                    if (path == null) return null;
-
-                    int skipped;
-                    foreach (var fragment in GetInstanceFragments(path, out skipped))
-                    {
-                        fragmentBounds.Add(DescribeBound(fragment.GetWorldBox()));
-                        var matrix = ReadMatrix(fragment.GetLocalToWorldMatrix());
-                        if (matrix == null) return null;
-                        var collector = new PrimitivePointCollector(
-                            matrix, maxPoints - columnPoints.Count);
-                        fragment.GenerateSimplePrimitives(
-                            ComApi.nwEVertexProperty.eNONE, collector);
-                        if (collector.Truncated) return null;
-                        columnPoints.AddRange(collector.ColumnVectorPoints);
-                        rowPoints.AddRange(collector.RowVectorPoints);
-                        columnTriangles.AddRange(collector.ColumnVectorTriangles);
-                        rowTriangles.AddRange(collector.RowVectorTriangles);
-                    }
-                }
-            }
-            catch
-            {
-                return null;
-            }
-
-            if (columnPoints.Count < 6) return null;
-            var target = MeshAxisFitter.UnionBounds(fragmentBounds);
-            var columnMatches = MeshAxisFitter.MatchesBounds(columnPoints, target);
-            var rowMatches = MeshAxisFitter.MatchesBounds(rowPoints, target);
-            if (!columnMatches && !rowMatches) return null;
-            var useColumn = columnMatches && !rowMatches;
-            var plan = FitPlanGeometry(useColumn ? columnPoints : rowPoints,
-                useColumn ? "mesh-pca-column" : "mesh-pca-row");
-            if (rowMatches && columnMatches)
-            {
-                var alternative = FitPlanGeometry(columnPoints, "mesh-pca-column");
-                if (plan == null || alternative == null ||
-                    Math.Abs(plan.AxisX * alternative.AxisX + plan.AxisY * alternative.AxisY) < 1 - 1e-6)
-                    return null;
-            }
-            return new WallMeshAnalysis
-            {
-                Plan = plan,
-                Triangles = useColumn ? columnTriangles : rowTriangles
-            };
-        }
-
         private static PlanGeometryDto DescribeLocalWallFaces(
             WallMeshAnalysis analysis,
             Point3Dto clashPoint)
         {
             if (analysis == null || analysis.Plan == null) return null;
             var source = analysis.Plan;
+            if (source.Usable == false) return source;
             var result = new PlanGeometryDto
             {
                 AxisX = source.AxisX,
@@ -1030,7 +963,10 @@ namespace KPLN_NavisMcpBridge
                 HalfThickness = source.HalfThickness,
                 Reliability = source.Reliability,
                 PointCount = source.PointCount,
-                Source = source.Source
+                Source = source.Source,
+                Usable = source.Usable,
+                Reason = source.Reason,
+                Diagnostics = source.Diagnostics
             };
             if (clashPoint == null || analysis.Triangles == null) return result;
 
@@ -1064,6 +1000,12 @@ namespace KPLN_NavisMcpBridge
 
             if (!double.IsInfinity(nearestBroad)) result.NearestBroadFace = nearestBroad;
             if (!double.IsInfinity(nearestEnd)) result.NearestEndFace = nearestEnd;
+            if (source.Source == "wall-instance-mesh-1" &&
+                (double.IsInfinity(nearestBroad) || double.IsInfinity(nearestEnd)))
+            {
+                result.Usable = false;
+                result.Reason = "wall-broad-or-end-faces-missing";
+            }
             return result;
         }
 

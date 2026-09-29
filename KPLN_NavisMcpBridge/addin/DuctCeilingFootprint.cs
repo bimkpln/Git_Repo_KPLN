@@ -27,6 +27,17 @@ namespace KPLN_NavisMcpBridge
         public List<FootprintFragmentDiagnostics> CeilingMeshDiagnostics;
     }
 
+    public sealed class SurfacePlaneDto
+    {
+        public bool Usable;
+        public string Reason;
+        public string Source = "ceiling-mesh-plane-1";
+        public Point3Dto Normal;
+        public int TriangleCount;
+        public double DominantAreaRatio;
+        public List<FootprintFragmentDiagnostics> MeshDiagnostics;
+    }
+
     internal static partial class DuctCeilingFootprint
     {
         private const double Eps = 1e-7;
@@ -36,22 +47,34 @@ namespace KPLN_NavisMcpBridge
 
         internal static ClashFootprintDto Failure(string reason) => new ClashFootprintDto { Reason = reason };
 
-        internal static ClashFootprintDto Measure(IList<Point3Dto> duct, IList<Point3Dto> ceiling, Point3Dto contact)
+        internal static SurfacePlaneDto MeasurePlane(IList<Point3Dto> surface)
         {
-            if (!Valid(duct) || !Valid(ceiling) || !Finite(contact)) return Failure("missing-or-invalid-mesh");
-            var faces = Faces(ceiling);
-            if (faces.Count == 0) return Failure("no-ceiling-faces");
+            if (!Valid(surface)) return new SurfacePlaneDto { Reason = "missing-or-invalid-mesh" };
+            var faces = Faces(surface);
+            if (faces.Count == 0) return new SurfacePlaneDto { Reason = "no-surface-faces" };
             var directions = new List<Direction>();
-            foreach (var f in faces)
+            foreach (var face in faces)
             {
-                var group = directions.FirstOrDefault(d => Math.Abs(Dot(d.N, f.N)) > 1 - 1e-6);
-                if (group == null) { group = new Direction { N = f.N }; directions.Add(group); }
-                group.Area += f.Area;
+                var group = directions.FirstOrDefault(d => Math.Abs(Dot(d.N, face.N)) > 1 - 1e-6);
+                if (group == null) { group = new Direction { N = face.N }; directions.Add(group); }
+                group.Area += face.Area;
             }
             directions = directions.OrderByDescending(d => d.Area).ToList();
-            if (directions.Count > 1 && directions[0].Area < 2 * directions[1].Area)
-                return Failure("ambiguous-ceiling-plane");
-            var normal = directions[0].N;
+            var ratio = directions.Count > 1 ? directions[0].Area / directions[1].Area : double.MaxValue;
+            if (directions.Count > 1 && ratio < 2)
+                return new SurfacePlaneDto { Reason = "ambiguous-surface-plane", TriangleCount = faces.Count,
+                    DominantAreaRatio = ratio };
+            return new SurfacePlaneDto { Usable = true, Normal = directions[0].N,
+                TriangleCount = faces.Count, DominantAreaRatio = ratio };
+        }
+
+        internal static ClashFootprintDto Measure(IList<Point3Dto> duct, IList<Point3Dto> ceiling, Point3Dto contact)
+        {
+            if (!Valid(duct) || !Finite(contact)) return Failure("missing-or-invalid-mesh");
+            var plane = MeasurePlane(ceiling);
+            if (!plane.Usable) return Failure(plane.Reason);
+            var faces = Faces(ceiling);
+            var normal = plane.Normal;
             var origin = contact;
             var u = Unit(Cross(normal, Math.Abs(normal.Z) < .9 ? P(0, 0, 1) : P(1, 0, 0)));
             var v = Cross(normal, u);

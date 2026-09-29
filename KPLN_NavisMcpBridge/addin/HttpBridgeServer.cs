@@ -19,6 +19,7 @@ namespace KPLN_NavisMcpBridge
     /// идентифицируются по имени (name), поэтому в путях используется имя
     /// (URL-encoded на стороне клиента).
     ///   GET  /clash/tests
+    ///   POST /clash/tests/rename body: {updates: [{oldName, newName}], dryRun: true}
     ///   GET  /clash/tests/{testName}/results
     ///         ?includePaths=false&status=Active&includeItemBounds=true
     ///          &includeSizes=true&includeMarks=true&includeWorksets=true
@@ -171,6 +172,13 @@ namespace KPLN_NavisMcpBridge
 
             if (method == "GET" && path == "/clash/tests")
                 return _dispatcher.Run(() => ClashService.ListTests());
+
+            if (method == "POST" && path == "/clash/tests/rename")
+            {
+                var body = ReadBody<TestRenameBody>(req);
+                if (body == null) throw new ArgumentException("Empty request body");
+                return _dispatcher.Run(() => ClashService.RenameTests(body.updates, body.dryRun));
+            }
 
             if (method == "GET" && (m = Regex.Match(path, @"^/clash/tests/([^/]+)/results$")).Success)
             {
@@ -327,6 +335,12 @@ namespace KPLN_NavisMcpBridge
             var bytes = Encoding.UTF8.GetBytes(json);
             resp.ContentLength64 = bytes.Length;
             resp.OutputStream.Write(bytes, 0, bytes.Length);
+        }
+
+        private class TestRenameBody
+        {
+            public List<TestRenameRequest> updates { get; set; }
+            public bool dryRun { get; set; } = true;
         }
 
         private class StatusUpdateBody

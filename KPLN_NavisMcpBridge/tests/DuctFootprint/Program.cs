@@ -62,6 +62,9 @@ var tests = new (string, Action)[] {
         Check(Measure(Box(188,473,189),ceiling),188,473,188*473);
     }),
     ("open duct ends", () => Check(Measure(Box(188,473,189).Skip(12).ToList(),Box(3000,3000,50)),188,473,188*473)),
+    ("horizontal ceiling plane", () => CheckPlane(DuctCeilingFootprint.MeasurePlane(Box(3000,3000,50)), true)),
+    ("sloped ceiling plane", () => CheckPlane(DuctCeilingFootprint.MeasurePlane(Rotate(Box(3000,3000,50),.63,.42)), false)),
+    ("ambiguous standalone surface", () => Assert(!DuctCeilingFootprint.MeasurePlane(Box(500,500,500)).Usable,"cube plane guessed")),
 };
 foreach(var (name,test) in tests) { test(); Console.WriteLine("PASS "+name); }
 Console.WriteLine($"{tests.Length} duct footprint tests passed.");
@@ -79,6 +82,14 @@ static void CheckRound(ClashFootprintDto r,double diameter) {
     Assert(Math.Abs(r.MaxEdge*304.8-diameter)<=diameter*.02,"round max edge "+r.MaxEdge*304.8);
     var expected=Math.PI*diameter*diameter/4;
     Assert(Math.Abs(r.Area*304.8*304.8-expected)<=expected*.02,"round area "+r.Area*304.8*304.8);
+}
+static void CheckPlane(SurfacePlaneDto r,bool horizontal) {
+    Assert(r.Usable,r.Reason);
+    var length=Math.Sqrt(r.Normal.X*r.Normal.X+r.Normal.Y*r.Normal.Y+r.Normal.Z*r.Normal.Z);
+    Assert(Math.Abs(length-1)<1e-6,"normal is not unit");
+    Assert(r.DominantAreaRatio>=2,"ambiguous dominant plane");
+    if(horizontal) Assert(Math.Abs(Math.Abs(r.Normal.Z)-1)<1e-6,"horizontal normal expected");
+    else Assert(Math.Abs(r.Normal.Z)<.999,"sloped normal expected");
 }
 static Point3Dto P(double x,double y,double z)=>new Point3Dto{X=x,Y=y,Z=z};
 static BoundDto Bounds(Point3Dto min,Point3Dto max)=>new BoundDto{Min=min,Max=max};

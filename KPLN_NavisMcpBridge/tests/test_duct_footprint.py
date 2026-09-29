@@ -82,7 +82,8 @@ class DuctFootprintTests(unittest.TestCase):
         self.assertEqual(m["DuctSectionAreaMm2"], 88924)
         self.assertEqual(m["DuctCeilingRelation"], "transverse-by-section")
         self.assertIsNone(m["Angle"])
-        self.assertNotIn("MepAxis",m)
+        self.assertIsNone(m["MepAxis"])
+        self.assertFalse(m["CeilingDirectionGeomOk"])
 
     def test_round_duct_uses_numeric_diameter_and_circle_area(self):
         m = server._metrics(round_row())
