@@ -89,10 +89,31 @@ class ClassificationTests(unittest.TestCase):
         row = pipe(PairClass="изоляция трубы+стена", SectionMax=25, MepMinEdge=180)
         self.assertEqual(classify([row], 150)["sample"][0], "Active")
 
-    def test_unknown_scope_and_missing_geometry_are_uncertain(self):
-        for row in (pipe(PairClass="перекрытие+труба"), pipe(PairClass="отделка+труба"),
-                    pipe(GeomOk=False), pipe(SectionMax=None), pipe(SectionMax=float("nan")),
+    def test_single_pipe_uses_own_section_when_wall_geometry_is_incomplete(self):
+        for row in (pipe(GeomOk=False, WallNormalAngle=None, WallEndDistance=None,
+                         WallEndFaceDistance=None, WallPlanThickness=None),
                     pipe(WallEndFaceDistance=None)):
+            self.assertEqual(classify([row], 150)["sample"],
+                             ("Approved", "single_pipe_section_in_tolerance"))
+        self.assertEqual(classify([pipe(SectionMax=151, GeomOk=False)], 150)["sample"][0], "Active")
+        self.assertEqual(classify([pipe(WallNormalAngle=60, WallEndFaceDistance=None)], 150)["sample"],
+                         ("Active", "pipe_runs_longitudinally_in_wall"))
+
+    def test_multi_pipe_group_still_requires_wall_geometry(self):
+        rows = [pipe(Name=name, Group="example", GeomOk=False,
+                     WallNormalAngle=None, WallEndDistance=None,
+                     WallEndFaceDistance=None, WallPlanThickness=None)
+                for name in ("a", "b")]
+        self.assertTrue(all(value[0] == "Uncertain" for value in classify(rows, 150).values()))
+
+    def test_pipe_against_finish_is_supported(self):
+        row = pipe(PairClass="отделка+труба", GeomOk=False)
+        self.assertEqual(classify([row], 150)["sample"],
+                         ("Approved", "finish_layer_no_separate_opening"))
+
+    def test_unknown_scope_and_missing_size_are_uncertain(self):
+        for row in (pipe(PairClass="перекрытие+труба"), pipe(SectionMax=None),
+                    pipe(SectionMax=float("nan"))):
             self.assertEqual(classify([row], 150)["sample"][0], "Uncertain")
 
     def test_duplicate_names_and_invalid_threshold_rejected(self):

@@ -39,6 +39,8 @@ the ignored local/ directory. Supply the current project's threshold explicitly:
 python -B .\src\classify_opening_clashes.py .\local\input.json --opening-min-edge-mm 150 --compare-status --include-names
 python -B .\src\classify_opening_clashes.py .\local\ceilings.json --mode ceiling-services --mep-discipline PT
 python -B .\src\classify_opening_clashes.py .\local\slab-pipes.json --mode slab-openings --opening-min-edge-mm 150
+python -B .\src\classify_opening_clashes.py .\local\slab-pipes.json --mode slab-wall-openings --opening-min-edge-mm 150
+python -B .\src\classify_opening_clashes.py .\local\self-intersections.json --mode self-intersections --compare-status
 python -B -m unittest discover -s tests -v
 ```
 
@@ -46,6 +48,14 @@ python -B -m unittest discover -s tests -v
 and prints JSON; it never connects to Navisworks or changes statuses. Each record
 contains its decision, reason, current status and missing evidence. Uncertain
 remains available to skill reasoning and explicit project overrides.
+
+When the user asks for the slab report to be reviewed like the wall report,
+use `slab-wall-openings` with raw item bounds retained (`keep_raw_bounds=True`).
+It needs `PipeSlabGeometry.LocalFaces.Source=slab-local-faces-1` from the add-in,
+but does not require a verified cylindrical mesh or closed surface topology.
+It reuses the wall-style pipe direction estimate for sufficiently elongated
+pipes and actual point-to-triangle distances to broad and edge/reveal faces.
+Nearby bundle candidates, short pipes and unsupported directions stay Uncertain.
 
 Current automatic coverage is wall openings for pipes, insulation, ducts and
 recognized duct accessories/fittings, plus duct/finish opening cases. The
@@ -57,6 +67,10 @@ The `slab-openings` mode supports verified straight circular pipe/slab mesh
 geometry and the same-group gap < larger outer diameter bundle rule. Other slab
 pairs, unknown pairs and incomplete data return Uncertain. Load the add-in and
 MCP with `SlabGeometryVersion/SlabMetricsVersion=pipe-slab-mesh-1` before reviewing.
+The `self-intersections` mode implements the trained OV/VK pipe/duct rules for
+insulation, fittings treated as insulated, bare bodies, axis crossings and
+parallel extended routes. It does not use an opening-size threshold; unsupported
+bare-body pairs and incomplete geometry remain Uncertain.
 Existing wall heuristics remain engineering approximations; synthetic tests
 verify implementation behavior, not universal geometric correctness.
 

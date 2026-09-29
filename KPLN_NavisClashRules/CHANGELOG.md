@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an explicit wall-equivalent slab review using independent local slab
+  surface/reveal distances and the existing wall-style item-axis estimate.
+  Pipe cylinder fitting no longer blocks slab surface extraction. Preserve
+  uncertainty for short pipes, inclined slabs and nearby unmeasured bundles.
+
 - Add geometry-first slab/straight-pipe opening review and same-group local
   surface gap < larger outer diameter bundles. Preserve short normal passages,
   reject edge/longitudinal clashes, and keep missing geometry uncertain.

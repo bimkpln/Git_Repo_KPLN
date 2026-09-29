@@ -66,6 +66,14 @@ vectors remain Uncertain unless the verified duct/duct-insulation section except
 do not infer a short pipe or duct axis from its largest box
 dimension. See policy for the input contract.
 
+For trained OV/VK pipe or duct self-intersection tests, use
+`--mode self-intersections`; this mode does not use an opening threshold.
+Insulation or a fitting treated as insulated against an ordinary bare body is
+Active. Otherwise evaluate reliable `PerpRel`, `Angle` and `Elong*` metrics in
+the policy order: axis crossings and parallel extended routes are Active, while
+the remaining transverse or local insulated contacts are Approved. Bare-body
+pairs, unsupported kinds and incomplete geometry remain Uncertain.
+
 For structural slabs against straight circular pipes, use `--mode slab-openings`
 and the supplied opening threshold. Require `pipe-slab-mesh-1` geometry/metrics:
 verified cylinder axes, slab normals, side/reveal contacts and complete broad-face
@@ -75,6 +83,15 @@ slab, local outer-surface gap strictly below the larger outer diameter joins
 distinct pipes into a bundle; connected members use the common opening envelope.
 Deduplicate pipe IDs, preserve Resolved/Reviewed and retain uncertainty for missing
 group geometry. Other slab pairs remain policy-led. See policy for full details.
+
+If the user explicitly asks to review slabs like the wall report, use
+`--mode slab-wall-openings` with `keep_raw_bounds=True` instead. Require the
+independent `PipeSlabGeometry.LocalFaces` measurement with source
+`slab-local-faces-1`; no closed cylinder or pipe topology validation is needed.
+Use local broad-face and edge/reveal distances plus the wall-style pipe-axis
+estimate, nominal threshold and confirmed bundle rule. Missing local faces,
+short/ambiguous pipes and unmeasured nearby bundle candidates stay Uncertain.
+See the policy for supported horizontal-slab scope and conservative separation.
 
 For unsupported or uncertain cases continue reasoning with the shared policy
 and available evidence. Keep uncertainty explicit. A user can authorize a

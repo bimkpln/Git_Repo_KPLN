@@ -5,6 +5,14 @@ approvals or executable rules. Project overrides belong to the analysis record.
 
 ## Slab Penetrations And Short Pipe Segments
 
+A user subsequently requested a wall-equivalent slab review instead of making
+ideal cylinder topology a gate for every result. The explicit
+`slab-wall-openings` mode now separates local slab-face measurements from pipe
+mesh fitting. Synthetic cylinder tests passing does not prove that a live
+export contains weld noise, differently tessellated fragments or oblique ends;
+do not report any of those hypotheses as an established cause from a generic
+failure reason. Read actual evidence before changing extraction tolerances.
+
 The user has now authorized the geometry-first slab/straight-pipe implementation
 and the same-group local gap < larger outer diameter bundle criterion. These
 are implemented in `slab-openings`; see the policy for exact scope and limits.
@@ -60,6 +68,13 @@ Nearest-point face distance is not proof that the entire pipe avoids an edge.
 Do not overturn an end-intersection decision from one nonzero distance alone.
 Keep ambiguous complex-wall cases available to further geometric/human review.
 
+Human clarification established a separate bundle fact: one wall-pipe result
+means the opening bundle contains that one pipe, so its own section is sufficient
+for the bundle-size calculation. This does not erase positive evidence of a
+longitudinal run or contact with an end/reveal; those remain Active. The shared
+classifier now uses the single-pipe size when such decisive geometry is absent,
+instead of demanding evidence for nonexistent neighboring pipes.
+
 ## Inline Components And Groups
 
 The shared classifier preserves a same-section duct/valve heuristic from earlier
@@ -75,6 +90,17 @@ worksets. These are project-dependent material/workset criteria. Retrieve the
 steel participant's workset from Object properties and ancestors; do not test
 the other participant's workset by accident. Define allowed spellings or a
 reviewed normalization when the user says similar. Missing values are unknown.
+
+## Door And Revision Hatch Opening Zones
+
+Human review explicitly permits overlap of a door opening zone with a
+revision/access hatch opening zone under sequential use. This is promoted to
+the scoped policy in rules/clash-policy.md, not inferred from one previously
+Approved result. Identify both zone geometries and their respective parent
+roles before applying it. Do not generalize to physical-body intersections,
+other opening-zone pairs or compliance/accessibility conclusions. Differing
+level labels are not evidence of vertical separation. This remains policy-led
+review; the pipe/duct self-intersection classifier does not cover these objects.
 
 ## Promoting A Lesson
 

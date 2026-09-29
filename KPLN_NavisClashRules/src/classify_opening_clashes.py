@@ -19,6 +19,8 @@ from typing import Any
 from provenance import provenance
 from ceiling_services import DISCIPLINES, classify_ceiling
 from slab_openings import classify_slabs
+from slab_wall_openings import classify_slabs_wall_like, evidence as slab_wall_evidence
+from self_intersections import classify_self_intersection
 
 
 ROUNDING_NOISE_MM = 1.0
@@ -144,7 +146,28 @@ def as_float(value: Any) -> float | None:
         return None
 
 
-def base_decision(row: dict[str, Any], threshold: float) -> tuple[str, str]:
+def wall_pipe_active_reason(row: dict[str, Any]) -> str | None:
+    opening_size = pipe_opening_size(row)
+    angle = as_float(row.get("WallNormalAngle"))
+    end_distance = as_float(row.get("WallEndDistance"))
+    end_face_distance = as_float(row.get("WallEndFaceDistance"))
+    wall_thickness = as_float(row.get("WallPlanThickness"))
+
+    face_margin = (opening_size or 0.0) * 0.5
+    if opening_size is not None and end_face_distance is not None and end_face_distance <= face_margin:
+        return "pipe_intersects_wall_end_or_reveal_face"
+
+    end_margin = max(wall_thickness or 0.0, (opening_size or 0.0) * 0.5)
+    if end_margin > 0 and end_distance is not None and end_distance <= end_margin:
+        return "pipe_intersects_wall_end"
+
+    if angle is not None and angle > 45.0:
+        return "pipe_runs_longitudinally_in_wall"
+    return None
+
+
+def base_decision(row: dict[str, Any], threshold: float,
+                  single_pipe_opening: bool = False) -> tuple[str, str]:
     pair = str(row.get("PairClass") or "")
     section = as_float(row.get("SectionMax"))
 
@@ -155,26 +178,28 @@ def base_decision(row: dict[str, Any], threshold: float) -> tuple[str, str]:
         end_face_distance = as_float(row.get("WallEndFaceDistance"))
         wall_thickness = as_float(row.get("WallPlanThickness"))
 
-        if not row.get("GeomOk") or angle is None or end_distance is None:
+        active_reason = wall_pipe_active_reason(row)
+        if active_reason:
+            return "Active", active_reason
+
+        complete_geometry = (
+            row.get("GeomOk") is True
+            and angle is not None
+            and end_distance is not None
+            and end_face_distance is not None
+            and wall_thickness is not None
+        )
+        if not complete_geometry and not single_pipe_opening:
             return "Uncertain", "wall_pipe_geometry_unreliable"
-
-        face_margin = (opening_size or 0.0) * 0.5
-        if end_face_distance is not None and end_face_distance <= face_margin:
-            return "Active", "pipe_intersects_wall_end_or_reveal_face"
-
-        end_margin = max(wall_thickness or 0.0, (opening_size or 0.0) * 0.5)
-        if end_distance <= end_margin:
-            return "Active", "pipe_intersects_wall_end"
-
-        # At 45 degrees the axial component along the wall plane becomes
-        # greater than the component through its normal. This is no longer a
-        # normal opening through the broad face of the wall.
-        if angle > 45.0:
-            return "Active", "pipe_runs_longitudinally_in_wall"
 
         if opening_size is not None and opening_size > threshold:
             return "Active", "single_section_over_threshold"
-        return "Approved", "normal_wall_passage_in_tolerance"
+        return (
+            "Approved",
+            ("single_pipe_section_in_tolerance"
+             if single_pipe_opening and not complete_geometry
+             else "normal_wall_passage_in_tolerance"),
+        )
 
     if "отделка" in pair:
         if section is not None and section > threshold and row.get("Through") is True:
@@ -209,11 +234,11 @@ def base_decision(row: dict[str, Any], threshold: float) -> tuple[str, str]:
     return "Approved", "single_section_in_tolerance"
 
 
-def required_evidence(row: dict[str, Any]) -> list[str]:
+def required_evidence(row: dict[str, Any], single_pipe_opening: bool = False) -> list[str]:
     pair = row.get("PairClass")
     supported = {"стена+труба", "изоляция трубы+стена", "воздуховод+стена",
                  "стена+фасонина", "клапан+стена", "воздуховод+отделка",
-                 "изоляция воздуховода+стена"}
+                 "изоляция воздуховода+стена", "отделка+труба"}
     if pair not in supported:
         return ["supported_pair_rule"]
     missing = []
@@ -227,13 +252,14 @@ def required_evidence(row: dict[str, Any]) -> list[str]:
         if thickness is None or thickness <= 0:
             missing.append("InsulationThicknessMm")
     if is_wall_pipe(row):
-        if row.get("GeomOk") is not True:
-            missing.append("reliable_wall_geometry")
-        for key in ("WallNormalAngle", "WallEndDistance", "WallEndFaceDistance",
-                    "WallPlanThickness"):
-            value = as_float(row.get(key))
-            if value is None or value < 0:
-                missing.append(key)
+        if not wall_pipe_active_reason(row) and not single_pipe_opening:
+            if row.get("GeomOk") is not True:
+                missing.append("reliable_wall_geometry")
+            for key in ("WallNormalAngle", "WallEndDistance", "WallEndFaceDistance",
+                        "WallPlanThickness"):
+                value = as_float(row.get(key))
+                if value is None or value < 0:
+                    missing.append(key)
     elif pair == "воздуховод+отделка" and row.get("Through") not in (True, False):
         missing.append("Through")
     elif is_round_damper(row):
@@ -260,9 +286,9 @@ def valid_bound(bound: Any) -> bool:
 
 def classify(rows: list[dict[str, Any]], threshold: float | None = None,
              mode: str = "wall-openings", discipline: str | None = None) -> dict[str, tuple[str, str]]:
-    if mode not in {"wall-openings", "ceiling-services", "slab-openings"}:
+    if mode not in {"wall-openings", "ceiling-services", "slab-openings", "slab-wall-openings", "self-intersections"}:
         raise ValueError("Unknown classifier mode")
-    if mode in {"wall-openings", "slab-openings"} and (as_float(threshold) is None or threshold <= 0):
+    if mode in {"wall-openings", "slab-openings", "slab-wall-openings"} and (as_float(threshold) is None or threshold <= 0):
         raise ValueError("Opening threshold must be positive and finite")
     names = [row.get("Name") for row in rows]
     if any(not isinstance(name, str) or not name.strip() for name in names):
@@ -271,15 +297,29 @@ def classify(rows: list[dict[str, Any]], threshold: float | None = None,
         raise ValueError("Duplicate result names cannot be classified unambiguously")
     if mode == "slab-openings":
         return classify_slabs(rows, threshold)
+    if mode == "slab-wall-openings":
+        return classify_slabs_wall_like(rows, threshold)
     if mode == "ceiling-services":
         if discipline not in DISCIPLINES:
             raise ValueError("Ceiling services require OV, VK, PT, EOM or SS discipline")
         return {row["Name"]: classify_ceiling(row, discipline) for row in rows}
-    evidence = {row["Name"]: required_evidence(row) for row in rows}
+    if mode == "self-intersections":
+        return {row["Name"]: classify_self_intersection(row) for row in rows}
     groups = defaultdict(list)
     for row in rows:
         if group_key(row.get("Group")):
             groups[group_key(row["Group"])].append(row)
+    single_pipe_names = {
+        row["Name"]
+        for row in rows
+        if is_wall_pipe(row)
+        and (not group_key(row.get("Group"))
+             or len(groups[group_key(row["Group"])]) == 1)
+    }
+    evidence = {
+        row["Name"]: required_evidence(row, row["Name"] in single_pipe_names)
+        for row in rows
+    }
     for members in groups.values():
         insulation = [row for row in members if row.get("PairClass") == "изоляция воздуховода+стена"]
         ducts = [row for row in members if row.get("PairClass") == "воздуховод+стена"]
@@ -298,7 +338,7 @@ def classify(rows: list[dict[str, Any]], threshold: float | None = None,
             for row in members:
                 evidence[row["Name"]].append("complete_group_evidence")
     eligible = [row for row in rows if not evidence[row["Name"]]]
-    decisions = _classify_supported(eligible, threshold)
+    decisions = _classify_supported(eligible, threshold, single_pipe_names)
     for name, missing in evidence.items():
         if missing:
             decisions[name] = ("Uncertain", "missing:" + ",".join(missing))
@@ -332,7 +372,9 @@ def duct_insulation_host(insulation: dict[str, Any], ducts: list[dict[str, Any]]
     return matches[0] if len(matches) == 1 else None
 
 
-def _classify_supported(rows: list[dict[str, Any]], threshold: float) -> dict[str, tuple[str, str]]:
+def _classify_supported(rows: list[dict[str, Any]], threshold: float,
+                        single_pipe_names: set[str] | None = None) -> dict[str, tuple[str, str]]:
+    single_pipe_names = single_pipe_names or set()
     by_group: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         key = group_key(row.get("Group"))
@@ -417,7 +459,7 @@ def _classify_supported(rows: list[dict[str, Any]], threshold: float) -> dict[st
         name = str(row.get("Name") or f"row-{index}")
         key = group_key(row.get("Group"))
         if key and key in same_run_inline_groups:
-            decision, reason = base_decision(row, threshold)
+            decision, reason = base_decision(row, threshold, name in single_pipe_names)
             decisions[name] = (
                 (decision, "same_run_duct_inline_valve_in_tolerance")
                 if decision == "Approved"
@@ -428,7 +470,7 @@ def _classify_supported(rows: list[dict[str, Any]], threshold: float) -> dict[st
         elif key and key in group_active:
             decisions[name] = ("Active", group_active[key])
         else:
-            decisions[name] = base_decision(row, threshold)
+            decisions[name] = base_decision(row, threshold, name in single_pipe_names)
     return decisions
 
 
@@ -455,19 +497,21 @@ def main() -> None:
         sys.stdin.reconfigure(encoding="utf-8-sig")
     parser = argparse.ArgumentParser()
     parser.add_argument("json_path", nargs="?", default="-")
-    parser.add_argument("--mode", choices=("wall-openings", "ceiling-services", "slab-openings"), default="wall-openings")
+    parser.add_argument("--mode", choices=("wall-openings", "ceiling-services", "slab-openings", "slab-wall-openings", "self-intersections"), default="wall-openings")
     parser.add_argument("--mep-discipline", choices=sorted(DISCIPLINES))
     parser.add_argument("--opening-min-edge-mm", type=float)
     parser.add_argument("--compare-status", action="store_true")
     parser.add_argument("--include-names", action="store_true")
     args = parser.parse_args()
-    if args.mode in {"wall-openings", "slab-openings"} and (as_float(args.opening_min_edge_mm) is None or args.opening_min_edge_mm <= 0):
+    if args.mode in {"wall-openings", "slab-openings", "slab-wall-openings"} and (as_float(args.opening_min_edge_mm) is None or args.opening_min_edge_mm <= 0):
         parser.error("opening modes require a positive --opening-min-edge-mm")
     if args.mode == "ceiling-services":
         if not args.mep_discipline:
             parser.error("ceiling-services requires --mep-discipline")
         if args.opening_min_edge_mm is not None:
             parser.error("ceiling-services does not use an opening threshold")
+    if args.mode == "self-intersections" and args.opening_min_edge_mm is not None:
+        parser.error("self-intersections does not use an opening threshold")
 
     rows = load_rows(args.json_path)
     decisions = classify(rows, args.opening_min_edge_mm, args.mode, args.mep_discipline)
@@ -490,6 +534,9 @@ def main() -> None:
         ],
     }
 
+    if args.mode == "slab-wall-openings":
+        for item, row in zip(output["results"], rows):
+            item["geometry_evidence"] = slab_wall_evidence(row)[0]
     if args.compare_status:
         mismatches = []
         expected_counts = Counter()

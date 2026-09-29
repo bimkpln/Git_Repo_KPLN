@@ -180,6 +180,7 @@ Accessories and fittings are not one class for approval:
 
 Bundle policy:
 
+- A standalone wall-pipe result or a group containing exactly one pipe is a single-member bundle. Use that pipe's own opening section; do not require multi-member bundle geometry. Available evidence that the pipe enters an end/reveal or runs longitudinally in the wall still takes precedence and remains Active. If those decisive conditions are absent, missing wall geometry alone does not block a size-based decision for the verified single pipe.
 - Do not sum every Navisworks group blindly. A group is only a bundle candidate when it has at least two contributing MEP members and their clash-zone centers are close enough to represent one common opening rather than separate penetrations in the same wall.
 - A group containing exactly one straight duct and one inline valve/accessory with the same nominal `SectionMin` and `SectionMax` represents one continuous passage, not two bundle members. Evaluate each component against the opening threshold, but do not sum their equal sections.
 - Contributing members are straight ducts, duct fittings, and rectangular accessories. Ignore round dampers when computing bundle size because their bounding boxes are unreliable for opening size; use their clash centers as supporting geometry when deciding whether the group is one common opening, and let them inherit the decision from an active bundle.
@@ -197,6 +198,39 @@ Use [../src/classify_opening_clashes.py](../src/classify_opening_clashes.py) for
 ## General KPLN Category Rules
 
 ### Structural Slabs Against Straight Circular Pipes
+
+When the user requests the same practical review as the wall/pipe report,
+use `--mode slab-wall-openings`. This is an explicit alternative to the strict
+mesh-section mode below; do not make cylinder topology a prerequisite for it.
+The add-in exports `PipeSlabGeometry.LocalFaces` with source
+`slab-local-faces-1`: independently measured slab normal, nearest broad-face
+distance and nearest edge/reveal-face distance, using the wall workflow's
+point-to-triangle distance. This includes internal opening reveals. Failure
+to fit the pipe mesh must not suppress these slab measurements.
+
+The wall-style mode uses the same item-bound axis estimate as wall review for
+sufficiently elongated bare pipes. It is currently scoped to horizontal slabs;
+short pipes (including discs whose height is below the nominal diameter),
+inclined slabs without a signed pipe axis and missing local face distances
+remain Uncertain. Contact with an edge/reveal within half the nominal section
+is Active; an axis angle above 45 degrees to the slab normal is Active.
+Otherwise a normal broad-face passage uses nominal section strictly above the
+project threshold as Active and at/below it as Approved. Preserve Reviewed and
+Resolved. Never manufacture missing local edge measurements from slab AABBs.
+
+Keep the user-confirmed bundle condition below. For vertical members on the
+same slab, separate penetrations can be proved conservatively when the XY
+distance between complete item bounds is at least the larger transverse box
+width: actual surface distance is no smaller and actual circular diameter is
+no greater. Deduplicate pipe IDs and split by slab ID. This test only rules
+out a bundle; a remaining nearby candidate requires measured local sections
+and stays Uncertain until those are available. Longitudinal members retain
+their own Active decision and do not enlarge a transverse opening solely
+because the user grouped the results together.
+
+The original `slab-openings` mode remains available for snapshots containing
+the full cylinder/section evidence. Its stronger requirements are not a
+prerequisite for an explicitly requested wall-style review.
 
 Use `--mode slab-openings --opening-min-edge-mm <project threshold>`.
 Require `SlabMetricsVersion=pipe-slab-mesh-1`, a verified cylinder axis,
@@ -289,6 +323,24 @@ currently guaranteed MCP fields. Do not fabricate vectors from the longest AABB
 dimension of a short element. An explicit user-reviewed axis/plane can be used
 with its source recorded in the analysis. Otherwise request geometry extraction
 or retain Uncertain. Sloped ceilings require their actual normal.
+
+### Door And Revision Hatch Opening Zones
+
+Mutual overlap between a door opening zone and a revision/access hatch opening
+zone is Approved under the user-confirmed allowance for sequential opening.
+Both actual clash participants must be identified as opening-zone geometry;
+establish the door and hatch roles from their categories/properties and the
+relevant parent family, not a report name, clash number or arbitrary path text.
+The allowance does not require assuming that the zone solids are physical
+panels. Missing or ambiguous participant identification remains Uncertain.
+
+This rule approves only zone-to-zone overlap. It does not approve door-to-door
+or window-to-window cases, zones against physical bodies, or intersections of
+panels, frames or hardware. It does not establish equipment accessibility,
+independent opening with the neighbor closed, or fire/egress compliance; review
+any evidence of those problems separately. Neither penetration depth nor
+different associated level labels is an approval criterion. Preserve Resolved
+and Reviewed unless the user explicitly authorizes changing them.
 
 ### Other Category Cues
 
