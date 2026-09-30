@@ -68,6 +68,11 @@ namespace KPLN_Library_DBWorker.Core
         /// Прямое указание на то, что пользователь НЕ сотрудник KPLN
         /// </summary>
         public bool IsExtraNet { get; set; }
+
+        /// <summary>
+        /// Пользователь уволен. Поле доступно менеджеру только для чтения.
+        /// </summary>
+        public bool IsFired { get; set; }
         #endregion
 
         /// <summary>
