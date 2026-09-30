@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -177,7 +177,7 @@ namespace KPLN_BIMTools_Ribbon.Forms.Models
                 switch (columnName)
                 {
                     case nameof(WrServerPath):
-                        return ValidateServerPath(WrServerPath, @"Y:\", '/', '\\', "сервер КПЛН");
+                        return ValidateMainServerPath(WrServerPath);
                     case nameof(WrRevitServerPath):
                         return ValidateServerPath(WrRevitServerPath, @"RSN://", '\\', '/', "Revit-Server КПЛН");
                     case nameof(WrRevitServerPath2):
@@ -200,6 +200,17 @@ namespace KPLN_BIMTools_Ribbon.Forms.Models
                 return $"Путь на {name} должен начинаться с '{start}'";
             if (value.Contains(wrongSlash))
                 return $"Путь на {name} должен разделяться символом '{rightSlash}'";
+            return null;
+        }
+
+        private string ValidateMainServerPath(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return null;
+            if (!value.StartsWith(@"Y:\") && !value.StartsWith(@"Z:\"))
+                return "Путь на сервер KPLN должен начинаться с 'Y:\\' или 'Z:\\'";
+            if (value.Contains('/'))
+                return "Путь на сервер KPLN должен разделяться символом '\\'";
             return null;
         }
 

@@ -1,222 +1,378 @@
-﻿<Window x:Class="KPLN_BIMTools_Ribbon.Forms.DBManager"
+<Window x:Class="KPLN_BIMTools_Ribbon.Forms.DBManager"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-        mc:Ignorable="d" 
-        FontFamily="Monaco, Consolas, 'Andale Mono', 'DejaVu Sans Mono', monospace" 
+        Title="KPLN_DB: Менеджер базы данных"
+        Width="1180"
+        Height="720"
+        MinWidth="920"
+        MinHeight="580"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip"
+        FontFamily="Consolas, 'Segoe UI', monospace"
         FontSize="14"
-        ResizeMode="CanResizeWithGrip" 
-        Title="KPLN_DB: Создание нового проекта" 
-        WindowStyle="ToolWindow" 
-        Topmost="True" 
-        WindowStartupLocation="CenterScreen" 
-        SizeToContent="WidthAndHeight"
-        MinHeight="200" 
-        MinWidth="500" 
-        MaxWidth="1000" 
-        Background="#FF292D36">
+        Background="#2B2F38">
 
     <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/KPLN_Library_Forms;component/UI/LibStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style x:Key="TXTBL" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-        </Style>
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
-        <Style x:Key="TXTBX" TargetType="TextBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
+            <Style x:Key="ManagerTitle" TargetType="TextBlock" BasedOn="{StaticResource KPLN_TextBlock}">
+                <Setter Property="FontSize" Value="22" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Margin" Value="6,4,6,12" />
+                <Setter Property="MaxWidth" Value="900" />
+            </Style>
 
-        <Style x:Key="TXTBXWithPathToolTip" TargetType="TextBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="ToolTipService.IsEnabled" Value="True"/>
-            <Style.Triggers>
-                <Trigger Property="Validation.HasError" Value="True">
-                    <Setter Property="ToolTip"
-                        Value="{Binding (Validation.Errors)[0].ErrorContent, RelativeSource={RelativeSource Self}}"/>
-                    <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
-                    <Setter Property="ToolTipService.InitialShowDelay" Value="0"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
+            <Style x:Key="SectionTitle" TargetType="TextBlock" BasedOn="{StaticResource KPLN_TextBlock}">
+                <Setter Property="FontSize" Value="17" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Margin" Value="4,2,4,8" />
+                <Setter Property="MaxWidth" Value="600" />
+            </Style>
 
-        <Style x:Key="СBX" TargetType="ComboBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="Margin" Value="5"/>
-        </Style>
+            <Style x:Key="DetailLabel" TargetType="TextBlock" BasedOn="{StaticResource KPLN_TextBlock}">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="#AEB6C2" />
+                <Setter Property="Margin" Value="4,8,4,0" />
+                <Setter Property="MaxWidth" Value="420" />
+            </Style>
 
-        <Style x:Key="BTN" TargetType="Button">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="White"/>
-            <Setter Property="Background" Value="#19FFFFFF"/>
-            <Setter Property="Margin" Value="5"/>
-        </Style>
+            <Style x:Key="DetailValue" TargetType="TextBlock" BasedOn="{StaticResource KPLN_TextBlock}">
+                <Setter Property="FontSize" Value="14" />
+                <Setter Property="Margin" Value="4,0,4,4" />
+                <Setter Property="MaxWidth" Value="420" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
 
+            <Style x:Key="ManagerDataGrid" TargetType="DataGrid">
+                <Setter Property="Background" Value="#333840" />
+                <Setter Property="Foreground" Value="#20242B" />
+                <Setter Property="BorderBrush" Value="#555B66" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="GridLinesVisibility" Value="Horizontal" />
+                <Setter Property="HorizontalGridLinesBrush" Value="#D6D9DE" />
+                <Setter Property="RowBackground" Value="#F4F5F7" />
+                <Setter Property="AlternatingRowBackground" Value="#E9ECF1" />
+                <Setter Property="HeadersVisibility" Value="Column" />
+                <Setter Property="CanUserAddRows" Value="False" />
+                <Setter Property="CanUserDeleteRows" Value="False" />
+                <Setter Property="IsReadOnly" Value="True" />
+                <Setter Property="SelectionMode" Value="Single" />
+                <Setter Property="SelectionUnit" Value="FullRow" />
+                <Setter Property="AutoGenerateColumns" Value="False" />
+                <Setter Property="Margin" Value="4" />
+            </Style>
+
+            <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource KPLN_Button}">
+                <Setter Property="Background" Value="#555B66" />
+                <Setter Property="BorderBrush" Value="#555B66" />
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="0.45*"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseWindowCommand}" />
+    </Window.InputBindings>
 
-        <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-            <RowDefinition/>
-        </Grid.RowDefinitions>
+    <Grid Margin="10">
+        <!-- Выбор сценария -->
+        <Grid Visibility="{Binding IsScenarioSelectionVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
+            <StackPanel>
+                <TextBlock Text="Менеджер KPLN_Loader_MainDB" Style="{StaticResource ManagerTitle}" />
+                <TextBlock Text="Выберите сценарий работы. Изменение статуса всегда требует подтверждения."
+                           Style="{StaticResource KPLN_TextBlock}"
+                           Foreground="#AEB6C2"
+                           Margin="6,0,6,18"
+                           MaxWidth="900" />
+            </StackPanel>
 
-        <TextBlock 
-            Text="Имя проекта"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Column="1"
-            Style="{StaticResource TXTBX}"
-            Text="{Binding DBPrjWrapper.WrName, 
-                UpdateSourceTrigger=PropertyChanged}"/>
+            <Grid Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="900">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
+                <Border Style="{StaticResource KPLN_CardBorder}" Margin="12" Padding="22">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Проекты" Style="{StaticResource SectionTitle}" FontSize="24" />
+                        <TextBlock Grid.Row="1"
+                                   Text="Таблица Projects"
+                                   Style="{StaticResource KPLN_TextBlock}"
+                                   Foreground="#7FB0FF" />
+                        <TextBlock Grid.Row="2"
+                                   Text="Создание проектов, просмотр всех полей и изменение статуса «открыт / закрыт»."
+                                   Style="{StaticResource KPLN_TextBlock}"
+                                   Margin="4,12"
+                                   MaxWidth="330" />
+                        <Button Grid.Row="3"
+                                Content="Работа с проектами"
+                                Style="{StaticResource KPLN_Button}"
+                                Command="{Binding OpenProjectsCommand}" />
+                    </Grid>
+                </Border>
 
-        <TextBlock 
-            Grid.Row="1"
-            Text="Код проекта"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Row="1"
-            Grid.Column="1"
-            Style="{StaticResource TXTBX}"
-            Text="{Binding DBPrjWrapper.WrCode, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-
-        <TextBlock 
-            Grid.Row="2"
-            Text="Стадия проекта"
-            Style="{StaticResource TXTBL}"/>
-        <ComboBox 
-            Grid.Row="2"
-            Grid.Column="1"
-            Style="{StaticResource СBX}"
-            ItemsSource="{Binding DBPrjWrapper.WrStageColl}"
-            SelectedItem="{Binding DBPrjWrapper.WrStage}"/>
-
-
-        <TextBlock 
-            Grid.Row="3"
-            Text="Версия Revit"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Row="3"
-            Grid.Column="1"
-            Style="{StaticResource TXTBX}"
-            Text="{Binding DBPrjWrapper.WrRevitVersion, 
-                UpdateSourceTrigger=PropertyChanged}"/>
-
-
-        <TextBlock 
-            Grid.Row="4"
-            Text="Путь: папка на сервере"
-            Style="{StaticResource TXTBL}"/>
-        <Grid
-            Grid.Row="4"
-            Grid.Column="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="0.1*"/>
-            </Grid.ColumnDefinitions>
-            <TextBox 
-                Style="{StaticResource TXTBXWithPathToolTip}"
-                Text="{Binding DBPrjWrapper.WrServerPath, 
-                    UpdateSourceTrigger=PropertyChanged, 
-                    ValidatesOnDataErrors=True, 
-                    NotifyOnValidationError=True}"/>
-            <Button
-                Grid.Column="1"
-                Style="{StaticResource BTN}"
-                Margin="0,5,5,5"
-                Content="🔍"
-                Command="{Binding SetServerPathCommand}"/>
+                <Border Grid.Column="1" Style="{StaticResource KPLN_CardBorder}" Margin="12" Padding="22">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Пользователи" Style="{StaticResource SectionTitle}" FontSize="24" />
+                        <TextBlock Grid.Row="1"
+                                   Text="Таблица Users"
+                                   Style="{StaticResource KPLN_TextBlock}"
+                                   Foreground="#7FB0FF" />
+                        <TextBlock Grid.Row="2"
+                                   Text="Просмотр регистрационных данных и открытие / закрытие доступа к реальным проектам."
+                                   Style="{StaticResource KPLN_TextBlock}"
+                                   Margin="4,12"
+                                   MaxWidth="330" />
+                        <Button Grid.Row="3"
+                                Content="Работа с пользователями"
+                                Style="{StaticResource KPLN_Button}"
+                                Command="{Binding OpenUsersCommand}" />
+                    </Grid>
+                </Border>
+            </Grid>
         </Grid>
 
+        <!-- Сценарий Projects -->
+        <Grid Visibility="{Binding IsProjectsVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <TextBlock 
-            Grid.Row="5"
-            Text="Путь: Revit-Server #1"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Row="5"
-            Grid.Column="1"
-            Style="{StaticResource TXTBXWithPathToolTip}"
-            Text="{Binding DBPrjWrapper.WrRevitServerPath, 
-                UpdateSourceTrigger=PropertyChanged, 
-                ValidatesOnDataErrors=True, 
-                NotifyOnValidationError=True}"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.2*" MinWidth="500" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
 
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="← Сценарии"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding BackToScenariosCommand}" />
+                        <TextBlock Text="Проекты" Style="{StaticResource ManagerTitle}" VerticalAlignment="Center" Margin="12,4" />
+                    </StackPanel>
+                    <TextBox Style="{StaticResource KPLN_TextBox}"
+                             ToolTip="Поиск по ID, имени, коду, стадии, версии и пути"
+                             Text="{Binding ProjectFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Обновить"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding RefreshProjectsCommand}" />
+                        <Button Content="Создать проект"
+                                Style="{StaticResource KPLN_Button}"
+                                Command="{Binding CreateProjectCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
 
-        <TextBlock 
-            Grid.Row="6"
-            Text="Путь: Revit-Server #2"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Row="6"
-            Grid.Column="1"
-            Style="{StaticResource TXTBXWithPathToolTip}"
-            Text="{Binding DBPrjWrapper.WrRevitServerPath2, 
-                UpdateSourceTrigger=PropertyChanged, 
-                ValidatesOnDataErrors=True, 
-                NotifyOnValidationError=True}"/>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.2*" MinWidth="500" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
 
+                <DataGrid Style="{StaticResource ManagerDataGrid}"
+                          ItemsSource="{Binding ProjectsView}"
+                          SelectedItem="{Binding SelectedProject}"
+                          IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id, Mode=OneWay}" Width="55" />
+                        <DataGridTextColumn Header="Код" Binding="{Binding Code, Mode=OneWay}" Width="110" />
+                        <DataGridTextColumn Header="Стадия" Binding="{Binding Stage, Mode=OneWay}" Width="85" />
+                        <DataGridTextColumn Header="Проект" Binding="{Binding Name, Mode=OneWay}" Width="*" MinWidth="180" />
+                        <DataGridTextColumn Header="Revit" Binding="{Binding RevitVersion, Mode=OneWay}" Width="70" />
+                        <DataGridCheckBoxColumn Header="Закрыт" Binding="{Binding IsClosed, Mode=OneWay}" Width="70" />
+                    </DataGrid.Columns>
+                </DataGrid>
 
-        <TextBlock 
-            Grid.Row="7"
-            Text="Путь: Revit-Server #3"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Row="7"
-            Grid.Column="1"
-            Style="{StaticResource TXTBXWithPathToolTip}"
-            Text="{Binding DBPrjWrapper.WrRevitServerPath3,
-                UpdateSourceTrigger=PropertyChanged, 
-                ValidatesOnDataErrors=True, 
-                NotifyOnValidationError=True}"
-            ToolTip="{Binding (Validation.Errors)[0].ErrorContent, 
-                RelativeSource={RelativeSource Self}}"/>
+                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#555B66" />
 
+                <Border Grid.Column="2" Style="{StaticResource KPLN_CardBorder}" Margin="8,4,4,4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Карточка проекта" Style="{StaticResource SectionTitle}" />
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="ID" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.Id, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Имя" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.Name, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Код / стадия" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Style="{StaticResource DetailValue}">
+                                    <Run Text="{Binding SelectedProject.Code, Mode=OneWay}" />
+                                    <Run Text=" / " />
+                                    <Run Text="{Binding SelectedProject.Stage, Mode=OneWay}" />
+                                </TextBlock>
+                                <TextBlock Text="Версия Revit" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.RevitVersion, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Основной путь" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.MainPath, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Revit Server #1" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.RevitServerPath, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Revit Server #2" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.RevitServerPath2, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Revit Server #3" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.RevitServerPath3, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Revit Server #4" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedProject.RevitServerPath4, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <CheckBox Content="Проект закрыт"
+                                          Style="{StaticResource KPLN_CheckBox}"
+                                          IsChecked="{Binding SelectedProject.IsClosed, Mode=OneWay}"
+                                          IsHitTestVisible="False" />
+                            </StackPanel>
+                        </ScrollViewer>
+                        <Button Grid.Row="2"
+                                Content="{Binding SelectedProjectActionText, Mode=OneWay}"
+                                Style="{StaticResource KPLN_Button}"
+                                Command="{Binding ToggleProjectAccessCommand}" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
 
-        <TextBlock 
-            Grid.Row="8"
-            Text="Путь: Revit-Server #4"
-            Style="{StaticResource TXTBL}"/>
-        <TextBox 
-            Grid.Row="8"
-            Grid.Column="1"
-            Style="{StaticResource TXTBXWithPathToolTip}"
-            Text="{Binding DBPrjWrapper.WrRevitServerPath4, 
-                UpdateSourceTrigger=PropertyChanged, 
-                ValidatesOnDataErrors=True, 
-                NotifyOnValidationError=True}"
-            ToolTip="{Binding (Validation.Errors)[0].ErrorContent, 
-                RelativeSource={RelativeSource Self}}"/>
+        <!-- Сценарий Users -->
+        <Grid Visibility="{Binding IsUsersVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <Button
-            Grid.ColumnSpan="2"
-            Grid.Row="9"
-            Style="{StaticResource BTN}"
-            Content="Создать" 
-            Command="{Binding CreateDBProjectCommand}"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.2*" MinWidth="500" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="← Сценарии"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding BackToScenariosCommand}" />
+                        <TextBlock Text="Пользователи" Style="{StaticResource ManagerTitle}" VerticalAlignment="Center" Margin="12,4" />
+                    </StackPanel>
+                    <TextBox Style="{StaticResource KPLN_TextBox}"
+                             ToolTip="Поиск по ID, ФИО, учетной записи, отделу, Revit и Bitrix"
+                             Text="{Binding UserFilterText, UpdateSourceTrigger=PropertyChanged}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <CheckBox Content="Показывать уволенных"
+                                  Style="{StaticResource KPLN_CheckBox}"
+                                  IsChecked="{Binding ShowFiredUsers}"
+                                  VerticalAlignment="Center" />
+                        <Button Content="Обновить"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding RefreshUsersCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2.2*" MinWidth="500" />
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
+
+                <DataGrid Style="{StaticResource ManagerDataGrid}"
+                          ItemsSource="{Binding UsersView}"
+                          SelectedItem="{Binding SelectedUser}"
+                          IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id, Mode=OneWay}" Width="55" />
+                        <DataGridTextColumn Header="ФИО" Binding="{Binding FullName, Mode=OneWay}" Width="3*" MinWidth="190" />
+                        <DataGridTextColumn Header="Учетная запись" Binding="{Binding SystemName, Mode=OneWay}" Width="140" />
+                        <DataGridTextColumn Header="Отдел" Binding="{Binding SubDepartmentName, Mode=OneWay}" Width="2*" MinWidth="140" />
+                        <DataGridCheckBoxColumn Header="Уволен" Binding="{Binding IsFired, Mode=OneWay}" Width="85" />
+                        <DataGridCheckBoxColumn Header="Доступ закрыт" Binding="{Binding IsUserRestricted, Mode=OneWay}" Width="130" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="#555B66" />
+
+                <Border Grid.Column="2" Style="{StaticResource KPLN_CardBorder}" Margin="8,4,4,4">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Карточка пользователя" Style="{StaticResource SectionTitle}" />
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="ID" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.Id, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="ФИО" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.FullName, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Системное имя" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.SystemName, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Подразделение" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Style="{StaticResource DetailValue}">
+                                    <Run Text="{Binding SelectedUser.SubDepartmentName, Mode=OneWay}" />
+                                    <Run Text=" (ID " />
+                                    <Run Text="{Binding SelectedUser.SubDepartmentId, Mode=OneWay}" />
+                                    <Run Text=")" />
+                                </TextBlock>
+                                <TextBlock Text="Имя пользователя Revit" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.RevitUserName, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Дата регистрации" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.RegistrationDate, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Последнее подключение" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.LastConnectionDate, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <TextBlock Text="Bitrix ID" Style="{StaticResource DetailLabel}" />
+                                <TextBlock Text="{Binding SelectedUser.BitrixUserID, Mode=OneWay}" Style="{StaticResource DetailValue}" />
+                                <CheckBox Content="Режим отладки"
+                                          Style="{StaticResource KPLN_CheckBox}"
+                                          IsChecked="{Binding SelectedUser.IsDebugMode, Mode=OneWay}"
+                                          IsHitTestVisible="False" />
+                                <CheckBox Content="Внешний пользователь"
+                                          Style="{StaticResource KPLN_CheckBox}"
+                                          IsChecked="{Binding SelectedUser.IsExtraNet, Mode=OneWay}"
+                                          IsHitTestVisible="False" />
+                                <CheckBox Content="Уволен"
+                                          Style="{StaticResource KPLN_CheckBox}"
+                                          IsChecked="{Binding SelectedUser.IsFired, Mode=OneWay}"
+                                          IsHitTestVisible="False" />
+                                <CheckBox Content="Доступ к реальным проектам закрыт"
+                                          Style="{StaticResource KPLN_CheckBox}"
+                                          IsChecked="{Binding SelectedUser.IsUserRestricted, Mode=OneWay}"
+                                          IsHitTestVisible="False" />
+                            </StackPanel>
+                        </ScrollViewer>
+                        <Button Grid.Row="2"
+                                Content="{Binding SelectedUserActionText, Mode=OneWay}"
+                                Style="{StaticResource KPLN_Button}"
+                                Command="{Binding ToggleUserAccessCommand}" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

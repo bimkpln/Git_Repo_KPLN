@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -192,14 +192,19 @@
     <Compile Include="Forms\DBManager.xaml.cs">
       <DependentUpon>DBManager.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\DBProjectCreateWindow.xaml.cs">
+      <DependentUpon>DBProjectCreateWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ConfigItem.xaml.cs">
       <DependentUpon>ConfigItem.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\Models\DBProjectWrapper.cs" />
+    <Compile Include="Forms\Models\DBUserManagerItem.cs" />
     <Compile Include="Forms\IFCExtraSettings.xaml.cs">
       <DependentUpon>IFCExtraSettings.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ViewModels\DBManagerViewModel.cs" />
+    <Compile Include="Forms\ViewModels\DBProjectCreateViewModel.cs" />
     <Compile Include="Forms\Models\DBRevitDocExchangesWrapper.cs" />
     <Compile Include="Forms\IntValidationRule.cs" />
     <Compile Include="Forms\DoubleValidationRule.cs" />
@@ -277,6 +282,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Forms\DBManager.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\DBProjectCreateWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
