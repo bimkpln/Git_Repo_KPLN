@@ -1,4 +1,4 @@
-﻿using KPLN_Library_DBWorker.Core;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_DBWorker.FactoryParts.Common;
 using System;
 using System.Collections.Generic;
@@ -55,6 +55,13 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
         /// </summary>
         [Obsolete]
         public IEnumerable<DBProject> GetDBProjects() =>
+            ExecuteQuery<DBProject>(
+                $"SELECT * FROM {_dbTableName};");
+
+        /// <summary>
+        /// Получить коллекцию всех проектов без фильтра по версии Revit.
+        /// </summary>
+        public IEnumerable<DBProject> GetDBProjects_All() =>
             ExecuteQuery<DBProject>(
                 $"SELECT * FROM {_dbTableName};");
 
@@ -131,6 +138,22 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
                 .OrderByDescending(prj => GetMatchingSegmentsCount(fileName, prj.MainPath))
                 .FirstOrDefault();
         }
+        #endregion
+
+        #region Update
+        /// <summary>
+        /// Открыть или закрыть проект для работы пользователей.
+        /// </summary>
+        public void UpdateDBProject_IsClosed(DBProject dbProject, bool isClosed) =>
+            ExecuteNonQuery(
+                $"UPDATE {_dbTableName} " +
+                $"SET {nameof(DBProject.IsClosed)}=@IsClosed " +
+                $"WHERE {nameof(DBProject.Id)}=@Id;",
+                new
+                {
+                    Id = dbProject.Id,
+                    IsClosed = isClosed.ToString()
+                });
         #endregion
 
         private static int GetMatchingSegmentsCount(string path1, string path2)

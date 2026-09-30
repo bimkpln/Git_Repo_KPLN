@@ -1,4 +1,4 @@
-﻿using KPLN_Library_DBWorker.Core;
+using KPLN_Library_DBWorker.Core;
 using KPLN_Library_DBWorker.FactoryParts.Common;
 using System.Collections.Generic;
 using System.Linq;
@@ -94,6 +94,20 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
         public void UpdateDBUser_BitrixUserID(DBUser dbUser, int bitrixId) =>
             ExecuteNonQuery($"UPDATE {_dbTableName} " +
                   $"SET {nameof(DBUser.BitrixUserID)}='{bitrixId}' WHERE {nameof(DBUser.Id)}='{dbUser.Id}';");
+
+        /// <summary>
+        /// Открыть или закрыть пользователю доступ к рабочим проектам.
+        /// </summary>
+        public void UpdateDBUser_IsUserRestricted(DBUser dbUser, bool isUserRestricted) =>
+            ExecuteNonQuery(
+                $"UPDATE {_dbTableName} " +
+                $"SET {nameof(DBUser.IsUserRestricted)}=@IsUserRestricted " +
+                $"WHERE {nameof(DBUser.Id)}=@Id;",
+                new
+                {
+                    Id = dbUser.Id,
+                    IsUserRestricted = isUserRestricted.ToString()
+                });
         #endregion
 
         #region Delete
