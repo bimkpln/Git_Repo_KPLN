@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.venv/
+local/
+__pycache__/
+*.user
+*.suo
+*.backup-*
+tests/**/bin/
+tests/**/obj/
+tests/**/__pycache__/
+server/__pycache__/

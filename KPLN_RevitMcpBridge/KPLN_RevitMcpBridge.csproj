@@ -1,0 +1,140 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)'==''">Debug2024</Configuration>
+    <Platform Condition="'$(Platform)'==''">x64</Platform>
+    <ProjectGuid>{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>KPLN_RevitMcpBridge</RootNamespace>
+    <AssemblyName>KPLN_RevitMcpBridge</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <LangVersion>7.3</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <Deterministic>true</Deterministic>
+    <RevitApiRoot Condition="'$(RevitApiRoot)'==''">C:\Program Files\Autodesk</RevitApiRoot>
+    <LoaderRoot Condition="'$(LoaderRoot)'==''">X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN</LoaderRoot>
+    <Configurations>Debug2020;Debug2023;Debug2024;Revit2020;Revit2023;Revit2024</Configurations>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
+    <RevitVer>2020</RevitVer>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(RevitApiRoot)\Revit 2020\Revit.exe</StartProgram>
+    <StartWorkingDirectory>$(RevitApiRoot)\Revit 2020</StartWorkingDirectory>
+    <OutputPath>bin\Debug\2020\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|x64' ">
+    <RevitVer>2020</RevitVer>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(RevitApiRoot)\Revit 2020\Revit.exe</StartProgram>
+    <StartWorkingDirectory>$(RevitApiRoot)\Revit 2020</StartWorkingDirectory>
+    <OutputPath>bin\2020\</OutputPath>
+    <DebugType>none</DebugType>
+    <DefineConstants>TRACE;Revit2020</DefineConstants>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
+    <RevitVer>2023</RevitVer>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(RevitApiRoot)\Revit 2023\Revit.exe</StartProgram>
+    <StartWorkingDirectory>$(RevitApiRoot)\Revit 2023</StartWorkingDirectory>
+    <OutputPath>bin\Debug\2023\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
+    <RevitVer>2023</RevitVer>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(RevitApiRoot)\Revit 2023\Revit.exe</StartProgram>
+    <StartWorkingDirectory>$(RevitApiRoot)\Revit 2023</StartWorkingDirectory>
+    <OutputPath>bin\2023\</OutputPath>
+    <DebugType>none</DebugType>
+    <DefineConstants>TRACE;Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2024|x64' ">
+    <RevitVer>2024</RevitVer>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(RevitApiRoot)\Revit 2024\Revit.exe</StartProgram>
+    <StartWorkingDirectory>$(RevitApiRoot)\Revit 2024</StartWorkingDirectory>
+    <OutputPath>bin\Debug\2024\</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2024|x64' ">
+    <RevitVer>2024</RevitVer>
+    <PlatformTarget>x64</PlatformTarget>
+    <StartAction>Program</StartAction>
+    <StartProgram>$(RevitApiRoot)\Revit 2024\Revit.exe</StartProgram>
+    <StartWorkingDirectory>$(RevitApiRoot)\Revit 2024</StartWorkingDirectory>
+    <OutputPath>bin\2024\</OutputPath>
+    <DebugType>none</DebugType>
+    <DefineConstants>TRACE;Revit2024</DefineConstants>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup>
+    <CopyDebugToLoader Condition="'$(CopyDebugToLoader)' == ''">true</CopyDebugToLoader>
+    <LoaderModuleRoot Condition="'$(LoaderModuleRoot)' == ''">$(MSBuildProjectDirectory)\bin</LoaderModuleRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>$(RevitApiRoot)\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>$(RevitApiRoot)\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Loader">
+      <HintPath>$(LoaderRoot)\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Security" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Module.cs" />
+    <Compile Include="ExternalCommands\BridgeStatusExtCmd.cs" />
+    <Compile Include="Server\Protocol.cs" />
+    <Compile Include="Server\WorkItem.cs" />
+    <Compile Include="Server\HttpBridgeServer.cs" />
+    <Compile Include="Services\RevitService.cs" />
+    <Compile Include="Services\ParameterService.cs" />
+    <Compile Include="Services\FamilyTypeService.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Imagens\mcpBridge16.png" />
+    <Resource Include="Imagens\mcpBridge16_dark.png" />
+    <Resource Include="Imagens\mcpBridge32.png" />
+    <Resource Include="Imagens\mcpBridge32_dark.png" />
+  </ItemGroup>
+  <Target Name="ValidateRevitVersion" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(RevitVer)'==''" Text="Use Debug2020/Revit2020, Debug2023/Revit2023 or Debug2024/Revit2024." />
+    <Error Condition="'$(MSBuildRuntimeType)' == 'Core'" Text="Use Visual Studio MSBuild.exe or scripts/build.ps1. dotnet msbuild does not embed WPF Resource images in this classic project." />
+  </Target>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="StageDebugForLoader" AfterTargets="Build" Condition="'$(CopyDebugToLoader)' == 'true' And '$(Configuration)' == 'Debug$(RevitVer)' And '$(DesignTimeBuild)' != 'true'">
+    <MakeDir Directories="$(LoaderModuleRoot)\$(RevitVer)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(TargetName).pdb" DestinationFolder="$(LoaderModuleRoot)\$(RevitVer)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
