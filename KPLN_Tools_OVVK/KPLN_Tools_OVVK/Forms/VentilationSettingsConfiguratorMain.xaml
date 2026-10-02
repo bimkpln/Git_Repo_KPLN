@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="KPLN. Конфигуратор вент. установок"
-        Width="1400" Height="950" SizeToContent="Manual"
+        Width="1400" Height="800" SizeToContent="Manual"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
         Background="#F3F5F7" FontFamily="Segoe UI" FontSize="13"
         Closing="Window_Closing" Closed="Window_Closed">
@@ -255,6 +255,14 @@
                         <TextBlock Text="Типы семейства" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
                         <Button x:Name="CreateTypeButton" Content="＋  Создать тип" Click="CreateType_Click"
                                 AutomationProperties.Name="Создать тип" Style="{StaticResource CreateTypeButtonStyle}"/>
+                        <Button x:Name="OpenFamilyFileButton" Content="Открыть RFA…" Click="OpenFamilyFile_Click"
+                                Margin="0,8,0,0" Padding="10,8" Visibility="Collapsed"
+                                ToolTip="Прочитать типы из ранее сохранённого проектного семейства"/>
+                        <Button x:Name="CopyTypeButton" Content="Копировать выбранный тип" Click="CopyType_Click"
+                                Margin="0,8,0,0" IsEnabled="False" Padding="10,8"/>
+                        <Button x:Name="UpdateFamilyButton" Content="Обновить семейство из основы" Click="UpdateFamily_Click"
+                                Margin="0,8,0,0" Visibility="Collapsed" IsEnabled="False" Padding="8,8" FontSize="11"
+                                ToolTip="Обновить семейство проекта из исходного семейства на X с сохранением существующих типов"/>
                     </StackPanel>
                     <ListBox x:Name="FamilyTypesListBox" Grid.Row="1" BorderThickness="0" FontSize="12"
                              SelectionChanged="FamilyTypesListBox_SelectionChanged"
@@ -267,6 +275,7 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
                                         <ColumnDefinition Width="24"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{Binding DisplayName}" ToolTip="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
@@ -281,7 +290,20 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <Button Grid.Column="1" Width="20" Height="20" Click="DeleteType_Click" ToolTip="Удалить тип">
+                                    <TextBlock Grid.Column="1" Text="!" FontWeight="Bold" Foreground="Firebrick" VerticalAlignment="Center"
+                                               HorizontalAlignment="Center" ToolTip="Требуется проверка параметров">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding NeedsReview}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <Button Grid.Column="2" Width="20" Height="20" Click="DeleteType_Click" ToolTip="Удалить тип">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
                                                 <Style.Triggers>
@@ -362,7 +384,10 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
+                <Button x:Name="ReviewParametersButton" Grid.Column="2" Content="Проверить параметры" Click="ReviewParameters_Click"
+                        MinHeight="28" Padding="10,4" Margin="12,0,0,0"/>
                 <TextBlock x:Name="StatusTextBlock" Grid.Column="1" Text="Выберите «Создать тип», чтобы начать."
                            Foreground="#30475E" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 <Button x:Name="ErrorDetailsButton" Content="Подробности" Click="ErrorDetails_Click"
