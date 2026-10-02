@@ -209,7 +209,6 @@
   <ItemGroup>
     <Compile Include="Common\IDHelper.cs" />
     <Compile Include="ExternalCommands\CommandMovingElementsInLevel.cs" />
-    <Compile Include="ExternalCommands\Command_AR_CalculateTEP.cs" />
     <Compile Include="ExternalCommands\Command_AR_EvacuationRoutes.cs" />
     <Compile Include="ExternalCommands\Command_AR_Furniture3DFrom2D.cs" />
     <Compile Include="ExternalCommands\Command_CheckingDimensionSS.cs" />
@@ -223,9 +222,6 @@
     <Compile Include="ExecutableCommand\ExcCmdARPG_SetData.cs" />
     <Compile Include="ExternalCommands\CommandNodeManager.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AutoSaveConfig.cs" />
-    <Compile Include="Forms\AR_CalculateTEP.xaml.cs">
-      <DependentUpon>AR_CalculateTEP.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Forms\AR_PyatnGraph_SelectDO.xaml.cs">
       <DependentUpon>AR_PyatnGraph_SelectDO.xaml</DependentUpon>
     </Compile>
@@ -412,10 +408,6 @@
     <EmbeddedResource Include="Imagens\arPyatnGraphBig.png" />
     <EmbeddedResource Include="Imagens\arPyatnGraphSmall.png" />
     <EmbeddedResource Include="Imagens\nodeManagerBig.png" />
-    <Page Include="Forms\AR_CalculateTEP.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Forms\EvacuationRoutesDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
