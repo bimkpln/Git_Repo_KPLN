@@ -22,8 +22,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
             DataContext = CurrentDBRSConfigData;
 
-            if (CurrentDBRSConfigData.MaxBackup != -1)
-                MaxBackUpTBox.IsEnabled = true;
+            MaxBackUpTBox.Text = CurrentDBRSConfigData.MaxBackup == -1
+                ? "🔐" : CurrentDBRSConfigData.MaxBackup.ToString(CultureInfo.CurrentCulture);
 
             if (CurrentDBRSConfigData.NameChangeFind != "🔐")
                 NameChangeFindTBox.IsEnabled = true;
@@ -32,19 +32,20 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 NameChangeSetTBox.IsEnabled = true;
         }
 
+        public bool HasValidMaxBackup => MaxBackUpTBox.Text.Trim() == "🔐"
+            || (int.TryParse(MaxBackUpTBox.Text, out int count) && count > 0);
+
         private void MaxBackupTBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            string input = (sender as TextBox).Text;
-            if (!double.TryParse(input, out double _))
-            {
-                UserDialog userDialog = new UserDialog(
-                    "Ошибка", 
-                    "Для количества резервных копий можно вводить только числа! Если не исправишь - будет значение по умолчанию = 10");
-                
-                userDialog.ShowDialog();
-                CurrentDBRSConfigData.MaxBackup = 10;
-            }
+            string input = ((TextBox)sender).Text.Trim();
+            if (input == "🔐")
+                CurrentDBRSConfigData.MaxBackup = -1;
+            else if (int.TryParse(input, out int count) && count > 0)
+                CurrentDBRSConfigData.MaxBackup = count;
         }
+
+        private void MaxBackupTBox_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) =>
+            ((TextBox)sender).SelectAll();
 
         private void NameChangeFindTBox_TextChanged(object sender, TextChangedEventArgs e)
         {

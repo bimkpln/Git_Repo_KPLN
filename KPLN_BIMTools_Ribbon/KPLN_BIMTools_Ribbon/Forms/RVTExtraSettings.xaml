@@ -8,7 +8,6 @@
              Background="#FF292D36">
     <UserControl.Resources>
 
-        <local:DoubleValidationRule x:Key="IntValidationRule"/>
         
         <Style 
             x:Key="TBlock"
@@ -86,17 +85,8 @@
                     Grid.Column="1"
                     Style="{StaticResource TBox}"
                     TextChanged="MaxBackupTBox_TextChanged"
-                    IsEnabled="False"
+                    GotKeyboardFocus="MaxBackupTBox_GotKeyboardFocus"
                     ToolTipService.ShowOnDisabled="True">
-                    <TextBox.Text>
-                        <Binding 
-                            Path="MaxBackup" 
-                            UpdateSourceTrigger="PropertyChanged">
-                            <Binding.ValidationRules>
-                                <StaticResource ResourceKey="IntValidationRule"/>
-                            </Binding.ValidationRules>
-                        </Binding>
-                    </TextBox.Text>
                     <TextBox.ToolTip>
                         <TextBlock 
                             TextWrapping="Wrap"
@@ -106,7 +96,7 @@
                             Foreground="Black">
                             Количество резервных копий (по умолчанию 10 шт.).
                             <LineBreak/>
-                            <Bold>ВАЖНО:</Bold> Если значение -1, то резервные копии не применимы для этого конфига (создай новый)
+                            <Bold>ВАЖНО:</Bold> 🔐 — прежний режим (10 копий по умолчанию). Введи целое число больше нуля и сохрани конфигурацию. Недостающий столбец будет добавлен в её БД автоматически.
                         </TextBlock>
                     </TextBox.ToolTip>
                 </TextBox>

@@ -19,7 +19,6 @@
         Background="#FF292D36">
     <Window.Resources>
 
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
         <Style 
             x:Key="UserActionBtns"
@@ -183,20 +182,11 @@
                     Grid.Row="0"
                     Text="Дополнительные настройки:"
                     Margin="5"/>
-                <ContentPresenter
+                <StackPanel
                     Grid.Column="0"
-                    Grid.Row="1"
-                    Content="{Binding SelectedConfig}">
-                    <ContentPresenter.Resources>
-                        <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
-                            <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
-                        </DataTemplate>-->
-                        <!--Создается новый UserControl, и привязывается по аналогии. Потом в SetExtraSettings() выбираем нужный-->
-                        <!--<DataTemplate DataType="{x:Type local:NWExtraSettings}">
-                            <local:NWExtraSettings CurrentDBNWConfigData="{Binding DBNWConfigData}"/>
-                        </DataTemplate>-->
-                    </ContentPresenter.Resources>
-                </ContentPresenter>
+                    Grid.Row="1">
+                    <ContentPresenter Content="{Binding SelectedConfig}"/>
+                </StackPanel>
                 <!--Доп настройки-->
 
                 <!--Список файлов-->

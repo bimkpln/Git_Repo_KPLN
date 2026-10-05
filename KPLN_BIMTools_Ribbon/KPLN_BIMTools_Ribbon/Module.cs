@@ -260,7 +260,19 @@ namespace KPLN_BIMTools_Ribbon
                 if (arg.Equals("AutoStart"))
                 {
                     ExchangeService.IsAutoStart = true;
-                    AutoRun(nameof(CommandRVTExchange), RevitDocExchangeEnum.Revit);
+                    ExchangeService.AutoStartTimeUtc = DateTime.UtcNow;
+                    try
+                    {
+                        AutoRun(nameof(CommandRVTExchange), RevitDocExchangeEnum.Revit);
+                        AutoRun(nameof(CommandNWExport), RevitDocExchangeEnum.Navisworks);
+                        AutoRun(nameof(CommandIFCExport), RevitDocExchangeEnum.IFC);
+                    }
+                    finally
+                    {
+                        ExchangeService.IsAutoStart = false;
+                        ExchangeService.AutoStartTimeUtc = null;
+                    }
+                    break;
                 }
             }
             #endregion

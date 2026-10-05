@@ -19,7 +19,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
 {
     public partial class ConfigDispatcher : Window
     {
-        private readonly DBModuleAutostart[] _dbModuleAutostarArrForUser;
+        private readonly List<DBModuleAutostart> _dbModuleAutostarArrForUser = new List<DBModuleAutostart>();
         private readonly ObservableCollection<DBRevitDocExchangesWrapper> _dbRevitDocExchWrappers;
 
         private readonly DBProject _project;
@@ -58,7 +58,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 _dbModuleAutostarArrForUser = SQLiteMainService
                     .SQLiteModuleAutostartServiceInst
                     .GetDBModuleAutostartsByUserAndRVersionAndPrjIdAndTable(SQLiteMainService.CurrentDBUser.Id, ModuleData.RevitVersion, _project.Id, _moduleId, DBEnumerator.RevitDocExchanges.ToString())
-                    .ToArray();
+                    .ToList();
 
                 // Взвожу галку, если конфиг в списке
                 foreach (DBModuleAutostart dBModuleAutostart in _dbModuleAutostarArrForUser)
@@ -99,44 +99,133 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 Close();
         }
 
-        private void OnConfigClicked(object sender, RoutedEventArgs e) => BtnEnableSwitch();
+        private void OnConfigClicked(object sender, RoutedEventArgs e)
+        {
+            if (_isAutoStartConfig && sender is CheckBox checkBox
+                && checkBox.DataContext is DBRevitDocExchangesWrapper wrapper && checkBox.IsChecked == true)
+                EditAutostartSettings(wrapper, false);
+
+            // Снятие галки только помечает назначение для удаления при сохранении.
+            BtnEnableSwitch();
+        }
+
+        private void EditAutostartSettings(DBRevitDocExchangesWrapper wrapper, bool wasSelected)
+        {
+            try
+            {
+                var settings = new AutostartConfigItem(GetAutostartConfiguration(wrapper.Id), wrapper.SettingName)
+                {
+                    Owner = this,
+                };
+
+                ApplyAutostartSettings(wrapper, settings, settings.ShowDialog() == true, wasSelected);
+            }
+            catch (Exception ex)
+            {
+                wrapper.IsSelected = wasSelected;
+                MessageBox.Show(this, "Не удалось открыть настройки автозапуска.\n" + ex.Message,
+                    "KPLN: автозапуск", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            BtnEnableSwitch();
+        }
+
+        private void ApplyAutostartSettings(DBRevitDocExchangesWrapper wrapper, AutostartConfigItem settings, bool confirmed, bool wasSelected)
+        {
+            if (confirmed)
+            {
+                settings.ValidateSettings();
+                DBModuleAutostart assignment = GetAutostartConfiguration(wrapper.Id);
+                assignment.NotificationUserId = settings.NotificationUserId;
+                assignment.StartDateUtc = settings.StartDateUtc;
+                assignment.IntervalHours = settings.IntervalHours;
+                assignment.SkipWeekends = settings.SkipWeekends;
+            }
+
+            // Отмена восстанавливает выбор до действия пользователя, а не снимает существующую галку.
+            // Ни подтверждение, ни отмена диалога не записывают данные в БД.
+            wrapper.IsSelected = confirmed || wasSelected;
+        }
+
+        private void ConfigContextMenu_Opened(object sender, RoutedEventArgs e)
+        {
+            if (sender is ContextMenu menu)
+            {
+                foreach (MenuItem item in menu.Items.OfType<MenuItem>().Where(item => Equals(item.Tag, "AutostartSettings")))
+                {
+                    item.Visibility = _isAutoStartConfig ? Visibility.Visible : Visibility.Collapsed;
+                    item.IsEnabled = menu.DataContext is DBRevitDocExchangesWrapper wrapper && wrapper.IsSelected;
+                }
+            }
+        }
+
+        private void MenuItem_AutostartSettings_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isAutoStartConfig && sender is MenuItem item
+                && item.DataContext is DBRevitDocExchangesWrapper wrapper && wrapper.IsSelected)
+                EditAutostartSettings(wrapper, wrapper.IsSelected);
+        }
 
         private void OnBtnRun(object sender, RoutedEventArgs e)
         {
-            if (_isAutoStartConfig)
+            try
             {
-                // Удаляю НЕ отмеченные (их сняли)
-                foreach (DBModuleAutostart dBModuleAutostart in _dbModuleAutostarArrForUser)
+                if (_isAutoStartConfig)
+                    SaveAutostartConfigurations();
+
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Не удалось сохранить настройки автозапуска.\n" + ex.Message,
+                    "KPLN: автозапуск", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SaveAutostartConfigurations()
+        {
+            DBModuleAutostart[] selected = SelectedDBExchWrappers
+                .Select(wrapper => GetAutostartConfiguration(wrapper.Id)).ToArray();
+            string[] unconfigured = SelectedDBExchWrappers
+                .Where(wrapper => !GetAutostartConfiguration(wrapper.Id).HasSchedule
+                    || !GetAutostartConfiguration(wrapper.Id).NotificationUserId.HasValue)
+                .Select(wrapper => wrapper.SettingName).ToArray();
+            if (unconfigured.Length > 0)
+                throw new InvalidOperationException("Настрой дату, время, интервал и получателя либо сними галку у конфигураций:\n" + string.Join("\n", unconfigured));
+
+            // Назначения других форматов из общей коллекции пользователя не затрагиваем.
+            DBModuleAutostart[] removed = _dbModuleAutostarArrForUser
+                .Where(item => _dbRevitDocExchWrappers.Any(wrapper => wrapper.Id == item.DBTableKeyId && !wrapper.IsSelected))
+                .ToArray();
+
+            SQLiteMainService.SQLiteModuleAutostartServiceInst.SaveDBModuleAutostarts(selected, removed);
+        }
+
+        private DBModuleAutostart GetAutostartConfiguration(int configurationId)
+        {
+            if (!_isAutoStartConfig)
+                return null;
+
+            DBModuleAutostart item = _dbModuleAutostarArrForUser.FirstOrDefault(entry => entry.DBTableKeyId == configurationId);
+            if (item == null)
+            {
+                item = new DBModuleAutostart
                 {
-                    DBRevitDocExchangesWrapper selectedExchWr = _dbRevitDocExchWrappers.FirstOrDefault(dExhWr => dExhWr.Id == dBModuleAutostart.DBTableKeyId);
-                    if (selectedExchWr == null) continue;
-
-                    if (!selectedExchWr.IsSelected)
-                        SQLiteMainService
-                            .SQLiteModuleAutostartServiceInst
-                            .DeleteDBModuleAutostarts(dBModuleAutostart);
-                }
-
-
-                // Создаю и обновляю новые
-                var selectedDocExch = SelectedDBExchWrappers
-                    .Select(docExch => new DBModuleAutostart()
-                    {
-                        UserId = SQLiteMainService.CurrentDBUser.Id,
-                        RevitVersion = ModuleData.RevitVersion,
-                        ProjectId = _project.Id,
-                        ModuleId = _moduleId,
-                        DBTableName = DBEnumerator.RevitDocExchanges.ToString(),
-                        DBTableKeyId = docExch.Id,
-                    });
-
-                SQLiteMainService
-                    .SQLiteModuleAutostartServiceInst
-                    .BulkCreateDBModuleAutostarts(selectedDocExch);
+                    UserId = SQLiteMainService.CurrentDBUser.Id,
+                    RevitVersion = ModuleData.RevitVersion,
+                    ProjectId = _project.Id,
+                    ModuleId = _moduleId,
+                    DBTableName = DBEnumerator.RevitDocExchanges.ToString(),
+                    DBTableKeyId = configurationId,
+                    NotificationUserId = SQLiteMainService.CurrentDBUser.Id,
+                    StartDateUtc = DateTime.Today.AddHours(6).ToUniversalTime(),
+                    IntervalHours = 24,
+                };
+                _dbModuleAutostarArrForUser.Add(item);
             }
 
-            DialogResult = true;
-            this.Close();
+            return item;
         }
 
         private void OnBtnAddConf(object sender, RoutedEventArgs e)
@@ -187,15 +276,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     ConfigItem configItem = new ConfigItem(sqliteService, _project,
                         _revitDocExchangeEnum, docExchangeEnt);
 
-                    configItem.ShowDialog();
-
-                    // Обновляю основную коллекцию новыми данными
-                    int index = _dbRevitDocExchWrappers.IndexOf(docExchangeEnt);
-                    if (index >= 0)
-                        // Уведомить об изменении элемента
-                        _dbRevitDocExchWrappers[index] = configItem.DBRevitDocExchWrapper;
+                    if (configItem.ShowDialog() == true)
+                    {
+                        ReplaceEditedConfiguration(docExchangeEnt, configItem.DBRevitDocExchWrapper);
+                    }
                 }
             }
+        }
+
+        private void ReplaceEditedConfiguration(DBRevitDocExchangesWrapper original, DBRevitDocExchangesWrapper updated)
+        {
+            int index = _dbRevitDocExchWrappers.IndexOf(original);
+            if (index < 0)
+                return;
+
+            // Галка относится к выбору в диспетчере, а не к сохраняемым настройкам конфига.
+            updated.IsSelected = original.IsSelected;
+            _dbRevitDocExchWrappers[index] = updated;
+            BtnEnableSwitch();
         }
 
         private void MenuItem_Copy_Click(object sender, RoutedEventArgs e)

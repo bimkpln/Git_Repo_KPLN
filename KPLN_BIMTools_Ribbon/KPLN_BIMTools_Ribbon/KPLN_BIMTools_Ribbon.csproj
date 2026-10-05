@@ -195,6 +195,9 @@
     <Compile Include="Forms\DBProjectCreateWindow.xaml.cs">
       <DependentUpon>DBProjectCreateWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Forms\AutostartConfigItem.xaml.cs">
+      <DependentUpon>AutostartConfigItem.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Forms\ConfigItem.xaml.cs">
       <DependentUpon>ConfigItem.xaml</DependentUpon>
     </Compile>
@@ -286,6 +289,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\DBProjectCreateWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\AutostartConfigItem.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

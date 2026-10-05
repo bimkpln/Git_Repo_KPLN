@@ -127,44 +127,57 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
         /// </summary>
         public void PostConfigItems_ByRSConfigs(IEnumerable<DBRVTConfigData> rsConfigs)
         {
-            try
-            {
-                ExecuteNonQuery(
-                    $"INSERT INTO {_dbTableName} " +
-                        $"({nameof(DBRVTConfigData.Name)}, " +
-                        $"{nameof(DBRVTConfigData.PathFrom)}, " +
-                        $"{nameof(DBRVTConfigData.PathTo)}, " +
-                        $"{nameof(DBRVTConfigData.NameChangeFind)}, " +
-                        $"{nameof(DBRVTConfigData.NameChangeSet)}, " +
-                        $"{nameof(DBRVTConfigData.MaxBackup)}) " +
-                    $"VALUES " +
-                        $"(@{nameof(DBRVTConfigData.Name)}, " +
-                        $"@{nameof(DBRVTConfigData.PathFrom)}, " +
-                        $"@{nameof(DBRVTConfigData.PathTo)}, " +
-                        $"@{nameof(DBRVTConfigData.NameChangeFind)}, " +
-                        $"@{nameof(DBRVTConfigData.NameChangeSet)}, " +
-                        $"@{nameof(DBRVTConfigData.MaxBackup)});",
-                    rsConfigs);
-            }
-            // Старая версия БД, когда не было параметра кол-ва рез. копий и замены имён у файла. Последняя редакция 17.03.2025
-            catch (Exception)
-            {
-                HtmlOutput.Print(
-                    "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
-                    "Если нужно его заменить - сними копию текушего конфига, а старую удали",
-                    MessageType.Warning);
+            WriteRVTConfigItems(rsConfigs, false);
+        }
 
-                ExecuteNonQuery(
-                   $"INSERT INTO {_dbTableName} " +
-                       $"({nameof(DBRVTConfigData.Name)}, " +
-                       $"{nameof(DBRVTConfigData.PathFrom)}, " +
-                       $"{nameof(DBRVTConfigData.PathTo)}) " +
-                   $"VALUES " +
-                       $"(@{nameof(DBRVTConfigData.Name)}, " +
-                       $"@{nameof(DBRVTConfigData.PathFrom)}, " +
-                       $"@{nameof(DBRVTConfigData.PathTo)});",
-                   rsConfigs);
+        internal void ReplaceConfigItems_ByRSConfigs(IEnumerable<DBRVTConfigData> rsConfigs) =>
+            WriteRVTConfigItems(rsConfigs, true);
+
+        private void WriteRVTConfigItems(IEnumerable<DBRVTConfigData> rsConfigs, bool replaceExisting)
+        {
+            DBRVTConfigData[] configs = rsConfigs.ToArray();
+            using (IDbConnection connection = new SQLiteConnection(_dbPath))
+            {
+                connection.Open();
+                using (IDbTransaction transaction = connection.BeginTransaction(IsolationLevel.Serializable))
+                {
+                    string[] columns = GetRVTWritableColumns(connection, transaction, configs);
+                    if (replaceExisting)
+                        connection.Execute($"DELETE FROM {_dbTableName};", transaction: transaction);
+
+                    connection.Execute(
+                        $"INSERT INTO {_dbTableName} ({string.Join(", ", columns)}) " +
+                        $"VALUES ({string.Join(", ", columns.Select(column => "@" + column))});",
+                        configs, transaction);
+                    transaction.Commit();
+                }
             }
+        }
+
+        /// <summary>
+        /// Добавляем только запрошенную настройку. Старые строки сохраняют MaxBackup = -1.
+        /// Отсутствие колонок переименования не мешает сохранить количество резервных копий.
+        /// </summary>
+        private string[] GetRVTWritableColumns(IDbConnection connection, IDbTransaction transaction, DBRVTConfigData[] configs)
+        {
+            if (configs.Any(config => config.MaxBackup != -1 && config.MaxBackup <= 0))
+                throw new ArgumentOutOfRangeException(nameof(DBRVTConfigData.MaxBackup), "Количество резервных копий должно быть больше нуля.");
+
+            HashSet<string> existingColumns = new HashSet<string>(connection.Query<string>(
+                "SELECT name FROM pragma_table_info(@TableName);", new { TableName = _dbTableName }, transaction),
+                StringComparer.OrdinalIgnoreCase);
+
+            if (!existingColumns.Contains(nameof(DBRVTConfigData.MaxBackup)) && configs.Any(config => config.MaxBackup != -1))
+            {
+                connection.Execute($"ALTER TABLE {_dbTableName} ADD COLUMN {nameof(DBRVTConfigData.MaxBackup)} INTEGER DEFAULT -1;", transaction: transaction);
+                existingColumns.Add(nameof(DBRVTConfigData.MaxBackup));
+            }
+
+            return new[]
+            {
+                nameof(DBRVTConfigData.Name), nameof(DBRVTConfigData.PathFrom), nameof(DBRVTConfigData.PathTo),
+                nameof(DBRVTConfigData.NameChangeFind), nameof(DBRVTConfigData.NameChangeSet), nameof(DBRVTConfigData.MaxBackup),
+            }.Where(existingColumns.Contains).ToArray();
         }
 
         /// <summary>
@@ -255,38 +268,20 @@ namespace KPLN_BIMTools_Ribbon.Core.SQLite
                 case RevitDocExchangeEnum.Revit:
                     if (dBConfig is DBRVTConfigData rsConfig)
                     {
-                        try
+                        using (IDbConnection connection = new SQLiteConnection(_dbPath))
                         {
-                            return ExecuteQuery<DBRVTConfigData>(
-                                $"UPDATE {_dbTableName} " +
-                                $"SET " +
-                                    $"{nameof(DBRVTConfigData.PathFrom)} = '{rsConfig.PathFrom}'" +
-                                    $"{nameof(DBRVTConfigData.PathTo)} = '{rsConfig.PathTo}'" +
-                                    $"{nameof(DBRVTConfigData.NameChangeFind)} = '{rsConfig.NameChangeFind}'" +
-                                    $"{nameof(DBRVTConfigData.NameChangeSet)} = '{rsConfig.NameChangeSet}'" +
-                                    $"{nameof(DBRVTConfigData.MaxBackup)} = '{rsConfig.MaxBackup}'" +
-                                $"WHERE " +
-                                    $"{nameof(DBRVTConfigData.Id)} = '{rsConfig.Id}';",
-                                rsConfig)
-                                .FirstOrDefault();
-                        }
-                        // Старая версия БД, когда не было параметра кол-ва рез. копий и замены имён у файла. Последняя редакция 17.03.2025
-                        catch (Exception)
-                        {
-                            HtmlOutput.Print(
-                                "Не удалось перезаписать параметр кол-ва резервных копий, оно останется пустым (дефолтным). " +
-                                "Если нужно его заменить - сними копию текушего конфига, а старую удали",
-                                MessageType.Warning);
-
-                            return ExecuteQuery<DBRVTConfigData>(
-                                $"UPDATE {_dbTableName} " +
-                                $"SET " +
-                                    $"{nameof(DBRVTConfigData.PathFrom)} = '{rsConfig.PathFrom}'" +
-                                    $"{nameof(DBRVTConfigData.PathTo)} = '{rsConfig.PathTo}'" +
-                                $"WHERE " +
-                                    $"{nameof(DBRVTConfigData.Id)} = '{rsConfig.Id}';",
-                                rsConfig)
-                                .FirstOrDefault();
+                            connection.Open();
+                            using (IDbTransaction transaction = connection.BeginTransaction(IsolationLevel.Serializable))
+                            {
+                                string[] columns = GetRVTWritableColumns(connection, transaction, new[] { rsConfig });
+                                connection.Execute($"UPDATE {_dbTableName} SET " +
+                                    string.Join(", ", columns.Select(column => column + " = @" + column)) + " WHERE Id = @Id;",
+                                    rsConfig, transaction);
+                                DBRVTConfigData result = connection.Query<DBRVTConfigData>(
+                                    $"SELECT * FROM {_dbTableName} WHERE Id = @Id;", rsConfig, transaction).FirstOrDefault();
+                                transaction.Commit();
+                                return result;
+                            }
                         }
                     }
                     return null;

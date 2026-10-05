@@ -41,6 +41,8 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// </summary>
         internal static bool IsAutoStart { get; set; } = false;
 
+        internal static DateTime? AutoStartTimeUtc { get; set; }
+
         /// <summary>
         /// Счтетчик успешно отработанных процессов
         /// </summary>
@@ -137,20 +139,24 @@ namespace KPLN_BIMTools_Ribbon.Common
 
             // Подготовка коллекции для экспорта
             DBRevitDocExchangesWrapper[] dbRevitDocExchanges = null;
+            DBModuleAutostart[] moduleAutostarts = new DBModuleAutostart[0];
             if (IsAutoStart)
             {
                 docExchangeModuleName = $"Автостарт: {revitDocExchangeEnum}";
 
-                IEnumerable<int> docExchIdsFromModuleAS = SQLiteMainService
+                moduleAutostarts = SQLiteMainService
                     .SQLiteModuleAutostartServiceInst
-                    .GetDBModuleAutostarts_ByUserAndRVersionAndTable(SQLiteMainService.CurrentDBUser.Id, ModuleData.RevitVersion, DBEnumerator.RevitDocExchanges.ToString())
-                    .Select(mas => mas.DBTableKeyId);
+                    .GetDueDBModuleAutostarts(SQLiteMainService.CurrentDBUser.Id, ModuleData.RevitVersion, 80,
+                        DBEnumerator.RevitDocExchanges.ToString(), AutoStartTimeUtc ?? DateTime.UtcNow);
+                IEnumerable<int> docExchIdsFromModuleAS = moduleAutostarts.Select(item => item.DBTableKeyId);
                 if (docExchIdsFromModuleAS.Count() == 0)
                     return;
 
                 IEnumerable<DBRevitDocExchanges> docExcs = SQLiteMainService
                     .SQLiteRevitDocExchangesServiceInst
-                    .GetDBRevitDocExchanges_ByIdCol(docExchIdsFromModuleAS);
+                    .GetDBRevitDocExchanges_ByIdCol(docExchIdsFromModuleAS)
+                    .Where(item => item.RevitDocExchangeType == revitDocExchangeEnum.ToString())
+                    .ToArray();
                 if (docExcs.Count() == 0)
                     return;
 
@@ -191,6 +197,9 @@ namespace KPLN_BIMTools_Ribbon.Common
             if (dbRevitDocExchanges == null)
                 return;
 
+            List<ExchangeNotificationResult> notificationResults = new List<ExchangeNotificationResult>();
+            ExchangeNotificationResult currentResult = null;
+
             using (UIContrAppSubscriber subscriber = new UIContrAppSubscriber(RevitUIControlledApp, Module.CurrentLogger, this))
             {
                 // Локальный try, чтобы гарантированно отписаться от событий. Cath - кидает ошибку выше
@@ -200,79 +209,147 @@ namespace KPLN_BIMTools_Ribbon.Common
 
                     foreach (DBRevitDocExchangesWrapper currentDocExchEnt in dbRevitDocExchanges)
                     {
-                        SQLiteService sqliteService = new SQLiteService(currentDocExchEnt.SettingDBFilePath, revitDocExchangeEnum);
-                        IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
-                        foreach (DBConfigEntity config in configs)
+                        DBModuleAutostart assignment = moduleAutostarts.FirstOrDefault(item => item.DBTableKeyId == currentDocExchEnt.Id
+                            && item.ProjectId == currentDocExchEnt.CurrentDBRevitDocExchanges.ProjectId);
+                        if (IsAutoStart)
                         {
-                            List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
-                            if (fileFromPathes != null)
+                            if (assignment == null)
+                                continue;
+
+                            // Сначала фиксируем попытку в БД. Без успешной записи выгрузка не начинается.
+                            assignment = SQLiteMainService.SQLiteModuleAutostartServiceInst.TryStartExport(assignment, DateTime.UtcNow);
+                            if (assignment == null)
+                                continue;
+                        }
+
+                        currentResult = new ExchangeNotificationResult
+                        {
+                            Configuration = currentDocExchEnt.CurrentDBRevitDocExchanges,
+                            Autostart = assignment,
+                            SourceStart = CountSourceDocs,
+                            ProcessedStart = CountProcessedDocs,
+                            ProjectName = _sourceProjectName,
+                        };
+                        notificationResults.Add(currentResult);
+
+                        try
+                        {
+                            // Автозапуск может содержать конфигурации разных проектов.
+                            _sourceProjectName = SQLiteMainService.SQLitePrjServiceInst
+                                .GetDBProject_ByProjectId(currentResult.Configuration.ProjectId)?.Name ?? "Не определено";
+                            currentResult.ProjectName = _sourceProjectName;
+
+                            SQLiteService sqliteService = new SQLiteService(currentDocExchEnt.SettingDBFilePath, revitDocExchangeEnum);
+                            IEnumerable<DBConfigEntity> configs = sqliteService.GetConfigItems();
+                            foreach (DBConfigEntity config in configs)
                             {
-                                CountSourceDocs += fileFromPathes.Count;
-                                foreach (string fileFromPath in fileFromPathes)
+                                List<string> fileFromPathes = PreparePathesToOpen(config.PathFrom);
+                                if (fileFromPathes != null)
                                 {
-                                    string newFilePath = string.Empty;
-                                    ModelPath docFromModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
-
-                                    // Проверяю КУДА копирвать.
-                                    // Это папка, если нет - то ревит-сервер
-                                    bool isRevitServerFile = false;
-                                    bool isKPLNServerFile = false;
-                                    if (Directory.Exists(config.PathTo))
-                                        isKPLNServerFile = true;
-                                    // Убеждаюсь и обрабатываю ревит-сервер
-                                    else if (CheckPathFoRevitServer(config.PathTo))
-                                        isRevitServerFile = true;
-
-
-                                    // Если ничего из вышеописанного - то ошибка
-                                    if (isRevitServerFile == isKPLNServerFile)
+                                    CountSourceDocs += fileFromPathes.Count;
+                                    foreach (string fileFromPath in fileFromPathes)
                                     {
-                                        Module.CurrentLogger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
-                                        continue;
-                                    }
-                                    Module.CurrentLogger.Info($"Приступаю к экспорту файла {ModelPathUtils.ConvertModelPathToUserVisiblePath(docFromModelPath)}");
+                                        string newFilePath = string.Empty;
+                                        ModelPath docFromModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(fileFromPath);
 
-                                    // Часто встречаются фантомные ошибки открытия, особенно с RS. Ввожу итерации
-                                    int exchIteration = 1;
-                                    int maxExchIteration = 2;
-                                    while (exchIteration <= maxExchIteration)
-                                    {
-                                        // Запускаю экспорт
-                                        if (isKPLNServerFile)
-                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
-                                        else if (isRevitServerFile)
-                                            newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
+                                        // Проверяю КУДА копирвать.
+                                        // Это папка, если нет - то ревит-сервер
+                                        bool isRevitServerFile = false;
+                                        bool isKPLNServerFile = false;
+                                        if (Directory.Exists(config.PathTo))
+                                            isKPLNServerFile = true;
+                                        // Убеждаюсь и обрабатываю ревит-сервер
+                                        else if (CheckPathFoRevitServer(config.PathTo))
+                                            isRevitServerFile = true;
 
-                                        // Проверка результатов итерации
-                                        if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
+
+                                        // Если ничего из вышеописанного - то ошибка
+                                        if (isRevitServerFile == isKPLNServerFile)
                                         {
-                                            CountProcessedDocs++;
-                                            break;
+                                            Module.CurrentLogger.Error($"Файл {config.PathFrom} не удалось определить путь для сохранения {config.PathTo}.\n");
+                                            continue;
+                                        }
+                                        Module.CurrentLogger.Info($"Приступаю к экспорту файла {ModelPathUtils.ConvertModelPathToUserVisiblePath(docFromModelPath)}");
+
+                                        // Часто встречаются фантомные ошибки открытия, особенно с RS. Ввожу итерации
+                                        int exchIteration = 1;
+                                        int maxExchIteration = 2;
+                                        while (exchIteration <= maxExchIteration)
+                                        {
+                                            // Запускаю экспорт
+                                            if (isKPLNServerFile)
+                                                newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config);
+                                            else if (isRevitServerFile)
+                                                newFilePath = ExchangeFile(uiapp.Application, docFromModelPath, config, "RSN:");
+
+                                            // Проверка результатов итерации
+                                            if (newFilePath != null && !string.IsNullOrEmpty(newFilePath))
+                                            {
+                                                CountProcessedDocs++;
+                                                break;
+                                            }
+
+                                            Module.CurrentLogger.Debug($"Файл {config.Name} не экспортирован. Ошибки описаны выше. Выполнена итерация {exchIteration} из {maxExchIteration} возможных");
+                                            exchIteration++;
                                         }
 
-                                        Module.CurrentLogger.Debug($"Файл {config.Name} не экспортирован. Ошибки описаны выше. Выполнена итерация {exchIteration} из {maxExchIteration} возможных");
-                                        exchIteration++;
+
+                                        // След. итерации не помогли, выхожу
+                                        if (newFilePath == null || string.IsNullOrEmpty(newFilePath))
+                                            Module.CurrentLogger.Error($"Файл {config.Name} не экспортирован (количество попыток - {maxExchIteration}). Ошибки описаны выше.\n");
                                     }
+                                }
+                                // Все равно добавляю 1, чтобы попало в отчет
+                                else CountSourceDocs++;
+                            }
 
-
-                                    // След. итерации не помогли, выхожу
-                                    if (newFilePath == null || string.IsNullOrEmpty(newFilePath))
-                                        Module.CurrentLogger.Error($"Файл {config.Name} не экспортирован (количество попыток - {maxExchIteration}). Ошибки описаны выше.\n");
+                        }
+                        catch (Exception ex)
+                        {
+                            currentResult.Failed = true;
+                            Module.CurrentLogger.Error($"Ошибка конфигурации [{currentDocExchEnt.SettingName}]: {ex.Message}");
+                            if (!IsAutoStart)
+                                throw;
+                        }
+                        finally
+                        {
+                            currentResult.SourceCount = CountSourceDocs - currentResult.SourceStart;
+                            currentResult.ProcessedCount = CountProcessedDocs - currentResult.ProcessedStart;
+                            if (IsAutoStart && assignment != null)
+                            {
+                                try
+                                {
+                                    // Завершение фиксируем и после ошибок; расписание учитывает только начало.
+                                    if (!SQLiteMainService.SQLiteModuleAutostartServiceInst.CompleteExport(assignment, DateTime.UtcNow))
+                                        Module.CurrentLogger.Error($"Не записано завершение [{currentDocExchEnt.SettingName}]: назначение удалено или уже запущена новая попытка.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    currentResult.Failed = true;
+                                    Module.CurrentLogger.Error($"Не удалось записать завершение [{currentDocExchEnt.SettingName}]: {ex.Message}");
                                 }
                             }
-                            // Все равно добавляю 1, чтобы попало в отчет
-                            else CountSourceDocs++;
+                            currentResult = null;
                         }
                     }
 
-                    SendResultMsg($"Плагин экспорта [{docExchangeModuleName}]", configNames);
                     Module.CurrentLogger.Info($"Работа плагина [{docExchangeModuleName}] завершена.\n");
                 }
                 catch (Exception ex)
                 {
-                    SendResultMsg($"Плагин экспорта [{docExchangeModuleName}]", configNames);
+                    if (currentResult != null)
+                    {
+                        currentResult.SourceCount = CountSourceDocs - currentResult.SourceStart;
+                        currentResult.ProcessedCount = CountProcessedDocs - currentResult.ProcessedStart;
+                        currentResult.Failed = true;
+                    }
+
                     Module.CurrentLogger.Error($"Работа плагина [{docExchangeModuleName}] ЭКСТРЕННО завершена. Ошибка: {ex.Message}\n");
-                    throw ex;
+                    throw;
+                }
+                finally
+                {
+                    SendResultMessages($"Плагин экспорта [{docExchangeModuleName}]", notificationResults);
                 }
             }
         }
@@ -343,28 +420,100 @@ namespace KPLN_BIMTools_Ribbon.Common
         /// <summary>
         /// Отправка результата пользователю в месенджер
         /// </summary>
-        private void SendResultMsg(string moduleName, string configNames)
+        private sealed class ExchangeNotificationResult
         {
-            if (CountProcessedDocs < CountSourceDocs || CountProcessedDocs == 0)
+            internal DBRevitDocExchanges Configuration { get; set; }
+            internal DBModuleAutostart Autostart { get; set; }
+            internal string ProjectName { get; set; }
+            internal int SourceStart { get; set; }
+            internal int ProcessedStart { get; set; }
+            internal int SourceCount { get; set; }
+            internal int ProcessedCount { get; set; }
+            internal bool Failed { get; set; }
+        }
+
+        private void SendResultMessages(string moduleName, List<ExchangeNotificationResult> results)
+        {
+            // Старые конфиги сохраняют общую сводку запускающему пользователю.
+            ExchangeNotificationResult[] legacyResults = results.Where(result => !(result.Autostart?.NotificationUserId).HasValue).ToArray();
+            if (legacyResults.Length > 0)
+                SendResultMsg(moduleName, legacyResults, null);
+
+            foreach (ExchangeNotificationResult result in results.Where(item => (item.Autostart?.NotificationUserId).HasValue))
+                SendResultMsg(moduleName, new[] { result }, result.Autostart.NotificationUserId);
+        }
+
+        private void SendResultMsg(string moduleName, ExchangeNotificationResult[] results, int? notificationUserId)
+        {
+            try
             {
-                BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                    SQLiteMainService.CurrentDBUser,
+                DBUser recipient = ResolveNotificationRecipient(notificationUserId, out string recipientInfo);
+                string configNames = string.Join("; ", results.Select(result => result.Configuration.SettingName));
+                if (recipient == null)
+                {
+                    Module.CurrentLogger.Error($"Не удалось отправить уведомление по конфигурациям [{configNames}]: {recipientInfo}");
+                    return;
+                }
+
+                int sourceCount = results.Sum(result => result.SourceCount);
+                int processedCount = results.Sum(result => result.ProcessedCount);
+                bool hasErrors = results.Any(result => result.Failed || result.ProcessedCount < result.SourceCount || result.ProcessedCount == 0);
+                string projectNames = string.Join("; ", results.Select(result => result.ProjectName).Distinct());
+                string status = hasErrors ? "Отработано с ошибками." : "Отработано без ошибок.";
+                string message =
                     $"Модуль: [b]{moduleName}\n[/b]" +
                     $"Анализируемые конфигурации: {configNames}\n" +
-                    $"Статус: Отработано с ошибками.\n" +
-                    $"Метрик производительности: Выгружено {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]\n" +
-                    $"Ошибки: См. файл логов у пользователя {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name}.\n" +
-                    $"Путь к логам у пользователя: {Module.CurrentLoggerFullName}");
+                    $"Статус: {status}\n" +
+                    $"Метрик производительности: Обработано {processedCount} из {sourceCount} файлов, для проекта: [b]{projectNames}[/b]";
+                if (hasErrors)
+                    message += $"\nОшибки: См. файл логов у пользователя {SQLiteMainService.CurrentDBUser?.Surname} {SQLiteMainService.CurrentDBUser?.Name}.\n" +
+                        $"Путь к логам у пользователя: {Module.CurrentLoggerFullName}";
+
+                if (!string.IsNullOrEmpty(recipientInfo))
+                {
+                    message += "\nВнимание: " + recipientInfo;
+                    Module.CurrentLogger.Warn($"Уведомление по конфигурациям [{configNames}]: {recipientInfo}");
+                }
+
+                BitrixMessageSender.SendMsg_ToUser_ByDBUser(recipient, message);
             }
-            else
+            catch (Exception ex)
             {
-                BitrixMessageSender.SendMsg_ToUser_ByDBUser(
-                    SQLiteMainService.CurrentDBUser,
-                    $"Модуль: [b]{moduleName}\n[/b]" +
-                    $"Анализируемые конфигурации: {configNames}\n" +
-                    $"Статус: Отработано без ошибок.\n" +
-                    $"Метрик производительности: Обработано {CountProcessedDocs} из {CountSourceDocs} файлов, для проекта: [b]{_sourceProjectName}[/b]");
+                // Ошибка подготовки уведомления не меняет результат экспорта и не мешает другим получателям.
+                Module.CurrentLogger.Error($"Не удалось отправить уведомление: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Недоступного получателя заменяем запускающим пользователем, робота rbim — Тимофеем Куцко.
+        /// </summary>
+        private static DBUser ResolveNotificationRecipient(int? notificationUserId, out string recipientInfo)
+        {
+            recipientInfo = string.Empty;
+            DBUser recipient = notificationUserId.HasValue
+                ? SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ById(notificationUserId.Value)
+                : SQLiteMainService.CurrentDBUser;
+
+            if (notificationUserId.HasValue && (recipient == null || recipient.IsFired))
+            {
+                recipientInfo = $"Получатель уведомления (ID {notificationUserId.Value}) не найден или уволен. " +
+                    "Отчёт перенаправлен пользователю, запустившему экспорт. ";
+                recipient = SQLiteMainService.CurrentDBUser;
+            }
+
+            if (recipient != null && string.Equals(recipient.SystemName, "rbim", StringComparison.OrdinalIgnoreCase))
+            {
+                recipientInfo += "Получатель — Робот BIM (rbim). Отчёт перенаправлен Тимофею Куцко (tkutsko). ";
+                recipient = SQLiteMainService.SQLiteUserServiceInst.GetDBUser_ByUserName("tkutsko");
+            }
+
+            if (recipient == null || recipient.IsFired)
+            {
+                recipientInfo += "Итоговый получатель недоступен; отправка невозможна.";
+                return null;
+            }
+
+            return recipient;
         }
 
         /// <summary>

@@ -9,6 +9,7 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using Microsoft.Win32;
 using RevitServerAPILib;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -38,6 +39,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
         private string _sharedPathTo;
         private bool _canRunByName;
         private bool _canRunByPathTo;
+        private bool _isNewConfiguration;
 
         /// <summary>
         /// Конструктор основной единицы отчета
@@ -64,18 +66,21 @@ namespace KPLN_BIMTools_Ribbon.Forms
             InitializeComponent();
             PreviewKeyDown += new KeyEventHandler(HandleEsc);
 
+            // Копия создаёт новую БД, поэтому доступность настроек определяем до создания UserControl.
+            _isNewConfiguration = DBRevitDocExchWrapper == null
+                || !string.Equals(_sqliteService.CurrentDBFullPath, DBRevitDocExchWrapper.SettingDBFilePath, StringComparison.OrdinalIgnoreCase);
+
             if (DBRevitDocExchWrapper == null)
                 SetExtraSettings();
             else
             {
                 // Добавляю общее имя конфига
                 DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(SQLiteMainService.SQLiteRevitDocExchangesServiceInst.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
-                DBRevitDocExchWrapper = new DBRevitDocExchangesWrapper(SQLiteMainService.SQLiteRevitDocExchangesServiceInst.GetDBRevitDocExchanges_ById(DBRevitDocExchWrapper.Id));
                 SettingName = DBRevitDocExchWrapper.SettingName;
 
                 // Проверяю на триггер копирования - базы данных не будут совпадать
                 SQLiteService tempSqliteService = null;
-                if (_sqliteService.CurrentDBFullPath != DBRevitDocExchWrapper.SettingDBFilePath)
+                if (_isNewConfiguration)
                     tempSqliteService = new SQLiteService(DBRevitDocExchWrapper.SettingDBFilePath, _revitDocExchangeEnum);
                 else
                     tempSqliteService = _sqliteService;
@@ -95,6 +100,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             }
 
             DataContext = this;
+            BtnEnableSwitch();
         }
 
         /// <summary>
@@ -230,7 +236,13 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     break;
                 case (RevitDocExchangeEnum.Revit):
                     if (dBConfigEntity is DBRVTConfigData dbRVTConfigData)
+                    {
+                        // У копии будет новая схема Items; старый исходник с MaxBackup = -1 остаётся заблокированным.
+                        if (_isNewConfiguration && dbRVTConfigData.MaxBackup == -1)
+                            dbRVTConfigData.MaxBackup = 10;
+
                         SelectedConfig = new RVTExtraSettings(dbRVTConfigData);
+                    }
                     break;
                 case (RevitDocExchangeEnum.IFC):
                     if (dBConfigEntity is DBIFCConfigData dbIFCConfigData)
@@ -461,6 +473,24 @@ namespace KPLN_BIMTools_Ribbon.Forms
 
         private void OnBtnOkClick(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                SaveConfiguration();
+                DialogResult = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Не удалось сохранить конфигурацию.\n" + ex.Message,
+                    "KPLN: конфигурация экспорта", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SaveConfiguration()
+        {
+            if (SelectedConfig is RVTExtraSettings rvtSettings && !rvtSettings.HasValidMaxBackup)
+                throw new InvalidOperationException("Количество резервных копий: введи целое число больше нуля или оставь 🔐 для прежнего режима.");
+
             // Настройка CurrentDBRevitDocExchanges. Если её нет, то создаём с нуля, иначе - делаем уточнение по параметрам
             if (DBRevitDocExchWrapper == null)
             {
@@ -492,9 +522,17 @@ namespace KPLN_BIMTools_Ribbon.Forms
             if (!System.IO.File.Exists(_sqliteService.CurrentDBFullPath))
             {
                 _sqliteService.CreateDbFile();
+            }
+
+            // Создание и копирование требуют новой записи, даже если после ошибки файл уже существует.
+            if (_isNewConfiguration)
+            {
                 int idFromDB = SQLiteMainService.SQLiteRevitDocExchangesServiceInst.CreateDBRevitDocExchanges(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                 DBRevitDocExchWrapper.Id = idFromDB;
+                _isNewConfiguration = false;
             }
+            else
+                SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
 
             //Создание экземпляра класса на основе введенных данных
             switch (_revitDocExchangeEnum)
@@ -511,7 +549,6 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByNWConfigs(dBNWConfigDatas);
                     }
                     break;
@@ -522,14 +559,8 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     IEnumerable<DBRVTConfigData> dBRVTConfigDatas = FileEntitiesList
                         .Select(fe => new DBRVTConfigData(fe.Name, fe.Path, SharedPathTo).MergeWithDBConfigEntity(dbRVTConfigData));
 
-                    if (_sqliteService.GetConfigItems().Count() == 0)
-                        _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
-                    else
-                    {
-                        _sqliteService.DropTable();
-                        SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
-                        _sqliteService.PostConfigItems_ByRSConfigs(dBRVTConfigDatas);
-                    }
+                    // Обновление схемы, очистка и запись выполняются одной транзакцией.
+                    _sqliteService.ReplaceConfigItems_ByRSConfigs(dBRVTConfigDatas);
                     break;
                 case RevitDocExchangeEnum.IFC:
                     IFCExtraSettings extraIFCSettings = (IFCExtraSettings)SelectedConfig;
@@ -543,14 +574,11 @@ namespace KPLN_BIMTools_Ribbon.Forms
                     else
                     {
                         _sqliteService.DropTable();
-                        SQLiteMainService.SQLiteRevitDocExchangesServiceInst.UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchWrapper.CurrentDBRevitDocExchanges);
                         _sqliteService.PostConfigItems_ByIFCConfigs(dBIFCConfigDatas);
                     }
                     break;
             }
 
-            this.DialogResult = true;
-            this.Close();
         }
     }
 }

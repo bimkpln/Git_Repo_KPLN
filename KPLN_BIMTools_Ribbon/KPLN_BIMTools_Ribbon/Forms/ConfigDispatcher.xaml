@@ -132,7 +132,7 @@
                                 <StackPanel Orientation="Horizontal" Grid.Row="0">
                                     <CheckBox
                                         x:Name="DocExchangeChBx"
-                                        IsChecked="{Binding IsSelected}"
+                                        IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         Click="OnConfigClicked"/>
                                     <TextBlock 
                                         TextWrapping="Wrap">
@@ -145,7 +145,9 @@
                                             </StackPanel>
                                         </TextBlock.ToolTip>
                                         <TextBlock.ContextMenu>
-                                            <ContextMenu>
+                                            <ContextMenu Opened="ConfigContextMenu_Opened">
+                                                <MenuItem Header="Настройки автозапуска…" Tag="AutostartSettings"
+                                                          Visibility="Collapsed" Click="MenuItem_AutostartSettings_Click"/>
                                                 <MenuItem 
                                                     Header="Изменить" 
                                                     Click="MenuItem_Update_Click"/>
