@@ -270,6 +270,8 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Common\ExportDWGSettingsShell.cs" />
+    <Compile Include="Common\Print\BatchPrintService.cs" />
+    <Compile Include="Common\Print\PdfCreatorSettingsScope.cs" />
     <Compile Include="ExternalCommands\BeforePublication\CommandOpenSetManager.cs" />
     <Compile Include="ExternalCommands\PublicationSet\CommandApplySet.cs" />
     <Compile Include="ExternalCommands\PublicationSet\CommandCreateSet.cs" />

@@ -27,7 +27,7 @@ namespace KPLN_Publication
         /// <param name="titleBlocks"></param>
         /// <param name="mEntities"></param>
         /// <returns></returns>
-        public static string PrintFormatsCheckIn(Document doc, string printerName, List<FamilyInstance> titleBlocks, ref List<MainEntity> mEntities, Logger logger)
+        public static string PrintFormatsCheckIn(Document doc, string printerName, List<FamilyInstance> titleBlocks, ref List<MainEntity> mEntities, Logger logger, bool showDialogs = true)
         {
             PrintManager pManager = doc.PrintManager;
             foreach (MainEntity ent in mEntities)
@@ -113,6 +113,9 @@ namespace KPLN_Publication
                 {
                     string paperSizeName = widthMm.ToString("F0") + "x" + heigthMm.ToString("F0");
                     logger.Write("Формат бумаги в Windows не найден! " + paperSizeName);
+                    if (!showDialogs)
+                        return "Не установлен формат бумаги " + paperSizeName + ". Автоматическое создание формата отключено в режиме без окна.";
+
                     FormCreateCustomFormat formccf = new FormCreateCustomFormat(ent.MainView.Title, paperSizeName);
                     formccf.ShowDialog();
                     if (formccf.DialogResult != System.Windows.Forms.DialogResult.OK) return "cancel";
@@ -175,7 +178,7 @@ namespace KPLN_Publication
         }
 
 
-        public static PrintSetting CreatePrintSetting(Document doc, PrintManager pManager, MainEntity mEntity, YayPrintSettings printSettings, double offsetX, double offsetY)
+        public static PrintSetting CreatePrintSetting(Document doc, PrintManager pManager, MainEntity mEntity, YayPrintSettings printSettings, double offsetX, double offsetY, bool showDialogs = true)
         {
             PrintSetup pSetup = pManager.PrintSetup;
 
@@ -220,6 +223,9 @@ namespace KPLN_Publication
             {
                 string msg = "Не найден размер формата для листа "
                     + mEntity.ToString() + ". Назначен формат по умолчанию.";
+                if (!showDialogs)
+                    throw new InvalidOperationException("Не найден формат бумаги для " + mEntity);
+
                 Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
 
                 foreach (PaperSize curPsize in pManager.PaperSizes)
@@ -239,6 +245,9 @@ namespace KPLN_Publication
                 }
                 catch (Exception ex)
                 {
+                    if (!showDialogs)
+                        throw new InvalidOperationException("Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name, ex);
+
                     string msg = "Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name
                         + "\nНазначен формат по умолчанию. Попробуйте запустить печать еще раз."
                         + "\nИнформация об ошибке: " + ex.Message;

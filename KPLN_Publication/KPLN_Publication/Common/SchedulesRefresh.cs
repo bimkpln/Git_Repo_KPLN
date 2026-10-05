@@ -12,7 +12,7 @@ namespace KPLN_Publication
         public static List<long> groupIds = new List<long>();
 #endif
         
-        public static void Start(Document doc, View sheet)
+        public static void Start(Document doc, View sheet, bool silent = false)
         {
             List<ScheduleSheetInstance> ssis = new FilteredElementCollector(doc)
                 .OfClass(typeof(ScheduleSheetInstance))
@@ -26,6 +26,8 @@ namespace KPLN_Publication
             using (Transaction t = new Transaction(doc))
             {
                 t.Start("Обновление спецификаций 1");
+                if (silent)
+                    SetSilentFailures(t);
 
                 foreach (ScheduleSheetInstance ssi in ssis)
                 {
@@ -37,7 +39,8 @@ namespace KPLN_Publication
                     MoveScheduleOrGroup(doc, ssi, 0.1);
                 }
 
-                t.Commit();
+                if (t.Commit() != TransactionStatus.Committed && silent)
+                    throw new System.InvalidOperationException("Не удалось обновить спецификации (этап 1).");
             }
 
             groupIds.Clear();
@@ -45,6 +48,8 @@ namespace KPLN_Publication
             using (Transaction t2 = new Transaction(doc))
             {
                 t2.Start("Обновление спецификаций 2");
+                if (silent)
+                    SetSilentFailures(t2);
 
                 foreach (ScheduleSheetInstance ssi in ssis)
                 {
@@ -56,7 +61,25 @@ namespace KPLN_Publication
                     ssi.Pinned = true;
                 }
 
-                t2.Commit();
+                if (t2.Commit() != TransactionStatus.Committed && silent)
+                    throw new System.InvalidOperationException("Не удалось обновить спецификации (этап 2).");
+            }
+        }
+
+        private static void SetSilentFailures(Transaction transaction)
+        {
+            var options = transaction.GetFailureHandlingOptions();
+            options.SetFailuresPreprocessor(new SilentRefreshFailures());
+            options.SetClearAfterRollback(true);
+            transaction.SetFailureHandlingOptions(options);
+        }
+
+        private sealed class SilentRefreshFailures : IFailuresPreprocessor
+        {
+            public FailureProcessingResult PreprocessFailures(FailuresAccessor accessor)
+            {
+                return accessor.GetFailureMessages().Count == 0
+                    ? FailureProcessingResult.Continue : FailureProcessingResult.ProceedWithRollBack;
             }
         }
 

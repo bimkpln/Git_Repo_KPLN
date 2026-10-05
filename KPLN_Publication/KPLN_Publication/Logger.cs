@@ -6,6 +6,14 @@ namespace KPLN_Publication
 {
     public class Logger
     {
+        private readonly Action<string> _write;
+
+        // Для вызова без окна: без глобальных Debug.Listeners и записи рядом с DLL.
+        public Logger(Action<string> write)
+        {
+            _write = write ?? (_ => { });
+        }
+
         public Logger()
         {
             Debug.Listeners.Clear();
@@ -24,6 +32,12 @@ namespace KPLN_Publication
 
         public void Write(string message)
         {
+            if (_write != null)
+            {
+                _write(message);
+                return;
+            }
+
             Debug.WriteLine(message);
             Debug.Flush();
         }
