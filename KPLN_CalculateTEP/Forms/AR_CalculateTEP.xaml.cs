@@ -68,6 +68,25 @@ namespace KPLN_CalculateTEP.Forms
                 Rebind();RefreshDepartmentCards();
             }
         }
+        private void PrepareSingleBuilding()
+        {
+            Engine.PrepareSingleBuilding(ReportProgress,review=>
+            {
+                var dialog=new Autodesk.Revit.UI.TaskDialog("ТЭП: корпус не определён")
+                {
+                    MainInstruction="Не удалось определить корпус у "+(review.Missing+review.Empty)+" помещений.",
+                    MainContent=review.Description+"\n\nЕсли все выбранные модели относятся к одному корпусу, можно считать их как единый корпус «"+review.BuildingName+"». Параметры модели не изменятся. Допущение будет указано в отчёте и действует только для текущей проверки или расчёта.\n\nОдинаковые номера квартир в одной секции будут относиться к одной квартире.",
+                    CommonButtons=Autodesk.Revit.UI.TaskDialogCommonButtons.Cancel,
+                    DefaultButton=Autodesk.Revit.UI.TaskDialogResult.Cancel
+                };
+                dialog.AddCommandLink(Autodesk.Revit.UI.TaskDialogCommandLinkId.CommandLink1,"Считать как один корпус");
+                dialog.AddCommandLink(Autodesk.Revit.UI.TaskDialogCommandLinkId.CommandLink2,"Вернуться к настройкам");
+                var answer=dialog.Show();
+                if(answer==Autodesk.Revit.UI.TaskDialogResult.CommandLink1)return true;
+                Steps.SelectedIndex=1;
+                return false;
+            });
+        }
         private void RefreshDepartmentCards()
         {
             if(CategoryCards==null)return;
@@ -347,7 +366,7 @@ namespace KPLN_CalculateTEP.Forms
         private void DeleteSectionLevel_Click(object s,RoutedEventArgs e)
         {foreach(var level in LevelsGrid.SelectedItems.Cast<TEP.LevelSetting>().Where(x=>!string.IsNullOrWhiteSpace(x.Section)||!string.IsNullOrWhiteSpace(x.Building)).ToList())Config.Levels.Remove(level);}
         private void Check_Click(object s,RoutedEventArgs e)
-        {Try(()=>{SetBusy(true);try{PrepareLinkedSources();CheckBeforeCalculation(true);}catch(System.OperationCanceledException){Status.Text="Проверка параметров отменена. Уже загруженные связи остаются загруженными.";}finally{SetBusy(false);}});}
+        {Try(()=>{SetBusy(true);try{PrepareLinkedSources();PrepareSingleBuilding();CheckBeforeCalculation(true);}catch(System.OperationCanceledException){Status.Text="Проверка параметров отменена. Уже загруженные связи остаются загруженными.";}finally{Engine.ClearSingleBuildingAssumption();SetBusy(false);}});}
         private void Save_Click(object s,RoutedEventArgs e){Try(()=>{Engine.SaveSettings();Status.Text="Настройки записаны в DataStorage текущего RVT. Сохраните модель, чтобы записать их на диск.";});}
         private void Import_Click(object s,RoutedEventArgs e)
         {Try(()=>{var dialog=new OpenFileDialog{Filter="Настройки ТЭП (*.json)|*.json",Title="Импорт настроек"};if(dialog.ShowDialog(this)!=true)return;Engine.ImportSettings(dialog.FileName);checkedConfiguration=null;departmentGroups=null;Rebind();ConfigureTables();SetBusy(true);try{ScanRoomDepartments();}finally{SetBusy(false);}Status.Text="Настройки импортированы. Проверьте параметры помещений, методику и отметки этажей.";});}
@@ -361,9 +380,9 @@ namespace KPLN_CalculateTEP.Forms
                 // Verification output is disabled for the current workflow, including imported settings.
                 Config.CreateViews=false;
                 SetBusy(true);
-                try{PrepareLinkedSources();if(departmentGroups==null)ScanRoomDepartments();var run=Engine.Calculate(ReportProgress,false);ShowReport(run);Steps.SelectedItem=ResultsTab;Status.Text="Расчёт завершён. Выполнено показателей: "+run.Summary.Count(x=>!x.NotCalculated)+", пропущено: "+run.Summary.Count(x=>x.NotCalculated)+". Ошибок: "+run.Issues.Count(x=>x.Severity=="Ошибка")+", предупреждений: "+run.Issues.Count(x=>x.Severity=="Предупреждение")+".";}
+                try{PrepareLinkedSources();if(departmentGroups==null)ScanRoomDepartments();PrepareSingleBuilding();var run=Engine.Calculate(ReportProgress,false);ShowReport(run);Steps.SelectedItem=ResultsTab;Status.Text="Расчёт завершён. Выполнено показателей: "+run.Summary.Count(x=>!x.NotCalculated)+", пропущено: "+run.Summary.Count(x=>x.NotCalculated)+". Ошибок: "+run.Issues.Count(x=>x.Severity=="Ошибка")+", предупреждений: "+run.Issues.Count(x=>x.Severity=="Предупреждение")+".";}
                 catch(System.OperationCanceledException){Status.Text="Расчёт отменён; предыдущий отчёт сохранён. Уже загруженные связи остаются загруженными.";}
-                finally{SetBusy(false);}
+                finally{Engine.ClearSingleBuildingAssumption();SetBusy(false);}
             });
         }
         private void ShowReport(TEP.Run run)

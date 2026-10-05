@@ -39,14 +39,14 @@ namespace KPLN_CalculateTEP.Common
                     group.Start();
                     try {var run=CalculateCore(progress,createViews);Progress("Завершение расчёта...");if(group.Assimilate()!=TransactionStatus.Committed)throw new InvalidOperationException("Revit отменил группу транзакций расчёта.");Last=run;return run;}
                     catch {if(group.GetStatus()==TransactionStatus.Started)group.RollBack();Last=previous;throw;}
-                    finally {createViewsForRun=null;planarBodies=null;planarCheckpoint=null;reportProgress=null;parameterCache.Clear();phaseCache.Clear();ClearVolumeCaches();floorSurfaces.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();roomHeightSections.Clear();}
+                    finally {singleBuildingAssumption=null;createViewsForRun=null;planarBodies=null;planarCheckpoint=null;reportProgress=null;parameterCache.Clear();phaseCache.Clear();ClearVolumeCaches();floorSurfaces.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();roomHeightSections.Clear();}
                 }
             }
             private Run CalculateCore(Action<string> progress,bool? createViews)
             {
                 planarBodies=new Dictionary<Solid,Tuple<LayeredBody,string>>();progressMessage="Подготовка расчёта контуров...";planarCheckpoint=()=>reportProgress?.Invoke(progressMessage);planarVolumeCuts=0;
                 parameterCache.Clear();phaseCache.Clear();ClearVolumeCaches();timings.Clear();slowOperations.Clear();volumeCacheHits=0;spatialCacheHits=0;booleanTouchSkips=0;booleanSplitRecoveries=0;booleanIntersectionRecoveries=0;booleanNormalizedRecoveries=0;
-                PrepareRoomWorkflow();SnapshotSources();Normalize(Config);notices.Clear();shapes.Clear();appliedCorrections.Clear();roomFloorContours.Clear();roomFloorFailures.Clear();invalidRoomFloors.Clear();floorSurfaces.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();roomHeightSections.Clear();
+                PrepareRoomWorkflow();SnapshotSources();Normalize(Config);notices.Clear();shapes.Clear();appliedCorrections.Clear();roomFloorContours.Clear();inferredRoomFloorContours.Clear();roomFloorFailures.Clear();invalidRoomFloors.Clear();floorSurfaces.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();roomHeightSections.Clear();
                 if(createViews.HasValue)Config.CreateViews=createViews.Value;
                 createViewsForRun=Config.CreateViews;
                 current=new Run{Author=app.Application.Username,Method=Choices("method").First(x=>x.Key==Config.Method).Label};
@@ -58,8 +58,8 @@ namespace KPLN_CalculateTEP.Common
                 ValidateDatums();
                 var records=PreflightRecords();
                 var preflightIssues=current.Issues.ToList();
-                var blockedMetrics=new HashSet<string>(Config.Metrics.Where(m=>m.Enabled&&MetricBlocked(m.Key,preflightIssues)).Select(m=>m.Key));
-                if(blockedMetrics.Count>0)
+                var blockedMetrics=new HashSet<string>(Config.Metrics.Where(m=>m.Enabled&&PreflightMetricBlocked(m.Key,preflightIssues)).Select(m=>m.Key));
+                if(Config.Metrics.Any(m=>m.Enabled&&MetricBlocked(m.Key,preflightIssues)))
                 {
                     string message=PreflightMessage(Config.Metrics,preflightIssues);
                     current.Issue("PREFLIGHT_PARTIAL","Предупреждение",message);
@@ -151,6 +151,7 @@ namespace KPLN_CalculateTEP.Common
                     try
                     {
                         bool include=Eligible(r,metric);
+                        if(!include&&RoomAreaMetric(metric)&&!RoomAreaMaskRequired(r,metric))continue;
                         var shape=Plan(r,metric);if(shape==null||shape.Volume<1e-9)continue;
                         if(RoomEnvelopePart(metric)&&r.Element is Room)shape=ClipRoomPart(shape,r,records,metric);
                         if(include&&VerticalExclusion(r,metric,records,shape))include=false;

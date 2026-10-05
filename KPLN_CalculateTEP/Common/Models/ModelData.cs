@@ -29,6 +29,17 @@ namespace KPLN_CalculateTEP.Common
 {
     public static partial class TepCalculation
     {
+        public class BuildingParameterReview
+        {
+            public int Missing {get;set;}
+            public int Empty {get;set;}
+            public int ReadErrors {get;set;}
+            public int UnavailableSources {get;set;}
+            public List<string> KnownBuildings {get;set;}=new List<string>();
+            public bool CanAssumeSingle {get{return Missing+Empty>0&&KnownBuildings.Count<=1&&ReadErrors==0&&UnavailableSources==0;}}
+            public string BuildingName {get{return KnownBuildings.Count==1?KnownBuildings[0]:"Единый корпус";}}
+            public string Description {get{return "У размещённых помещений: параметр «ПОМ_Корпус» отсутствует - "+Missing+"; параметр есть, но не заполнен - "+Empty+".";}}
+        }
         public class Source
         {
             public string Key {get;set;} public string Name {get;set;} public string Mode {get;set;}="include";

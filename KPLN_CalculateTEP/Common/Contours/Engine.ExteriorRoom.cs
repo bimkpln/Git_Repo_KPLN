@@ -10,7 +10,7 @@ namespace KPLN_CalculateTEP.Common
     {
         public partial class Engine
         {
-            private Solid ExteriorRoomContour(List<Record> walls, Record floor, Indicator indicator, double elevation)
+            private Solid ExteriorRoomContour(List<Record> walls, Record floor, Indicator indicator, double elevation, bool inferExterior=false)
             {
                 // An outside room sees Finish/CoreBoundary from outside the building. The inside
                 // face used for gross areas still requires the existing wall-section algorithm.
@@ -80,6 +80,7 @@ namespace KPLN_CalculateTEP.Common
                         var boundaries = room.GetBoundarySegments(boundaryOptions);
                         if (boundaries == null) throw new InvalidOperationException("Revit не вернул границы внешнего помещения.");
                         var seen = new HashSet<string>();
+                        var candidateIds=new HashSet<string>(walls.Select(w=>(w.Source.Document.Equals(doc)?"host":IDHelper.ElIdValue(w.Source.RootLink).ToString())+"/"+IDHelper.ElIdValue(w.Element.Id)));
                         foreach (var ring in boundaries)
                         {
                             int frame = ring.Count(s => frameIds.Contains(s.ElementId));
@@ -99,8 +100,9 @@ namespace KPLN_CalculateTEP.Common
                                     key = IDHelper.ElIdValue(link.Id) + "/" + IDHelper.ElIdValue(segment.LinkElementId);
                                 }
                                 var wall = element as Wall;
-                                if (wall == null || wall.WallType.Function != WallFunction.Exterior)
+                                if (wall == null || (!inferExterior&&wall.WallType.Function != WallFunction.Exterior))
                                     throw new InvalidOperationException("Контур внешнего помещения содержит разделитель или элемент, не обозначенный наружной стеной. Нужна проверка оболочки.");
+                                if(inferExterior&&!candidateIds.Contains(key))throw new InvalidOperationException("Граница внешнего помещения содержит стену вне проверяемых кандидатов оболочки; ID "+IDHelper.ElIdValue(wall.Id));
                                 seen.Add(key);
                             }
                             // Preserve actual arcs, ellipses and splines. Never join just endpoints.

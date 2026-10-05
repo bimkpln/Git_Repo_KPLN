@@ -9,6 +9,17 @@ namespace KPLN_CalculateTEP.Common
     {
         public partial class Engine
         {
+            public static double ConicRawParameter(double start,double end,double t)
+            {
+                if(!(end>start)||end-start>Math.PI/2+1e-12||t<0||t>1)throw new ArgumentOutOfRangeException();
+                if(t==0)return start;if(t==1)return end;
+                // Rational quadratic weight cancels the middle control point's 1/cos(half-angle).
+                // Its Bezier parameter is NOT a linear angular parameter of the Revit arc/ellipse.
+                double middle=(start+end)/2,a=(1-t)*(1-t),b=2*t*(1-t),c=t*t;
+                double angle=Math.Atan2(a*Math.Sin(start)+b*Math.Sin(middle)+c*Math.Sin(end),
+                    a*Math.Cos(start)+b*Math.Cos(middle)+c*Math.Cos(end));
+                return angle+2*Math.PI*Math.Round((middle-angle)/(2*Math.PI));
+            }
             private static List<double[]> CurvePoints(Curve curve, double chordTolerance = ArcChordTolerance)
             {
                 if(curve is Line)return new[]{curve.GetEndPoint(0),curve.GetEndPoint(1)}.Select(p=>new[]{p.X,p.Y,p.Z}).ToList();
@@ -62,7 +73,8 @@ namespace KPLN_CalculateTEP.Common
                 {
                     foreach(double t in new[]{0.0,.25,.5,.75,1.0})
                     {
-                        var p=RationalContours.Evaluate(span.Points,t);var expected=curve.Evaluate(span.Start+(span.End-span.Start)*t,false);
+                        double raw=arc!=null||ellipse!=null?ConicRawParameter(span.Start,span.End,t):span.Start+(span.End-span.Start)*t;
+                        var p=RationalContours.Evaluate(span.Points,t);var expected=curve.Evaluate(raw,false);
                         if(expected.DistanceTo(new XYZ(p[0],p[1],p[2]))>1e-7)throw new InvalidOperationException("Параметризация кривой Revit не совпала с рациональным представлением. Точность не подтверждена.");
                     }
                     var part=RationalContours.Flatten(span.Points,chordTolerance,planarCheckpoint);

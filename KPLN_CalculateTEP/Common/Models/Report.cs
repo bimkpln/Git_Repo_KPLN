@@ -84,6 +84,9 @@ namespace KPLN_CalculateTEP.Common
                             b.AppendLine("    "+string.Join(" / ",floor.Select(d=>d.Level).Distinct())+" ("+(floor.Key*.3048).ToString("+0.000;-0.000;0.000")+" м): "+Math.Round(floor.Sum(d=>d.Value),decimals,MidpointRounding.AwayFromZero).ToString("N"+decimals)+" "+s.Unit);
                     }
                     if(!string.IsNullOrEmpty(s.Comment)) b.AppendLine("  "+s.Comment);
+                    foreach(var issue in Issues.Where(i=>Engine.IssueAffectsMetric(i,s.Key)&&
+                        (i.Code=="SPATIAL_UNBOUNDED"||i.Code=="ROOM_FLOOR_SKIPPED")))
+                        b.AppendLine("  "+issue.Source+": "+issue.Code+": "+issue.Message);
                 }
                 return b.ToString();
             }

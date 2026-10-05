@@ -17,6 +17,10 @@ namespace KPLN_CalculateTEP.Common
             {
                 Progress("Предварительная проверка: параметры и помещения, без построения геометрии...");
                 RoomScanSummary = ""; HasSummerRooms = false;
+                if(singleBuildingAssumption!=null)
+                    current.Issue("SINGLE_BUILDING_ASSUMPTION","Предупреждение",
+                        "Пользователь подтвердил расчёт выбранных источников как одного корпуса «"+singleBuildingAssumption.BuildingName+"». "+singleBuildingAssumption.Description+" Корпус назначен только внутри расчёта; параметры помещений не изменены.",
+                        action:"Результат получен при допущении единого корпуса. Допущение действует только для этой проверки или расчёта и не сохраняется в настройках.");
                 if (!Config.Metrics.Any(m => m.Enabled)) current.Issue("NO_METRICS", "Ошибка", "Не выбраны показатели расчёта.");
                 var records = Collect();
                 foreach (var level in Config.Levels.Where(l => l.Include))
@@ -46,7 +50,7 @@ namespace KPLN_CalculateTEP.Common
                     if (Config.Metrics.Any(m => m.Enabled && RoomAreaMetric((Indicator)Enum.Parse(typeof(Indicator), m.Key))) &&
                         AreaVolumeSettings.GetAreaVolumeSettings(source.Document).GetSpatialElementBoundaryLocation(SpatialElementType.Room) != SpatialElementBoundaryLocation.Finish)
                         current.Issue("ROOM_AREA_SETTINGS", "Ошибка", "Площадь Room рассчитывается не по чистовой грани. Для использования Room.Area требуется способ вычисления границ помещений «По отделке стен». Настройки модели автоматически не изменяются.", source: source.Name);
-                    foreach (var map in Config.Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Name) && p.Key != "coefficient" && p.Key != "parking"))
+                    foreach (var map in Config.Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Name) && p.Key != "coefficient" && p.Key != "parking" && !(p.Key=="building"&&singleBuildingAssumption!=null)))
                     {
                         int found = 0;
                         foreach (var r in sourceRooms)

@@ -31,6 +31,52 @@ namespace KPLN_CalculateTEP.Common
     {
         public partial class Engine
         {
+            // Operation-local consent, never serialized into Settings or written to room parameters.
+            private BuildingParameterReview singleBuildingAssumption;
+            public void ClearSingleBuildingAssumption(){singleBuildingAssumption=null;}
+            public static BuildingParameterReview ReviewBuildingValues(IEnumerable<string> values)
+            {
+                var review=new BuildingParameterReview();
+                foreach(var value in values)
+                {
+                    if(value==null)review.Missing++;
+                    else if(string.IsNullOrWhiteSpace(value))review.Empty++;
+                    else if(!review.KnownBuildings.Any(name=>Eq(name,value)))review.KnownBuildings.Add(value.Trim());
+                }
+                return review;
+            }
+            public static string MissingBuildingMessage(string value)
+            {return value==null?"У размещённого помещения отсутствует параметр «ПОМ_Корпус».":"У размещённого помещения параметр «ПОМ_Корпус» есть, но не заполнен.";}
+            public void PrepareSingleBuilding(Action<string> progress,Func<BuildingParameterReview,bool> confirm)
+            {
+                singleBuildingAssumption=null;parameterCache.Clear();phaseCache.Clear();
+                var values=new List<string>();int errors=0,scanned=0;
+                try
+                {
+                    foreach(var source in Sources.Where(s=>s.Mode!="exclude"&&s.Loaded&&s.LoadError==null))
+                        foreach(var room in source.Elements.OfType<Room>().Where(IsPlacedRoom))
+                        {
+                            if(++scanned%100==0)progress?.Invoke("Проверка корпусов помещений: "+scanned);
+                            try{if(PhaseAccepted(source,room))values.Add(Value(room,Settings.FixedParameterName("building")));}
+                            catch(OperationCanceledException){throw;}
+                            catch(Exception){errors++;} // The ordinary preflight reports the element and exact cause.
+                        }
+                    var review=ReviewBuildingValues(values);review.ReadErrors=errors;
+                    review.UnavailableSources=Sources.Count(s=>s.Mode!="exclude"&&(!s.Loaded||s.LoadError!=null));
+                    if(!review.CanAssumeSingle)return;
+                    if(confirm==null||!confirm(review))throw new OperationCanceledException();
+                    singleBuildingAssumption=review;
+                }
+                finally{parameterCache.Clear();phaseCache.Clear();}
+            }
+            private string RoomBuildingValue(Room room)
+            {
+                var value=Mapped(room,"building");
+                if(singleBuildingAssumption==null)return value;
+                if(!string.IsNullOrWhiteSpace(value)&&!Eq(value,singleBuildingAssumption.BuildingName))
+                    throw new InvalidOperationException("Обнаружен другой корпус после подтверждения единого корпуса. Повторите проверку.");
+                return singleBuildingAssumption.BuildingName;
+            }
             public List<Issue> CheckParameters(Action<string> progress=null)
             {
                 PrepareRoomWorkflow(); Normalize(Config); parameterCache.Clear(); phaseCache.Clear(); reportProgress=progress;
@@ -40,7 +86,7 @@ namespace KPLN_CalculateTEP.Common
                     ValidateDatums(); PreflightRecords();
                     return current.Issues.ToList();
                 }
-                finally {current=saved; reportProgress=null; parameterCache.Clear();}
+                finally {current=saved; reportProgress=null; parameterCache.Clear();singleBuildingAssumption=null;}
             }
             private void ValidateDatums()
             {
@@ -148,11 +194,11 @@ namespace KPLN_CalculateTEP.Common
                 var r=new Record{Source=source,Element=e,Level=setting,Section=e is Room?Mapped(e,"section")??"":"",Apartment=e is Room?RecordParameter(source,e,"apartment"):"",Vertical=RecordParameter(source,e,"vertical"),Role="unknown",Part="auto"};
                 r.Apartment=(r.Apartment??"").Trim(); if(r.Apartment=="0"||r.Apartment=="-")r.Apartment="";
                 string value=Config.Grouping=="links"?source.Name:Config.Grouping=="worksets"?Value(e,"@Workset"):
-                    Config.Grouping=="selection"?Config.ManualBuilding:e is Room?Mapped(e,"building"):null;
+                    Config.Grouping=="selection"?Config.ManualBuilding:e is Room?RoomBuildingValue((Room)e):null;
                 var maps=Config.Buildings.Where(x=>(x.Source=="*"||Eq(x.Source,source.Key)||Eq(x.Source,source.Name))&&(x.MatchValue=="*"||Eq(x.MatchValue,value))).ToList();
                 if(maps.Count>1)throw new InvalidOperationException("Объект соответствует нескольким строкам назначения корпуса.");
                 var map=maps.FirstOrDefault();r.Building=map?.Building??value;
-                if(e is Room&&string.IsNullOrWhiteSpace(r.Building))throw new InvalidOperationException("У размещённого помещения не заполнен обязательный параметр «ПОМ_Корпус».");
+                if(e is Room&&string.IsNullOrWhiteSpace(r.Building))throw new InvalidOperationException(MissingBuildingMessage(value));
                 r.BuildingIncluded=map?.Include??true;
                 if(level!=null)
                 {
@@ -253,7 +299,7 @@ namespace KPLN_CalculateTEP.Common
                     foreach(var room in source.Elements.OfType<Room>().Where(IsPlacedRoom))
                     {
                         if(++scanned%100==0)Progress("Определение корпусов по помещениям: "+source.Name+" - "+scanned);
-                        try{if(PhaseAccepted(source,room))values.Add(Mapped(room,"building"));}
+                        try{if(PhaseAccepted(source,room))values.Add(RoomBuildingValue(room));}
                         catch(OperationCanceledException){throw;}
                         catch{values.Add(null);}
                     }
@@ -312,7 +358,14 @@ namespace KPLN_CalculateTEP.Common
                             bool construction=Config.Metrics.Any(m=>m.Enabled&&(m.Key.StartsWith("Volume")||OneOf(m.Key,"Footprint","Storeys","Floors")));
                             if(!(e is SpatialElement)&&!(e is Opening)&&!parking&&!hasFunction&&!configured&&!(construction&&(e is HostObject||foundation)))continue;
                             var spatial=e as SpatialElement;
-                            if(spatial!=null&&SpatialArea(spatial)<=1e-9){MarkInvalidRoomFloor(source,e);current.Issue("SPATIAL_UNBOUNDED","Ошибка","Размещённое помещение имеет нулевую площадь. Проверьте замкнутость границ и наличие нескольких помещений в одном контуре.",source:source.Name,element:IDHelper.ElIdValue(e.Id).ToString());continue;}
+                            if(spatial!=null&&SpatialArea(spatial)<=1e-9)
+                            {
+                                MarkInvalidRoomFloor(source,e);
+                                if(spatial.Level==null)current.Issue("ROOM_LEVEL","Ошибка","У помещения с нулевой площадью не определён этаж. Нельзя установить, какой контур требуется пропустить.",source:source.Name,element:IDHelper.ElIdValue(e.Id).ToString());
+                                current.Issue("SPATIAL_UNBOUNDED","Ошибка","Размещённое помещение ID "+IDHelper.ElIdValue(e.Id)+" на этаже «"+(spatial.Level?.Name??"уровень не определён")+"» имеет нулевую площадь и пропущено. Доступные данные рассчитываются с пометкой о неполноте; полный контур затронутого этажа не публикуется.",source:source.Name,element:IDHelper.ElIdValue(e.Id).ToString(),
+                                    action:"Проверьте замкнутость границ и наличие нескольких помещений в одном контуре. Полученная сумма не является полным итогом модели.");
+                                continue;
+                            }
                             var record=MakeRecord(source,e);if(record.BuildingIncluded)candidates.Add(record);
                         }
                         catch(System.OperationCanceledException){throw;}

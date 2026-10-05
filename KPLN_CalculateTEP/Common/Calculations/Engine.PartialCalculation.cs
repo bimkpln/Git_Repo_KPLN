@@ -45,13 +45,20 @@ namespace KPLN_CalculateTEP.Common
             }
             public static bool MetricBlocked(string metric,IEnumerable<Issue> issues)
             {return issues.Any(i=>i.Severity=="Ошибка"&&IssueAffectsMetric(i,metric));}
+            // A missing room area taints completeness, but does not prevent processing other rooms/floors.
+            // Keep MetricBlocked unchanged for final status, empty results and balance checks.
+            public static bool PreflightMetricBlocked(string metric,IEnumerable<Issue> issues)
+            {return issues.Any(i=>i.Severity=="Ошибка"&&i.Code!="SPATIAL_UNBOUNDED"&&IssueAffectsMetric(i,metric));}
             public static string PreflightMessage(IEnumerable<Metric> metrics,IEnumerable<Issue> issues)
             {
                 var selected=metrics.Where(m=>m.Enabled).ToList();var errors=issues.ToList();
-                int blocked=selected.Count(m=>MetricBlocked(m.Key,errors));
-                if(blocked==0)return "Предварительная проверка завершена. Доступны все выбранные показатели.";
+                int blocked=selected.Count(m=>PreflightMetricBlocked(m.Key,errors));
+                int partial=selected.Count(m=>!PreflightMetricBlocked(m.Key,errors)&&MetricBlocked(m.Key,errors));
+                if(blocked==0&&partial==0)return "Предварительная проверка завершена. Доступны все выбранные показатели.";
                 if(blocked==selected.Count)return "Недостаточно данных для всех выбранных показателей. Причины будут показаны в результате.";
-                return "Доступен частичный расчёт: "+(selected.Count-blocked)+" из "+selected.Count+" показателей. Остальные будут отмечены как «Не рассчитано».";
+                return "Доступен частичный расчёт: "+(selected.Count-blocked)+" из "+selected.Count+" показателей."+
+                    (partial>0?" Для "+partial+" показателей будут рассчитаны доступные данные; пропущенные помещения и этажи указаны в отчёте.":"")+
+                    (blocked>0?" Остальные будут отмечены как «Не рассчитано».":"");
             }
             private void ParameterIssue(string code,string message,string key,Record record=null,string source="")
             {
