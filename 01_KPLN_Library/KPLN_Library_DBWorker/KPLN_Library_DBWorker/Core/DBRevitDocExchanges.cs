@@ -43,12 +43,6 @@ namespace KPLN_Library_DBWorker.Core
         /// Путь к файлу конфигураций по обмену
         /// </summary>
         public string SettingDBFilePath { get; set; }
-
-        /// <summary>
-        /// (УДАЛИТЬ!!! в том числе из БД - оставил архивом, чтобы плагин не падал)
-        /// Режим блокировки файла под действия по обмену (True/False). В БД тип данных текст, преобразование происходит в Dapper
-        /// </summary>
-        public bool IsActive { get; set; }
         #endregion
 
         /// <summary>

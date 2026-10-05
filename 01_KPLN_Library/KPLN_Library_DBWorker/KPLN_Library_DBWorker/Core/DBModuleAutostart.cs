@@ -1,4 +1,5 @@
 ﻿using KPLN_Library_DBWorker.Core.Abstractions;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -45,7 +46,58 @@ namespace KPLN_Library_DBWorker.Core
         /// ID-конфигурации для старта
         /// </summary>
         public int DBTableKeyId { get; set; }
+
+        /// <summary>
+        /// Получатель уведомления об автозапуске (Users.Id).
+        /// </summary>
+        [ForeignKey(nameof(DBUser))]
+        public int? NotificationUserId { get; set; }
+
+        /// <summary>Дата и время начала расписания, UTC.</summary>
+        public DateTime? StartDateUtc { get; set; }
+
+        /// <summary>Интервал выгрузок в часах: минимум 12, кратно 12.</summary>
+        public int? IntervalHours { get; set; }
+
+        /// <summary>Не запускать выгрузку в субботу и воскресенье по местному времени компьютера.</summary>
+        public bool SkipWeekends { get; set; }
+
+        /// <summary>Дата и время начала последней попытки выгрузки, UTC, включая попытки с ошибкой.</summary>
+        public DateTime? LastStartDateUtc { get; set; }
+
+        /// <summary>Дата и время завершения последней обработанной попытки, UTC, включая ошибки.</summary>
+        public DateTime? LastExportDateUtc { get; set; }
         #endregion
+
+        [NotMapped]
+        public bool HasSchedule => StartDateUtc.HasValue && IntervalHours.HasValue
+            && IntervalHours.Value >= 12 && IntervalHours.Value % 12 == 0;
+
+        /// <summary>Старые назначения без расписания не запускаются.</summary>
+        public bool IsDue(DateTime launchTimeUtc)
+        {
+            DateTime utc = launchTimeUtc.Kind == DateTimeKind.Local
+                ? launchTimeUtc.ToUniversalTime() : DateTime.SpecifyKind(launchTimeUtc, DateTimeKind.Utc);
+            DayOfWeek localDay = utc.ToLocalTime().DayOfWeek;
+            if (SkipWeekends && (localDay == DayOfWeek.Saturday || localDay == DayOfWeek.Sunday))
+                return false;
+
+            launchTimeUtc = utc;
+            if (!HasSchedule || launchTimeUtc < StartDateUtc.Value)
+                return false;
+
+            if (!LastStartDateUtc.HasValue || LastStartDateUtc.Value < StartDateUtc.Value)
+                return true;
+
+            if (launchTimeUtc <= LastStartDateUtc.Value)
+                return false;
+
+            // Интервалы отсчитываются от заданного старта, чтобы задержка загрузки Revit
+            // в 06:00/18:00 не сдвигала расписание. Пропущенные интервалы не нагоняем очередью.
+            double currentInterval = Math.Floor((launchTimeUtc - StartDateUtc.Value).TotalHours / IntervalHours.Value);
+            double lastInterval = Math.Floor((LastStartDateUtc.Value - StartDateUtc.Value).TotalHours / IntervalHours.Value);
+            return currentInterval > lastInterval;
+        }
 
         /// <summary>
         /// Привязка к БД из DB_Enumerator

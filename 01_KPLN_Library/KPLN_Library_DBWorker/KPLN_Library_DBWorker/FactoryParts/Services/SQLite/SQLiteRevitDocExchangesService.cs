@@ -1,5 +1,6 @@
 ﻿using KPLN_Library_DBWorker.Core;
 using KPLN_Library_DBWorker.FactoryParts.Common;
+using Dapper;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,13 +21,7 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
         /// </summary>
         /// <param name="docExchanges"></param>
         public int CreateDBRevitDocExchanges(DBRevitDocExchanges docExchanges) =>
-            ExecuteQuery<int>(
-                $"INSERT INTO {_dbTableName} " +
-                    $"({nameof(DBRevitDocExchanges.ProjectId)}, {nameof(DBRevitDocExchanges.RevitDocExchangeType)}, {nameof(DBRevitDocExchanges.SettingName)}, {nameof(DBRevitDocExchanges.SettingResultPath)}, {nameof(DBRevitDocExchanges.SettingCountItem)}, {nameof(DBRevitDocExchanges.SettingDBFilePath)}) " +
-                    $"VALUES (@{nameof(DBRevitDocExchanges.ProjectId)}, @{nameof(DBRevitDocExchanges.RevitDocExchangeType)}, @{nameof(DBRevitDocExchanges.SettingName)}, @{nameof(DBRevitDocExchanges.SettingResultPath)}, @{nameof(DBRevitDocExchanges.SettingCountItem)}, @{nameof(DBRevitDocExchanges.SettingDBFilePath)})" +
-                    $"RETURNING Id;",
-                docExchanges)
-            .FirstOrDefault();
+            SaveConfiguration(docExchanges, true);
         #endregion
 
         #region Read
@@ -71,12 +66,41 @@ namespace KPLN_Library_DBWorker.FactoryParts.SQLite
         /// </summary>
         /// <param name="currentDocExc"></param>
         public void UpdateDBRevitDocExchanges_ByDBRevitDocExchange(DBRevitDocExchanges currentDocExc) =>
-            ExecuteNonQuery($"UPDATE {_dbTableName} " +
-                $"SET {nameof(DBRevitDocExchanges.SettingName)}='{currentDocExc.SettingName}', " +
-                $"{nameof(DBRevitDocExchanges.SettingResultPath)}='{currentDocExc.SettingResultPath}', " +
-                $"{nameof(DBRevitDocExchanges.SettingCountItem)}='{currentDocExc.SettingCountItem}' " +
-                $"WHERE {nameof(DBRevitDocExchanges.Id)}='{currentDocExc.Id}';");
+            SaveConfiguration(currentDocExc, false);
         #endregion
+
+        /// <summary>
+        /// Сохранение общих настроек экспорта. Настройки автозапуска хранятся в ModuleAutostart.
+        /// </summary>
+        private int SaveConfiguration(DBRevitDocExchanges configuration, bool create)
+        {
+            using (var connection = CreateConnection(_connectionString))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction(System.Data.IsolationLevel.Serializable))
+                {
+                    int id = configuration.Id;
+                    if (create)
+                    {
+                        id = connection.ExecuteScalar<int>(
+                            $"INSERT INTO {_dbTableName} " +
+                            "(ProjectId, RevitDocExchangeType, SettingName, SettingResultPath, SettingCountItem, SettingDBFilePath) " +
+                            "VALUES (@ProjectId, @RevitDocExchangeType, @SettingName, @SettingResultPath, @SettingCountItem, @SettingDBFilePath) RETURNING Id;",
+                            configuration, transaction);
+                    }
+                    else
+                    {
+                        connection.Execute(
+                            $"UPDATE {_dbTableName} SET SettingName = @SettingName, SettingResultPath = @SettingResultPath, " +
+                            "SettingCountItem = @SettingCountItem WHERE Id = @Id;",
+                            configuration, transaction);
+                    }
+
+                    transaction.Commit();
+                    return id;
+                }
+            }
+        }
 
         #region Delete
         /// <summary>
