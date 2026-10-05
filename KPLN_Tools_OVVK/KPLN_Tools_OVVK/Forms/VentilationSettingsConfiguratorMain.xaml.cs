@@ -29,6 +29,7 @@ namespace KPLN_Tools_OVVK.Forms
         private string _lastSavedPath;
         private string _workingFamilyPath;
         private string _workingSourcePath;
+        private string _familyUpdateNotice;
         private string _familyContextKey;
         private Command.ProjectItem _headerProject;
         private sealed class WorkspaceState
@@ -37,7 +38,6 @@ namespace KPLN_Tools_OVVK.Forms
             internal Command.FamilyTypeItem Selected;
         }
         private readonly Dictionary<string, WorkspaceState> _workspaces = new Dictionary<string, WorkspaceState>(StringComparer.OrdinalIgnoreCase);
-        private Command.FamilyTypeItem _geometryFailureType;
         private readonly Dictionary<string, FrameworkElement> _parameterEditors = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal);
         private string _errorDetails;
         private bool _hasOperationError;
@@ -146,29 +146,26 @@ namespace KPLN_Tools_OVVK.Forms
         private void UpdateFamily_Click(object sender, RoutedEventArgs e)
         {
             if (_isBusy || !Command.CanUpdateProjectFamily()) return;
-            if (HasUnsavedTypes)
-            {
-                MessageBox.Show(this, "Перед обновлением семейства сохраните изменённые типы и новые копии или удалите ненужные черновики.",
-                    "KPLN. Обновление семейства", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
             try
             {
                 RaiseRequest(new Command.FamilyRequest
                 {
                     Kind = Command.RequestKind.UpdateFamily,
                     OutputPath = _workingFamilyPath,
-                    PersistedName = _currentType?.PersistedName
+                    TypeName = _currentType?.Name,
+                    Types = _types.Where(t => !t.IsCreate).Select(t => {
+                        t.MarkChanged(); return new Command.FamilyTypeItem
+                        {
+                            Name = t.Name,
+                            PersistedName = t.PersistedName,
+                            IsDirty = t.IsDirty,
+                            Configuration = t.Configuration?.Copy(),
+                            LoadError = t.LoadError
+                        };
+                    }).ToList()
                 });
             }
             catch (Exception ex) { SetBusy(false); SetOperationError(Command.OperationError.Create("Обновление семейства", ex, null)); }
-        }
-
-        private void OpenFamilyFile_Click(object sender, RoutedEventArgs e)
-        {
-            if (_isBusy) return;
-            try { RaiseRequest(new Command.FamilyRequest { Kind = Command.RequestKind.SelectFamilyFile }); }
-            catch (Exception ex) { SetBusy(false); SetOperationError(Command.OperationError.Create("Выбор семейства", ex, null, false)); }
         }
 
         private void CreateType()
@@ -286,8 +283,6 @@ namespace KPLN_Tools_OVVK.Forms
         {
             _isBusy = value;
             CreateTypeButton.IsEnabled = !value;
-            OpenFamilyFileButton.Visibility = _headerProject == null || _headerProject.IsUnknown ? Visibility.Visible : Visibility.Collapsed;
-            OpenFamilyFileButton.IsEnabled = !value;
             CopyTypeButton.IsEnabled = !value && _currentType?.Configuration != null;
             bool canUpdate = Command.CanUpdateProjectFamily();
             UpdateFamilyButton.Visibility = canUpdate ? Visibility.Visible : Visibility.Collapsed;
@@ -298,7 +293,6 @@ namespace KPLN_Tools_OVVK.Forms
             SaveButton.IsEnabled = OpenButton.IsEnabled;
             CloseButton.IsEnabled = !value;
             ErrorDetailsButton.IsEnabled = !value;
-            UpdateReviewButton();
             SectionCountComboBox.IsEnabled = !value && _configuration != null;
             TypeNameTextBox.IsEnabled = !value && _currentType != null;
         }
@@ -319,20 +313,7 @@ namespace KPLN_Tools_OVVK.Forms
             SetStatus(error.Summary, true);
             _errorDetails = error.Details;
             StatusTextBlock.ToolTip = error.Summary;
-            if (error.Details != null && (error.Details.Contains("74441dd6-e6dd-41ea-a57c-04f4a4957f19")
-                || error.Details.Contains("b44c8ba0-7a86-44c1-bbf1-2de8e2017266"))) _geometryFailureType = _currentType;
-            UpdateReviewButton();
         }
-
-        private void UpdateReviewButton()
-        {
-            int count = _configuration?.Problems().Count ?? 0;
-            ReviewParametersButton.IsEnabled = !_isBusy && _configuration != null;
-            ReviewParametersButton.Content = count == 0 ? "Проверить параметры" : "Проверить параметры (" + count + ")";
-            ReviewParametersButton.Foreground = count > 0 || _geometryFailureType != null && ReferenceEquals(_geometryFailureType, _currentType) ? Brushes.Firebrick : Brushes.DarkSlateGray;
-        }
-
-        private void ReviewParameters_Click(object sender, RoutedEventArgs e) { ShowParameterProblems(); }
 
         private void NavigateToParameter(string name)
         {
@@ -362,140 +343,6 @@ namespace KPLN_Tools_OVVK.Forms
             else if (name == Command.ValveControl.ParameterName) editor = AddValveCheckBox;
             else _parameterEditors.TryGetValue(name, out editor);
             if (editor != null) { editor.BringIntoView(); editor.Focus(); (editor as TextBox)?.SelectAll(); }
-        }
-
-        private void RefreshAfterRepair()
-        {
-            _currentType.MarkChanged();
-            if (!_configuration.Blocks.Contains(_selectedSection)) _selectedSection = _configuration.Blocks[0];
-            SyncSectionControls(); ObserveSections(); RenderBlocks(); RenderSelectedSection(); RecalculateLocally(); UpdateReviewButton();
-        }
-
-        private string ReviewValue(string name, object value)
-        {
-            if (value is Command.SectionTypeChoice) return ((Command.SectionTypeChoice)value).DisplayName;
-            if (value is double) return ((double)value).ToString("0.######", System.Globalization.CultureInfo.CurrentCulture) + " мм";
-            if (value is int && (name == Command.ValveControl.ParameterName || _configuration.SharedBooleans.ContainsKey(name))) return (int)value == 0 ? "Нет / Слева" : "Да / Справа";
-            return string.IsNullOrEmpty(Convert.ToString(value)) ? "(пусто)" : Convert.ToString(value);
-        }
-
-        private bool UsableReviewValue(string name, object value)
-        {
-            if (value == null) return false;
-            Command.DimensionValue dimension;
-            if (_configuration.Dimensions().TryGetValue(name, out dimension))
-                return value is double && Command.DimensionValue.IsFinite((double)value) && (dimension.AllowsSigned || (double)value > 0);
-            return true;
-        }
-
-        private void ShowParameterProblems()
-        {
-            if (_isBusy || _configuration == null) return;
-            var dialog = new Window
-            {
-                Owner = this,
-                Title = "Проверка типа «" + _currentType.Name + "»",
-                Width = 820,
-                Height = 610,
-                MinWidth = 650,
-                MinHeight = 400,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                ShowInTaskbar = false,
-                FontFamily = FontFamily,
-                FontSize = FontSize,
-                Background = Brushes.White
-            };
-            var layout = new DockPanel { Margin = new Thickness(18) };
-            var close = new Button
-            {
-                Content = "Закрыть",
-                IsCancel = true,
-                Padding = new Thickness(18, 7, 18, 7),
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 12, 0, 0)
-            };
-            close.Click += (s, e) => dialog.Close(); DockPanel.SetDock(close, Dock.Bottom); layout.Children.Add(close);
-            var panel = new StackPanel(); layout.Children.Add(new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
-            Action refresh = null;
-            Action<Panel, string, Action, bool> button = (parent, caption, action, enabled) =>
-            {
-                var b = new Button { Content = caption, IsEnabled = enabled, Padding = new Thickness(10, 6, 10, 6), Margin = new Thickness(0, 6, 8, 0) };
-                b.Click += (s, e) =>
-                {
-                    try { action(); if (dialog.IsVisible) { RefreshAfterRepair(); refresh(); } }
-                    catch (Exception ex) { MessageBox.Show(dialog, ex.Message, "Проверка параметров", MessageBoxButton.OK, MessageBoxImage.Warning); }
-                };
-                parent.Children.Add(b);
-            };
-            refresh = () =>
-            {
-                panel.Children.Clear();
-                var problems = _configuration.Problems();
-                panel.Children.Add(new TextBlock
-                {
-                    Text = problems.Count == 0 ? "Параметры заполнены." : "Проверьте поля ниже. Значение основы применяется только по вашей кнопке.",
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 12),
-                    FontWeight = FontWeights.SemiBold
-                });
-                foreach (var problem in problems)
-                {
-                    var content = new StackPanel();
-                    content.Children.Add(new TextBlock { Text = problem.ParameterName, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-                    content.Children.Add(new TextBlock { Text = problem.Message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) });
-                    content.Children.Add(new TextBlock
-                    {
-                        Text = "Сейчас: " + ReviewValue(problem.ParameterName, _configuration.InputValue(problem.ParameterName))
-                        + "\nОснова: " + ReviewValue(problem.ParameterName, problem.SuggestedValue),
-                        TextWrapping = TextWrapping.Wrap,
-                        Foreground = Brushes.SlateGray,
-                        Margin = new Thickness(0, 5, 0, 0)
-                    });
-                    var actions = new WrapPanel(); content.Children.Add(actions);
-                    button(actions, "Открыть поле", () => { dialog.Close(); NavigateToParameter(problem.ParameterName); }, true);
-                    button(actions, "Использовать значение основы", () => _configuration.ApplySuggestion(problem), UsableReviewValue(problem.ParameterName, problem.SuggestedValue));
-                    if (_configuration.ReviewIssues.Contains(problem))
-                        button(actions, "Оставить текущее значение", () => problem.Accepted = true, UsableReviewValue(problem.ParameterName, _configuration.InputValue(problem.ParameterName)));
-                    panel.Children.Add(new Border
-                    {
-                        Child = content,
-                        Padding = new Thickness(12),
-                        Margin = new Thickness(0, 0, 0, 10),
-                        BorderThickness = new Thickness(1),
-                        BorderBrush = Brushes.LightGray,
-                        CornerRadius = new CornerRadius(4)
-                    });
-                }
-                if (ReferenceEquals(_geometryFailureType, _currentType))
-                {
-                    panel.Children.Add(new TextBlock
-                    {
-                        Text = "Revit не смог построить геометрию этого типа. По отчёту нельзя однозначно определить виновный параметр. "
-                        + "Проверьте габариты, смещения и патрубки выбранного блока. Можно вернуть их значения из основы либо временно заменить блок пустым и повторить сохранение.",
-                        TextWrapping = TextWrapping.Wrap,
-                        Foreground = Brushes.Firebrick,
-                        Margin = new Thickness(0, 8, 0, 8)
-                    });
-                    var actions = new WrapPanel(); panel.Children.Add(actions);
-                    button(actions, "Открыть выбранный блок", () => { dialog.Close(); NavigateToParameter(Command.InstallationConfiguration.ParameterName(_configuration.SlotAt(_configuration.Blocks.IndexOf(_selectedSection)))); }, _selectedSection != null);
-                    button(actions, "Размеры и патрубки блока из основы", () =>
-                    {
-                        int slot = _configuration.SlotAt(_configuration.Blocks.IndexOf(_selectedSection));
-                        var names = new List<string> { Command.InstallationConfiguration.DimensionParameterName(slot, "Длина") };
-                        if (_selectedSection.IsConnector) names.AddRange(new[] { "Ширина", "Высота", "Смещение по X", "Смещение по Y" }.Select(n => Command.InstallationConfiguration.DimensionParameterName(slot, n)));
-                        names.AddRange(Command.SharedParameters.ForSection(_selectedSection.Type));
-                        foreach (string name in names) { object value = _configuration.SuggestedInputValue(name); if (UsableReviewValue(name, value)) _configuration.SetInputValue(name, value); }
-                    }, _selectedSection != null);
-                    button(actions, "Заменить блок пустым", () =>
-                    {
-                        int slot = _configuration.SlotAt(_configuration.Blocks.IndexOf(_selectedSection));
-                        var empty = _configuration.Catalog[slot].Choices.FirstOrDefault(t => t.IsEmpty);
-                        if (empty == null) throw new InvalidOperationException("Для этой позиции в основе нет пустого блока.");
-                        _selectedSection.Type = empty; _selectedSection.ResetEmptyLength();
-                    }, _selectedSection != null);
-                }
-            };
-            dialog.Content = layout; refresh(); dialog.ShowDialog(); UpdateReviewButton();
         }
 
         private void ErrorDetails_Click(object sender, RoutedEventArgs e)
@@ -606,7 +453,6 @@ namespace KPLN_Tools_OVVK.Forms
 
         internal void RememberSavedFamily(Command.FamilyPackage family, string typeName)
         {
-            if (ReferenceEquals(_geometryFailureType, _currentType)) _geometryFailureType = null;
             string previous = _currentType.SavedPath;
             _lastSavedPath = _workingFamilyPath = family.Path; _workingSourcePath = family.SourcePath ?? family.Path;
             UpdateProjectHeader();
@@ -661,7 +507,8 @@ namespace KPLN_Tools_OVVK.Forms
                         Path = _workingFamilyPath,
                         SourcePath = _workingSourcePath,
                         Catalog = _sectionCatalog,
-                        Types = _types.Where(t => !t.IsCreate).ToList()
+                        Types = _types.Where(t => !t.IsCreate).ToList(),
+                        UpdateNotice = _familyUpdateNotice
                     },
                     Selected = _currentType
                 };
@@ -715,6 +562,9 @@ namespace KPLN_Tools_OVVK.Forms
 
         internal void SetFamily(Command.FamilyPackage family)
         {
+            _familyUpdateNotice = family.UpdateNotice;
+            FamilyUpdateNoticeTextBlock.Text = _familyUpdateNotice;
+            FamilyUpdateNoticeTextBlock.Visibility = string.IsNullOrWhiteSpace(_familyUpdateNotice) ? Visibility.Collapsed : Visibility.Visible;
             _switchingType = true;
             try
             {
@@ -879,7 +729,7 @@ namespace KPLN_Tools_OVVK.Forms
                 try { TypeNameTextBox.Text = _currentType.Name; }
                 finally { _switchingType = false; }
             }
-            _currentType.MarkChanged(); UpdateReviewButton();
+            _currentType.MarkChanged();
         }
 
         private void SectionChanged(object sender, PropertyChangedEventArgs e)
@@ -907,7 +757,6 @@ namespace KPLN_Tools_OVVK.Forms
             _updatingCalculation = true;
             try { _configuration.RecalculateLocal(); RenderBlocks(); }
             finally { _updatingCalculation = false; }
-            UpdateReviewButton();
         }
 
         internal void ApplyCalculatedDimensions(Command.InstallationConfiguration calculated)
@@ -1393,7 +1242,15 @@ namespace KPLN_Tools_OVVK.Forms
                 if (kind != Command.RequestKind.LoadSectionCatalog)
                 {
                     if (_configuration == null || _currentType == null) throw new InvalidOperationException("Сначала создайте тип.");
-                    if (_configuration.Problems().Count > 0) { ShowParameterProblems(); return; }
+                    var problems = _configuration.Problems();
+                    if (problems.Count > 0)
+                    {
+                        MessageBox.Show(this, "Тип «" + _currentType.Name + "». Исправьте поля:\n\n"
+                            + string.Join("\n", problems.Select(p => p.ParameterName + ": " + p.Message)),
+                            "KPLN. Параметры установки", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        NavigateToParameter(problems[0].ParameterName);
+                        return;
+                    }
                     var missing = _configuration.IncompleteFields();
                     if (string.IsNullOrWhiteSpace(TypeNameTextBox.Text)) missing.Insert(0, "Имя типа");
                     if (missing.Count > 0)

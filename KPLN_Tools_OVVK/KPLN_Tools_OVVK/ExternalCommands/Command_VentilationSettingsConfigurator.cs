@@ -114,7 +114,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             return field == null ? null : field.GetValue(instance);
         }
 
-        internal enum RequestKind { LoadSectionCatalog, Save, OpenInRevit, AddToProject, DeleteType, UpdateFamily, SelectFamilyFile }
+        internal enum RequestKind { LoadSectionCatalog, Save, OpenInRevit, AddToProject, DeleteType, UpdateFamily }
 
         // CONFIGURATION MODEL BEGIN — только данные; ссылки на Revit Document / Element здесь не храним.
         internal abstract class EditableValue : INotifyPropertyChanged
@@ -501,6 +501,9 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         internal sealed class InstallationInfo : EditableValue
         {
             internal const string SystemNameParameter = "КП_О_Имя Системы";
+            internal const string SystemNameTypeParameter = "Имя системы_Тип";
+            internal const string SystemNameByTypeParameter = "Имя системы_По типу";
+            internal const string SystemNameInstanceParameter = "Имя системы_Экземпляр";
             internal const string ManufacturerParameter = "КП_О_Завод-изготовитель";
             internal const string MarkParameter = "КП_О_Марка";
             internal const string UnitParameter = "КП_О_Единица измерения";
@@ -559,16 +562,17 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             private string _savedSignature;
             private string StateSignature()
             { string name = (Name ?? "").Trim(); return name.Length + ":" + name + Configuration?.Signature(); }
-            internal void MarkSaved() { _savedSignature = StateSignature(); _needsImportSave = false; IsDirty = false; Changed(nameof(NeedsReview)); }
+            internal void MarkSaved() { _savedSignature = StateSignature(); _needsImportSave = false; IsDirty = false; Changed(nameof(NeedsReview)); Changed(nameof(ToolTipText)); }
             internal void MarkImported() { MarkSaved(); _needsImportSave = true; IsDirty = true; }
             internal bool HasUserChanges { get { return _savedSignature == null || _savedSignature != StateSignature(); } }
-            internal void MarkChanged() { IsDirty = _needsImportSave || HasUserChanges; Changed(nameof(NeedsReview)); }
+            internal void MarkChanged() { IsDirty = _needsImportSave || HasUserChanges; Changed(nameof(NeedsReview)); Changed(nameof(ToolTipText)); }
             internal void RequireSave() { _savedSignature = null; IsDirty = true; }
             internal void UpdateAutomaticName(IEnumerable<string> existingNames)
             { if (HasAutomaticName) Name = AvailableAutomaticName(Configuration.Info.AutomaticTypeName, existingNames); }
             private string _name;
             public string Name { get { return _name; } set { _name = value; Changed(); Changed(nameof(DisplayName)); } }
             public bool NeedsReview { get { return !IsCreate && (Configuration == null || Configuration.Problems().Count > 0); } }
+            public string ToolTipText { get { return DisplayName; } }
             public string DisplayName { get { return IsCreate ? "Создать тип" : string.IsNullOrWhiteSpace(Name) ? "Без имени" : Name; } }
 
             internal static string AvailableAutomaticName(string requested, IEnumerable<string> existingNames)
@@ -715,6 +719,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         internal sealed class InstallationConfiguration
         {
             internal List<ConfigurationIssue> ReviewIssues = new List<ConfigurationIssue>();
+            internal Dictionary<string, string> RecoveredInputs = new Dictionary<string, string>(StringComparer.Ordinal);
             internal HashSet<string> ActiveSharedParameters()
             {
                 return new HashSet<string>(new[] { SharedParameters.FrameVisible, SharedParameters.ServiceRight, SharedParameters.ServiceDepth }
@@ -788,22 +793,48 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     return;
                 }
             }
+            private static SectionCatalog InputDefaults(SectionCatalog schema)
+            {
+                var defaults = schema.Copy();
+                defaults.IntermediateCount = 1; defaults.HasValve = false;
+                defaults.InstallationWidthMm = 500; defaults.InstallationHeightMm = 300; defaults.FrameHeightMm = 100;
+                foreach (var block in defaults.Values)
+                {
+                    block.SourceType = block.Choices.FirstOrDefault(c => c.IsEmpty);
+                    block.DefaultLengthMm = 1; block.DefaultWidthMm = 500; block.DefaultHeightMm = 300;
+                    block.DefaultOffsetXMm = block.DefaultOffsetYMm = 0;
+                }
+                foreach (string name in SharedParameters.LengthNames)
+                    defaults.SharedLengthsMm[name] = name == SharedParameters.ServiceDepth ? 1000 : FamilyParameterNames.IsOffset(name) ? 0 : double.NaN;
+                foreach (string name in SharedParameters.BooleanNames) defaults.SharedFlags[name] = true;
+                return defaults;
+            }
+
             internal object SuggestedInputValue(string name)
             {
-                if (name == "Секции_Промежуточные_Количество") return Catalog.IntermediateCount;
-                if (name == ValveControl.ParameterName) return Catalog.HasValve ? 1 : 0;
-                for (int slot = 1; slot <= 12; slot++)
-                    if (name == DimensionParameterName(slot, "Длина") && Catalog[slot].SourceType?.IsEmpty == true) return 1.0;
-                var full = Catalog.Copy(); full.HasValve = true; full.IntermediateCount = 9;
-                // Только модель данных: показываем значения основы для любой из 12 позиций.
-                var defaults = CreateDraft(full);
-                // Настройки патрубков могут относиться к отсутствующему в основе оборудованию.
-                double length;
-                if (Catalog.SharedLengthsMm.TryGetValue(name, out length)) return length;
-                bool? flag;
-                if (Catalog.SharedFlags.TryGetValue(name, out flag)) return flag.HasValue ? (object)(flag.Value ? 1 : 0) : null;
-                return defaults.InputValue(name);
+                name = FamilyParameterNames.Canonical(name);
+                if (name == "Секции_Промежуточные_Количество") return 1;
+                if (name == ValveControl.ParameterName) return 0;
+                if (Info.Assignments().ContainsKey(name)) return string.Empty;
+                if (SharedParameters.BooleanNames.Contains(name)) return 1;
+                if (name == SharedParameters.ServiceDepth) return 1000.0;
+                if (name == "Установка_Ширина") return 500.0;
+                if (name == "Установка_Высота") return 300.0;
+                if (name == "Основание_Рама_Высота") return 100.0;
+                if (FamilyParameterNames.IsOffset(name)) return 0.0;
+                for (int i = 0; i < Blocks.Count; i++)
+                {
+                    int slot = SlotAt(i); var block = Blocks[i];
+                    if (name == ParameterName(slot)) return Catalog[slot].Choices.FirstOrDefault(c => c.IsEmpty);
+                    if (name == DimensionParameterName(slot, "Длина"))
+                        return block.Type?.IsEmpty == true ? 1.0 : block.IsValve ? 210.0 : block.IsConnector ? 100.0 : 500.0;
+                    if (block.IsConnector && name == DimensionParameterName(slot, "Ширина")) return 500.0;
+                    if (block.IsConnector && name == DimensionParameterName(slot, "Высота")) return 300.0;
+                }
+                // Диаметры патрубков не угадываем и не берём из заполненных типов на X.
+                return null;
             }
+
             internal List<ConfigurationIssue> Problems()
             {
                 var active = new HashSet<string>(EditableInputNames(), StringComparer.Ordinal);
@@ -828,14 +859,66 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 SetInputValue(issue.ParameterName, issue.SuggestedValue);
                 issue.Accepted = true; RecalculateLocal();
             }
-            internal static InstallationConfiguration FromProjectInputs(SectionCatalog basis, IDictionary<string, object> values, IDictionary<string, string> readErrors)
+            internal Dictionary<string, object> EditableInputs()
+            { return EditableInputNames().Distinct().ToDictionary(n => n, InputValue, StringComparer.Ordinal); }
+
+            internal bool SameInputs(InstallationConfiguration other)
             {
-                var result = CreateDraft(basis.Copy()); result.CopySourceTypeName = BaseFamilyTypeName;
+                if (other == null) return false;
+                foreach (var pair in EditableInputs())
+                {
+                    var a = pair.Value; var b = other.InputValue(pair.Key);
+                    if (a is SectionTypeChoice && b is SectionTypeChoice)
+                    { if (((SectionTypeChoice)a).Key != ((SectionTypeChoice)b).Key) return false; }
+                    else if (a is double && b is double)
+                    { if (!DimensionValue.IsFinite((double)b) || Math.Abs((double)a - (double)b) > 0.001) return false; }
+                    else if (!Equals(a, b)) return false;
+                }
+                return true;
+            }
+
+            internal static InstallationConfiguration FromProjectInputs(SectionCatalog basis, IDictionary<string, object> values,
+                IDictionary<string, string> readErrors, InstallationConfiguration savedType = null)
+            {
+                var result = CreateDraft(InputDefaults(basis)); result.CopySourceTypeName = BaseFamilyTypeName;
                 var errors = new Dictionary<string, string>(readErrors, StringComparer.Ordinal);
+                Func<string, object, bool> usable = (name, value) =>
+                {
+                    if (value == null) return false;
+                    DimensionValue dimension;
+                    if (result.Dimensions().TryGetValue(name, out dimension))
+                        return value is double && DimensionValue.IsFinite((double)value) && (dimension.AllowsSigned || (double)value > 0);
+                    if (name == "Секции_Промежуточные_Количество") return value is int && (int)value >= 1 && (int)value <= 9;
+                    if (name == ValveControl.ParameterName || result.SharedBooleans.ContainsKey(name)) return value is int && ((int)value == 0 || (int)value == 1);
+                    if (result.Info.Assignments().ContainsKey(name)) return value is string;
+                    for (int i = 0; i < result.Blocks.Count; i++) if (ParameterName(result.SlotAt(i)) == name)
+                            return value is SectionTypeChoice && result.Catalog[result.SlotAt(i)].Choices.Any(c => c.Key == ((SectionTypeChoice)value).Key);
+                    return false;
+                };
                 Action<string> apply = name =>
                 {
-                    object value;
-                    if (!values.TryGetValue(name, out value)) return;
+                    object value; values.TryGetValue(name, out value);
+                    bool unread = value == null || errors.ContainsKey(name);
+                    DimensionValue dimension;
+                    bool emptySize = result.Dimensions().TryGetValue(name, out dimension) && !dimension.AllowsSigned
+                        && value is double && (double)value == 0;
+                    if (unread || emptySize || name == SharedParameters.ServiceRight && !usable(name, value))
+                    {
+                        object saved = savedType?.InputValue(name);
+                        if (usable(name, saved))
+                        { value = saved; errors.Remove(name); result.RecoveredInputs[name] = "из одноимённого сохранённого типа"; }
+                        else if (!errors.ContainsKey(name) || name == SharedParameters.ServiceRight)
+                        {
+                            object fallback = result.SuggestedInputValue(name);
+                            if (name == SharedParameters.ServiceRight && fallback == null) fallback = 1;
+                            if (name == SharedParameters.ServiceDepth && !usable(name, fallback)) fallback = 1000.0;
+                            for (int i = 0; i < result.Blocks.Count; i++)
+                                if (name == DimensionParameterName(result.SlotAt(i), "Длина") && result.Blocks[i].Type?.IsEmpty == true) fallback = 1.0;
+                            if (usable(name, fallback))
+                            { value = fallback; errors.Remove(name); result.RecoveredInputs[name] = "значение по умолчанию конфигуратора"; }
+                        }
+                    }
+                    if (errors.ContainsKey(name)) return;
                     try { result.SetInputValue(name, value); }
                     catch (Exception ex) { errors[name] = ex.Message; }
                 };
@@ -850,7 +933,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 }
                 foreach (var error in errors.Where(p => names.Contains(p.Key)))
                 {
-                    // Не подменяем непрочитанное значение предполагаемым без решения пользователя.
                     if (result.Dimensions().ContainsKey(error.Key) || result.SharedBooleans.ContainsKey(error.Key)
                         || Enumerable.Range(0, result.Blocks.Count).Any(i => ParameterName(result.SlotAt(i)) == error.Key))
                         result.SetInputValue(error.Key, null);
@@ -862,7 +944,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                         SuggestedValue = result.SuggestedInputValue(error.Key)
                     });
                 }
-                // Результаты формул основы не выдаём за результаты ещё не построенного типа.
                 foreach (var dimension in result.Dimensions().Values.Where(d => d.IsCalculated)) dimension.Invalidate();
                 result.RecalculateLocal(); return result;
             }
@@ -1001,7 +1082,8 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     FrameHeight = FrameHeight.Copy(),
                     Blocks = Blocks.Select(b => b.Copy()).ToList(),
                     _calculationInputSignature = _calculationInputSignature,
-                    ReviewIssues = ReviewIssues.Select(i => i.Copy()).ToList()
+                    ReviewIssues = ReviewIssues.Select(i => i.Copy()).ToList(),
+                    RecoveredInputs = new Dictionary<string, string>(RecoveredInputs)
                 };
                 copy._valve = HasValve ? copy.Blocks[1] : _valve.Copy();
                 copy.RecalculateLocal();
@@ -1320,8 +1402,9 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         internal sealed class FamilyPackage
         {
             internal SectionCatalog Catalog;
+            internal CompositionSnapshot DefinitionSnapshot;
             internal List<FamilyTypeItem> Types = new List<FamilyTypeItem>();
-            internal string Path, SourcePath, SelectedTypeName, LoadNotice;
+            internal string Path, SourcePath, SelectedTypeName, LoadNotice, UpdateNotice;
         }
 
         // Создание и редактирование различаются намерением, а не совпадением введённого имени.
@@ -1659,6 +1742,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
         internal sealed class FamilyRequest
         {
             internal RequestKind Kind { get; set; }
+            internal List<FamilyTypeItem> Types { get; set; }
             internal string ContextKey { get; set; }
             internal string TypeName { get; set; }
             internal InstallationConfiguration Configuration { get; set; }
@@ -1678,7 +1762,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             private readonly List<string> _automaticReadDirectories = new List<string>();
             private string _activeContextKey;
             private readonly Dictionary<string, PendingProjectImport> _projectImports = new Dictionary<string, PendingProjectImport>(StringComparer.Ordinal);
-            private readonly HashSet<string> _checkedCompositionPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             private static string ContextKey(Document document, ProjectItem project)
             {
@@ -1698,27 +1781,19 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 try
                 {
                     FamilyPackage package = null;
-                    OperationError updateError = null;
-                    string updateNotice = null;
                     string path = ProjectFamilyStorage.GetPath(project);
                     if (path != null && !EnsureProjectFamily(path)) return false;
-                    if (path != null && _checkedCompositionPaths.Add(path))
-                    {
-                        try { updateNotice = UpdateProjectComposition(app, path); }
-                        catch (Exception ex) { updateError = OperationError.Create("Обновление вложенных типов состава", ex, null, false); }
-                    }
                     string remembered;
                     if (path == null && SavedFamilyPaths.TryGetValue(key, out remembered) && File.Exists(remembered)) path = remembered;
                     if (path != null)
                     {
-                        var opened = FindOpenFamily(app, path);
-                        package = opened == null ? ReadFamilyPackage(app, path, true) : ReadOpenFamilyPackage(app, opened, path);
-                        if (document != null && document.IsValidObject && !document.IsFamilyDocument)
+                        var loaded = FindLoadedInstallationFamily(document, project?.Code);
+                        // ImportProjectFamily уже читает RFA: не открываем его второй раз заранее.
+                        if (loaded != null) package = ImportProjectFamily(app, document, loaded, path);
+                        else
                         {
-                            var loaded = FindLoadedInstallationFamily(document, project?.Code);
-                            if (loaded != null && loaded.GetFamilySymbolIds().Select(id => document.GetElement(id)?.Name)
-                                .Any(name => name != null && name != BaseFamilyTypeName && !package.Types.Any(t => t.PersistedName == name)))
-                                package = ImportProjectFamily(app, document, loaded, path);
+                            var opened = FindOpenFamily(app, path);
+                            package = opened == null ? ReadFamilyPackage(app, path, true) : ReadOpenFamilyPackage(app, opened, path);
                         }
                     }
                     else if (document != null && document.IsValidObject && document.IsFamilyDocument
@@ -1735,15 +1810,14 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                         if (family != null) package = ReadProjectFamily(app, document, family);
                     }
                     if (package == null) package = ReadFamilyPackage(app, ResolveSourcePath(), false);
+                    package.UpdateNotice = CheckProjectFamilyUpdates(app, package.Path, package.DefinitionSnapshot);
                     _owner.SetFamily(package);
-                    if (updateError != null) _owner.SetOperationError(updateError);
-                    else if (package.LoadNotice != null) _owner.SetStatus(package.LoadNotice, false);
-                    else if (updateNotice != null) _owner.SetStatus(updateNotice, false);
+                    if (package.LoadNotice != null) _owner.SetStatus(package.LoadNotice, false);
                     return true;
                 }
                 catch (System.OperationCanceledException)
                 {
-                    _owner.SetStatus("Чтение отменено. Выберите сохранённое семейство кнопкой «Открыть RFA…». Файлы не изменены.", false);
+                    _owner.SetStatus("Чтение отменено. Повторите запуск конфигуратора. Файлы не изменены.", false);
                     return false;
                 }
                 catch (Exception ex)
@@ -1786,15 +1860,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     }
                 }
                 return result;
-            }
-
-            private sealed class NestedReloadOptions : IFamilyLoadOptions
-            {
-                internal bool Changed;
-                public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
-                { Changed = true; overwriteParameterValues = true; return true; }
-                public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
-                { Changed = true; source = FamilySource.Family; overwriteParameterValues = true; return true; }
             }
 
             private static Family ReloadNestedFamily(UIApplication app, Document nested, Document target, IFamilyLoadOptions options)
@@ -1854,95 +1919,72 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 catch (UnauthorizedAccessException) { }
             }
 
-            private string UpdateProjectComposition(UIApplication app, string projectPath)
+            // Проверка при запуске только читает определения. Не загружаем семейства
+            // друг в друга даже во временных документах: это запускало пересчёт Revit.
+            private static CompositionSnapshot ReadFamilyDefinitionSnapshot(Document document, SectionCatalog catalog = null)
             {
-                string sourcePath = ResolveSourcePath();
-                if (!File.Exists(sourcePath)) throw new FileNotFoundException("Исходное семейство недоступно для проверки обновлений состава.", sourcePath);
-                string sourceHash = FileHash(sourcePath), projectHash = FileHash(projectPath);
-                if (sourceHash == projectHash) return null;
-                string directory = Path.Combine(Path.GetTempPath(), "KPLN_Composition_" + Guid.NewGuid().ToString("N"));
-                string stagedDirectory = null;
-                Document source = null, target = null, nested = null;
+                var result = new CompositionSnapshot();
+                if (catalog == null) result = ReadCompositionSnapshot(document, false);
+                else foreach (var slot in catalog)
+                        result.Choices.Add(slot.Key, new HashSet<string>(slot.Value.Choices.Select(c => c.Key), StringComparer.Ordinal));
+                foreach (FamilyParameter parameter in document.FamilyManager.Parameters)
+                {
+                    string name = FamilyParameterNames.Canonical(parameter.Definition.Name);
+                    string formula = parameter.Formula ?? string.Empty;
+                    // Состояние клапана — настройка типа, а не изменение основы.
+                    if (name == ValveControl.ParameterName && ValveControl.ConstantFormula(formula).HasValue) formula = string.Empty;
+                    result.Settings.Add(name, parameter.StorageType + "|" + parameter.IsInstance
+                        + "|" + Common.IDHelper.ParameterDataType(parameter) + "|" + (parameter.IsShared ? parameter.GUID.ToString() : string.Empty)
+                        + "|" + parameter.IsReadOnly + "|" + parameter.IsReporting + "|" + formula);
+                }
+                return result;
+            }
+
+            private static bool FamilyDefinitionDiffers(CompositionSnapshot source, CompositionSnapshot project)
+            {
+                if (source.Settings.Count != project.Settings.Count || source.Settings.Any(p =>
+                    !project.Settings.ContainsKey(p.Key) || !Equals(project.Settings[p.Key], p.Value))) return true;
+                // Дополнительные типы проекта допустимы и после обновления сохраняются.
+                return source.Choices.Any(p => !project.Choices.ContainsKey(p.Key) || !p.Value.IsSubsetOf(project.Choices[p.Key]));
+            }
+
+            private string CheckProjectFamilyUpdates(UIApplication app, string projectPath, CompositionSnapshot projectDefinition = null)
+            {
+                if (string.IsNullOrWhiteSpace(projectPath)) return null;
+                string directory = null;
+                Document source = null, target = null;
                 try
                 {
-                    _owner.SetStatus("Проверка обновлений вложенных типов в исходном семействе…", false);
+                    string sourcePath = ResolveSourcePath();
+                    if (SamePath(projectPath, sourcePath)) return null;
+                    if (!File.Exists(sourcePath)) return "Основа семейства недоступна. Проверка обновлений не выполнена. Обратитесь к BIM-координатору.";
+                    string sourceHash = FileHash(sourcePath), projectHash = FileHash(projectPath);
+                    if (sourceHash == projectHash) return null;
+                    directory = Path.Combine(Path.GetTempPath(), "KPLN_FamilyCheck_" + Guid.NewGuid().ToString("N"));
                     source = OpenCompositionCopy(app, sourcePath, Path.Combine(directory, "source"));
-                    target = OpenCompositionCopy(app, projectPath, Path.Combine(directory, "project"));
-                    var sourceState = ReadCompositionSnapshot(source, false);
-                    var before = ReadCompositionSnapshot(target, true);
-                    var names = new HashSet<string>(sourceState.Choices.Values.SelectMany(keys => keys)
-                        .Select(key => key.Substring(0, key.IndexOf('\n'))), StringComparer.Ordinal);
-                    var families = new FilteredElementCollector(source).OfClass(typeof(Family)).Cast<Family>()
-                        .Where(family => names.Contains(family.Name) && family.IsEditable).OrderBy(family => family.Name, StringComparer.Ordinal).ToList();
-                    var existingNames = new HashSet<string>(new FilteredElementCollector(target).OfClass(typeof(Family)).Cast<Family>()
-                        .Select(family => family.Name), StringComparer.Ordinal);
-                    var changed = new List<string>();
-                    foreach (var family in families)
+                    if (projectDefinition == null)
                     {
-                        _owner.SetStatus("Проверка вложенного семейства: " + family.Name, false);
-                        nested = source.EditFamily(family);
-                        var options = new NestedReloadOptions();
-                        var loaded = ReloadNestedFamily(app, nested, target, options);
-                        bool needsUpdate = !existingNames.Contains(family.Name) || options.Changed;
-                        if (loaded == null && needsUpdate)
-                            throw new InvalidOperationException("Revit не загрузил вложенное семейство «" + family.Name + "». Файл проекта не изменён.");
-                        if (needsUpdate) changed.Add(family.Name);
-                        if (!nested.Close(false)) throw new InvalidOperationException("Не удалось закрыть вложенное семейство после проверки.");
-                        nested = null;
+                        target = OpenCompositionCopy(app, projectPath, Path.Combine(directory, "project"));
+                        projectDefinition = ReadFamilyDefinitionSnapshot(target);
                     }
-                    var after = ReadCompositionSnapshot(target, true);
-                    CompositionSnapshot.RequireSettings(before, after);
-                    CompositionSnapshot.RequireChoices(before, after, "Обновление удаляет ранее доступные типы состава. Файл проекта не изменён.");
-                    CompositionSnapshot.RequireChoices(sourceState, after, "Не все типы исходного состава удалось перенести. Файл проекта не изменён.");
-                    var oldKeys = new HashSet<string>(before.Choices.Values.SelectMany(keys => keys), StringComparer.Ordinal);
-                    var newKeys = new HashSet<string>(after.Choices.Values.SelectMany(keys => keys), StringComparer.Ordinal);
-                    newKeys.ExceptWith(oldKeys);
-                    if (changed.Count == 0 && newKeys.Count == 0) return null;
-                    if (FindOpenFamily(app, projectPath) != null)
-                    {
-                        var opened = new TaskDialog(PluginName)
-                        {
-                            MainInstruction = "Доступно обновление состава установки",
-                            MainContent = "Чтобы записать обновление, закройте семейство проекта в Revit и запустите конфигуратор снова.\n\n" + projectPath,
-                            CommonButtons = TaskDialogCommonButtons.Ok
-                        };
-                        opened.Show();
-                        return "Обновление состава отложено: семейство проекта открыто в Revit.";
-                    }
-                    var dialog = new TaskDialog(PluginName)
-                    {
-                        MainInstruction = "В исходном семействе обновился состав. Обновить семейство проекта?",
-                        MainContent = "Новых типов состава: " + newKeys.Count + ". Новых или изменённых вложенных семейств: " + changed.Count + ".\n\n"
-                            + string.Join("\n", changed.Take(12)) + (changed.Count > 12 ? "\n…" : string.Empty)
-                            + "\n\nБудут перенесены вложенные семейства. Имена типов установок, их состав и настроенные параметры сохранятся.\n\n" + projectPath,
-                        CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
-                        DefaultButton = TaskDialogResult.No
-                    };
-                    if (dialog.Show() != TaskDialogResult.Yes) return "Обновление состава отложено. Используется сохранённое семейство проекта.";
-                    if (FindOpenFamily(app, projectPath) != null || FileHash(projectPath) != projectHash || FileHash(sourcePath) != sourceHash)
-                        throw new IOException("Файл семейства изменился или был открыт во время проверки. Обновление не записано; запустите конфигуратор снова.");
-                    stagedDirectory = Path.Combine(Path.GetDirectoryName(projectPath), ".KPLN_Composition_" + Guid.NewGuid().ToString("N"));
-                    Directory.CreateDirectory(stagedDirectory);
-                    string staged = Path.Combine(stagedDirectory, Path.GetFileName(projectPath));
-                    using (var options = new SaveAsOptions { OverwriteExistingFile = false, MaximumBackups = 1 }) target.SaveAs(staged, options);
-                    var savedState = ReadCompositionSnapshot(target, true);
-                    CompositionSnapshot.RequireSettings(before, savedState);
-                    CompositionSnapshot.RequireChoices(before, savedState, "После сохранения потеряны типы состава проекта.");
-                    CompositionSnapshot.RequireChoices(sourceState, savedState, "После сохранения недоступны новые типы состава.");
-                    if (!target.Close(false)) throw new InvalidOperationException("Не удалось закрыть подготовленное семейство. Файл проекта не изменён.");
-                    target = null;
-                    if (FindOpenFamily(app, projectPath) != null || FileHash(projectPath) != projectHash || FileHash(sourcePath) != sourceHash)
-                        throw new IOException("Семейство изменилось во время подготовки обновления. Файл проекта не перезаписан.");
-                    File.Replace(staged, projectPath, Path.Combine(stagedDirectory, "previous.rfa"));
-                    return "Состав семейства проекта обновлён. Новые вложенные типы доступны для выбора.";
+                    bool differs = FamilyDefinitionDiffers(ReadFamilyDefinitionSnapshot(source), projectDefinition);
+                    if (sourceHash != FileHash(sourcePath) || projectHash != FileHash(projectPath))
+                        return "Семейство изменилось во время проверки обновлений. Повторите проверку при следующем открытии конфигуратора.";
+                    if (!differs) return null;
+                    return CanUpdateProjectFamily()
+                        ? "Семейство проекта отличается от основы. Для обновления нажмите значок рядом с «Типы семейства»."
+                        : "Семейство проекта отличается от основы. Попросите вашего BIM-координатора обновить семейство.";
+                }
+                catch
+                {
+                    // Проверка обновлений не должна блокировать чтение сохранённых типов.
+                    return "Не удалось проверить обновления семейства. Обратитесь к BIM-координатору. Используется сохранённое семейство проекта.";
                 }
                 finally
                 {
-                    bool nestedClosed = CloseCompositionDocument(nested);
                     bool targetClosed = CloseCompositionDocument(target);
-                    bool sourceClosed = nestedClosed && CloseCompositionDocument(source);
-                    if (nestedClosed && targetClosed && sourceClosed) DeleteCompositionDirectory(directory);
-                    if (targetClosed) DeleteCompositionDirectory(stagedDirectory);
+                    bool sourceClosed = CloseCompositionDocument(source);
+                    if (targetClosed && sourceClosed) DeleteCompositionDirectory(directory);
                 }
             }
 
@@ -2025,7 +2067,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             private void EnsureUpgradeUnchanged(UIApplication app, string projectPath, string sourcePath, string projectHash, string sourceHash)
             {
                 if (!CanUpdateProjectFamily()) throw new UnauthorizedAccessException("Обновление семейства доступно только отделу 8.");
-                if (_owner.HasUnsavedTypes) throw new InvalidOperationException("Сначала сохраните изменённые типы.");
                 if (FindOpenFamily(app, projectPath) != null)
                     throw new InvalidOperationException("Закройте семейство проекта в Revit перед его обновлением.");
                 ValidateDiskSource(app, sourcePath);
@@ -2033,12 +2074,49 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     throw new IOException("Семейство изменилось во время подготовки обновления. Файл проекта не заменён; повторите действие.");
             }
 
+            private static void RemoveSourceExampleTypes(Document document, Action<string> setStage)
+            {
+                RunFamilyStage(document, "Подготовка новой основы", () =>
+                {
+                    var manager = document.FamilyManager;
+                    foreach (string name in manager.Types.Cast<FamilyType>().Select(t => t.Name).Where(n => n != BaseFamilyTypeName).ToList())
+                        DeleteFamilyType(manager, name);
+                    SelectFamilyType(manager, BaseFamilyTypeName);
+                }, null, setStage);
+            }
+
+            private static List<FamilyTypeItem> CollectUpdateTypes(FamilyPackage saved, IList<FamilyTypeItem> edited)
+            {
+                var result = saved.Types.ToList();
+                foreach (var item in edited ?? new List<FamilyTypeItem>())
+                {
+                    var original = result.FirstOrDefault(t => t.Name == (item.PersistedName ?? item.Name));
+                    if (original != null && !item.IsDirty && original.Configuration != null) continue;
+                    if (original != null) result.Remove(original);
+                    if (result.Any(t => string.Equals(t.Name, item.Name, StringComparison.OrdinalIgnoreCase)))
+                        throw new InvalidOperationException("Повторяется имя типа «" + item.Name + "». Исправьте имя перед обновлением.");
+                    result.Add(item);
+                }
+                return result;
+            }
+
+            private static void VerifyRebuiltTypes(FamilyPackage package, IDictionary<string, InstallationConfiguration> expected)
+            {
+                if (package.Types.Count != expected.Count || package.Types.Any(t => !expected.ContainsKey(t.Name)))
+                    throw new InvalidOperationException("После обновления изменился список типов проекта. Файл проекта не заменён.");
+                foreach (var pair in expected)
+                {
+                    var actual = package.Types.SingleOrDefault(t => t.Name == pair.Key)?.Configuration;
+                    if (actual == null || !pair.Value.SameInputs(actual))
+                        throw new InvalidOperationException("Не сохранены настройки типа «" + pair.Key + "». Файл проекта не заменён.");
+                }
+            }
+
             private FamilyPackage UpdateEntireProjectFamily(UIApplication app, string projectPath, string selectedType,
-                Action<string> setStage, out string backupPath)
+                IList<FamilyTypeItem> editedTypes, Action<string> setStage, out string backupPath)
             {
                 backupPath = null;
                 if (!CanUpdateProjectFamily()) throw new UnauthorizedAccessException("Обновление семейства доступно только отделу 8.");
-                if (_owner.HasUnsavedTypes) throw new InvalidOperationException("Перед обновлением сохраните все изменённые типы.");
                 string sourcePath = ResolveSourcePath();
                 if (string.IsNullOrWhiteSpace(projectPath) || !File.Exists(projectPath))
                     throw new InvalidOperationException("Сначала сохраните семейство проекта.");
@@ -2049,65 +2127,63 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 EnsureUpgradeUnchanged(app, projectPath, sourcePath, projectHash, sourceHash);
                 string directory = Path.Combine(Path.GetTempPath(), "KPLN_FamilyUpdate_" + Guid.NewGuid().ToString("N"));
                 string staging = null;
-                Document previous = null, source = null, transfer = null, updated = null;
+                Document previous = null, updated = null;
                 try
                 {
-                    setStage("Чтение проектного семейства и новой основы");
+                    setStage("Чтение настроек текущих типов проекта");
                     previous = OpenCompositionCopy(app, projectPath, Path.Combine(directory, "previous"));
-                    source = OpenCompositionCopy(app, sourcePath, Path.Combine(directory, "source"));
-                    var before = ReadUpgradeSnapshot(previous);
-                    var expected = ReadUpgradeSnapshot(source);
-                    var sourceChoices = ReadCompositionSnapshot(source, false);
-                    // Изолированный проект служит только для штатного слияния определений Revit.
-                    // Пользовательские открытые RVT не изменяются.
-                    setStage("Обновление определения семейства с сохранением типов");
-                    transfer = app.Application.NewProjectDocument(UnitSystem.Metric);
-                    var options = new FullFamilyReloadOptions(source.OwnerFamily.Name);
-                    Family loaded = ReloadNestedFamily(app, previous, transfer, options);
-                    if (loaded == null) throw new InvalidOperationException("Не удалось загрузить существующие типы во временный документ.");
-                    // Для ранее сохранённых копий с другим именем файла.
-                    if (!string.Equals(loaded.Name, source.OwnerFamily.Name, StringComparison.Ordinal))
-                        RunFamilyStage(transfer, "Согласование имени временного семейства",
-                            () => loaded.Name = source.OwnerFamily.Name, null, setStage);
-                    Family reloaded = ReloadNestedFamily(app, source, transfer, options);
-                    if (reloaded == null)
-                        reloaded = new FilteredElementCollector(transfer).OfClass(typeof(Family)).Cast<Family>()
-                            .SingleOrDefault(f => f.Name == source.OwnerFamily.Name);
-                    if (reloaded == null || !reloaded.IsEditable) throw new InvalidOperationException("Не удалось получить обновлённое семейство.");
-                    updated = transfer.EditFamily(reloaded);
-                    RestoreUpgradeValves(updated, before, setStage);
-                    setStage("Проверка сохранности типов и параметров");
-                    FamilyUpgradeSnapshot.Verify(before, expected, ReadUpgradeSnapshot(updated));
-                    CompositionSnapshot.RequireChoices(sourceChoices, ReadCompositionSnapshot(updated, false), "Не загружен новый состав исходного семейства.");
+                    var types = CollectUpdateTypes(ReadFamilyPackage(previous, projectPath, true), editedTypes);
+                    if (!previous.Close(false)) throw new InvalidOperationException("Не удалось закрыть копию текущего семейства.");
+                    previous = null;
+                    updated = OpenCompositionCopy(app, sourcePath, Path.Combine(directory, "new"));
+                    var catalog = ReadFamilyPackage(updated, null, false).Catalog;
+                    var expected = new Dictionary<string, InstallationConfiguration>(StringComparer.Ordinal);
+                    foreach (var item in types)
+                    {
+                        string name = ValidateTypeName(item.Name);
+                        if (item.Configuration == null) throw new InvalidOperationException(item.LoadError ?? "Не прочитаны настройки типа «" + name + "».");
+                        var unresolved = item.Configuration.Problems().Where(p => item.Configuration.ReviewIssues.Contains(p)).ToList();
+                        // Сначала переносим поля на новую схему: отсутствующие значения получают
+                        // значения по умолчанию, а реальные ошибки остаются у соответствующего поля.
+                        var configuration = InstallationConfiguration.FromProjectInputs(catalog, item.Configuration.EditableInputs(),
+                            unresolved.ToDictionary(p => p.ParameterName, p => p.Message, StringComparer.Ordinal));
+                        try { configuration.ValidateForOutput(); }
+                        catch (Exception ex) { throw new InvalidOperationException("Тип «" + name + "»: " + OperationError.Message(ex), ex); }
+                        if (expected.ContainsKey(name)) throw new InvalidOperationException("Повторяется имя типа «" + name + "».");
+                        expected.Add(name, configuration);
+                    }
+                    // Заполненные примеры типов на X не добавляем в проект. Шаблон сохраняем
+                    // для создания новых типов; его геометрию отдельно не перестраиваем.
+                    RemoveSourceExampleTypes(updated, setStage);
+                    foreach (var pair in expected)
+                    {
+                        string typeName = pair.Key;
+                        ApplyFamilyMutation(updated, sourcePath, typeName, null, true, pair.Value, false,
+                            value => setStage("Обновление типа «" + typeName + "»: " + value), value => { });
+                    }
                     var package = ReadFamilyPackage(updated, projectPath, true);
-                    var unreadable = package.Types.Where(t => t.Configuration == null).Select(t => t.Name).ToList();
-                    if (unreadable.Count > 0) throw new InvalidOperationException("После обновления не удалось прочитать типы: " + string.Join(", ", unreadable));
-                    package.SelectedTypeName = selectedType;
+                    VerifyRebuiltTypes(package, expected);
                     var dialog = new TaskDialog(PluginName)
                     {
                         MainInstruction = "Обновить семейство проекта из основы на X?",
-                        MainContent = "Подготовлено обновление геометрии, параметров, формул и вложенных семейств.\n"
-                            + "Существующих типов сохранено: " + before.Types.Count + ".\n\n" + expected.ChangesFrom(before)
-                            + "\n\nСовместимые редактируемые значения сохраняются. Вычисляемые значения пересчитываются по новым формулам."
-                            + "\nУдалённые из основы параметры перестанут использоваться. Рядом с файлом будет сохранена резервная копия.\n\n" + projectPath,
+                        MainContent = "На новой основе подготовлено типов: " + expected.Count + ".\n"
+                            + "Сохранены имена, состав и настройки конфигуратора ваших типов, включая текущие изменения в интерфейсе.\n"
+                            + "Заполненные значения и примеры типов из X в настройки проекта не перенесены. Новые поля получили значения по умолчанию конфигуратора.\n"
+                            + "Рядом с файлом будет сохранена резервная копия.\n\n" + projectPath,
                         CommonButtons = TaskDialogCommonButtons.Yes | TaskDialogCommonButtons.No,
                         DefaultButton = TaskDialogResult.No
                     };
                     if (dialog.Show() != TaskDialogResult.Yes) return null;
                     EnsureUpgradeUnchanged(app, projectPath, sourcePath, projectHash, sourceHash);
-                    setStage("Сохранение и проверка подготовленного семейства");
                     staging = Path.Combine(Path.GetDirectoryName(projectPath), ".KPLN_FamilyUpdate_" + Guid.NewGuid().ToString("N"));
                     Directory.CreateDirectory(staging);
                     string staged = Path.Combine(staging, Path.GetFileName(projectPath));
+                    setStage("Сохранение и проверка обновлённого семейства");
                     using (var save = new SaveAsOptions { OverwriteExistingFile = false, MaximumBackups = 1 }) updated.SaveAs(staged, save);
                     if (!updated.Close(false)) throw new InvalidOperationException("Не удалось закрыть подготовленное семейство.");
-                    updated = null;
-                    // Проверяем именно сохранённый файл, а не только состояние до SaveAs.
                     updated = app.Application.OpenDocumentFile(staged);
-                    FamilyUpgradeSnapshot.Verify(before, expected, ReadUpgradeSnapshot(updated));
-                    CompositionSnapshot.RequireChoices(sourceChoices, ReadCompositionSnapshot(updated, false), "В сохранённом файле потерян новый состав.");
                     package = ReadFamilyPackage(updated, projectPath, true);
-                    if (package.Types.Any(t => t.Configuration == null)) throw new InvalidOperationException("Не удалось прочитать сохранённые типы после обновления.");
+                    VerifyRebuiltTypes(package, expected);
                     package.SelectedTypeName = selectedType;
                     if (!updated.Close(false)) throw new InvalidOperationException("Не удалось закрыть проверенное семейство.");
                     updated = null;
@@ -2115,17 +2191,13 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     string backup = Path.Combine(Path.GetDirectoryName(projectPath), Path.GetFileNameWithoutExtension(projectPath)
                         + "_до_обновления_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".rfa");
                     setStage("Замена семейства проекта");
-                    File.Replace(staged, projectPath, backup);
-                    backupPath = backup;
+                    File.Replace(staged, projectPath, backup); backupPath = backup;
                     return package;
                 }
                 finally
                 {
-                    bool updatedClosed = CloseCompositionDocument(updated);
-                    bool transferClosed = updatedClosed && CloseCompositionDocument(transfer);
-                    bool previousClosed = CloseCompositionDocument(previous);
-                    bool sourceClosed = CloseCompositionDocument(source);
-                    if (updatedClosed && transferClosed && previousClosed && sourceClosed) DeleteCompositionDirectory(directory);
+                    bool updatedClosed = CloseCompositionDocument(updated), previousClosed = CloseCompositionDocument(previous);
+                    if (updatedClosed && previousClosed) DeleteCompositionDirectory(directory);
                     if (updatedClosed) DeleteCompositionDirectory(staging);
                 }
             }
@@ -2172,6 +2244,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             private sealed class PendingProjectImport
             {
                 internal string SnapshotPath, DestinationPath, DestinationHash;
+                internal bool FromLibrary;
                 internal void CheckDestination(string path)
                 {
                     bool same = SamePath(path, DestinationPath);
@@ -2203,17 +2276,28 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 return ImportProjectFamily(app, project, family, path);
             }
 
-            private static Parameter FindProjectParameter(FamilySymbol symbol, FamilyParameter target)
+            private sealed class ProjectParameterIndex
             {
-                var parameters = symbol.Parameters.Cast<Parameter>().ToList();
+                internal readonly ILookup<string, Parameter> ByName;
+                internal readonly ILookup<Guid, Parameter> ByGuid;
+                internal ProjectParameterIndex(Element element)
+                {
+                    // Один обход определений на тип; значения вне интерфейса не читаем.
+                    var parameters = element.Parameters.Cast<Parameter>().ToList();
+                    ByName = parameters.ToLookup(p => FamilyParameterNames.Canonical(p.Definition.Name), StringComparer.Ordinal);
+                    ByGuid = parameters.Where(p => p.IsShared).ToLookup(p => p.GUID);
+                }
+            }
+
+            private static Parameter FindProjectParameter(ProjectParameterIndex parameters, FamilyParameter target)
+            {
                 if (target.IsShared)
                 {
-                    var shared = parameters.Where(p => p.IsShared && p.GUID == target.GUID).ToList();
+                    var shared = parameters.ByGuid[target.GUID].ToList();
                     if (shared.Count > 1) throw new InvalidOperationException("Несколько параметров с GUID " + target.GUID + ".");
                     if (shared.Count == 1) return shared[0];
                 }
-                string name = FamilyParameterNames.Canonical(target.Definition.Name);
-                var matches = parameters.Where(p => FamilyParameterNames.Canonical(p.Definition.Name) == name).ToList();
+                var matches = parameters.ByName[FamilyParameterNames.Canonical(target.Definition.Name)].ToList();
                 if (matches.Count > 1) throw new InvalidOperationException("Неоднозначный параметр «" + target.Definition.Name + "» в модели.");
                 var result = matches.SingleOrDefault();
                 if (result != null && result.IsShared && target.IsShared && result.GUID != target.GUID)
@@ -2225,7 +2309,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             {
                 if (!Common.IDHelper.HaveCompatibleParameterDataTypes(source, target))
                     throw new InvalidOperationException("Тип данных параметра в модели отличается от основы. Введите значение вручную"
-                        + (target.StorageType == StorageType.Double ? " в миллиметрах" : "") + " или используйте значение основы.");
+                        + (target.StorageType == StorageType.Double ? " в миллиметрах" : "") + " или используйте значение по умолчанию конфигуратора.");
                 switch (target.StorageType)
                 {
                     case StorageType.String: return source.AsString() ?? string.Empty;
@@ -2243,26 +2327,46 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             {
                 var manager = destination.FamilyManager;
                 var result = new List<ProjectTypeImport>();
+                var targets = new Dictionary<string, FamilyParameter>(StringComparer.Ordinal);
+                var targetErrors = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (string name in InstallationConfiguration.InterfaceParameterNames().Select(FamilyParameterNames.Canonical).Distinct())
+                {
+                    try { targets.Add(name, FindFamilyParameter(manager, name)); }
+                    catch (Exception ex) { targetErrors.Add(name, OperationError.Message(ex)); }
+                }
+                var infoNames = new HashSet<string>(new InstallationInfo().Assignments().Keys, StringComparer.Ordinal);
                 foreach (var id in family.GetFamilySymbolIds())
                 {
                     var symbol = project.GetElement(id) as FamilySymbol;
                     if (symbol == null) continue;
                     if (symbol.Name == BaseFamilyTypeName) continue;
-                    var type = new ProjectTypeImport { Name = symbol.Name };
+                    var type = new ProjectTypeImport { Name = symbol.Name, ReadErrors = new Dictionary<string, string>(targetErrors, StringComparer.Ordinal) };
+                    var parameters = new ProjectParameterIndex(symbol);
                     // Белый список интерфейса. Параметры материалов, производительности,
                     // служебные флаги, ограничения и формулы из RVT здесь вообще не читаются.
-                    foreach (string name in InstallationConfiguration.InterfaceParameterNames().Select(FamilyParameterNames.Canonical).Distinct())
+                    foreach (var pair in targets)
                     {
+                        string name = pair.Key;
                         try
                         {
-                            var target = FindFamilyParameter(manager, name);
+                            var target = pair.Value;
                             if (target == null) { type.ReadErrors[name] = "В основе отсутствует параметр. Обновите основу семейства."; continue; }
                             bool valve = name == ValveControl.ParameterName && ValveControl.ConstantFormula(target.Formula).HasValue;
-                            if (target.IsReadOnly || target.IsReporting || target.IsDeterminedByFormula && !valve) continue;
-                            var source = FindProjectParameter(symbol, target);
-                            if (source == null || !source.HasValue)
-                            { type.ReadErrors[name] = "Значение в модели не найдено. Задайте его вручную или используйте значение основы."; continue; }
-                            type.Values[name] = ReadProjectInput(project, source, target);
+                            bool info = infoNames.Contains(name);
+                            if (!info && (target.IsReadOnly || target.IsReporting || target.IsDeterminedByFormula && !valve)) continue;
+                            // Экземпляры одного типа вправе иметь разные значения. Они не задают
+                            // настройки типа: недостающее берём из одноимённого RFA или значений по умолчанию.
+                            var source = FindProjectParameter(parameters, target);
+                            FamilyParameter infoValue, infoMode;
+                            if (info && TryGetSystemNameInputs(manager, target, out infoValue, out infoMode))
+                            {
+                                // У формульного результата может не быть значения на FamilySymbol.
+                                // Читаем именно вход типа; в старом RVT возможен только прямой КП_О.
+                                var typeSource = FindProjectParameter(parameters, infoValue);
+                                if (typeSource != null && typeSource.HasValue)
+                                { source = typeSource; target = infoValue; }
+                            }
+                            type.Values[name] = source == null || !source.HasValue ? null : ReadProjectInput(project, source, target);
                         }
                         catch (Exception ex) { type.ReadErrors[name] = OperationError.Message(ex); }
                     }
@@ -2288,7 +2392,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     if (FileHash(input) != originalHash) throw new IOException("Основа изменилась во время чтения. Повторите открытие.");
                     document = app.Application.OpenDocumentFile(input);
                     if (!document.IsFamilyDocument) throw new InvalidOperationException("Выбранный файл не является семейством.");
-                    var package = ReadFamilyPackage(document, destinationPath, true);
+                    var package = ReadFamilyPackage(document, destinationPath, !library);
                     var types = CaptureProjectTypeInputs(project, family, document);
                     foreach (var type in types)
                     {
@@ -2299,9 +2403,12 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                             package.Types.Add(item); // PersistedName пуст: пока это настройки, а не созданный RFA-тип.
                         }
                         item.LoadError = null;
-                        item.Configuration = InstallationConfiguration.FromProjectInputs(package.Catalog, type.Values, type.ReadErrors);
+                        var savedConfiguration = item.Configuration;
+                        item.Configuration = InstallationConfiguration.FromProjectInputs(package.Catalog, type.Values, type.ReadErrors, savedConfiguration);
                         item.HasAutomaticName = false;
-                        item.MarkImported();
+                        if (savedConfiguration != null && savedConfiguration.SameInputs(item.Configuration) && item.Configuration.SameInputs(savedConfiguration)
+                            && item.Configuration.Problems().Count == 0) item.MarkSaved();
+                        else item.MarkImported();
                     }
                     if (!document.Close(false)) throw new InvalidOperationException("Не удалось закрыть копию основы.");
                     document = null;
@@ -2309,13 +2416,14 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     package.SourcePath = input;
                     foreach (var item in package.Types) item.SourcePath = input;
                     int problems = package.Types.Count(t => t.Configuration != null && t.Configuration.Problems().Count > 0);
-                    package.LoadNotice = "Прочитаны настройки типов из модели: " + types.Count + ". Сохраняется только выбранный тип."
-                        + (problems == 0 ? "" : " Требуют проверки: " + problems + ". Выберите тип и нажмите «Проверить параметры».");
+                    package.LoadNotice = "Загружено типов: " + package.Types.Count + ". Сохраняется только выбранный тип."
+                        + (problems == 0 ? "" : " Есть незаполненные или некорректные поля у типов: " + problems + ". Выберите тип и исправьте отмеченные поля.");
                     _projectImports[_activeContextKey] = new PendingProjectImport
                     {
                         SnapshotPath = input,
                         DestinationPath = destinationPath,
-                        DestinationHash = library ? null : originalHash
+                        DestinationHash = library ? null : originalHash,
+                        FromLibrary = library
                     };
                     _automaticReadDirectories.Add(directory); keep = true;
                     return package;
@@ -2511,27 +2619,16 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                         TryUpdateActiveProject(app, true);
                         throw new InvalidOperationException("Активный проект изменился. Выберите нужный тип в текущем проекте и повторите действие.");
                     }
-                    if (request.Kind == RequestKind.SelectFamilyFile)
-                    {
-                        stage = "Чтение сохранённого семейства";
-                        if (project != null && !project.IsUnknown)
-                            throw new InvalidOperationException("Для определённого проекта используется семейство в его проектной папке.");
-                        var family = FindLoadedInstallationFamily(activeDocument, null);
-                        var selected = ReadSelectedFamilyFile(app, activeDocument, family, null);
-                        _owner.SetFamily(selected);
-                        _owner.SetStatus(selected.LoadNotice, false);
-                        return;
-                    }
                     if (request.Kind == RequestKind.UpdateFamily)
                     {
                         stage = "Обновление семейства проекта из основы";
+                        if (!CanUpdateProjectFamily()) throw new UnauthorizedAccessException("Обновление семейства доступно только отделу 8.");
                         string path = ProjectFamilyStorage.GetPath(project) ?? request.OutputPath;
                         string backup;
-                        var updated = UpdateEntireProjectFamily(app, path, request.PersistedName, value => stage = value, out backup);
+                        var updated = UpdateEntireProjectFamily(app, path, request.TypeName, request.Types, value => stage = value, out backup);
                         if (updated == null) { _owner.SetStatus("Обновление отменено. Семейство проекта не изменено.", false); return; }
                         savedPath = path;
-                        if (_activeContextKey != null) SavedFamilyPaths[_activeContextKey] = path;
-                        _checkedCompositionPaths.Add(path);
+                        if (_activeContextKey != null) { SavedFamilyPaths[_activeContextKey] = path; _projectImports.Remove(_activeContextKey); }
                         _owner.SetFamily(updated);
                         _owner.SetStatus("Семейство проекта обновлено из основы. Существующие типы сохранены. Резервная копия: " + backup, false);
                         return;
@@ -2591,7 +2688,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                         : !string.IsNullOrWhiteSpace(request.FamilyPath) ? request.FamilyPath : sourcePath;
                     if (!File.Exists(inputPath)) throw new FileNotFoundException("Файл семейства недоступен. Проверьте путь и подключение к сети.", inputPath);
                     if (openFamily == null) ValidateDiskSource(app, inputPath);
-                    bool freshLibraryCopy = SamePath(inputPath, sourcePath) || SamePath(inputPath, SourceFamilyPath) || SamePath(inputPath, LiteralSourceFamilyPath);
+                    bool freshLibraryCopy = import?.FromLibrary == true || SamePath(inputPath, sourcePath) || SamePath(inputPath, SourceFamilyPath) || SamePath(inputPath, LiteralSourceFamilyPath);
                     string persistedName = freshLibraryCopy && !deleting ? null : request.PersistedName;
                     FamilyPackage existing = null;
                     if (!freshLibraryCopy && File.Exists(outputPath))
@@ -2730,6 +2827,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     File.SetAttributes(inputPath, File.GetAttributes(inputPath) & ~FileAttributes.ReadOnly);
                     setStage("Открытие временной копии семейства");
                     familyDoc = app.Application.OpenDocumentFile(inputPath);
+                    if (freshLibraryCopy || import?.FromLibrary == true) RemoveSourceExampleTypes(familyDoc, setStage);
                     if (!familyDoc.IsFamilyDocument)
                         throw new InvalidOperationException("Исходный файл не является редактируемым семейством Revit.");
 
@@ -3216,9 +3314,27 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 return parameter;
             }
 
+            private static bool TryGetSystemNameInputs(FamilyManager manager, FamilyParameter output,
+                out FamilyParameter value, out FamilyParameter mode)
+            {
+                value = mode = null;
+                if (output == null || output.Definition.Name != InstallationInfo.SystemNameParameter || !output.IsDeterminedByFormula) return false;
+                string expected = "if(" + InstallationInfo.SystemNameByTypeParameter + "," + InstallationInfo.SystemNameTypeParameter
+                    + "," + InstallationInfo.SystemNameInstanceParameter + ")";
+                if (!string.Equals(Regex.Replace(output.Formula ?? "", @"\s+", ""), Regex.Replace(expected, @"\s+", ""), StringComparison.OrdinalIgnoreCase)) return false;
+                value = InfoParameter(manager, InstallationInfo.SystemNameTypeParameter);
+                mode = FindFamilyParameter(manager, InstallationInfo.SystemNameByTypeParameter);
+                if (value == null || mode == null || mode.StorageType != StorageType.Integer)
+                    throw new InvalidOperationException("Для поля «Имя системы» нужны текстовый параметр «" + InstallationInfo.SystemNameTypeParameter
+                        + "» и логический параметр «" + InstallationInfo.SystemNameByTypeParameter + "». Проверьте основу семейства.");
+                return true;
+            }
+
             private static string ReadInfoValue(FamilyManager manager, FamilyType type, string name)
             {
                 var parameter = InfoParameter(manager, name);
+                FamilyParameter value, mode;
+                if (TryGetSystemNameInputs(manager, parameter, out value, out mode)) parameter = value;
                 return parameter == null ? "" : type.AsString(parameter) ?? "";
             }
 
@@ -3233,11 +3349,44 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                         throw new InvalidOperationException("В семействе отсутствует текстовый параметр «" + pair.Key
                             + "». Добавьте соответствующий параметр в исходное семейство, чтобы сохранить это поле.");
                     }
-                    if ((manager.CurrentType.AsString(parameter) ?? "") == pair.Value) continue;
-                    EnsureWritable(parameter);
-                    try { manager.Set(parameter, pair.Value); }
+                    FamilyParameter value, mode;
+                    bool routed = TryGetSystemNameInputs(manager, parameter, out value, out mode);
+                    if (!routed) value = parameter;
+                    bool writeValue = (manager.CurrentType.AsString(value) ?? "") != pair.Value;
+                    bool writeMode = routed && manager.CurrentType.AsInteger(mode) != 1;
+                    // Проверяем оба входа до записи. Формулу результата не снимаем;
+                    // значение «Имя системы_Экземпляр» и другие типы не изменяем.
+                    if (writeValue) EnsureWritable(value);
+                    if (writeMode) EnsureWritable(mode);
+                    try
+                    {
+                        if (writeValue) manager.Set(value, pair.Value);
+                        if (writeMode) manager.Set(mode, 1);
+                    }
                     catch (Exception ex)
-                    { throw new InvalidOperationException("Параметр «" + pair.Key + "»: " + OperationError.Message(ex), ex); }
+                    { throw new InvalidOperationException("Поле «" + pair.Key + "»: " + OperationError.Message(ex), ex); }
+                }
+            }
+
+            private static void VerifyInfoValues(FamilyManager manager, InstallationInfo info)
+            {
+                foreach (var pair in info.Assignments())
+                {
+                    var output = InfoParameter(manager, pair.Key);
+                    FamilyParameter value, mode;
+                    if (TryGetSystemNameInputs(manager, output, out value, out mode))
+                    {
+                        if (manager.CurrentType.AsInteger(mode) != 1) ValueMismatch(mode, "1", manager.CurrentType.AsInteger(mode)?.ToString() ?? "не задано");
+                        string input = manager.CurrentType.AsString(value) ?? "";
+                        if (input != pair.Value) ValueMismatch(value, pair.Value, input);
+                    }
+                    // После Commit сверяем именно результат Revit, а не только записанный вход.
+                    string actual = output == null ? "" : manager.CurrentType.AsString(output) ?? "";
+                    if (actual != pair.Value)
+                    {
+                        if (output == null) throw new InvalidOperationException("Не найден параметр «" + pair.Key + "».");
+                        ValueMismatch(output, pair.Value, actual);
+                    }
                 }
             }
 
@@ -3291,11 +3440,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
             private static void VerifyRequestedValues(Document document, InstallationConfiguration configuration)
             {
                 var manager = document.FamilyManager; var type = manager.CurrentType;
-                foreach (var pair in configuration.Info.Assignments())
-                {
-                    string actual = ReadInfoValue(manager, type, pair.Key);
-                    if (actual != pair.Value) ValueMismatch(InfoParameter(manager, pair.Key), pair.Value, actual);
-                }
+                VerifyInfoValues(manager, configuration.Info);
                 var integers = new Dictionary<string, int> { { "Секции_Промежуточные_Количество", configuration.IntermediateCount },
                     { "Соединитель_Приточный_Клапан", configuration.HasValve ? 1 : 0 } };
                 foreach (var flag in configuration.BooleanAssignments()) integers.Add(flag.Key, flag.Value);
@@ -3341,6 +3486,48 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 try { name = instance?.Symbol == null ? element.Name : instance.Symbol.FamilyName + " : " + instance.Symbol.Name; }
                 catch (Autodesk.Revit.Exceptions.InvalidOperationException) { name = element.GetType().Name; }
                 return name + " [ID " + Common.IDHelper.ElIdValue(element.Id) + "]";
+            }
+
+            private static FamilyDependencies ReadCatalogDependencies(Document document, FamilyType sourceType, FamilyDependencies schema = null)
+            {
+                var result = new FamilyDependencies();
+                if (schema == null)
+                {
+                    // Для интерфейса нужны определения и формулы. Обход привязок геометрии
+                    // и вложенных элементов выполняется только в диагностике операции записи.
+                    foreach (FamilyParameter parameter in document.FamilyManager.Parameters)
+                        result.Parameters.Add(parameter.Definition.Name, new ParameterDependency
+                        {
+                            Name = parameter.Definition.Name,
+                            Formula = parameter.Formula,
+                            IsReadOnly = parameter.IsReadOnly,
+                            IsReporting = parameter.IsReporting,
+                            IsInstance = parameter.IsInstance
+                        });
+                    result.ConnectFormulas();
+                }
+                else result.Parameters = new Dictionary<string, ParameterDependency>(schema.Parameters, StringComparer.Ordinal);
+                // Только эти четыре флага участвуют в локальном расчёте. Их значения
+                // принадлежат конкретному типу; общий снимок определений не изменяем.
+                foreach (string name in new[] { "Соединитель_Приточный", "Соединитель_Отработанный", "Системный_Видимость_1_Блок", ValveControl.ParameterName })
+                {
+                    ParameterDependency definition;
+                    if (!result.Parameters.TryGetValue(name, out definition)) continue;
+                    var parameter = document.FamilyManager.get_Parameter(name);
+                    var item = new ParameterDependency
+                    {
+                        Name = definition.Name,
+                        Formula = definition.Formula,
+                        IsReadOnly = definition.IsReadOnly,
+                        IsReporting = definition.IsReporting,
+                        IsInstance = definition.IsInstance,
+                        Inputs = definition.Inputs,
+                        Dependents = definition.Dependents
+                    };
+                    if (parameter != null && parameter.StorageType == StorageType.Integer) item.IntegerValue = sourceType.AsInteger(parameter);
+                    result.Parameters[name] = item;
+                }
+                return result;
             }
 
             private static FamilyDependencies ReadFamilyDependencies(Document document, FamilyType sourceType = null, IEnumerable<string> watchedNames = null)
@@ -3566,6 +3753,9 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                 if (source == null) throw new InvalidOperationException("В семействе нет исходного типа «" + BaseFamilyTypeName
                     + "». Нельзя прочитать начальные значения для его копии.");
                 var result = new FamilyPackage { Path = path, SourcePath = path, SelectedTypeName = manager.CurrentType?.Name, Catalog = ReadSectionCatalog(document, source) };
+                // Ошибка необязательной проверки основы не должна мешать чтению типов.
+                try { result.DefinitionSnapshot = ReadFamilyDefinitionSnapshot(document, result.Catalog); }
+                catch { result.DefinitionSnapshot = null; }
                 if (includeTypes)
                     foreach (var type in manager.Types.Cast<FamilyType>().Where(t => t.Name != BaseFamilyTypeName).OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase))
                     {
@@ -3642,7 +3832,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
                     catalog.SharedLengthsMm.Add(name, ReadSourceLengthMm(manager, sourceType, name));
                 foreach (string name in SharedParameters.BooleanNames)
                     catalog.SharedFlags.Add(name, ReadBooleanValue(manager, sourceType, name));
-                catalog.Dependencies = ReadFamilyDependencies(document, sourceType);
+                catalog.Dependencies = ReadCatalogDependencies(document, sourceType, choicesCatalog?.Dependencies);
                 return catalog;
             }
 

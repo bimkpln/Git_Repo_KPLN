@@ -233,6 +233,8 @@
                 <TextBlock x:Name="ProjectHeaderTextBlock" Text="Неизвестно"
                            Margin="0,7,0,0" Foreground="#586777" TextWrapping="Wrap"
                            MaxHeight="52" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="FamilyUpdateNoticeTextBlock" Visibility="Collapsed"
+                           Margin="0,7,0,0" Foreground="#956019" TextWrapping="Wrap" FontSize="12"/>
             </StackPanel>
             <StackPanel Grid.Column="2" VerticalAlignment="Center">
                 <TextBlock Text="Имя типа" FontWeight="SemiBold" Margin="0,0,0,6"/>
@@ -252,17 +254,24 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock Text="Типы семейства" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Типы семейства" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Button x:Name="UpdateFamilyButton" Grid.Column="1" Click="UpdateFamily_Click"
+                                    Width="26" Height="26" Margin="8,0,0,0" Visibility="Collapsed" IsEnabled="False"
+                                    Style="{StaticResource IconButtonStyle}" AutomationProperties.Name="Обновить семейство из основы"
+                                    ToolTip="Обновить семейство из основы на X с сохранением настроек ваших типов">
+                                <Path Data="M 13,4 A 6,6 0 1 0 14,9 M 13,0 L 13,5 L 8,5" Width="16" Height="16"
+                                      Stretch="Uniform" Stroke="#356C98" StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            </Button>
+                        </Grid>
                         <Button x:Name="CreateTypeButton" Content="＋  Создать тип" Click="CreateType_Click"
                                 AutomationProperties.Name="Создать тип" Style="{StaticResource CreateTypeButtonStyle}"/>
-                        <Button x:Name="OpenFamilyFileButton" Content="Открыть RFA…" Click="OpenFamilyFile_Click"
-                                Margin="0,8,0,0" Padding="10,8" Visibility="Collapsed"
-                                ToolTip="Прочитать типы из ранее сохранённого проектного семейства"/>
                         <Button x:Name="CopyTypeButton" Content="Копировать выбранный тип" Click="CopyType_Click"
                                 Margin="0,8,0,0" IsEnabled="False" Padding="10,8"/>
-                        <Button x:Name="UpdateFamilyButton" Content="Обновить семейство из основы" Click="UpdateFamily_Click"
-                                Margin="0,8,0,0" Visibility="Collapsed" IsEnabled="False" Padding="8,8" FontSize="11"
-                                ToolTip="Обновить семейство проекта из исходного семейства на X с сохранением существующих типов"/>
                     </StackPanel>
                     <ListBox x:Name="FamilyTypesListBox" Grid.Row="1" BorderThickness="0" FontSize="12"
                              SelectionChanged="FamilyTypesListBox_SelectionChanged"
@@ -278,7 +287,7 @@
                                         <ColumnDefinition Width="20"/>
                                         <ColumnDefinition Width="24"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding DisplayName}" ToolTip="{Binding DisplayName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding DisplayName}" ToolTip="{Binding ToolTipText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Style.Triggers>
@@ -384,10 +393,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <Button x:Name="ReviewParametersButton" Grid.Column="2" Content="Проверить параметры" Click="ReviewParameters_Click"
-                        MinHeight="28" Padding="10,4" Margin="12,0,0,0"/>
                 <TextBlock x:Name="StatusTextBlock" Grid.Column="1" Text="Выберите «Создать тип», чтобы начать."
                            Foreground="#30475E" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                 <Button x:Name="ErrorDetailsButton" Content="Подробности" Click="ErrorDetails_Click"
