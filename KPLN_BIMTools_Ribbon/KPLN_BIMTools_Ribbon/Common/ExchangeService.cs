@@ -434,20 +434,55 @@ namespace KPLN_BIMTools_Ribbon.Common
 
         private void SendResultMessages(string moduleName, List<ExchangeNotificationResult> results)
         {
-            // Старые конфиги сохраняют общую сводку запускающему пользователю.
-            ExchangeNotificationResult[] legacyResults = results.Where(result => !(result.Autostart?.NotificationUserId).HasValue).ToArray();
-            if (legacyResults.Length > 0)
-                SendResultMsg(moduleName, legacyResults, null);
-
-            foreach (ExchangeNotificationResult result in results.Where(item => (item.Autostart?.NotificationUserId).HasValue))
-                SendResultMsg(moduleName, new[] { result }, result.Autostart.NotificationUserId);
+            // Одна сводка по всем конфигам запуска для каждого фактического получателя.
+            foreach (NotificationBatch batch in BuildNotificationBatches(results, message => Module.CurrentLogger.Error(message)))
+                SendResultMsg(moduleName, batch.Results.ToArray(), batch.Recipient,
+                    string.Join("\n", batch.RecipientNotes.Distinct()));
         }
 
-        private void SendResultMsg(string moduleName, ExchangeNotificationResult[] results, int? notificationUserId)
+        private sealed class NotificationBatch
+        {
+            internal DBUser Recipient { get; set; }
+            internal List<ExchangeNotificationResult> Results { get; } = new List<ExchangeNotificationResult>();
+            internal List<string> RecipientNotes { get; } = new List<string>();
+        }
+
+        private static NotificationBatch[] BuildNotificationBatches(IEnumerable<ExchangeNotificationResult> results, Action<string> logError)
+        {
+            var batches = new Dictionary<int, NotificationBatch>();
+            foreach (ExchangeNotificationResult result in results)
+            {
+                try
+                {
+                    // Группируем после подстановки отсутствующего пользователя и замены rbim на tkutsko.
+                    DBUser recipient = ResolveNotificationRecipient(result.Autostart?.NotificationUserId, out string recipientInfo);
+                    if (recipient == null)
+                    {
+                        logError($"Не удалось отправить уведомление по конфигурации [{result.Configuration.SettingName}]: {recipientInfo}");
+                        continue;
+                    }
+
+                    if (!batches.TryGetValue(recipient.Id, out NotificationBatch batch))
+                    {
+                        batch = new NotificationBatch { Recipient = recipient };
+                        batches.Add(recipient.Id, batch);
+                    }
+                    batch.Results.Add(result);
+                    if (!string.IsNullOrEmpty(recipientInfo))
+                        batch.RecipientNotes.Add(recipientInfo);
+                }
+                catch (Exception ex)
+                {
+                    logError($"Не удалось определить получателя конфигурации [{result.Configuration.SettingName}]: {ex.Message}");
+                }
+            }
+            return batches.Values.ToArray();
+        }
+
+        private void SendResultMsg(string moduleName, ExchangeNotificationResult[] results, DBUser recipient, string recipientInfo)
         {
             try
             {
-                DBUser recipient = ResolveNotificationRecipient(notificationUserId, out string recipientInfo);
                 string configNames = string.Join("; ", results.Select(result => result.Configuration.SettingName));
                 if (recipient == null)
                 {
