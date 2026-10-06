@@ -3,5 +3,6 @@
   <PropertyGroup><OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><OutputPath>bin\</OutputPath><LangVersion>7.3</LangVersion><AssemblyName>LifecycleTests</AssemblyName></PropertyGroup>
   <ItemGroup><Reference Include="System" /><Reference Include="System.Core" /><Reference Include="WindowsBase" /><Reference Include="PresentationCore" /></ItemGroup>
   <ItemGroup><Compile Include="..\..\Module.cs" Link="Module.cs" /><Compile Include="..\..\ExternalCommands\BridgeStatusExtCmd.cs" Link="BridgeStatusExtCmd.cs" /><Compile Include="FakeHost.cs" /><Compile Include="Program.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="..\..\ModuleData.cs" Link="ModuleData.cs" /></ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -1,0 +1,14 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><OutputPath>bin\</OutputPath><LangVersion>7.3</LangVersion><AssemblyName>InspectionTests</AssemblyName></PropertyGroup>
+  <ItemGroup><Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Web.Extensions" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\Server\Protocol.cs" Link="Protocol.cs" />
+    <Compile Include="..\..\Services\ElementLocationService.cs" Link="ElementLocationService.cs" />
+    <Compile Include="..\..\Services\ModelInspectionService.cs" Link="ModelInspectionService.cs" />
+    <Compile Include="..\..\Services\InterferenceService.cs" Link="InterferenceService.cs" />
+    <Compile Include="..\..\Services\SheetPdfExportService.cs" Link="SheetPdfExportService.cs" />
+    <Compile Include="FakeRevit.cs" /><Compile Include="Program.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

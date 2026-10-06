@@ -11,16 +11,50 @@ mcp = FastMCP("KPLN_RevitMcpBridge", instructions=(
     "Работа с локальным Revit через KPLN_Loader. Сначала list_revit_sessions и get_revit_context. "
     "Для чтения/записи передавайте полученный document_id, для записи также expected_revision. "
     "set_revit_parameters и set_revit_family_type_parameters по умолчанию строят план; dry_run=False применяет его. После таймаута "
-    "не повторяйте запись: get_revit_operation. Инженерные решения храните отдельно в KPLN_RevitRules; "
+    "не повторяйте запись: get_revit_operation. Правила генерации семейств храните в KPLN_RevitRules, "
+    "проверки кандидатов — в KPLN_JobCandidateModelCheckRules; "
     "геометрия в мм относительно внутренних координат документа, Double-параметры в единицах Revit."
 ))
 client = BridgeClient()
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
 UI = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+POST_UI = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False, openWorldHint=False)
 Limit = Annotated[int, Field(ge=1, le=200)]
 Offset = Annotated[int, Field(ge=0, le=10000000)]
 Ids = Annotated[list[str], Field(min_length=1, max_length=200)]
+CategoryIds = Annotated[list[str], Field(min_length=1, max_length=64)]
+
+
+class BatchPrintSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    printerName: Literal["PDFCreator"] = "PDFCreator"
+    outputPDFFolder: str = "C:\\PDF_Print"
+    pdfNameConstructor: str = "<Номер листа>_<Имя листа>.pdf"
+    hiddenLineProcessing: Literal["VectorProcessing", "RasterProcessing"] = "VectorProcessing"
+    colorsType: Literal["Color", "Monochrome", "GrayScale"] = "Color"
+    rasterQuality: Literal["Low", "Medium", "High", "Presentation"] = "Medium"
+    isPDFExport: Literal[True] = True
+    isPrintToPaper: Literal[False] = False
+    isMergePdfs: Literal[False] = False
+    isUseOrientation: bool = False
+    isRefreshSchedules: bool = True
+    isExcludeBorders: Literal[False] = False
+    isDWGExport: Literal[False] = False
+
+
+@mcp.tool(annotations=EXPORT)
+def print_revit_sheets_pdf(document_id: str, expected_revision: Annotated[int, Field(ge=0)], settings: BatchPrintSettings | None = None,
+                           dry_run: bool = True, timeout_seconds: Annotated[int, Field(ge=5, le=60)] = 30, session_id: str | None = None) -> dict:
+    """Все листы активной модели через KPLN Пакетную выдачу/PDFCreator без окон. dry_run строит план.
+
+    Новая папка запуска внутри outputPDFFolder; модель не сохраняется, временные изменения откатываются.
+    После outcome_pending читать get_revit_operation; при таймауте принтера не повторять печать автоматически.
+    Нужны обновлённая KPLN_Publication и настроенный PDFCreator. Связи не печатаются.
+    """
+    return client.command("print_sheets_pdf", session_id, document_id=document_id, expected_revision=expected_revision,
+                          settings=(settings or BatchPrintSettings()).model_dump(), dry_run=dry_run, timeout_seconds=timeout_seconds)
 
 
 class ParameterUpdate(BaseModel):
@@ -120,9 +154,57 @@ def get_revit_views(document_id: str, offset: Offset = 0, limit: Limit = 100, se
 
 
 @mcp.tool(annotations=READ)
+def get_revit_group_members(document_id: str, group_unique_id: str, offset: Offset = 0, limit: Limit = 100, session_id: str | None = None) -> dict:
+    """Состав экземпляра группы, тип, родитель и привязанные группы детализации. Только прямые члены; вложенные группы запрашиваются отдельно. Сохраняет member_index, страницы читать при одной revision."""
+    return client.command("get_group_members", session_id, document_id=document_id, group_unique_id=group_unique_id, offset=offset, limit=limit)
+
+
+@mcp.tool(annotations=READ)
+def get_revit_sheet_contents(document_id: str, sheet_unique_id: str, session_id: str | None = None) -> dict:
+    """Размещённые на листе виды (тип, масштаб, шаблон), спецификации и основные надписи. Не доказывает фактическое отображение каждого элемента."""
+    return client.command("get_sheet_contents", session_id, document_id=document_id, sheet_unique_id=sheet_unique_id)
+
+
+@mcp.tool(annotations=READ)
+def get_revit_view_elements(document_id: str, view_unique_id: str, category_id: str | None = None, offset: Offset = 0, limit: Limit = 100, session_id: str | None = None) -> dict:
+    """Потенциально видимые элементы вида с группами/рабочими наборами. Это не пиксельная видимость: обрезка и перекрытие могут дополнительно скрыть элементы. Для листа сначала получить размещённые виды."""
+    return client.command("get_view_elements", session_id, document_id=document_id, view_unique_id=view_unique_id, category_id=category_id, offset=offset, limit=limit)
+
+
+@mcp.tool(annotations=READ)
+def get_revit_view_visibility(document_id: str, view_unique_id: str, unique_ids: Ids, session_id: str | None = None) -> dict:
+    """Для указанных элементов: потенциальная видимость, скрытие экземпляра/категории, рабочие наборы, фильтры и показ привязанных групп. Не заменяет визуальную проверку обрезки/перекрытия."""
+    return client.command("get_view_visibility", session_id, document_id=document_id, view_unique_id=view_unique_id, unique_ids=unique_ids)
+
+
+@mcp.tool(annotations=READ)
+def get_revit_schedule_data(document_id: str, schedule_unique_id: str, section: Literal["body", "header"] = "body", offset: Offset = 0, limit: Annotated[int, Field(ge=1, le=100)] = 50, column_offset: Offset = 0, column_limit: Annotated[int, Field(ge=1, le=50)] = 50, session_id: str | None = None) -> dict:
+    """Поля, фильтры, сортировка/группирование, итоги и ячейки спецификации. Обойти обе пагинации строк/столбцов при одной revision. Ячейки — отображаемый текст; формулы и вложенное определение не читаются. Оценка правильности — в слое правил."""
+    return client.command("get_schedule_data", session_id, document_id=document_id, schedule_unique_id=schedule_unique_id, section=section, offset=offset, limit=limit, column_offset=column_offset, column_limit=column_limit)
+
+
+@mcp.tool(annotations=READ)
+def check_revit_intersections(document_id: str, left_category_ids: CategoryIds, right_category_ids: CategoryIds, max_pairs: Annotated[int, Field(ge=1, le=5000)] = 1000, session_id: str | None = None) -> dict:
+    """Пересечения через ElementIntersectsElementFilter (логика Autodesk Interference Report), без UI/скриншотов. Только текущий проект, до 2000 элементов на сторону, без связей. Это НЕ запуск штатного диалога. Нулевой список при incomplete/empty_scope не означает успех; нужен status=no_intersections и complete=true. После таймаута прочитать get_revit_operation."""
+    return client.command("check_intersections", session_id, document_id=document_id, left_category_ids=left_category_ids, right_category_ids=right_category_ids, max_pairs=max_pairs)
+
+
+@mcp.tool(annotations=POST_UI)
+def open_revit_interference_check(document_id: str, session_id: str | None = None) -> dict:
+    """Открыть штатную проверку пересечений через PostCommand. Возвращает posted, НЕ результат проверки. Выбор категорий/ОК и получение результата требуют участия пользователя. Автоматическая проверка без UI — check_revit_intersections. После таймаута не повторять, запросить get_revit_operation."""
+    return client.command("open_interference_check", session_id, document_id=document_id)
+
+
+@mcp.tool(annotations=READ)
 def get_revit_links(document_id: str, session_id: str | None = None) -> dict:
     """Экземпляры связей Revit, состояние загрузки и матрицы переноса из координат связи в хост. Не редактирует связи."""
     return client.command("get_links", session_id, document_id=document_id)
+
+
+@mcp.tool(annotations=EXPORT)
+def export_revit_sheets_pdf(document_id: str, expected_revision: Annotated[int, Field(ge=0)], dry_run: bool = True, session_id: str | None = None) -> dict:
+    """Все листы текущего проекта в PDF штатным экспортом Revit 2023/2024. Сначала dry_run=True: перечень листов и пропусков. dry_run=False создаёт отдельный PDF каждого печатаемого листа и manifest.json в новом локальном каталоге моста; возвращает абсолютные пути, SHA256 и соответствие листам. Размер бумаги по листу, 100%, цвет. Документ не сохраняется, принтеры/настройки печати не меняются. Пропуски/ошибки дают complete=false. После таймаута читать get_revit_operation, НЕ повторять экспорт. Для визуального контроля прочитать реальные PDF, проверить страницы и размеры. Revit 2020 не поддерживается."""
+    return client.command("export_sheets_pdf", session_id, document_id=document_id, expected_revision=expected_revision, dry_run=dry_run)
 
 
 @mcp.tool(annotations=READ)

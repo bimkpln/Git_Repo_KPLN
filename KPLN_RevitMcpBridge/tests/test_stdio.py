@@ -14,7 +14,18 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
                 info = await session.initialize()
                 self.assertEqual(info.serverInfo.name, "KPLN_RevitMcpBridge")
                 tools = await session.list_tools()
-                self.assertEqual(len(tools.tools), 18)
+                self.assertEqual(len(tools.tools), 27)
+                by_name = {tool.name: tool for tool in tools.tools}
+                for name in ("get_revit_group_members", "get_revit_sheet_contents", "get_revit_view_elements", "get_revit_view_visibility", "get_revit_schedule_data", "check_revit_intersections"):
+                    self.assertTrue(by_name[name].annotations.readOnlyHint)
+                self.assertFalse(by_name["open_revit_interference_check"].annotations.idempotentHint)
+                self.assertFalse(by_name["export_revit_sheets_pdf"].annotations.readOnlyHint)
+                self.assertFalse(by_name["export_revit_sheets_pdf"].annotations.destructiveHint)
+                self.assertFalse(by_name["export_revit_sheets_pdf"].annotations.idempotentHint)
+                self.assertFalse(by_name["print_revit_sheets_pdf"].annotations.readOnlyHint)
+                self.assertFalse(by_name["print_revit_sheets_pdf"].annotations.idempotentHint)
+                self.assertTrue(by_name["print_revit_sheets_pdf"].inputSchema["properties"]["dry_run"]["default"])
+                self.assertIn("left_category_ids", by_name["check_revit_intersections"].inputSchema["properties"])
                 family_tool = next(tool for tool in tools.tools if tool.name == "create_revit_family_types")
                 self.assertIn("base_type_name", family_tool.inputSchema["properties"])
                 family_set = next(tool for tool in tools.tools if tool.name == "set_revit_family_type_parameters")
@@ -25,6 +36,19 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
                 # Schema validation rejects accidental unbounded requests before HTTP.
                 bad = await session.call_tool("find_revit_elements", {"document_id": "fake", "limit": 201})
                 self.assertTrue(bad.isError)
+                for name, args in (
+                    ("get_revit_schedule_data", {"document_id": "fake", "schedule_unique_id": "fake", "column_limit": 51}),
+                    ("get_revit_schedule_data", {"document_id": "fake", "schedule_unique_id": "fake", "section": "invalid"}),
+                    ("check_revit_intersections", {"document_id": "fake", "left_category_ids": [], "right_category_ids": ["-2000011"]}),
+                    ("check_revit_intersections", {"document_id": "fake", "left_category_ids": ["-2000011"], "right_category_ids": ["-2000011"], "max_pairs": 5001}),
+                    ("export_revit_sheets_pdf", {"document_id": "fake"}),
+                    ("export_revit_sheets_pdf", {"document_id": "fake", "expected_revision": -1}),
+                    ("print_revit_sheets_pdf", {"document_id": "fake"}),
+                    ("print_revit_sheets_pdf", {"document_id": "fake", "expected_revision": -1}),
+                    ("print_revit_sheets_pdf", {"document_id": "fake", "expected_revision": 0, "timeout_seconds": 61}),
+                    ("print_revit_sheets_pdf", {"document_id": "fake", "expected_revision": 0, "settings": {"isDWGExport": True}}),
+                ):
+                    self.assertTrue((await session.call_tool(name, args)).isError)
 
 
 if __name__ == "__main__": unittest.main()

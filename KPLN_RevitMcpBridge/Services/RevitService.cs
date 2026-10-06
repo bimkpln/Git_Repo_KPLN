@@ -116,7 +116,26 @@ namespace KPLN_RevitMcpBridge.Services
                     }
                     break;
                 case "get_elements":
-                    result = Resolve(doc, input).Select(e => new { element = ElementInfo(e), bounding_box = Box(e), parameters = ParameterService.Read(e), location = Location(e) }).ToArray(); break;
+                    result = Resolve(doc, input).Select(e => new { element = ElementInfo(e), bounding_box = Box(e), parameters = ParameterService.Read(e), location = ElementLocationService.Read(e) }).ToArray(); break;
+                case "get_group_members": result = ModelInspectionService.GroupMembers(doc, input); break;
+                case "get_sheet_contents": result = ModelInspectionService.SheetContents(doc, input); break;
+                case "get_view_elements": result = ModelInspectionService.ViewElements(doc, input); break;
+                case "get_view_visibility": result = ModelInspectionService.ViewVisibility(doc, input); break;
+                case "get_schedule_data": result = ModelInspectionService.ScheduleData(doc, input); break;
+                case "check_intersections": result = InterferenceService.Check(doc, input); break;
+                case "open_interference_check": result = InterferenceService.OpenNative(app); break;
+                case "export_sheets_pdf":
+                    if (Json.Integer(input.Get("expected_revision"), "expected_revision") != state.Revision)
+                        throw new BridgeException("stale_document", "Модель изменилась; получите контекст заново перед экспортом.", 409);
+
+                    result = SheetPdfExportService.Export(doc, input);
+                    break;
+                case "print_sheets_pdf":
+                    if (Json.Integer(input.Get("expected_revision"), "expected_revision") != state.Revision)
+                        throw new BridgeException("stale_document", "Модель изменилась; получите контекст заново перед печатью.", 409);
+
+                    result = PublicationPrintService.Print(doc, input);
+                    break;
                 case "get_views":
                     using (var collector = new FilteredElementCollector(doc))
                         result = Page(collector.OfClass(typeof(View)).Cast<View>().Where(v => !v.IsTemplate).OrderBy(v => IdValue(v.Id)), input);
@@ -163,7 +182,7 @@ namespace KPLN_RevitMcpBridge.Services
             var values = source.Skip(offset).Take(limit + 1).ToArray();
             return new { items = values.Take(limit).Select(ElementInfo).ToArray(), offset, next_offset = values.Length > limit ? (int?)(offset + limit) : null };
         }
-        private static Element[] Resolve(Document doc, IDictionary<string, object> input)
+        internal static Element[] Resolve(Document doc, IDictionary<string, object> input)
         {
             var ids = input.List("unique_ids");
             var seen = new HashSet<string>(); var result = new List<Element>();
@@ -180,14 +199,6 @@ namespace KPLN_RevitMcpBridge.Services
         private static double[] Point(XYZ p) => new[] { p.X * 304.8, p.Y * 304.8, p.Z * 304.8 };
         private static double[] Vector(XYZ p) => new[] { p.X, p.Y, p.Z };
         private static object TransformInfo(Transform t) => new { origin_mm = Point(t.Origin), basis_x = Vector(t.BasisX), basis_y = Vector(t.BasisY), basis_z = Vector(t.BasisZ) };
-        private static object Location(Element e)
-        {
-            var point = e.Location as LocationPoint;
-            if (point != null) return new { kind = "point", point_mm = Point(point.Point), rotation_radians = point.Rotation };
-            var curve = (e.Location as LocationCurve)?.Curve;
-            if (curve != null && curve.IsBound) return new { kind = "curve", curve_type = curve.GetType().Name, start_mm = Point(curve.GetEndPoint(0)), end_mm = Point(curve.GetEndPoint(1)), length_mm = curve.Length * 304.8 };
-            return null;
-        }
         private static object FamilyDocument(Document doc, IDictionary<string, object> input)
         {
             if (!doc.IsFamilyDocument) throw new BridgeException("not_family_document", "Команда требует открытого редактора семейства.");

@@ -122,7 +122,7 @@ class BridgeTests(unittest.TestCase):
 
     def test_tool_schemas_and_annotations(self):
         tools = asyncio.run(server.mcp.list_tools())
-        self.assertEqual(len(tools), 18)
+        self.assertEqual(len(tools), 27)
         for tool in tools:
             self.assertIsNotNone(tool.annotations)
             self.assertFalse(tool.annotations.openWorldHint)
@@ -135,6 +135,53 @@ class BridgeTests(unittest.TestCase):
         family_set = next(t for t in tools if t.name == "set_revit_family_type_parameters")
         self.assertFalse(family_set.annotations.readOnlyHint)
         self.assertTrue(family_set.inputSchema["properties"]["dry_run"]["default"])
+
+    def test_inspection_tools_forward_identity_and_scope(self):
+        cases = (
+            (server.get_revit_group_members, {"group_unique_id": "group", "offset": 100}, "get_group_members"),
+            (server.get_revit_sheet_contents, {"sheet_unique_id": "sheet"}, "get_sheet_contents"),
+            (server.get_revit_view_elements, {"view_unique_id": "view", "category_id": "-2000011"}, "get_view_elements"),
+            (server.get_revit_view_visibility, {"view_unique_id": "view", "unique_ids": ["wall"]}, "get_view_visibility"),
+            (server.get_revit_schedule_data, {"schedule_unique_id": "schedule", "column_offset": 50}, "get_schedule_data"),
+            (server.check_revit_intersections, {"left_category_ids": ["-2000011"], "right_category_ids": ["-2000032"]}, "check_intersections"),
+            (server.open_revit_interference_check, {}, "open_interference_check"),
+            (server.export_revit_sheets_pdf, {"expected_revision": 2}, "export_sheets_pdf"),
+        )
+        for function, args, command_name in cases:
+            with self.subTest(command=command_name), patch.object(server.client, "command", return_value={}) as command:
+                function(document_id="doc", session_id="session", **args)
+                self.assertEqual(command.call_args.args, (command_name, "session"))
+                self.assertEqual(command.call_args.kwargs["document_id"], "doc")
+                for key, value in args.items():
+                    self.assertEqual(command.call_args.kwargs[key], value)
+
+    def test_pdf_export_defaults_to_preview_and_preserves_revision(self):
+        with patch.object(server.client, "command", return_value={}) as command:
+            server.export_revit_sheets_pdf("doc", 42, session_id="session")
+        self.assertTrue(command.call_args.kwargs["dry_run"])
+        self.assertEqual(command.call_args.kwargs["expected_revision"], 42)
+
+    def test_publication_print_defaults_match_requested_setup(self):
+        with patch.object(server.client, "command", return_value={}) as command:
+            server.print_revit_sheets_pdf("doc", 42, session_id="session")
+        self.assertEqual(command.call_args.args, ("print_sheets_pdf", "session"))
+        self.assertTrue(command.call_args.kwargs["dry_run"])
+        self.assertEqual(command.call_args.kwargs["expected_revision"], 42)
+        settings = command.call_args.kwargs["settings"]
+        self.assertEqual(settings["printerName"], "PDFCreator")
+        self.assertEqual(settings["outputPDFFolder"], "C:\\PDF_Print")
+        self.assertEqual(settings["pdfNameConstructor"], "<Номер листа>_<Имя листа>.pdf")
+        self.assertEqual(settings["colorsType"], "Color")
+        self.assertEqual(settings["hiddenLineProcessing"], "VectorProcessing")
+        self.assertTrue(settings["isRefreshSchedules"])
+        for name in ("isDWGExport", "isPrintToPaper", "isMergePdfs", "isExcludeBorders", "isUseOrientation"):
+            self.assertFalse(settings[name])
+
+    def test_publication_unsupported_modes_are_rejected(self):
+        for value in ({"printerName": "Kyocera"}, {"isPrintToPaper": True}, {"isDWGExport": True},
+                      {"isMergePdfs": True}, {"isExcludeBorders": True}, {"unknown": True}):
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                server.BatchPrintSettings(**value)
 
 
 if __name__ == "__main__": unittest.main()

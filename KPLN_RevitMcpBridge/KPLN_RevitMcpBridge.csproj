@@ -35,7 +35,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2020\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2020</StartWorkingDirectory>
-    <OutputPath>bin\2020\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\RevitMcpBridge\2020\</OutputPath>
     <DebugType>none</DebugType>
     <DefineConstants>TRACE;Revit2020</DefineConstants>
     <Optimize>true</Optimize>
@@ -58,7 +58,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2023\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2023</StartWorkingDirectory>
-    <OutputPath>bin\2023\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\RevitMcpBridge\2023\</OutputPath>
     <DebugType>none</DebugType>
     <DefineConstants>TRACE;Revit2023</DefineConstants>
     <Optimize>true</Optimize>
@@ -81,7 +81,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2024\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2024</StartWorkingDirectory>
-    <OutputPath>bin\2024\</OutputPath>
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\RevitMcpBridge\2024\</OutputPath>
     <DebugType>none</DebugType>
     <DefineConstants>TRACE;Revit2024</DefineConstants>
     <Optimize>true</Optimize>
@@ -112,6 +112,8 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ModuleData.cs" />
+    <Compile Include="Services\PublicationPrintService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Module.cs" />
     <Compile Include="ExternalCommands\BridgeStatusExtCmd.cs" />
@@ -119,6 +121,10 @@
     <Compile Include="Server\WorkItem.cs" />
     <Compile Include="Server\HttpBridgeServer.cs" />
     <Compile Include="Services\RevitService.cs" />
+    <Compile Include="Services\ModelInspectionService.cs" />
+    <Compile Include="Services\ElementLocationService.cs" />
+    <Compile Include="Services\InterferenceService.cs" />
+    <Compile Include="Services\SheetPdfExportService.cs" />
     <Compile Include="Services\ParameterService.cs" />
     <Compile Include="Services\FamilyTypeService.cs" />
   </ItemGroup>

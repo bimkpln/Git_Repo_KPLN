@@ -46,7 +46,13 @@ namespace KPLN_RevitMcpBridge
                     "KPLN_RevitMcpBridge",
                     "Codex\nМост",
                     "Состояние моста Codex / управление подключением",
-                    "Модуль KPLN_RevitMcpBridge 1.0.7. По умолчанию мост выключен. Кнопка открывает окно состояния. В нём можно запустить остановленный мост или остановить работающий.",
+                    string.Format(
+                        "Настройка моста для подключения к Codex.\n\n" +
+                        "Дата сборки: {0}\nНомер сборки: {1}\nИмя модуля: {2}",
+                        ModuleData.Date,
+                        ModuleData.Version,
+                        ModuleData.ModuleName
+                    ),
                     typeof(BridgeStatusExtCmd).FullName,
                     panel,
                     "mcpBridge");
