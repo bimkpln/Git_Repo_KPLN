@@ -104,21 +104,46 @@ internal static class Program
         Reject(() => ModelInspectionService.ScheduleData(doc, Input("schedule_unique_id", "schedule", "section", "wrong")), "invalid_input");
 
 
-        var request = Input("left_category_ids", new[] { "-10" }, "right_category_ids", new[] { "-10" });
+        // Весь документ: иная категория, скрытый член группы, вложенная геометрия.
+        doc = new Document();
+        a.Geometry = new GeometryElement { Items = new List<GeometryObject> { new GeometryInstance { Nested = new GeometryElement { Items = new List<GeometryObject> { new Solid() } } } } };
+        b.Category = new Category { Id = new ElementId(-12345) };
+        b.Hidden = true;
+        b.GroupId = new ElementId(3);
+        var third = new Element { Id = new ElementId(5), UniqueId = "third", Category = category };
+        doc.Elements.AddRange(new Element[] { a, b, c, group, third });
+        var annotation = new Element { Id = new ElementId(40), UniqueId = "annotation", ViewSpecific = true, Category = category };
+        var symbol = new ElementType { Id = new ElementId(41), UniqueId = "symbol", Category = category };
+        doc.Elements.AddRange(new Element[] { annotation, symbol });
+        a.Intersections.Add(annotation.Id);
+        a.Intersections.Add(symbol.Id);
+        var request = Input();
+        foreach (var excludedCategory in new[] { BuiltInCategory.OST_Rooms, BuiltInCategory.OST_Cameras })
+        {
+            doc.Elements.Add(new Element
+            {
+                Id = new ElementId(50 + doc.Elements.Count), UniqueId = excludedCategory.ToString(),
+                Category = new Category { Id = new ElementId((int)excludedCategory) },
+                ThrowGeometry = true, Supported = false
+            });
+        }
         var result = Map(InterferenceService.Check(doc, request));
+        Assert((int)Map(result["excluded_counts"])["rooms_excluded_by_policy"] == 1, "rooms excluded before geometry access");
+        Assert((int)Map(result["excluded_counts"])["cameras_excluded_by_policy"] == 1, "cameras excluded before geometry access");
         Assert((string)result["status"] == "no_intersections" && (bool)result["complete"], "complete no-intersection result");
         Assert(!(bool)result["native_dialog_executed"] && (int)result["pair_count"] == 0, "API provenance and self-pair exclusion");
         a.Intersections.Add(b.Id);
         b.Intersections.Add(a.Id);
         result = Map(InterferenceService.Check(doc, request));
         Assert((string)result["status"] == "intersections_found" && (int)result["pair_count"] == 1, "symmetric pair deduplication");
-        a.Intersections.Add(c.Id);
-        c.Intersections.Add(a.Id);
+        Assert((int)result["solid_element_count"] == 3, "all categories, hidden/group members; containers excluded");
+        a.Intersections.Add(third.Id);
+        third.Intersections.Add(a.Id);
         request["max_pairs"] = 1;
         result = Map(InterferenceService.Check(doc, request));
         Assert(!(bool)result["complete"] && (string)result["stop_reason"] == "pair_limit" && result["message"] == null, "truncation never claims clear");
         request.Remove("max_pairs");
-        a.Intersections.Clear(); b.Intersections.Clear(); c.Intersections.Clear();
+        a.Intersections.Clear(); b.Intersections.Clear(); third.Intersections.Clear();
         b.Supported = false;
         result = Map(InterferenceService.Check(doc, request));
         Assert((string)result["status"] == "incomplete" && Items(result["unsupported_elements"]).Count == 1, "unsupported does not produce false clear");
@@ -127,24 +152,52 @@ internal static class Program
         result = Map(InterferenceService.Check(doc, request));
         Assert((string)result["status"] == "incomplete" && Items(result["errors"]).Count == 1, "API failure does not produce false clear");
         a.ThrowIntersection = false;
-        doc.Categories.Add(new Category { Id = new ElementId(-20) });
-        request["right_category_ids"] = new[] { "-20" };
-        Assert((string)Map(InterferenceService.Check(doc, request))["status"] == "empty_scope", "empty scope is not pass");
+        Assert((string)Map(InterferenceService.Check(new Document(), request))["status"] == "empty_scope", "empty scope is not pass");
         request["right_category_ids"] = new[] { "-999" };
         Reject(() => InterferenceService.Check(doc, request), "invalid_input");
-        request["right_category_ids"] = new[] { "-10", "-10" };
-        Reject(() => InterferenceService.Check(doc, request), "invalid_input");
-        request["right_category_ids"] = new[] { "-10" };
-        for (int i = 0; i < 2001; i++) doc.Elements.Add(new Element { Id = new ElementId(1000 + i), Category = category });
-        Reject(() => InterferenceService.Check(doc, request), "scope_too_large");
-
-
-        var app = new UIApplication();
-        var posted = Map(InterferenceService.OpenNative(app));
-        Assert(app.Posted == 1 && (string)posted["status"] == "posted" && !(bool)posted["check_completed"] && posted["result"] == null, "posting is not completion");
-        app.CanPost = false;
-        Reject(() => InterferenceService.OpenNative(app), "command_unavailable");
-        Assert(app.Posted == 1, "unavailable command must not post");
+        request.Remove("right_category_ids");
+        b.Geometry.Items.Add(new Mesh());
+        result = Map(InterferenceService.Check(doc, request));
+        Assert((bool)result["complete"], "test model policy ignores non-volume part");
+        var details = Map(Map(Items(result["geometry_notes"])[0])["geometry_details"]);
+        Assert((int)details["mesh_count"] == 1 && (int)details["volume_solid_count"] == 1, "mixed geometry diagnostics");
+        Assert((int)result["solid_element_count"] == 3, "mixed surface does not exclude volume from check");
+        b.Geometry.Items.RemoveAt(1);
+        b.Geometry.Items.Add(new Solid { Volume = 0 });
+        b.Geometry.Items.Add(new Face());
+        result = Map(InterferenceService.Check(doc, request));
+        details = Map(Map(Items(result["geometry_notes"])[0])["geometry_details"]);
+        Assert((int)details["zero_volume_solid_count"] == 1 && (int)details["face_count"] == 1 && (int)details["mesh_count"] == 0, "zero volume and faces distinguished from mesh");
+        b.Geometry.Items.RemoveRange(1, 2);
+        var solidGeometry = b.Geometry;
+        b.Geometry = new GeometryElement { Items = new List<GeometryObject> { new Mesh() } };
+        Assert((bool)Map(InterferenceService.Check(doc, request))["complete"], "mesh-only element excluded by test model policy");
+        b.Geometry = solidGeometry;
+        b.ThrowGeometry = true;
+        Assert(Items(Map(InterferenceService.Check(doc, request))["errors"]).Count == 1, "geometry errors retained");
+        b.ThrowGeometry = false;
+        var savedGeometry = b.Geometry;
+        b.Geometry = null;
+        b.Box = new BoundingBoxXYZ { Max = new XYZ { X = 1, Y = 1, Z = 1 } };
+        result = Map(InterferenceService.Check(doc, request));
+        Assert((bool)result["complete"] && Items(result["non_volumetric_elements"]).Count == 1, "bounds without volume explicitly excluded by test model policy");
+        b.Geometry = savedGeometry;
+        b.Box = null;
+        var link = new RevitLinkInstance { Id = new ElementId(8), UniqueId = "link" };
+        doc.Elements.Add(link);
+        Assert(!(bool)Map(InterferenceService.Check(doc, request))["complete"], "linked models not silently omitted");
+        doc.Elements.Remove(link);
+        doc.IsWorkshared = true;
+        doc.Worksets.Add(new Workset { Name = "closed", IsOpen = false });
+        Assert(!(bool)Map(InterferenceService.Check(doc, request))["complete"], "closed workset means incomplete");
+        doc.IsWorkshared = false;
+        var noVolume = new Element { Id = new ElementId(9), UniqueId = "curve", Geometry = new GeometryElement { Items = new List<GeometryObject> { new Curve() } } };
+        doc.Elements.Add(noVolume);
+        result = Map(InterferenceService.Check(doc, request));
+        Assert(Items(result["non_volumetric_elements"]).Count == 1 && (bool)result["complete"], "curves explicitly reported outside volume checking");
+        for (int i = 0; i < 2001; i++) doc.Elements.Add(new Element { Id = new ElementId(1000 + i), UniqueId = "large" + i, Category = category });
+        result = Map(InterferenceService.Check(doc, request));
+        Assert((int)result["solid_element_count"] == 2004 && (bool)result["complete"], "no old 2000-element category limit");
 
 
         // Экспорт: dry-run не создаёт файлов, частичные результаты не считаются полными.

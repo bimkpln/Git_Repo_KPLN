@@ -110,7 +110,7 @@ namespace KPLN_RevitMcpBridge.Server
                     throw new BridgeException("unauthorized", "Нет доступа к локальной сессии.", 401);
                 object result;
                 if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/health")
-                    result = new { ok = true, session_id = SessionId, revit_version = _version, protocol = 1, bridge_version = "1.0.10", api_context = "ExternalEvent", background_wakeup = "WM_NULL" };
+                    result = new { ok = true, session_id = SessionId, revit_version = _version, protocol = 1, bridge_version = "1.0.13", api_context = "ExternalEvent", background_wakeup = "WM_NULL" };
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath.StartsWith("/operations/", StringComparison.Ordinal))
                 {
                     WorkItem item;

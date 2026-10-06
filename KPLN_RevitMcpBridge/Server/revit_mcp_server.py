@@ -184,15 +184,9 @@ def get_revit_schedule_data(document_id: str, schedule_unique_id: str, section: 
 
 
 @mcp.tool(annotations=READ)
-def check_revit_intersections(document_id: str, left_category_ids: CategoryIds, right_category_ids: CategoryIds, max_pairs: Annotated[int, Field(ge=1, le=5000)] = 1000, session_id: str | None = None) -> dict:
-    """Пересечения через ElementIntersectsElementFilter (логика Autodesk Interference Report), без UI/скриншотов. Только текущий проект, до 2000 элементов на сторону, без связей. Это НЕ запуск штатного диалога. Нулевой список при incomplete/empty_scope не означает успех; нужен status=no_intersections и complete=true. После таймаута прочитать get_revit_operation."""
-    return client.command("check_intersections", session_id, document_id=document_id, left_category_ids=left_category_ids, right_category_ids=right_category_ids, max_pairs=max_pairs)
-
-
-@mcp.tool(annotations=POST_UI)
-def open_revit_interference_check(document_id: str, session_id: str | None = None) -> dict:
-    """Открыть штатную проверку пересечений через PostCommand. Возвращает posted, НЕ результат проверки. Выбор категорий/ОК и получение результата требуют участия пользователя. Автоматическая проверка без UI — check_revit_intersections. После таймаута не повторять, запросить get_revit_operation."""
-    return client.command("open_interference_check", session_id, document_id=document_id)
+def check_revit_intersections(document_id: str, max_pairs: Annotated[int, Field(ge=1, le=5000)] = 1000, time_budget_seconds: Annotated[int, Field(ge=1, le=60)] = 20, session_id: str | None = None) -> dict:
+    """API-коллизии всех 3D-элементов текущего документа без фильтров категорий/видов. Мост >=1.0.11, contract_version=2. Solid-геометрия, включая члены групп и скрытые элементы; Mesh/поверхности, связи, закрытые РН и ошибки явно дают incomplete. Линии без объёма перечислены отдельно. Нет лимита 2000 элементов. Лимиты времени/пар никогда не дают ложного успеха. Только complete=true/status=no_intersections означает отсутствие найденных пересечений в пределах механизма Revit API. После таймаута читать get_revit_operation."""
+    return client.command("check_intersections", session_id, document_id=document_id, max_pairs=max_pairs, time_budget_seconds=time_budget_seconds)
 
 
 @mcp.tool(annotations=READ)

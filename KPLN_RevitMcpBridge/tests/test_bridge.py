@@ -122,7 +122,7 @@ class BridgeTests(unittest.TestCase):
 
     def test_tool_schemas_and_annotations(self):
         tools = asyncio.run(server.mcp.list_tools())
-        self.assertEqual(len(tools), 27)
+        self.assertEqual(len(tools), 26)
         for tool in tools:
             self.assertIsNotNone(tool.annotations)
             self.assertFalse(tool.annotations.openWorldHint)
@@ -143,8 +143,7 @@ class BridgeTests(unittest.TestCase):
             (server.get_revit_view_elements, {"view_unique_id": "view", "category_id": "-2000011"}, "get_view_elements"),
             (server.get_revit_view_visibility, {"view_unique_id": "view", "unique_ids": ["wall"]}, "get_view_visibility"),
             (server.get_revit_schedule_data, {"schedule_unique_id": "schedule", "column_offset": 50}, "get_schedule_data"),
-            (server.check_revit_intersections, {"left_category_ids": ["-2000011"], "right_category_ids": ["-2000032"]}, "check_intersections"),
-            (server.open_revit_interference_check, {}, "open_interference_check"),
+            (server.check_revit_intersections, {"time_budget_seconds": 30}, "check_intersections"),
             (server.export_revit_sheets_pdf, {"expected_revision": 2}, "export_sheets_pdf"),
         )
         for function, args, command_name in cases:

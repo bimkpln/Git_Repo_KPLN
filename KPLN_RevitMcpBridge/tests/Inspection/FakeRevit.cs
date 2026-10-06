@@ -23,7 +23,7 @@ namespace Autodesk.Revit.DB
         public static bool operator ==(ElementId a, ElementId b) => Equals(a, b);
         public static bool operator !=(ElementId a, ElementId b) => !Equals(a, b);
     }
-    public enum BuiltInCategory { OST_IOSModelGroups = -1, OST_TitleBlocks = -2 }
+    public enum BuiltInCategory { OST_IOSModelGroups = -1, OST_TitleBlocks = -2, OST_Rooms = -2000160, OST_Cameras = -2000500 }
     public enum CategoryType { Model, Annotation }
     public class Category
     {
@@ -33,6 +33,7 @@ namespace Autodesk.Revit.DB
     }
     public class WorksetId { public int IntegerValue; }
     public class XYZ { public double X, Y, Z; }
+    public class BoundingBoxXYZ { public XYZ Min = new XYZ(), Max = new XYZ(); }
     public class Location { }
     public class LocationPoint : Location
     {
@@ -42,7 +43,7 @@ namespace Autodesk.Revit.DB
         public double Rotation => Unsupported ? throw new Exceptions.InvalidOperationException() : Angle;
     }
     public class LocationCurve : Location { public Curve Curve; }
-    public class Curve
+    public class Curve : GeometryObject
     {
         public bool IsBound = true;
         public double Length = 1;
@@ -57,11 +58,45 @@ namespace Autodesk.Revit.DB
         public ElementId GroupId = new ElementId(-1), OwnerViewId = new ElementId(-1), LevelId = new ElementId(-1);
         public WorksetId WorksetId = new WorksetId();
         public Location Location;
-        public bool Hidden, Supported = true, ThrowIntersection;
+        public bool Hidden, Supported = true, ThrowIntersection, ViewSpecific, ThrowGeometry;
+        public GeometryElement Geometry = new GeometryElement { Items = new List<GeometryObject> { new Solid() } };
+        public BoundingBoxXYZ Box;
+        public BoundingBoxXYZ get_BoundingBox(View view) => Box;
+        public GeometryElement get_Geometry(Options options)
+        {
+            if (ThrowGeometry) throw new Exceptions.ApplicationException("synthetic geometry failure");
+            if (!options.IncludeNonVisibleObjects) throw new Exception("hidden geometry must be included");
+            return Geometry;
+        }
         public HashSet<ElementId> Intersections = new HashSet<ElementId>();
         public bool IsHidden(View view) => Hidden;
     }
     public class ElementType : Element { }
+    public class RevitLinkInstance : Element { }
+    public enum ViewDetailLevel { Fine }
+    public class Options : IDisposable
+    {
+        public ViewDetailLevel DetailLevel;
+        public bool IncludeNonVisibleObjects, ComputeReferences;
+        public void Dispose() { }
+    }
+    public class GeometryObject : IDisposable { public void Dispose() { } }
+    public class GeometryElement : GeometryObject, IEnumerable<GeometryObject>
+    {
+        public List<GeometryObject> Items = new List<GeometryObject>();
+        public IEnumerator<GeometryObject> GetEnumerator() => Items.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+    public class FaceArray { public int Size = 1; }
+    public class Solid : GeometryObject { public FaceArray Faces = new FaceArray(); public double Volume = 1; }
+    public class Face : GeometryObject { }
+    public class Mesh : GeometryObject { }
+    public class PolyLine : GeometryObject { }
+    public class GeometryInstance : GeometryObject
+    {
+        public GeometryElement Nested = new GeometryElement();
+        public GeometryElement GetInstanceGeometry() => Nested;
+    }
     public class Group : Element
     {
         public Element GroupType = new Element { Id = new ElementId(100), UniqueId = "type" };
@@ -82,6 +117,7 @@ namespace Autodesk.Revit.DB
         public PDFExportOptions LastOptions;
         public List<Element> Elements = new List<Element>();
         public List<Category> Categories = new List<Category>();
+        public List<Workset> Worksets = new List<Workset>();
         public Element GetElement(ElementId id) => Elements.FirstOrDefault(e => e.Id == id);
         public Element GetElement(string id) => Elements.FirstOrDefault(e => e.UniqueId == id);
         public bool Export(string folder, IList<ElementId> ids, PDFExportOptions options)
@@ -182,7 +218,7 @@ namespace Autodesk.Revit.DB
     {
         private IEnumerable<Element> _elements;
         public FilteredElementCollector(Document doc) { _elements = doc.Elements; }
-        public FilteredElementCollector(Document doc, ICollection<ElementId> ids) { _elements = doc.Elements.Where(e => ids.Contains(e.Id)); }
+        public FilteredElementCollector(Document doc, ICollection<ElementId> ids) { var set = new HashSet<ElementId>(ids); _elements = doc.Elements.Where(e => set.Contains(e.Id)); }
         public FilteredElementCollector(Document doc, ElementId view) { _elements = doc.Elements.Where(e => ((View)doc.GetElement(view)).Candidates.Contains(e.Id)); }
         public static bool IsViewValidForElementIteration(Document doc, ElementId id) => ((View)doc.GetElement(id)).Valid;
         public FilteredElementCollector WhereElementIsNotElementType() { _elements = _elements.Where(e => !(e is ElementType)); return this; }
@@ -200,9 +236,10 @@ namespace Autodesk.Revit.DB
     public class Workset { public WorksetId Id = new WorksetId(); public string Name; public bool IsOpen = true; }
     public class FilteredWorksetCollector
     {
-        public FilteredWorksetCollector(Document doc) { }
+        private readonly Document _doc;
+        public FilteredWorksetCollector(Document doc) { _doc = doc; }
         public FilteredWorksetCollector OfKind(WorksetKind kind) => this;
-        public IList<Workset> ToWorksets() => new List<Workset>();
+        public IList<Workset> ToWorksets() => _doc.Worksets;
     }
     public class WorksetDefaultVisibilitySettings
     {

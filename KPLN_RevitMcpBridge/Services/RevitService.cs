@@ -123,7 +123,6 @@ namespace KPLN_RevitMcpBridge.Services
                 case "get_view_visibility": result = ModelInspectionService.ViewVisibility(doc, input); break;
                 case "get_schedule_data": result = ModelInspectionService.ScheduleData(doc, input); break;
                 case "check_intersections": result = InterferenceService.Check(doc, input); break;
-                case "open_interference_check": result = InterferenceService.OpenNative(app); break;
                 case "export_sheets_pdf":
                     if (Json.Integer(input.Get("expected_revision"), "expected_revision") != state.Revision)
                         throw new BridgeException("stale_document", "Модель изменилась; получите контекст заново перед экспортом.", 409);
