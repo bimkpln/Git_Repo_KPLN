@@ -400,3 +400,4 @@ FodyWeavers.xsd
 # Свои настройки для игнорирования JSON конфигураций
 KPLN_ExtraNet_Loader_Config.json
 KPLN_Loader_Config.json
+/KPLN_CalculateTEP/Tests
