@@ -102,7 +102,7 @@ namespace KPLN_Tools.Forms
                 return;
             }
 
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandLinkChanger_Start(SelectedConfig.LinkChangeEntityColl.ToArray()));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_LinkChanger_Start(SelectedConfig.LinkChangeEntityColl.ToArray()));
             Close();
         }
 

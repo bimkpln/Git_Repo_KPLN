@@ -122,7 +122,7 @@ namespace KPLN_Tools.Forms
         public ObservableCollection<string> SelectedWorksets { get; } = new ObservableCollection<string>();
 
 
-        // Список ВСЕХ связей с рабочими наборами (в правой панели). Передается в Command_KR_WSofLinks 
+        // Список ВСЕХ связей с рабочими наборами (в правой панели). Передается в ExtCmd_KR_WSofLinks
         public ObservableCollection<LinkWorksetsItem> LinksWorksetsList { get; } = new ObservableCollection<LinkWorksetsItem>();
 
         //================================================================================================

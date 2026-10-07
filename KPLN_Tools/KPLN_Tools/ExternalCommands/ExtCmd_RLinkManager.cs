@@ -1,0 +1,30 @@
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_Tools.Forms;
+using System.Windows.Interop;
+
+namespace KPLN_Tools.ExternalCommands
+{
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    internal class ExtCmd_RLinkManager : IExternalCommand
+    {
+        internal const string PluginName = "Менеджер rvt-связей";
+
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+
+            RLinkManagerForm rlinkLoaderForm = new RLinkManagerForm(uiapp);
+            new WindowInteropHelper(rlinkLoaderForm)
+            {
+                Owner = ModuleData.MainWindowHandle,
+            };
+
+            rlinkLoaderForm.Show();
+
+            return Result.Succeeded;
+        }
+    }
+}

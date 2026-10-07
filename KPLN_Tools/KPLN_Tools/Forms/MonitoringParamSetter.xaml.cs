@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+п»їusing Autodesk.Revit.DB;
 using KPLN_Library_Forms.Common;
 using KPLN_Tools.Common;
 using KPLN_Tools.ExecutableCommand;
@@ -36,7 +36,7 @@ namespace KPLN_Tools.Forms
 
         private void OnBtnAddRule(object sender, RoutedEventArgs e)
         {
-            // Создаем новые коллекции для каждого правила
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             ObservableCollection<string> docParamCollCopy = new ObservableCollection<string>(_docParamColl);
             ObservableCollection<string> linkParamCollCopy = new ObservableCollection<string>(_linkParamColl);
 
@@ -48,7 +48,7 @@ namespace KPLN_Tools.Forms
 
         private void OnBtnRevalue(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandExtraMonitoring_SetParams(
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_ExtraMonitoring_SetParams(
                 _doc,
                 (this.RulesControll.ItemsSource as ObservableCollection<MonitorParamRule>),
                 _monitorEntities));
@@ -57,7 +57,7 @@ namespace KPLN_Tools.Forms
 
         private void OnBtnCheck(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandExtraMonitoring_CheckParams(
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_ExtraMonitoring_CheckParams(
                _doc,
                (this.RulesControll.ItemsSource as ObservableCollection<MonitorParamRule>),
                _monitorEntities));
@@ -77,14 +77,14 @@ namespace KPLN_Tools.Forms
                         isEnabled = true;
                 }
                 
-                // Получаем контейнер ItemsControl, к которому принадлежит текущий элемент ComboBox
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ItemsControl, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ComboBox
                 if (comboBox.TemplatedParent is ContentPresenter contentPresenter)
                 {
-                    // Находим кнопку BtnRemoveBySource в пределах текущего контекста данных
+                    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ BtnRemoveBySource пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
                     Button btnRemoveBySource = FindChild<Button>(contentPresenter, "BtnRemoveBySource");
                     if (btnRemoveBySource != null)
                     {
-                        // Устанавливаем кнопку IsEnabled в true
+                        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ IsEnabled пїЅ true
                         btnRemoveBySource.IsEnabled = isEnabled;
                     }
                 }
@@ -161,7 +161,7 @@ namespace KPLN_Tools.Forms
 
         private T FindChild<T>(DependencyObject parent, string childName) where T : DependencyObject
         {
-            // Проверка валидности входных параметров
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (parent == null) return null;
 
             T foundChild = null;
