@@ -3,7 +3,6 @@ using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_FamilyManager.ExternalCommands;
-using KPLN_Library_PluginActivityWorker;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -2054,7 +2053,6 @@ namespace KPLN_FamilyManager.Forms
                             ExternalEventsHost.LoadFamilyHandler.BatchPaths = null;
                             ExternalEventsHost.LoadFamilyHandler.FilePath = path;
                             ExternalEventsHost.LoadFamilyEvent.Raise();
-                            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandFamilyManager.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
                         }
                     }
                     catch (Exception ex)
@@ -2198,7 +2196,6 @@ namespace KPLN_FamilyManager.Forms
                             ExternalEventsHost.LoadFamilyHandler.BatchPaths = null;
                             ExternalEventsHost.LoadFamilyHandler.FilePath = path;
                             ExternalEventsHost.LoadFamilyEvent.Raise();
-                            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandFamilyManager.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
                         }
                     }
                     catch (Exception ex)
@@ -4292,7 +4289,6 @@ namespace KPLN_FamilyManager.Forms
             }
 
             evnt.Raise();
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(CommandFamilyManager.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
         }
 
         // Тултип для карточки семейства

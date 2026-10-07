@@ -2,7 +2,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_DBWorker;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Forms;
 using System.Linq;
 
@@ -16,8 +15,6 @@ namespace KPLN_Tools.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-            
             UserSearch searchForm = new UserSearch(SQLiteMainService
                 .SQLiteUserServiceInst
                 .GetDBUsers()

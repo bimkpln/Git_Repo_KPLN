@@ -8,7 +8,6 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_OpenDocHandler;
 using KPLN_Library_OpenDocHandler.Core;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Batch.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Core;
@@ -499,7 +498,6 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             else
                 SendResultMsg(fileNames, checkNames, excelFilePath);
 
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
         }
 
         /// <summary>

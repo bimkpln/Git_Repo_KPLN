@@ -12,7 +12,6 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_OpenDocHandler;
 using KPLN_Library_OpenDocHandler.Core;
-using KPLN_Library_PluginActivityWorker;
 using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
@@ -170,7 +169,6 @@ namespace KPLN_BIMTools_Ribbon.Common
 
                 configNames = $"Автостарт: {string.Join("; ", dbRevitDocExchanges.Select(de => de.SettingName))}";
 
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"Автостарт: {pluginName}", ModuleData.ModuleName).ConfigureAwait(false);
             }
             else
             {
@@ -187,8 +185,6 @@ namespace KPLN_BIMTools_Ribbon.Common
                 ConfigDispatcher configDispatcher = new ConfigDispatcher(dBProject, revitDocExchangeEnum, false);
                 if (!(bool)configDispatcher.ShowDialog())
                     return;
-
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(pluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
                 configNames = string.Join("; ", configDispatcher.SelectedDBExchWrappers.Select(ent => ent.SettingName));
                 dbRevitDocExchanges = configDispatcher.SelectedDBExchWrappers;

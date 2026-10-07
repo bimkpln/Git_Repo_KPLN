@@ -3,7 +3,6 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_PluginActivityWorker;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -186,8 +185,6 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
                 trans.Commit();
             }
 
-
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
 
             MessageBox.Show(

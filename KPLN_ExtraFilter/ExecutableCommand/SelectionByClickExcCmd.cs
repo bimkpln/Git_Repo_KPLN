@@ -4,7 +4,6 @@ using KPLN_ExtraFilter.Common;
 using KPLN_ExtraFilter.ExternalCommands;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -34,8 +33,6 @@ namespace KPLN_ExtraFilter.ExecutableCommand
 
             Document doc = uiDoc.Document;
 
-            // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SelectionByModelExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             try
             {
                 // Поиск элементов комбинированием фильтров

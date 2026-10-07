@@ -110,7 +110,14 @@ namespace KPLN_CSharp_Template
             }) as PulldownButton;
 
             // Тонкая настройка видимости RibbonItem
-            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(pullDownRI.GetId());
+            var parentId = typeof(RibbonItem)
+                .GetField("m_parentId", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.GetValue(pullDownRI) ?? string.Empty;
+            var generateIdMethod = typeof(RibbonItem)
+                .GetMethod("generateId", BindingFlags.Static | BindingFlags.NonPublic);
+
+            string itemId = (string)generateIdMethod?.Invoke(pullDownRI, new[] { parentId, pullDownRI.Name });
+            var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(itemId);
             revitRibbonItem.ShowText = showName;
 
 #if !Debug2020 && !Revit2020 && !Debug2023 && !Revit2023

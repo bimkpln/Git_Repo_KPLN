@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.Forms;
 
@@ -26,8 +25,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
-
             UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 

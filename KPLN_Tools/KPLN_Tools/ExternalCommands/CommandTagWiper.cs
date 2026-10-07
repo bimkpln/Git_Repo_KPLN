@@ -4,7 +4,6 @@ using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
-using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -83,8 +82,6 @@ namespace KPLN_Tools.ExternalCommands
                     _selectedBtn = buttonToRun.SelectedButton;
                 else
                     return Result.Cancelled;
-
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
                 // Анализирую выбранные листы
                 if (userSelectedViews.Count > 0)

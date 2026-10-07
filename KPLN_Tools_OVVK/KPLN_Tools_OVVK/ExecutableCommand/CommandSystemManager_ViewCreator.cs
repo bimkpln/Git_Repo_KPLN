@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.ExternalCommands;
 using KPLN_Tools_OVVK.Forms.Models;
@@ -34,8 +33,6 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{ExtCmd_OVVK_SystemManager.PluginName}_Создание видов", ModuleData.ModuleName).ConfigureAwait(false);
-
             #region Подготовка коллекции и элементов
             Autodesk.Revit.DB.View activeView = _viewModel.CurrentDoc.ActiveView;
 

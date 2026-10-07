@@ -8,7 +8,6 @@ using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_ExtraFilter.Forms.Entities.SetParamsByFrame;
 using KPLN_Library_ConfigWorker;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -42,8 +41,6 @@ namespace KPLN_ExtraFilter.ExecutableCommand
             _warningsElementColl.Clear();
             _warningElementIds.Clear();
 
-            // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(SetParamsByFrameExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             try
             {
                 // Запуск рамки самодостаточен и по итогу - завершается 

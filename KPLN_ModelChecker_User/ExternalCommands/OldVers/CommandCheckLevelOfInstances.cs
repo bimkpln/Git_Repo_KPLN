@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_User.Common;
@@ -75,8 +74,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             MessageBox.Show("Ошибка!", "Плагин в разработке, напиши в BIM-отдел");
             return Result.Cancelled;
             
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
-
             _uiApp = uiapp;
 
             UIDocument uidoc = uiapp.ActiveUIDocument;

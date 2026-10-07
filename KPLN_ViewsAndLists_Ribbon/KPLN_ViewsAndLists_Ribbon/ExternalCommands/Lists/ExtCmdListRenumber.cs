@@ -2,7 +2,6 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ViewsAndLists_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
@@ -66,8 +65,6 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                         string msg = string.Format("Если что, были случайно выбраны элементы, которые не являются листами. Успешно проигнорировано {0} штук/-и", cnt.ToString());
                         TaskDialog.Show("Предупреждение", msg, TaskDialogCommonButtons.Ok);
                     }
-
-                    DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
                     return Result.Succeeded;
                 }

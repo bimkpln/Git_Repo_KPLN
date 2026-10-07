@@ -4,7 +4,6 @@ using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.ExternalCommands;
@@ -72,8 +71,6 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return Result.Failed;
             }
-
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(ExtCmd_OV_DuctThickness.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"KPLN: Толщина воздуховодов"))
             {

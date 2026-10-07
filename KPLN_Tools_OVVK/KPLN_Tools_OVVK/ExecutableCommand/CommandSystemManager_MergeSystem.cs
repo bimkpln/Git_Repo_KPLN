@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.ExternalCommands;
@@ -33,8 +32,6 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{ExtCmd_OVVK_SystemManager.PluginName}_Объединение систем по параметру", ModuleData.ModuleName).ConfigureAwait(false);
-
             using (Transaction t = new Transaction(_viewModel.CurrentDoc, $"KPLN: Объединение систем"))
             {
                 t.Start();

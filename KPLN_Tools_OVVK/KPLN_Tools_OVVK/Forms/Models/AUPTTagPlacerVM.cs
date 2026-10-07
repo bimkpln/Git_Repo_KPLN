@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools_OVVK.ExternalCommands;
 using KPLN_Tools_OVVK.Forms.Models.Core;
 using System.Windows;
@@ -51,8 +50,6 @@ namespace KPLN_Tools_OVVK.Forms.Models
 
                 ConfigService.SaveConfig<AUPTTagPlacerM>(ConfigType.Local, AUPTTagPlacerModel, _cofigName);
                 
-                
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(ExtCmd_AUPT_TagPlacer.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
                 
                 window.DialogResult = true;
                 window.Close();

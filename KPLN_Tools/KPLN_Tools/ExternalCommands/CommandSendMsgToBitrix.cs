@@ -5,7 +5,6 @@ using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_DBWorker;
 using KPLN_Library_DBWorker.Core;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Forms;
 using KPLN_Tools.Forms.Models;
 using System.Collections.Generic;
@@ -181,8 +180,6 @@ namespace KPLN_Tools.ExternalCommands
             #region Обработка результата
             if ((bool)form.DialogResult)
             {
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
                 string elemIds = string.Join(",", selectedIds);
 
                 form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +

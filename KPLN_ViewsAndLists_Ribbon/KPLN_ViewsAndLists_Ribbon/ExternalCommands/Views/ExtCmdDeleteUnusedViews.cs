@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.Services;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ViewsAndLists_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
@@ -43,9 +42,6 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             WindowHandleSearch.MainWindowHandle.SetAsOwner(mainForm);
 
             mainForm.Show();
-
-            // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             return Result.Succeeded;
         }

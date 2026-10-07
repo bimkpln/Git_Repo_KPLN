@@ -1,6 +1,5 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ViewsAndLists_Ribbon.Common.Lists;
 using KPLN_ViewsAndLists_Ribbon.Forms.Commands;
 using System;
@@ -266,8 +265,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             if (uidoc == null) return;
 
             CloseAction?.Invoke();
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
-
             using (Transaction trans = new Transaction(doc, $"KPLN: {PluginName}"))
             {
                 trans.Start();

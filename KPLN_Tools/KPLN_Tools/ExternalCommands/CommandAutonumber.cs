@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_PluginActivityWorker;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -28,7 +27,6 @@ namespace KPLN_Tools.ExternalCommands
             {
                 Process.Start(fullPath);
 
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
             }
             catch
             {

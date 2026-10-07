@@ -3,7 +3,6 @@ using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker.Core;
 using KPLN_Library_ExtensibleStorage;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_ModelChecker_Lib;
 using KPLN_ModelChecker_Lib.Core;
 using KPLN_ModelChecker_User.Common;
@@ -40,7 +39,7 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIApplication uiapp,
             IJsonSerializable config = null, 
             bool onlyErrorType = false, 
-            bool setPluginActivity = true, 
+            bool setPluginActivity = true, // Не используется; сохранён для совместимости сигнатуры.
             bool showMainForm = true, 
             bool setLastRun = true, 
             bool showSuccsessText = true) 
@@ -55,9 +54,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
                     CommandCheck = new T().Set_UIAppData(uiapp, doc);
                     ElemsToCheck = CommandCheck.GetElemsToCheck();
                 }
-
-                if (setPluginActivity)
-                    DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandCheck.PluginName}", ModuleData.ModuleName).ConfigureAwait(false);
 
 
                 CheckResultStatus checkResultStatus = CommandCheck.ExecuteCheck(ElemsToCheck, onlyErrorType);

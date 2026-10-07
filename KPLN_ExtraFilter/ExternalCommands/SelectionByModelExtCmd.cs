@@ -5,7 +5,6 @@ using KPLN_ExtraFilter.Forms;
 using KPLN_ExtraFilter.Forms.Entities;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using System;
 
 namespace KPLN_ExtraFilter.ExternalCommands
@@ -40,9 +39,6 @@ namespace KPLN_ExtraFilter.ExternalCommands
                     mainForm.Show();
                 else
                     mainForm.ShowDialog();
-
-                // Счетчик факта запуска
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
                 return Result.Succeeded;
             }

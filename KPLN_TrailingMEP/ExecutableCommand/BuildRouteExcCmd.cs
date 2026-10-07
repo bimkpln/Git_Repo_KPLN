@@ -4,7 +4,6 @@ using KPLN_TrailingMEP.Common;
 using KPLN_TrailingMEP.ExternalCommands;
 using KPLN_TrailingMEP.Forms.Entities;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Collections.Generic;
@@ -70,8 +69,6 @@ namespace KPLN_TrailingMEP.ExecutableCommand
                 }
 
                 uiDoc.Selection.SetElementIds(createdIds.ToList());
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(RouteTraceExtCmd.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
                 _entity.UserMainStatus = $"Обработано элементов: {createdIds.Count}.";
                 _entity.UserHelp = string.Empty;
                 return Result.Succeeded;

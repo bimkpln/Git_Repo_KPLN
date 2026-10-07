@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.ExternalCommands;
 using System.Collections.Generic;
@@ -27,8 +26,6 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         public Result Execute(UIApplication app)
         {
             app.DialogBoxShowing += DialogBoxShowingEvant;
-
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{ExtCmd_OVVK_SystemManager.PluginName}_Демонстрация", ModuleData.ModuleName).ConfigureAwait(false);
 
             using (Transaction t = new Transaction(app.ActiveUIDocument.Document, $"{ModuleData.ModuleName}_Демонстрация"))
             {

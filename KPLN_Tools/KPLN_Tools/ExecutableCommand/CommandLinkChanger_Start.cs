@@ -6,7 +6,6 @@ using Autodesk.Revit.UI.Events;
 using KPLN_Library_DBWorker;
 using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using KPLN_ModelChecker_Lib.WorksetUtil;
 using KPLN_Tools.Common.LinkManager;
@@ -160,8 +159,6 @@ namespace KPLN_Tools.ExecutableCommand
         /// <param name="doc"></param>
         private void LoadNewLinks(Document doc)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandRLinkManager.PluginName}_Загрузить связи", ModuleData.ModuleName).ConfigureAwait(false);
-
             // Коллекция RevitLinkInstance, для которых нужны отдельные РН
             List<RevitLinkInstance> instForWS = new List<RevitLinkInstance>();
             using (Transaction t = new Transaction(doc, $"KPLN: Загрузить связи"))
@@ -240,8 +237,6 @@ namespace KPLN_Tools.ExecutableCommand
         /// <param name="doc"></param>
         private void UpdateLinks(Document doc, UIDocument uidoc)
         {
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName($"{CommandRLinkManager.PluginName}_Обновить связи", ModuleData.ModuleName).ConfigureAwait(false);
-
             foreach (LinkManagerUpdateEntity linkUpdateEntity in _linkChangeEntityColl.Cast<LinkManagerUpdateEntity>())
             {
                 string oldModelPath = string.Empty;

@@ -3,7 +3,6 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Plumbing;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.Services;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.Forms;
 using System;
@@ -68,8 +67,6 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 
             if (mainForm.IsRun)
             {
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
                 using (Transaction trans = new Transaction(doc, "KPLN: Толщина стенки труб"))
                 {
                     trans.Start();

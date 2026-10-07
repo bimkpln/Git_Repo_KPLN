@@ -7,7 +7,6 @@ using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_DBWorker;
 using KPLN_Library_DBWorker.Core;
 using KPLN_Library_Forms.Services;
-using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -162,8 +161,6 @@ namespace KPLN_DefaultPanelExtension_Modify.Commands
             #region Обработка результата
             if ((bool)form.DialogResult)
             {
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
                 string elemIds = string.Join(",", selectedIds);
 
                 form.CurrentViewModel.MessageToSend_MainData = $"[u]Имя файла:[/u] {selectedDocTitle}\n" +

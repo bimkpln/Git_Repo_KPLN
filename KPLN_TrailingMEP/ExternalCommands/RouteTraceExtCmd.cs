@@ -4,7 +4,6 @@ using Autodesk.Revit.UI;
 using KPLN_TrailingMEP.Forms;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using System;
 
 namespace KPLN_TrailingMEP.ExternalCommands
@@ -26,8 +25,6 @@ namespace KPLN_TrailingMEP.ExternalCommands
                 mainForm = new RouteTraceForm(uiapp);
                 WindowHandleSearch.MainWindowHandle.SetAsOwner(mainForm);
                 mainForm.Show();
-
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
                 return Result.Succeeded;
             }

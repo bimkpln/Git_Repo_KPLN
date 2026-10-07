@@ -1,7 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_DefaultPanelExtension_Modify.Forms.Models;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Loader.Common;
 using System;
 using System.Windows;
@@ -52,9 +51,6 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
                 trans.Commit();
             }
 
-
-            // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(ExcCmdListVPPositionStart.PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             return Result.Succeeded;
         }

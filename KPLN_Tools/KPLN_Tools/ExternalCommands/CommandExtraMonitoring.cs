@@ -1,7 +1,6 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Library_PluginActivityWorker;
 using KPLN_Tools.Common;
 using KPLN_Tools.Forms;
 using System;
@@ -60,8 +59,6 @@ namespace KPLN_Tools.ExternalCommands
             
             try
             {
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-                
                 SetMonitoredElemsFromUserSelect(doc, selectedIds);
 
                 if (_monitorEntitiesDict.Count > 0)

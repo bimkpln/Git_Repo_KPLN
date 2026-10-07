@@ -9,7 +9,6 @@ using KPLN_ExtraFilter.ExternalEventHandler;
 using KPLN_ExtraFilter.Forms;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI.HtmlWindow;
-using KPLN_Library_PluginActivityWorker;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,9 +41,6 @@ namespace KPLN_ExtraFilter.ExternalCommands
                 uiapp.ActiveUIDocument.ActiveView = special3DView;
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new SelectByIdExсCmd(selectedLinkedElement));
 
-                // Счетчик факта запуска
-                DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
-
                 return Result.Succeeded;
             }
 
@@ -64,9 +60,6 @@ namespace KPLN_ExtraFilter.ExternalCommands
             WindowHandleSearch.MainWindowHandle.SetAsOwner(_mainForm);
 
             _mainForm.Show();
-
-            // Счетчик факта запуска
-            DBUpdater.UpdatePluginActivityAsync_ByPluginNameAndModuleName(PluginName, ModuleData.ModuleName).ConfigureAwait(false);
 
             return Result.Succeeded;
         }
