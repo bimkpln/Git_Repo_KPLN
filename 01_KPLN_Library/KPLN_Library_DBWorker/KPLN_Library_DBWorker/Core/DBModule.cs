@@ -14,12 +14,6 @@ namespace KPLN_Library_DBWorker.Core
         public int Id { get; set; }
 
         /// <summary>
-        /// Id отдела
-        /// </summary>
-        [ForeignKey(nameof(DBSubDepartment))]
-        public int SubDepartmentId { get; set; }
-
-        /// <summary>
         /// Путь к модулю
         /// </summary>
         public string Path { get; set; }
