@@ -81,9 +81,10 @@ namespace KPLN_CalculateTEP.Common
 
             private void CollectAutomaticShafts(List<Record> records)
             {
+                unconfirmedAutomaticShafts.Clear();ClearShaftEvidence();
                 if(!Config.Metrics.Any(m=>m.Enabled&&(RoomEnvelopeTotal((Indicator)Enum.Parse(typeof(Indicator),m.Key))||RoomEnvelopePart((Indicator)Enum.Parse(typeof(Indicator),m.Key))||RoomAreaMetric((Indicator)Enum.Parse(typeof(Indicator),m.Key)))))return;
                 var added=new List<Record>();int duplicates=0,groups=0;
-                var seen=new HashSet<string>(StringComparer.Ordinal);
+                var seen=new Dictionary<string,Record>(StringComparer.Ordinal);
                 foreach(var source in Sources.Where(s=>s.Loaded&&s.LoadError==null&&s.Mode!="exclude"&&Math.Abs(s.Transform.BasisZ.DotProduct(XYZ.BasisZ)-1)<1e-8))
                     foreach(var group in source.Elements.OfType<Group>().Where(g=>IsAutomaticShaftName(g.Name)).OrderBy(g=>IDHelper.ElIdValue(g.Id)))
                     {
@@ -113,7 +114,7 @@ namespace KPLN_CalculateTEP.Common
                             if(peers.Count==0)peers=records.Where(r=>r.Element is Room&&r.Source==source).ToList();
                             if(peers.Count==0)peers=records.Where(r=>r.Element is Room&&r.Source.Mode==source.Mode).ToList();
                             string assignedBuilding;
-                            try{assignedBuilding=AssignedBuilding(source,group);}
+                            try{assignedBuilding=AssignedBuilding(source,group);if(Config.Grouping=="parameter")assignedBuilding=ApplySingleBuildingAssumption(assignedBuilding);}
                             catch(Exception ex){Notice("AUTO_SHAFT_BUILDING","Ошибка",ex.Message,context);continue;}
                             if(!string.IsNullOrWhiteSpace(assignedBuilding))
                             {
@@ -141,16 +142,25 @@ namespace KPLN_CalculateTEP.Common
                                 record.Part=peers.Select(r=>r.Part).Distinct().Count()==1?peers[0].Part:"auto";
                                 record.Section=peers.Select(r=>r.Section??"").Distinct().Count()==1?peers[0].Section:"";
                                 record.AutomaticShaftRegion=region;record.AutomaticShaftPart=identity;
+                                record.AutomaticShaftOrigins=new List<string>{source.Name+" / группа ID "+IDHelper.ElIdValue(group.Id)};
+                                ReadShaftReviewCandidate(record);
+                                identity=ShaftContourIdentity(record.AutomaticShaftRegion);
                                 // The global contour establishes vertical continuity; names identify candidates only.
-                                record.Vertical="auto-shaft/"+record.Building+"/"+identity;
+                                record.Vertical="auto-shaft/"+source.Mode+"/"+record.Building+"/"+identity;
                                 string key=source.Mode+"/"+record.Building+"/"+Math.Round(z,6).ToString("R",CultureInfo.InvariantCulture)+"/"+identity;
-                                if(!seen.Add(key)){duplicates++;continue;}
+                                Record duplicate;
+                                if(record.AutomaticShaftError==null&&seen.TryGetValue(key,out duplicate))
+                                {duplicate.AutomaticShaftOrigins.AddRange(record.AutomaticShaftOrigins);duplicates++;continue;}
+                                if(record.AutomaticShaftError==null)seen[key]=record;
                                 added.Add(record);
                             }
                         }
                         catch(OperationCanceledException){throw;}
+                        catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                        catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
                         catch(Exception ex){Notice("AUTO_SHAFT_GEOMETRY","Ошибка",ex.Message,context);}
                     }
+                added=ConfirmAutomaticShaftCandidates(added);
                 // Section metadata may differ by floor. Exact global contours in the same building still identify one shaft.
                 foreach(var shaft in added.GroupBy(r=>r.Vertical))
                     if(shaft.Select(r=>r.Section??"").Distinct().Count()>1)foreach(var record in shaft)record.Section="";
@@ -165,9 +175,9 @@ namespace KPLN_CalculateTEP.Common
                             neighbours[i].Add(j);neighbours[j].Add(i);
                             foreach(var record in stacks[i].Concat(stacks[j]).Where(r=>stacks[i].Any(a=>Math.Abs(a.Z-r.Z)<=FloorGeometryTolerance)&&stacks[j].Any(b=>Math.Abs(b.Z-r.Z)<=FloorGeometryTolerance)))
                             {
-                                record.AutomaticShaftError="На одной расчётной отметке "+(record.Z*.3048).ToString("+0.000;-0.000;0.000")+
-                                    " м пересекаются разные контуры шахт. Площадь пересечения "+overlapArea.ToString("0.###")+
-                                    " м². Нельзя отличить смещённую копию группы от другого расчётного контура; проверьте наложенные группы и их границы. Остальные отметки рассчитываются отдельно.";
+                                record.AutomaticShaftError="На отметке "+(record.Z*.3048).ToString("+0.000;-0.000;0.000")+
+                                    " м геометрия модели подтверждает несколько пересекающихся вариантов границы. Площадь пересечения "+overlapArea.ToString("0.###")+
+                                    " м². Однозначный контур шахты не выбран. Основание проверки: "+record.AutomaticShaftProof;
                                 var conflicting=stacks[i].Concat(stacks[j]).Where(r=>Math.Abs(r.Z-record.Z)<=FloorGeometryTolerance).Select(r=>IDHelper.ElIdValue(r.Element.Id).ToString()).Distinct().OrderBy(id=>id);
                                 Notice("AUTO_SHAFT_CONTINUITY","Ошибка",record.AutomaticShaftError+" Этаж: «"+record.Level.Name+"». Группы ID: "+string.Join(", ",conflicting)+".",record);
                             }
@@ -180,19 +190,20 @@ namespace KPLN_CalculateTEP.Common
                         if(component.Count<2)continue;
                         var members=component.SelectMany(index=>stacks[index]).ToList();
                         // A changing footprint is one shaft only if every floor has one unambiguous contour.
-                        if(members.GroupBy(r=>Math.Round(r.Z,6)).Any(g=>g.Select(r=>r.AutomaticShaftPart).Distinct().Count()>1))continue;
+                        if(members.Any(r=>r.AutomaticShaftError!=null)||members.GroupBy(r=>Math.Round(r.Z,6)).Any(g=>g.Select(r=>r.AutomaticShaftPart).Distinct().Count()>1))continue;
                         string identity=members.Select(r=>r.Vertical).OrderBy(x=>x,StringComparer.Ordinal).First();
                         foreach(var record in members){record.Vertical=identity;record.Section="";}
                     }
                 }
-                records.AddRange(added);
-                if(groups>0)Notice("AUTO_SHAFTS","Информация","Группы с «"+AutomaticShaftNameToken+"» в имени: "+groups+". Отдельных поэтажных контуров: "+added.Count+"; совпадающих повторов исключено: "+duplicates+". ID вертикальных шахт определены по совпадающим контурам в плане; параметры модели не записывались.");
+                unconfirmedAutomaticShafts.AddRange(added.Where(r=>r.AutomaticShaftError!=null));
+                records.AddRange(added.Where(r=>r.AutomaticShaftError==null));
+                if(groups>0)Notice("AUTO_SHAFTS","Информация","Группы с «"+AutomaticShaftNameToken+"» в имени: "+groups+". Подтверждено геометрией поэтажных контуров: "+added.Count(r=>r.AutomaticShaftError==null)+"; не подтверждено: "+unconfirmedAutomaticShafts.Count+"; совпадающих повторов исключено: "+duplicates+". Названия схем зонирования не определяют выбор; параметры модели не записывались.");
             }
 
             private PlanarRegion AutomaticShaftPlan(Record record)
             {
-                if(record.AutomaticShaftError!=null)throw new InvalidOperationException(record.AutomaticShaftError);
-                return ReviewRegion("shaft/"+record.Key,record,"Шахта - границы группы",record.Z,()=>record.AutomaticShaftRegion);
+                return ReviewRegion("shaft/"+record.Key,record,"Шахта - проверка границ группы",record.Z,()=>record.AutomaticShaftRegion,
+                    actual=>ValidateConfirmedShaftRegion(record,actual));
             }
 
             private PlanarRegion AutomaticShaftFloorRegion(double elevation)

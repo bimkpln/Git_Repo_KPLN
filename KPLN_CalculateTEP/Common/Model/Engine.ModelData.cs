@@ -72,9 +72,13 @@ namespace KPLN_CalculateTEP.Common
             private string RoomBuildingValue(Room room,Source source=null)
             {
                 var value=Mapped(room,"building");if(string.IsNullOrWhiteSpace(value)){var assigned=AssignedBuilding(source,room);if(!string.IsNullOrWhiteSpace(assigned))value=assigned;}
+                return ApplySingleBuildingAssumption(value);
+            }
+            private string ApplySingleBuildingAssumption(string value)
+            {
                 if(singleBuildingAssumption==null)return value;
                 if(!string.IsNullOrWhiteSpace(value)&&!Eq(value,singleBuildingAssumption.BuildingName))
-                    throw new InvalidOperationException("Обнаружен другой корпус после подтверждения единого корпуса. Повторите проверку.");
+                    throw new InvalidOperationException("Подтверждён единый корпус «"+singleBuildingAssumption.BuildingName+"», но у объекта задан корпус «"+value.Trim()+"». Проверьте параметр корпуса и соответствия в настройках; объект не объединён с другим корпусом.");
                 return singleBuildingAssumption.BuildingName;
             }
             public List<Issue> CheckParameters(Action<string> progress=null)
@@ -194,10 +198,11 @@ namespace KPLN_CalculateTEP.Common
                 var r=new Record{Source=source,Element=e,Level=setting,Section=IsAreaInput(e)?Mapped(e,"section")??"":"",Apartment=IsAreaInput(e)?RecordParameter(source,e,"apartment"):"",Vertical=RecordParameter(source,e,"vertical"),Role="unknown",Part="auto"};
                 r.Apartment=(r.Apartment??"").Trim(); if(r.Apartment=="0"||r.Apartment=="-")r.Apartment="";
                 string value=Config.Grouping=="links"?source.Name:Config.Grouping=="worksets"?Value(e,"@Workset"):
-                    Config.Grouping=="selection"?Config.ManualBuilding:e is Room?RoomBuildingValue((Room)e,source):IsClassifiedFamily(e)?(RecordParameter(source,e,"building")??singleBuildingAssumption?.BuildingName):null;
+                    Config.Grouping=="selection"?Config.ManualBuilding:e is Room?RoomBuildingValue((Room)e,source):IsClassifiedFamily(e)?RecordParameter(source,e,"building"):null;
                 var maps=Config.Buildings.Where(x=>(x.Source=="*"||Eq(x.Source,source.Key)||Eq(x.Source,source.Name))&&(x.MatchValue=="*"||Eq(x.MatchValue,value))).ToList();
                 if(maps.Count>1)throw new InvalidOperationException("Объект соответствует нескольким строкам назначения корпуса.");
                 var map=maps.FirstOrDefault();r.Building=map?.Building??value;if(string.IsNullOrWhiteSpace(r.Building))r.Building=AssignedBuilding(source,e);
+                if(Config.Grouping=="parameter")r.Building=ApplySingleBuildingAssumption(r.Building);
                 if(e is Room&&string.IsNullOrWhiteSpace(r.Building))throw new InvalidOperationException(MissingBuildingMessage(value));
                 r.BuildingIncluded=map?.Include??true;
                 r.Profile=Config.Profile=="by-source"?source.Profile:Config.Profile=="by-building"?map?.Profile:Config.Profile;

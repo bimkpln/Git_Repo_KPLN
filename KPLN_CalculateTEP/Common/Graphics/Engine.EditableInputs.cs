@@ -73,7 +73,7 @@ namespace KPLN_CalculateTEP.Common
                 roomFloorRegions.Clear();roomFloorFailures.Clear();roomFloorWarnings.Clear();roomNetRegions.Clear();roomCentreRegions.Clear();measuredRoomRegions.Clear();shapes.Clear();
                 reviewBindings = Read<List<ReviewBinding>>("editable-inputs") ?? new List<ReviewBinding>();
             }
-            private PlanarRegion ReviewRegion(string key, Record record, string kind, double elevation, Func<PlanarRegion> automatic)
+            private PlanarRegion ReviewRegion(string key, Record record, string kind, double elevation, Func<PlanarRegion> automatic,Action<PlanarRegion> validate=null)
             {
                 key = Config.Method + "/" + (Config.Phase ?? "") + "/" + key;
                 ReviewInput input;
@@ -109,6 +109,8 @@ namespace KPLN_CalculateTEP.Common
                         input.IsDraft=false;input.DraftReason=null;input.DraftDescription=null;
                         input.Status = binding == null ? "Автоматический контур" : "Исправления отключены";
                     }
+                    // A persisted/manual boundary must pass current physical validation too.
+                    validate?.Invoke(input.Region);
                     if(automaticAreaInputs&&binding==null)
                     {
                         if(areaBuildFailures.TryGetValue(key,out var failure))throw new InvalidOperationException(failure);
@@ -118,13 +120,18 @@ namespace KPLN_CalculateTEP.Common
                         var created=doc.GetElement(binding.RegionId) as FilledRegion;
                         input.Region=RegionFromLoops(created.GetBoundaries(),true);
                         if(input.Region.IsEmpty)throw new InvalidOperationException("Созданная расчётная область пуста.");
+                        validate?.Invoke(input.Region);
                     }
                     return input.Region;
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Autodesk.Revit.Exceptions.OperationCanceledException) { throw; }
                 catch (Autodesk.Revit.Exceptions.RegenerationFailedException) { throw; }
-                catch (Exception ex) { PreserveFailedReviewInput(input,ex);throw; }
+                catch (Exception ex)
+                {
+                    if(input.Region==null&&record.AutomaticShaftRegion!=null)input.Region=record.AutomaticShaftRegion;
+                    PreserveFailedReviewInput(input,ex);throw;
+                }
             }
             internal static bool ValidateReviewBinding(ReviewBinding binding,PlanarRegion actual,Func<PlanarRegion> automatic)
             {

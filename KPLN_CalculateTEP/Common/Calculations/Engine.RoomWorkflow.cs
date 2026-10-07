@@ -57,6 +57,8 @@ namespace KPLN_CalculateTEP.Common
                 Config.Buildings.Clear();
                 Config.Corrections.Clear();
                 Config.Contours.Clear();
+                // The current UI calculates the main model and its links together.
+                // Clear hidden legacy source modes so old RVT settings cannot silently omit a model.
                 foreach (var source in Sources) source.Mode = "include";
                 foreach (var metric in Config.Metrics)
                 {

@@ -221,6 +221,9 @@
     <Compile Include="Common\Geometry\Engine.HeightRange.cs" />
     <Compile Include="Common\Geometry\Engine.Clearance.cs" />
     <Compile Include="Common\Model\Engine.AutomaticShafts.cs" />
+    <Compile Include="Common\Model\Engine.ShaftEvidence.cs" />
+    <Compile Include="Common\Model\Engine.ShaftResolution.cs" />
+    <Compile Include="Common\Geometry\Engine.ShaftValidation.cs" />
     <Compile Include="Common\Model\Engine.Departments.cs" />
     <Compile Include="Common\Models\Definitions.cs" />
     <Compile Include="Common\Models\ModelData.cs" />

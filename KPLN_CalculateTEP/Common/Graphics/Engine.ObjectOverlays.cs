@@ -48,10 +48,14 @@ namespace KPLN_CalculateTEP.Common
                 Notice("EDITED_OBJECT_AREA","Предупреждение","Площадной контур объекта заменён изменённой цветовой областью ID "+IDHelper.ElIdValue(region.Id)+". Площадь, положение и пересечения читаются из её текущей границы; назначение и нормативные проверки сохранены.",record);
                 return true;
             }
-            private void FinalizeConfirmedReviewBindings()
+            internal static bool ReviewBindingStateChanged(ReviewBinding binding,ReviewInput input)
+            {return binding.RequiresReview!=input.IsDraft||input.IsDraft&&(binding.DraftReason!=input.DraftReason||binding.DraftDescription!=input.DraftDescription);}
+            internal static void ApplyReviewBindingState(ReviewBinding binding,ReviewInput input)
+            {binding.RequiresReview=input.IsDraft;binding.DraftReason=input.IsDraft?input.DraftReason:null;binding.DraftDescription=input.IsDraft?input.DraftDescription:null;}
+            private void FinalizeReviewBindingStates()
             {
-                var candidates=reviewBindings.Where(b=>b.RequiresReview&&reviewInputs.TryGetValue(b.Key,out var input)&&
-                    !input.IsDraft&&input.Region!=null&&!input.Region.IsEmpty).ToList();
+                var candidates=reviewBindings.Where(b=>reviewInputs.TryGetValue(b.Key,out var input)&&
+                    input.Region!=null&&!input.Region.IsEmpty&&ReviewBindingStateChanged(b,input)).ToList();
                 if(candidates.Count==0)return;
                 var previous=candidates.Select(b=>new {Binding=b,b.RequiresReview,b.DraftReason,b.DraftDescription}).ToList();
                 var report=current??Last??new Run();bool committed=false;
@@ -64,25 +68,25 @@ namespace KPLN_CalculateTEP.Common
                         if(region==null)continue;
                         var input=reviewInputs[binding.Key];
                         // Confirm the persisted outline, including when edited inputs were disabled for this run.
-                        ValidateCreatedArea(input.Region,RegionFromLoops(region.GetBoundaries(),true));
+                        if(!input.IsDraft)ValidateCreatedArea(input.Region,RegionFromLoops(region.GetBoundaries(),true));
                         var view=doc.GetElement(region.OwnerViewId) as View;
                         if(view==null)throw new InvalidOperationException("Не найден вид подтверждённой расчётной области ID "+IDHelper.ElIdValue(region.Id)+".");
                         confirmed.Add(Tuple.Create(binding,input,region,view));
                     }
                     if(confirmed.Count==0)return;
-                    Transaction("ТЭП: подтверждение расчётных областей",report,()=>
+                    Transaction("ТЭП: обновление статуса расчётных областей",report,()=>
                     {
                         var fill=new FilteredElementCollector(doc).OfClass(typeof(FillPatternElement)).Cast<FillPatternElement>().FirstOrDefault(f=>f.GetFillPattern().IsSolidFill);
                         foreach(var item in confirmed)
                         {
                             var binding=item.Item1;var input=item.Item2;var region=item.Item3;var view=item.Item4;
-                            var colour=OverlayColour(input.Role);
-                            var style=new OverrideGraphicSettings().SetProjectionLineColor(colour).SetSurfaceTransparency(65);
+                            var colour=input.IsDraft?new Color(210,45,45):OverlayColour(input.Role);
+                            var style=new OverrideGraphicSettings().SetProjectionLineColor(colour).SetSurfaceTransparency(input.IsDraft?80:65);
                             if(fill!=null)style.SetSurfaceForegroundPatternId(fill.Id).SetSurfaceForegroundPatternColor(colour);
                             if(input.Kind!=null&&input.Kind.StartsWith("Контур этажа"))style.SetSurfaceForegroundPatternVisible(false).SetSurfaceBackgroundPatternVisible(false);
                             view.SetElementOverrides(region.Id,style);
-                            region.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)?.Set(input.Kind+" | "+input.Source+" | ID "+input.Element);
-                            binding.RequiresReview=false;binding.DraftReason=null;binding.DraftDescription=null;
+                            region.get_Parameter(BuiltInParameter.ALL_MODEL_INSTANCE_COMMENTS)?.Set(input.Kind+" | "+input.Source+" | ID "+input.Element+(input.IsDraft?" | Не включён в расчёт: "+input.DraftReason:""));
+                            ApplyReviewBindingState(binding,input);
                         }
                         SaveReviewBindings();
                     });
@@ -93,7 +97,7 @@ namespace KPLN_CalculateTEP.Common
                 catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
                 catch(Exception ex)
                 {
-                    report.Issue("EDITABLE_CONFIRM_STYLE","Предупреждение","Расчёт выполнен, но не удалось обновить оформление подтверждённых областей. Признак предварительного контура сохранён; при следующем расчёте области будут проверены повторно. "+ex.Message);
+                    report.Issue("EDITABLE_CONFIRM_STYLE","Предупреждение","Расчёт выполнен, но не удалось обновить оформление и сохранённый статус проверочных областей. Актуальные статусы указаны в результате; при следующем расчёте шахты будут проверены повторно. "+ex.Message);
                 }
                 finally
                 {

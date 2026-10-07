@@ -90,7 +90,7 @@ namespace KPLN_CalculateTEP.Common
                         {
                             if(original.AutomaticShaftRegion!=null&&!(RoomEnvelopeTotal(indicator)||RoomEnvelopePart(indicator)||RoomAreaMetric(indicator)))continue;
                             Progress("Правила: "+metric.Name+" - "+(adjusted.Count+1)+" / "+records.Count);
-                            var localErrors=preflightIssues.Where(i=>i.Severity=="Ошибка"&&i.Source==original.Source.Name&&i.Element==IDHelper.ElIdValue(original.Element.Id).ToString()&&IssueAffectsMetric(i,metric.Key)).ToList();
+                            var localErrors=preflightIssues.Where(i=>PreflightIssueRejectsInput(i,original.Source.Name,IDHelper.ElIdValue(original.Element.Id).ToString(),metric.Key,original.AutomaticShaftRegion!=null)).ToList();
                             if(localErrors.Count>0){if(RoomEnvelopeTotal(indicator)||RoomEnvelopePart(indicator))MarkInvalidRoomFloor(original.Source,original.Element);continue;}
                             var r=original.Copy();try{ApplyRules(r,metric.Key);adjusted.Add(r);}
                             catch(System.OperationCanceledException){throw;}
@@ -128,7 +128,7 @@ namespace KPLN_CalculateTEP.Common
                 current.Configuration=Serialize(Config);Last=current;
                 DisposeSpatialCalculators();
                 if(ViewsEnabled) {progress?.Invoke("Построение проверочных видов...");Measure("Создание проверочной графики",null,"",()=>{CreateGraphics(current);return true;});}
-                FinalizeConfirmedReviewBindings();
+                FinalizeReviewBindingStates();
                 RefreshStatuses();
                 if(ViewsEnabled&&Config.CreateSchedule){progress?.Invoke("Создание сводной спецификации...");CreateSchedule(current);}
                 RefreshStatuses();
@@ -360,7 +360,8 @@ namespace KPLN_CalculateTEP.Common
                             }
                             if(extra){var plan=Plan(r,metric);if(plan!=null)inputs.Add(Tuple.Create(r,RegionOfPlan(plan)));}
                         }
-                        var masks=PlanarRegion.Empty;foreach(var r in list.Where(r=>r.Override==false))masks=RegionUnion(masks,ReviewRegion("footprint-mask/"+r.Key,r,"Застройка - исключение",ground,()=>RegionOfPlan(Plan(r,metric))));
+                        var masks=PlanarRegion.Empty;foreach(var r in list.Where(r=>r.Override==false))masks=RegionUnion(masks,
+                            r.AutomaticShaftRegion!=null?AutomaticShaftPlan(r):ReviewRegion("footprint-mask/"+r.Key,r,"Застройка - исключение",ground,()=>RegionOfPlan(Plan(r,metric))));
                         inputs=PersistFootprintInputs(inputs);
                         if(inputs.Count==0)throw new InvalidOperationException("Пустой контур застройки на отметке земли. Проверьте отметку или задайте контур застройки.");
                         var used=PlanarRegion.Empty;int count=0;
