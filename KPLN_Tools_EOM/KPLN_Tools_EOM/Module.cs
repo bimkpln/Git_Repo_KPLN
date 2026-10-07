@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.UI;
+using KPLN_Library_DBWorker;
 using KPLN_Loader.Common;
 using KPLN_Tools_EOM.Common;
 using KPLN_Tools_EOM.ExternalCommands;
@@ -27,6 +28,8 @@ namespace KPLN_Tools_EOM
             RibbonPanel panel = application.GetRibbonPanels(tabName).FirstOrDefault(i => i.Name == panelName)
                 ?? application.CreateRibbonPanel(tabName, panelName);
 
+
+#if Revit2020 || Debug2020
             PulldownButton eomToolsPullDownBtn = CreatePulldownButtonInRibbon(
                 "Плагины ЭОМ",
                 "Плагины ЭОМ",
@@ -40,7 +43,57 @@ namespace KPLN_Tools_EOM
                 panel,
                 false);
 
-            PushButtonData setParams = CreateBtnData(
+            // Импорт глобальных параметров доступен только специалистам BIM-отдела.
+            if (SQLiteMainService.CurrentUserDBSubDepartment?.Id == 8)
+            {
+                PushButtonData globalParameters = CreateBtnData(
+                    "СЕТ: Глобальные параметры",
+                    "СЕТ: Глобальные параметры",
+                    "Создать или обновить глобальные параметры проекта из Excel.",
+                    "Лист «Глобальные параметры»: A — имя, B — число, C — формула Revit.",
+                    typeof(KPLN_Tools_EOM.Common.ApartmentWiring.GlobalCommand).FullName,
+                    "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                    "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                    "http://moodle");
+
+                eomToolsPullDownBtn.AddPushButton(globalParameters);
+            }
+
+
+            eomToolsPullDownBtn.AddPushButton(CreateBtnData(
+                "СЕТ: Немоделируемые элементы",
+                "СЕТ: Немоделируемые элементы",
+                "Кабели, трубы, крепления и параметры секции/этажа для проекта «Сетунь».",
+                "Имя файла проекта должно начинаться с «СЕТ_1».",
+                typeof(KPLN_Tools_EOM.Common.ApartmentWiring.NonModelCommand).FullName,
+                "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                "http://moodle"));
+            
+
+            eomToolsPullDownBtn.AddPushButton(CreateBtnData(
+                "СЕТ: Тип отделки",
+                "СЕТ: Тип отделки",
+                "Заполнение типа отделки и связи с глобальными параметрами проекта «Сетунь».",
+                "Имя файла проекта должно начинаться с «СЕТ_1».",
+                typeof(KPLN_Tools_EOM.Common.ApartmentWiring.FinishCommand).FullName,
+                "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                "http://moodle"));
+            
+
+            eomToolsPullDownBtn.AddPushButton(CreateBtnData(
+                "Сортировка спецификации",
+                "Сортировка спецификации",
+                "Заполнение ключа сортировки спецификации проекта «Сетунь».",
+                "Имя файла проекта должно начинаться с «СЕТ_1».",
+                typeof(KPLN_Tools_EOM.Common.ApartmentWiring.SortCommand).FullName,
+                "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
+                "http://moodle"));
+
+
+            eomToolsPullDownBtn.AddPushButton(CreateBtnData(
                 "СЕТ: Заполнить параметры",
                 "СЕТ: Заполнить параметры",
                 "СЕТ: Заполнить параметры",
@@ -56,9 +109,8 @@ namespace KPLN_Tools_EOM
                 typeof(ExtCmd_SET_EOMParams).FullName,
                 "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
                 "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
-                "http://moodle/mod/book/view.php?id=502&chapterid=1319");
-
-            eomToolsPullDownBtn.AddPushButton(setParams);
+                "http://moodle/mod/book/view.php?id=502&chapterid=1319"));
+#endif
 
             return Result.Succeeded;
         }

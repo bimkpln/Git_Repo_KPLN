@@ -99,6 +99,10 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
     <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
@@ -107,9 +111,35 @@
           <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
           <Private>False</Private>
         </Reference>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\$(RevitVer)\KPLN_Library_DBWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug2020' Or '$(Configuration)' == 'Revit2020'">
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Compile Include="Common\ApartmentWiring\GlobalCommand.cs" />
+    <Compile Include="Common\ApartmentWiring\Forms.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Common\ApartmentWiring\Xlsx.cs" />
+    <Compile Include="Common\ApartmentWiring\Common.cs" />
+    <Compile Include="Common\ApartmentWiring\FinishCommand.cs" />
+    <Compile Include="Common\ApartmentWiring\FinishRules.cs" />
+    <Compile Include="Common\ApartmentWiring\FinishRulesForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Common\ApartmentWiring\NonModelCommand.cs" />
+    <Compile Include="Common\ApartmentWiring\NonModelExcel.cs" />
+    <Compile Include="Common\ApartmentWiring\NonModelSettings.cs" />
+    <Compile Include="Common\ApartmentWiring\ScopeForm.cs" />
+    <Compile Include="Common\ApartmentWiring\SortCommand.cs" />
+    <Compile Include="Common\ApartmentWiring\SortReport.cs" />
+    <Compile Include="Common\ApartmentWiring\SortSettings.cs" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <None Include="app.config" />
