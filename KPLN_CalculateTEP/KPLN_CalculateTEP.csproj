@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="15.0">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -183,10 +183,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Common\Calculations\Engine.Calculation.cs" />
+    <Compile Include="Common\Calculations\Engine.FloorCounting.cs" />
     <Compile Include="Common\Calculations\Engine.Preflight.cs" />
     <Compile Include="Common\Calculations\Engine.PartialCalculation.cs" />
     <Compile Include="Common\Calculations\Engine.RoomAreas.cs" />
     <Compile Include="Common\Contours\Engine.ExteriorRoom.cs" />
+    <Compile Include="Common\Contours\Engine.ExteriorFrame.cs" />
     <Compile Include="Common\Calculations\Engine.RoomWorkflow.cs" />
     <Compile Include="Common\Calculations\Engine.Volumes.cs" />
     <Compile Include="Common\Catalogs.cs" />
@@ -197,6 +199,8 @@
     <Compile Include="Common\Export\Engine.Export.cs" />
     <Compile Include="Common\Geometry\Clipper.cs" />
     <Compile Include="Common\Geometry\Engine.Geometry.cs" />
+    <Compile Include="Common\Geometry\Engine.PlanarAreas.cs" />
+    <Compile Include="Common\Geometry\Engine.InputGeometry.cs" />
     <Compile Include="Common\Geometry\Engine.FloorGeometry.cs" />
     <Compile Include="Common\Geometry\Engine.CurveContours.cs" />
     <Compile Include="Common\Geometry\RationalContours.cs" />
@@ -210,14 +214,38 @@
     <Compile Include="Common\Methodologies\TepMethodology.cs" />
     <Compile Include="Common\Model\Engine.Initialization.cs" />
     <Compile Include="Common\Model\Engine.ModelData.cs" />
+    <Compile Include="Common\Model\Engine.LevelSlabs.cs" />
+    <Compile Include="Common\Model\Engine.LevelGeometry.cs" />
+    <Compile Include="Common\Geometry\Engine.AutomaticDimensions.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.Stairs.cs" />
+    <Compile Include="Common\Geometry\Engine.HeightRange.cs" />
+    <Compile Include="Common\Geometry\Engine.Clearance.cs" />
+    <Compile Include="Common\Model\Engine.AutomaticShafts.cs" />
     <Compile Include="Common\Model\Engine.Departments.cs" />
     <Compile Include="Common\Models\Definitions.cs" />
     <Compile Include="Common\Models\ModelData.cs" />
     <Compile Include="Common\Models\Report.cs" />
     <Compile Include="Common\Models\Settings.cs" />
     <Compile Include="Common\Storage\Engine.Storage.cs" />
+    <Compile Include="Common\Storage\Engine.SettingsMigration.cs" />
     <Compile Include="Common\TepCalculation.cs" />
+    <Compile Include="Common\Model\Engine.ClassificationInputs.cs" />
+    <Compile Include="Common\Model\Engine.CategorySources.cs" />
+    <Compile Include="Common\Model\Engine.CategorySettings.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.CategorySettings.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.Distribution.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.ApartmentParameters.cs" />
+    <Compile Include="Common\Model\Engine.InputAudit.cs" />
+    <Compile Include="Common\Model\Engine.BuildingAssignments.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.Buildings.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.ObjectReview.cs" />
+    <Compile Include="Common\Graphics\Engine.EditableInputs.cs" />
+    <Compile Include="Common\Graphics\Engine.ObjectOverlays.cs" />
+    <Compile Include="Common\Graphics\Engine.AutomaticAreas.cs" />
     <Compile Include="ExternalCommands\Command_AR_CalculateTEP.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.InputAudit.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.LevelSlabs.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.LevelGeometry.cs" />
     <Compile Include="Forms\AR_CalculateTEP.xaml.cs">
       <DependentUpon>AR_CalculateTEP.xaml</DependentUpon>
     </Compile>

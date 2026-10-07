@@ -29,7 +29,7 @@ namespace KPLN_CalculateTEP.Common
 {
     public static partial class TepCalculation
     {
-        public const string GeometryVersion = "2026.10.05 / conics-room-masks-5";
+        public const string GeometryVersion = "2026.10.05 / automatic-areas-14";
         public const string RulesVersion = "2026.08.26 / 2.0";
         private static readonly Dictionary<string,string> MetricLabels=Catalog().ToDictionary(m=>m.Key,m=>m.Name);
         private static readonly Dictionary<string,string> RoleLabels=Roles().ToDictionary(r=>r.Key,r=>r.Label);

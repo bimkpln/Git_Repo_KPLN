@@ -31,6 +31,7 @@ namespace KPLN_CalculateTEP.Common
             public static bool IssueAffectsMetric(Issue issue,string metric)
             {
                 if(!string.IsNullOrEmpty(issue.Metric))return issue.Metric==metric;
+                if(issue.Code.StartsWith("AUTO_SHAFT"))return RoomEnvelopeTotal((Indicator)Enum.Parse(typeof(Indicator),metric))||RoomEnvelopePart((Indicator)Enum.Parse(typeof(Indicator),metric))||RoomAreaMetric((Indicator)Enum.Parse(typeof(Indicator),metric));
                 if(issue.Code=="PREFLIGHT_PARTIAL")return false;
                 if(issue.Code=="ZERO_DATUM")return MetricNeedsZero(metric);
                 if(issue.Code=="GROUND_DATUM")return MetricNeedsGround(metric);
@@ -48,7 +49,7 @@ namespace KPLN_CalculateTEP.Common
             // A missing room area taints completeness, but does not prevent processing other rooms/floors.
             // Keep MetricBlocked unchanged for final status, empty results and balance checks.
             public static bool PreflightMetricBlocked(string metric,IEnumerable<Issue> issues)
-            {return issues.Any(i=>i.Severity=="Ошибка"&&i.Code!="SPATIAL_UNBOUNDED"&&IssueAffectsMetric(i,metric));}
+            {return issues.Any(i=>i.Severity=="Ошибка"&&string.IsNullOrWhiteSpace(i.Element)&&!OneOf(i.Code,"SPATIAL_UNBOUNDED","CATEGORY_FAMILY_EMPTY","SOURCE_UNLOADED")&&IssueAffectsMetric(i,metric));}
             public static string PreflightMessage(IEnumerable<Metric> metrics,IEnumerable<Issue> issues)
             {
                 var selected=metrics.Where(m=>m.Enabled).ToList();var errors=issues.ToList();

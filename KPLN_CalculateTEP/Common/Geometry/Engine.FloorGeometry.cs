@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,6 @@ namespace KPLN_CalculateTEP.Common
         {
             // Revit internal feet. This is a coincidence tolerance, never an elevation offset.
             private const double FloorGeometryTolerance = 1e-6;
-            private readonly Dictionary<double, Solid> floorSurfaces = new Dictionary<double, Solid>();
             private readonly Dictionary<Tuple<Wall, ShellLayerType>, IList<Face>> floorWallFaces =
                 new Dictionary<Tuple<Wall, ShellLayerType>, IList<Face>>();
             private readonly Dictionary<Face, Tuple<double, double>> floorFaceHeights = new Dictionary<Face, Tuple<double, double>>();
@@ -26,17 +25,15 @@ namespace KPLN_CalculateTEP.Common
 
             private double RoomFloorElevation(Record record)
             {
+                if(IsClassifiedFamily(record.Element))
+                {
+                    if(record.Level==null)throw new InvalidOperationException("У экземпляра не определён расчётный уровень.");
+                    return record.Z;
+                }
                 var room = record.Element as Room;
                 if (room?.Level == null) throw new InvalidOperationException("Не определён уровень помещения.");
                 RequireHorizontalTransform(record.Source.Transform);
                 double offset = room.BaseOffset;
-                if (!string.IsNullOrWhiteSpace(Config.Parameter("floor-offset")))
-                {
-                    var value = Number(room, "floor-offset", true);
-                    if (!value.HasValue || double.IsNaN(value.Value) || double.IsInfinity(value.Value))
-                        throw new InvalidOperationException("Не заполнено смещение чистого пола помещения: «" + Config.Parameter("floor-offset") + "».");
-                    offset = value.Value / .3048;
-                }
                 // ProjectElevation is independent of the level's display elevation base.
                 return record.Source.Transform.OfPoint(new XYZ(0, 0, room.Level.ProjectElevation + offset)).Z;
             }
@@ -71,54 +68,6 @@ namespace KPLN_CalculateTEP.Common
             private static IEnumerable<Wall> WallMembers(Wall wall)
             {
                 return wall.IsStackedWall ? wall.GetStackedWallMemberIds().Select(id => wall.Document.GetElement(id)).OfType<Wall>() : new[] { wall };
-            }
-
-            private Solid FloorSurface(double elevation)
-            {
-                Solid plan;
-                if (floorSurfaces.TryGetValue(elevation, out plan)) return plan;
-                plan = null;
-                foreach (var source in Sources.Where(s => s.Loaded && s.LoadError == null && s.Mode == "include"))
-                {
-                    RequireHorizontalTransform(source.Transform);
-                    foreach (var floor in source.Elements.OfType<HostObject>().Where(f => (f is Floor || f is RoofBase) && PhaseAccepted(source, f)))
-                    {
-                        Progress("Проверка отметки пола: " + source.Name + "; ID " + IDHelper.ElIdValue(floor.Id));
-                        var box = floor.get_BoundingBox(null);
-                        if (box == null) continue;
-                        var placement = source.Transform.Multiply(box.Transform);
-                        if (elevation < placement.OfPoint(box.Min).Z - FloorGeometryTolerance ||
-                            elevation > placement.OfPoint(box.Max).Z + FloorGeometryTolerance) continue;
-                        foreach (var reference in HostObjectUtils.GetTopFaces(floor))
-                        {
-                            var face = floor.GetGeometryObjectFromReference(reference) as PlanarFace;
-                            if (face == null) continue;
-                            var normal = source.Transform.OfVector(face.FaceNormal);
-                            if (normal.Z < 1 - 1e-10 || Math.Abs(source.Transform.OfPoint(face.Origin).Z - elevation) > FloorGeometryTolerance) continue;
-                            var loops = face.GetEdgesAsCurveLoops().Select(l => FlatLoop(l.Select(c => c.CreateTransformed(source.Transform)))).ToList();
-                            plan = Union(plan, PlanFromSectionLoops(loops));
-                        }
-                    }
-                }
-                floorSurfaces[elevation] = plan;
-                return plan;
-            }
-
-            private void VerifyRoomFloor(Record room, Solid net, double elevation)
-            {
-                // A mapped datum is an explicit model value, also usable for voids without a slab.
-                if (!string.IsNullOrWhiteSpace(Config.Parameter("floor-offset"))) return;
-                if (OneOf(room.Role, "multilight", "stair-gap", "opening", "shaft", "engineering-shaft")) return;
-                var surface = FloorSurface(elevation);
-                var missing = Subtract(net, surface);
-                if (missing == null) return;
-                double perimeter = RequireLayeredBody(net).Layers.Single().Region.Perimeter;
-                double tolerance = Math.Max(1e-7, perimeter * ArcChordTolerance * 2);
-                if (missing.Volume > tolerance)
-                    throw new InvalidOperationException("Отметка низа Room " + (elevation * .3048).ToString("0.######", CultureInfo.InvariantCulture) +
-                        " м не подтверждена горизонтальной верхней поверхностью пола по всей площади помещения. Не подтверждено " +
-                        (missing.Volume * .09290304).ToString("0.######", CultureInfo.InvariantCulture) +
-                        " м². Если чистый пол не смоделирован, назначьте параметр «Смещение чистого пола от уровня помещения». Перепад или уклон пола нельзя заменить одной отметкой.");
             }
 
             private sealed class FloorWallTrace
@@ -235,10 +184,8 @@ namespace KPLN_CalculateTEP.Common
                 double elevation = floorElevation + height / .3048;
                 if (boundary == "net")
                 {
-                    var native = Section(SpatialVolume(record), elevation);
+                    var native = BuildPlanarSolid(MeasuredRoomRegion(record, metric), 0, 1, true);
                     if (native == null) throw new InvalidOperationException("Revit не вернул замкнутое сечение помещения на отметке обмера.");
-                    if (height == 0) VerifyRoomFloor(record, native, floorElevation);
-                    else RoomBoundaryPlan(record, "net");
                     Notice("ROOM_NATIVE_SECTION", "Информация", "Чистая площадь получена сечением геометрии Room на отметке " + (elevation * .3048).ToString("0.######", CultureInfo.InvariantCulture) + " м. Типы образующих границу элементов не ограничиваются стенами.", record, metric);
                     return native;
                 }
@@ -313,7 +260,7 @@ namespace KPLN_CalculateTEP.Common
                 }
                 var plan = Extrude(result);
                 Notice("ROOM_FLOOR_DATUM", "Информация", "Пол: " + (floorElevation * .3048).ToString("0.######", CultureInfo.InvariantCulture) +
-                    " м; " + (string.IsNullOrWhiteSpace(Config.Parameter("floor-offset")) ? "низ Room, проверяемый по геометрии пола" : "параметр «" + Config.Parameter("floor-offset") + "»") + ".", record, metric);
+                    " м; " + (string.IsNullOrWhiteSpace(Config.Parameter("floor-offset")) ? "низ Room; отдельное перекрытие не требуется" : "параметр «" + Config.Parameter("floor-offset") + "»") + ".", record, metric);
                 if (height > 0) Notice("ROOM_MEASUREMENT_HEIGHT", "Информация", "Обмер помещения квартиры на высоте 1,1 м от пола: нижняя граница диапазона 1,1-1,3 м по А.2.2 исходного ТЗ. Поэтажные контуры остаются на уровне пола.", record, metric);
                 return plan;
             }

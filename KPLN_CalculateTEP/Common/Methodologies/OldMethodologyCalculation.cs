@@ -8,7 +8,7 @@ namespace KPLN_CalculateTEP.Common.Methodologies
         internal override string GnsWallBoundary => "exterior";
         internal override bool UsesCoreBoundary => false;
         internal override bool ExcludesGnsRole(string role) => false;
-        internal override bool CountsGnsOpeningOnOneFloor(Solid shape) => shape.Volume * .09290304 > 36;
+        internal override bool CountsGnsOpeningAreaOnOneFloor(double areaSquareMetres) => areaSquareMetres > 36;
         internal override bool CountsGnsShaftOnOneFloor => false;
     }
 }

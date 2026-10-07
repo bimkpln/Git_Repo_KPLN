@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
@@ -10,34 +10,65 @@ namespace KPLN_CalculateTEP.Common
     {
         public partial class Engine
         {
+            public static HashSet<string> RequiredParameterKeys(Settings settings,IEnumerable<string> objectRoles)
+            {
+                var roles=new HashSet<string>(objectRoles);var enabled=settings.Metrics.Where(m=>m.Enabled).Select(m=>m.Key).ToList();
+                var required=new HashSet<string>();
+                Action<string,bool> add=(key,needed)=>{if(needed&&!Settings.IsFixedParameter(key)&&enabled.Any(m=>ParameterAffectsMetric(key,m)))required.Add(key);};
+                bool publicBuilding=OneOf(settings.Profile,"public","high-public");
+                add("embedded",true);add("standalone",true);
+                add("vertical",roles.Overlaps(new[]{"multilight","opening","shaft","engineering-shaft","stair-gap"}));
+                add("width",roles.Overlaps(new[]{"arch","stair-gap"}));add("stair-width",roles.Contains("stair-gap"));
+                bool technical=roles.Overlaps(new[]{"technical-space","technical-void"});
+                add("height",roles.Contains("niche")||publicBuilding&&technical&&enabled.Any(m=>GrossMetric((Indicator)Enum.Parse(typeof(Indicator),m))));
+                add("roof-ratio",publicBuilding&&roles.Contains("roof-vent"));
+                add("service-access",publicBuilding&&technical);
+                add("mezzanine-ratio",publicBuilding&&roles.Contains("mezzanine"));
+                add("transition",!publicBuilding&&roles.Contains("transition"));
+                return required;
+            }
             public string RoomScanSummary { get; private set; }
             public bool HasSummerRooms { get; private set; }
 
             private List<Record> PreflightRecords()
             {
-                Progress("Предварительная проверка: параметры и помещения, без построения геометрии...");
+                Progress("Предварительная проверка: параметры, помещения и автоматические размеры...");
                 RoomScanSummary = ""; HasSummerRooms = false;
                 if(singleBuildingAssumption!=null)
                     current.Issue("SINGLE_BUILDING_ASSUMPTION","Предупреждение",
                         "Пользователь подтвердил расчёт выбранных источников как одного корпуса «"+singleBuildingAssumption.BuildingName+"». "+singleBuildingAssumption.Description+" Корпус назначен только внутри расчёта; параметры помещений не изменены.",
                         action:"Результат получен при допущении единого корпуса. Допущение действует только для этой проверки или расчёта и не сохраняется в настройках.");
                 if (!Config.Metrics.Any(m => m.Enabled)) current.Issue("NO_METRICS", "Ошибка", "Не выбраны показатели расчёта.");
+                LoadClassificationDictionary();
+                if(DictionaryStatus.StartsWith("Словарь недоступен"))current.Issue("CLASSIFICATION_DICTIONARY","Предупреждение",DictionaryStatus);
                 var records = Collect();
+                automaticGeometryRecords=records;automaticDimensions.Clear();automaticDimensionErrors.Clear();
+                foreach(var category in (Config.CategorySources??new List<CategorySource>()).Where(c=>c.Families))
+                    if(!records.Any(r=>IsClassifiedFamily(r.Element)&&r.Role==category.Role))
+                        current.Issue("CATEGORY_FAMILY_EMPTY","Ошибка","Для категории «"+(Roles().FirstOrDefault(r=>r.Key==category.Role)?.Label??category.Role)+"» выбран расчёт через семейства, но нет пригодных экземпляров выбранных типов. Категория пропущена; остальные данные рассчитываются.");
                 foreach (var level in Config.Levels.Where(l => l.Include))
-                    foreach (var entry in new[] { Tuple.Create("Верх перекрытия", level.TopSlab), Tuple.Create("Высота", level.Height), Tuple.Create("Доля от кровли", level.RoofRatio), Tuple.Create("Площадь надстройки", level.RoofArea) })
+                    foreach (var entry in new[] { Tuple.Create("Верх перекрытия", level.TopSlabMode=="manual"?level.TopSlab:null), Tuple.Create("Высота", level.HeightMode=="manual"?level.Height:null), Tuple.Create("Доля от кровли", level.RoofRatioMode=="manual"?level.RoofRatio:null), Tuple.Create("Площадь надстройки", level.RoofAreaMode=="manual"?level.RoofArea:null) })
                     {
                         if (string.IsNullOrWhiteSpace(entry.Item2)) continue;
                         double value;
                         if (!TryNumber(entry.Item2, out value) || entry.Item1 != "Верх перекрытия" && value < 0 || entry.Item1 == "Доля от кровли" && value > 1)
                             current.Issues.Add(new Issue{Code="LEVEL_VALUE",Severity="Ошибка",Message="Этаж «"+level.Name+"»: недопустимое значение поля «"+entry.Item1+"».",Source=level.Source,ParameterKey=entry.Item1=="Верх перекрытия"?"$level-top":"$level-normative"});
                     }
-                foreach (var r in records.Where(r => r.Element is Room && r.Level == null))
+                foreach (var r in records.Where(r => IsAreaInput(r.Element) && r.Level == null))
                     Notice("ROOM_LEVEL", "Ошибка", "Не определён расчётный уровень помещения.", r);
-                var rooms = records.Where(r => r.Element is Room && r.Level != null && r.Level.Include && r.Level.Kind != "exclude").ToList();
-                if (rooms.Count == 0) current.Issue("ROOMS_EMPTY", "Ошибка", "После предварительной проверки не осталось пригодных для расчёта размещённых помещений на выбранных этажах и стадии. См. ошибки площади и параметров помещений, если они есть.");
+                var rooms = records.Where(r => IsAreaInput(r.Element) && r.Level != null && r.Level.Include && r.Level.Kind != "exclude").ToList();
+                if (rooms.Count == 0)
+                {
+                    var reasons=new Dictionary<string,int>(roomExclusionReasons);
+                    int noLevel=records.Count(r=>IsAreaInput(r.Element)&&r.Level==null);
+                    int excludedLevel=records.Count(r=>IsAreaInput(r.Element)&&r.Level!=null&&(!r.Level.Include||r.Level.Kind=="exclude"));
+                    if(noLevel>0)reasons["У объекта не определён расчётный уровень."]=noLevel;
+                    if(excludedLevel>0)reasons["Этаж объекта выключен из расчёта или помечен как исключённый."]=excludedLevel;
+                    current.Issue("ROOMS_EMPTY", "Ошибка", EmptyAreaInputsMessage(placedRoomsScanned,reasons));
+                }
                 foreach (var group in records.GroupBy(r => r.Building))
                 {
-                    bool single = group.Where(r => r.Level != null && r.Level.Include && r.Role != "mezzanine").Select(r => Math.Round(r.Z, 6)).Distinct().Count() == 1;
+                    bool single = group.Where(r => r.AutomaticShaftRegion == null && r.Level != null && r.Level.Include && r.Role != "mezzanine").Select(r => Math.Round(r.Z, 6)).Distinct().Count() == 1;
                     foreach (var r in group) r.SingleStorey = single;
                 }
                 bool apartmentMetrics = Config.Metrics.Any(m => m.Enabled && m.Key.StartsWith("Apartments"));
@@ -47,21 +78,11 @@ namespace KPLN_CalculateTEP.Common
                 {
                     var sourceRooms = rooms.Where(r => r.Source == source).ToList();
                     if (sourceRooms.Count == 0) continue;
-                    if (Config.Metrics.Any(m => m.Enabled && RoomAreaMetric((Indicator)Enum.Parse(typeof(Indicator), m.Key))) &&
+                    if (sourceRooms.Any(r=>r.Element is Room) && Config.Metrics.Any(m => m.Enabled && RoomAreaMetric((Indicator)Enum.Parse(typeof(Indicator), m.Key))) &&
                         AreaVolumeSettings.GetAreaVolumeSettings(source.Document).GetSpatialElementBoundaryLocation(SpatialElementType.Room) != SpatialElementBoundaryLocation.Finish)
                         current.Issue("ROOM_AREA_SETTINGS", "Ошибка", "Площадь Room рассчитывается не по чистовой грани. Для использования Room.Area требуется способ вычисления границ помещений «По отделке стен». Настройки модели автоматически не изменяются.", source: source.Name);
-                    foreach (var map in Config.Parameters.Where(p => !string.IsNullOrWhiteSpace(p.Name) && p.Key != "coefficient" && p.Key != "parking" && !(p.Key=="building"&&singleBuildingAssumption!=null)))
-                    {
-                        int found = 0;
-                        foreach (var r in sourceRooms)
-                        {
-                            try { if (Value(r.Element, map.Name) != null) found++; }
-                            catch (OperationCanceledException) { throw; }
-                            catch (Exception ex) { ParameterIssue("PARAM_AMBIGUOUS", map.Title+": "+ex.Message, map.Key, r); }
-                        }
-                        if (found == 0) ParameterIssue("PARAM_MISSING", "Параметр «"+map.Name+"» ("+map.Title+") отсутствует у всех расчётных помещений источника.", map.Key, source:source.Name);
-                    }
                 }
+
                 if (Config.Metrics.Any(m => m.Enabled && m.Key == "ParkingCount"))
                     foreach(var parking in records.Where(r => IsParkingFamily(r.Element)))
                     {
@@ -74,7 +95,7 @@ namespace KPLN_CalculateTEP.Common
                 foreach (var original in rooms)
                 {
                     Progress("Проверка заполнения помещений: " + (++index) + " / " + rooms.Count);
-                    foreach(var key in new[]{"include","embedded","standalone","partial-floor","service-access","height","width","stair-width","slope","roof-ratio","mezzanine-ratio","floor-offset"})
+                    foreach(var key in new[]{"embedded","standalone","service-access"})
                     {
                         if(!Config.Metrics.Any(m=>m.Enabled&&ParameterAffectsMetric(key,m.Key)))continue;
                         try
@@ -89,8 +110,6 @@ namespace KPLN_CalculateTEP.Common
                         catch(OperationCanceledException){throw;}
                         catch(Exception ex){ParameterIssue("PARAM_VALUE",ex.Message,key,original);}
                     }
-                    if(!string.IsNullOrWhiteSpace(Config.Parameter("floor-offset")))
-                        try{RoomFloorElevation(original);}catch(OperationCanceledException){throw;}catch(Exception ex){ParameterIssue("PARAM_VALUE",ex.Message,"floor-offset",original);}
                     foreach (var metric in Config.Metrics.Where(m => m.Enabled))
                     {
                         if(metric.Key=="ParkingCount")continue;
@@ -108,17 +127,17 @@ namespace KPLN_CalculateTEP.Common
                             HasSummerRooms |= OneOf(r.Role, "loggia", "balcony", "terrace");
                             if (metric.Key == "ApartmentsTotal" && !string.IsNullOrWhiteSpace(r.Apartment))
                             {
-                                if (r.Role == "loggia") loggias[r.Key] = ((Room)r.Element).Area * .09290304;
-                                if (OneOf(r.Role, "balcony", "terrace")) balconies[r.Key] = ((Room)r.Element).Area * .09290304;
+                                if (r.Role == "loggia") loggias[r.Key] = (r.Element is Room?((Room)r.Element).Area:UsesFamilyParameterArea(r.Element)?FamilyParameterArea(r):0) * .09290304;
+                                if (OneOf(r.Role, "balcony", "terrace")) balconies[r.Key] = (r.Element is Room?((Room)r.Element).Area:UsesFamilyParameterArea(r.Element)?FamilyParameterArea(r):0) * .09290304;
                             }
                             if(!CountMetric(metric.Key))
                             {
                             if (OneOf(r.Role, "multilight", "opening", "shaft", "engineering-shaft", "stair-gap") && string.IsNullOrWhiteSpace(r.Vertical))
                                 throw new InvalidOperationException("Не заполнен общий ID вертикального пространства.");
                             if (r.Role == "stair-gap") { Dimension(r, "width", true); Dimension(r, "stair-width", true); }
-                            if (r.Role == "niche") Dimension(r, "height", true);
+                            if (r.Role == "niche") RoomClearance(r);
                             if (r.Role == "arch") Dimension(r, "width", true);
-                            if ((RoomAreaMetric(indicator) || GrossMetric(indicator)) && Number(r.Element, "slope").HasValue && !IsPublic(r) && r.Role != "public" && r.Part != "nonresidential")
+                            if (NeedsCeilingCheck(r,indicator) && HasSlopedCeiling(r) && !IsPublic(r) && r.Role != "public" && r.Part != "nonresidential")
                                 throw new InvalidOperationException("Для жилой мансарды исходное ТЗ неоднозначно задаёт высотные пороги. Нужен согласованный порядок учёта; площадь автоматически не подменяется.");
                             }
                             if (OneOf(metric.Key, "Storeys", "Floors")) CountLevel(r, metric.Key == "Storeys");

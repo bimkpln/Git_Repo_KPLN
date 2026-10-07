@@ -34,13 +34,16 @@ namespace KPLN_CalculateTEP.Common
             public string Code {get;set;} public string Severity {get;set;} public string Message {get;set;}
             public string Metric {get;set;} public string Source {get;set;} public string Building {get;set;}
             public string Element {get;set;} public string Action {get;set;}
+            public List<string> ElementIds {get;set;}
             public string ParameterKey {get;set;} public string InputKind {get;set;}
             public string MetricName {get{return string.IsNullOrEmpty(Metric)?"Общая проверка":MetricLabel(Metric);}}
         }
         public class Detail
         {
+            public string ObjectName {get;set;}
             public string Metric {get;set;} public string SourceKey {get;set;} public string Source {get;set;}
             public string Building {get;set;} public string Section {get;set;} public string Level {get;set;}
+            public string FloorLevels {get;set;}
             public double Elevation {get;set;} public string Element {get;set;} public string UniqueId {get;set;}
             public double? MeasurementElevation {get;set;}
             public string Purpose {get;set;} public string Apartment {get;set;} public string Profile {get;set;}
@@ -62,9 +65,12 @@ namespace KPLN_CalculateTEP.Common
         }
         public class Run
         {
+            public List<ReviewInput> ReviewAreas {get;set;}=new List<ReviewInput>();
+            public InputAudit InputAudit {get;set;}
             public string Id {get;set;}=Guid.NewGuid().ToString("N"); public string Date {get;set;}=DateTime.Now.ToString("s");
             public string GeometryVersion {get;set;} = TepCalculation.GeometryVersion;
             public bool? CreateViews {get;set;}
+            public bool AutomaticAreaRegions {get;set;}
             public string Author {get;set;} public string Method {get;set;} public string Version {get;set;}=RulesVersion;
             public string Configuration {get;set;} public List<Summary> Summary {get;set;}=new List<Summary>();
             public List<Detail> Details {get;set;}=new List<Detail>(); public List<Issue> Issues {get;set;}=new List<Issue>();
@@ -73,19 +79,29 @@ namespace KPLN_CalculateTEP.Common
             { Issues.Add(new Issue {Code=code,Severity=severity,Message=message,Metric=metric,Source=source,Building=building,Element=element,Action=action}); }
             public string TextReport(int decimals)
             {
-                var b=new StringBuilder("Расчёт ТЭП | "+Date+" | "+Method+" | правила "+Version+(string.IsNullOrEmpty(GeometryVersion)?"":" | геометрия "+GeometryVersion)+(CreateViews.HasValue?" | проверочные виды: "+(CreateViews.Value?"включены":"выключены"):"")+"\n");
+                var b=new StringBuilder("Расчёт ТЭП | "+Date+" | "+Method+" | правила "+Version+(string.IsNullOrEmpty(GeometryVersion)?"":" | геометрия "+GeometryVersion)+(AutomaticAreaRegions?" | расчётные 2D-области: автоматически":"")+(CreateViews.HasValue?" | дополнительные проверочные виды: "+(CreateViews.Value?"включены":"выключены"):"")+"\n");
                 foreach(var s in Summary)
                 {
                     b.AppendLine();b.AppendLine(s.Name+": "+s.ValueText(decimals)+" | "+s.Status);
                     foreach(var g in Details.Where(d=>d.Metric==s.Key&&!d.Excluded).GroupBy(d=>new {d.Building,d.Section}).OrderBy(g=>g.Key.Building))
                     {
                         b.AppendLine("  "+g.Key.Building+(string.IsNullOrWhiteSpace(g.Key.Section)?"":" / секция "+g.Key.Section));
+                        if(s.Key=="Storeys"||s.Key=="Floors")
+                        {
+                            foreach(var floor in g.OrderBy(d=>d.Elevation).ThenBy(d=>d.Level))
+                            {
+                                string datum=string.IsNullOrEmpty(floor.FloorLevels)?" ("+(floor.Elevation*.3048).ToString("+0.000;-0.000;0.000")+" м)":"";
+                                b.AppendLine("    "+floor.Level+datum+": "+Math.Round(floor.Value,decimals,MidpointRounding.AwayFromZero).ToString("N"+decimals)+" "+s.Unit);
+                                if(!string.IsNullOrEmpty(floor.FloorLevels))b.AppendLine("      Уровни: "+floor.FloorLevels);
+                            }
+                            continue;
+                        }
                         foreach(var floor in g.GroupBy(d=>Math.Round(d.Elevation,6)).OrderBy(x=>x.Key))
                             b.AppendLine("    "+string.Join(" / ",floor.Select(d=>d.Level).Distinct())+" ("+(floor.Key*.3048).ToString("+0.000;-0.000;0.000")+" м): "+Math.Round(floor.Sum(d=>d.Value),decimals,MidpointRounding.AwayFromZero).ToString("N"+decimals)+" "+s.Unit);
                     }
                     if(!string.IsNullOrEmpty(s.Comment)) b.AppendLine("  "+s.Comment);
                     foreach(var issue in Issues.Where(i=>Engine.IssueAffectsMetric(i,s.Key)&&
-                        (i.Code=="SPATIAL_UNBOUNDED"||i.Code=="ROOM_FLOOR_SKIPPED")))
+                        (i.Code=="SPATIAL_UNBOUNDED"||i.Code=="ROOM_FLOOR_SKIPPED"||(i.Code=="FLOOR_ENVELOPE_ONLY"||i.Code=="FLOOR_AREA_BALANCE"))))
                         b.AppendLine("  "+issue.Source+": "+issue.Code+": "+issue.Message);
                 }
                 return b.ToString();

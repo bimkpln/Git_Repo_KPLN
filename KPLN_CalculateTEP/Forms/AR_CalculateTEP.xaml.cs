@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -37,21 +37,40 @@ namespace KPLN_CalculateTEP.Forms
         private static readonly Brush ErrorTextBrush=new SolidColorBrush(Color.FromRgb(180,35,24));
         private bool changing,busy,cancelRequested;
         private string checkedConfiguration;
-        public IEnumerable<TEP.ParameterMap> RoomParameters {get{return Config.Parameters.Where(p=>!TEP.Settings.IsFixedParameter(p.Key));}}
+        public IEnumerable<TEP.ParameterMap> RoomParameters {get{return Config.Parameters.Where(p=>p.Key!="vertical"&&!TEP.Settings.IsFixedParameter(p.Key)).Concat(new[]{new TEP.ParameterMap{Key="$stairs",Title="Ширина лестничного марша",Description="Стандартные лестницы Revit читаются автоматически.\nДля загружаемых семейств выберите типы и способ определения ширины."}});}}
+        public string PhaseDescription {get{return "Стадия определяет, какие помещения и конструкции учитывать. «Последняя стадия» - последняя стадия каждого источника. «Учитывать все» - без фильтра по стадии.";}}
+        public List<TEP.Choice> PhaseChoices {get{return new[]{new TEP.Choice("","Последняя стадия","Последняя стадия каждого источника."),new TEP.Choice(TEP.Settings.AllPhases,"Учитывать все","Все стадии выбранных источников, без фильтра.")}.Concat((Engine.Phases??new List<string>()).Select(p=>new TEP.Choice(p,p,"Помещения и конструкции выбранной стадии."))).ToList();}}
+        public string PhaseSelection {get{return Config.Phase??"";}set{Config.Phase=value;}}
+        private void RefreshRequiredParameters()
+        {
+            var roles=(departmentGroups??new List<TEP.DepartmentGroup>()).Select(g=>Engine.DepartmentRole(g.Value))
+                .Concat((Config.CategoryFamilies??new List<TEP.CategoryFamily>()).Where(f=>Engine.CategoryUsesFamilies(f.Role)).Select(f=>f.Role));
+            var required=TEP.Engine.RequiredParameterKeys(Config,roles);
+            foreach(var parameter in Config.Parameters)parameter.IsRequired=required.Contains(parameter.Key);
+        }
         public IEnumerable<TEP.LevelSetting> ZeroLevels {get{return Config.Levels.GroupBy(l=>l.Key).Select(g=>g.First());}}
         private List<TEP.DepartmentGroup> departmentGroups;
         private string scannedPhase;
+        private string scannedRoomParameter;
         private string selectedDepartmentRole="unknown";
+        private bool unassignedExpanded=true;
         public List<TEP.Choice> DepartmentRoles {get{return TEP.Roles().Select(r=>r.Key=="unknown"?new TEP.Choice("unknown","Нераспределённые","Назначьте категорию вручную. Нераспределённые помещения блокируют зависимые показатели; остальные рассчитываются."):r).ToList();}}
+        public List<TEP.Choice> CategoryTargetChoices {get{return DepartmentRoles.Select(r=>new TEP.Choice(r.Key,r.Label+(r.Key=="unknown"?"":" | "+(Engine.CategoryUsesFamilies(r.Key)?"Семейства":"Помещение")),r.Description)).ToList();}}
         private void ScanRoomDepartments()
         {
             // Publish only a complete scan; a cancelled or failed scan must not look up to date.
             List<TEP.DepartmentGroup> scanned;
             try{scanned=Engine.ScanDepartments(ReportProgress);}
             catch{departmentGroups=null;scannedPhase=null;CoefficientInputs.IsEnabled=false;RefreshDepartmentCards();throw;}
-            departmentGroups=scanned;scannedPhase=Config.Phase;CoefficientInputs.IsEnabled=true;
+            departmentGroups=scanned;scannedPhase=Config.Phase;scannedRoomParameter=Config.RoomClassificationParameter;CoefficientInputs.IsEnabled=true;
             RefreshDepartmentCards();
+            Engine.RefreshTopSlabs(ReportProgress);
+            Engine.PreviewLevelGeometry(ReportProgress);
         }
+        private void OpenReview_Click(object s,RoutedEventArgs e)
+        {Try(()=>{var item=ReviewGrid.SelectedItem as TEP.ReviewInput;if(item==null)throw new InvalidOperationException("Выберите строку контура.");Engine.RequestReviewNavigation(item);Close();});}
+        private void BindReview_Click(object s,RoutedEventArgs e)
+        {Try(()=>{var item=ReviewGrid.SelectedItem as TEP.ReviewInput;if(item==null)throw new InvalidOperationException("Выберите строку контура.");Engine.PendingReviewKey=item.Key;Engine.PendingContourAction="review-bind";Close();});}
         private void ScanRooms_Click(object s,RoutedEventArgs e)
         {Try(()=>{SetBusy(true);try{PrepareLinkedSources();ScanRoomDepartments();Status.Text="Назначения считаны. Распределите значения по категориям.";}catch(System.OperationCanceledException){Status.Text="Сканирование отменено. Уже загруженные связи остаются загруженными.";}finally{SetBusy(false);}});}
         private void PrepareLinkedSources()
@@ -59,7 +78,7 @@ namespace KPLN_CalculateTEP.Forms
             if(!Engine.Sources.Any(source=>source.Mode!="exclude"&&!source.Loaded))return;
             try
             {
-                Engine.LoadMissingLinks(ReportProgress,message=>MessageBox.Show(this,message,"ТЭП: незагруженные связи",
+                Engine.LoadMissingLinks(ReportProgress,message=>MessageBox.Show(this,message,"KPLN | ТЭП: незагруженные связи",
                     MessageBoxButton.YesNo,MessageBoxImage.Warning,MessageBoxResult.No)==MessageBoxResult.Yes);
             }
             finally
@@ -68,46 +87,28 @@ namespace KPLN_CalculateTEP.Forms
                 Rebind();RefreshDepartmentCards();
             }
         }
-        private void PrepareSingleBuilding()
-        {
-            Engine.PrepareSingleBuilding(ReportProgress,review=>
-            {
-                var dialog=new Autodesk.Revit.UI.TaskDialog("ТЭП: корпус не определён")
-                {
-                    MainInstruction="Не удалось определить корпус у "+(review.Missing+review.Empty)+" помещений.",
-                    MainContent=review.Description+"\n\nЕсли все выбранные модели относятся к одному корпусу, можно считать их как единый корпус «"+review.BuildingName+"». Параметры модели не изменятся. Допущение будет указано в отчёте и действует только для текущей проверки или расчёта.\n\nОдинаковые номера квартир в одной секции будут относиться к одной квартире.",
-                    CommonButtons=Autodesk.Revit.UI.TaskDialogCommonButtons.Cancel,
-                    DefaultButton=Autodesk.Revit.UI.TaskDialogResult.Cancel
-                };
-                dialog.AddCommandLink(Autodesk.Revit.UI.TaskDialogCommandLinkId.CommandLink1,"Считать как один корпус");
-                dialog.AddCommandLink(Autodesk.Revit.UI.TaskDialogCommandLinkId.CommandLink2,"Вернуться к настройкам");
-                var answer=dialog.Show();
-                if(answer==Autodesk.Revit.UI.TaskDialogResult.CommandLink1)return true;
-                Steps.SelectedIndex=1;
-                return false;
-            });
-        }
         private void RefreshDepartmentCards()
         {
+            RefreshRequiredParameters();
             if(CategoryCards==null)return;
             CategoryCards.Children.Clear();
             var groups=departmentGroups??new List<TEP.DepartmentGroup>();
-            foreach(var role in DepartmentRoles)
-            {
-                int count=groups.Where(g=>Engine.DepartmentRole(g.Value)==role.Key).Sum(g=>g.Count);
-                var content=new TextBlock{Text=role.Label+" ("+count+")",TextWrapping=TextWrapping.Wrap,VerticalAlignment=VerticalAlignment.Center};
-                var button=new Button{Content=content,Width=180,Height=78,Margin=new Thickness(0,0,8,8),Padding=new Thickness(10),Tag=role.Key,
-                    HorizontalContentAlignment=HorizontalAlignment.Left,ToolTip=role.Description+"\nОткрывает значения назначения и помещения этой категории. Число в скобках - количество помещений."};
-                if(role.Key==selectedDepartmentRole){button.Background=new SolidColorBrush(Color.FromRgb(36,92,145));button.Foreground=Brushes.White;content.Foreground=Brushes.White;}
-                button.Click+=(s,e)=>{selectedDepartmentRole=(string)((Button)s).Tag;RefreshDepartmentCards();};
-                CategoryCards.Children.Add(button);
-            }
+            var destination=DepartmentTarget.SelectedValue;DepartmentTarget.ItemsSource=CategoryTargetChoices;DepartmentTarget.SelectedValue=destination??"unknown";
             int unassigned=groups.Where(g=>Engine.DepartmentRole(g.Value)=="unknown").Sum(g=>g.Count);
-            ClassificationScanText.Text=departmentGroups==null?"Помещения ещё не просканированы.":"Помещений: "+groups.Sum(g=>g.Count)+". Разных назначений: "+groups.Count+". Нераспределённых помещений: "+unassigned+".";
-            RoomScanText.Text=ClassificationScanText.Text+"\nКоэффициенты доступны после сканирования. Перед расчётом проверяются распределение назначений, номера квартир и обязательные параметры.";
-            var choice=DepartmentRoles.First(r=>r.Key==selectedDepartmentRole);
-            CategoryTitle.Text=choice.Label;CategoryDescription.Text=choice.Description;
-            DepartmentValues.ItemsSource=groups.Where(g=>Engine.DepartmentRole(g.Value)==selectedDepartmentRole).ToList();
+            int assigned=groups.Sum(g=>g.Count)-unassigned;
+            var unknown=new Button{Content="Нераспределённые ("+unassigned+")",Tag="unknown",MinWidth=220,Height=48,Margin=new Thickness(0,0,8,0),ToolTip="Показывает ниже назначения, которым ещё не назначена категория расчёта."};
+            if(unassigned>0){unknown.Background=new SolidColorBrush(Color.FromRgb(255,230,230));unknown.Foreground=ErrorTextBrush;}
+            unknown.IsEnabled=unassigned>0;
+            unknown.Click+=(s,e)=>{unassignedExpanded=!unassignedExpanded;RefreshDepartmentCards();};CategoryCards.Children.Add(unknown);
+            var distributed=new Button{Content="Распределённые ("+assigned+")",Tag="assigned",MinWidth=220,Height=48,Margin=new Thickness(0,0,8,0),ToolTip="Открывает все категории в отдельном окне. Назначения можно переносить между категориями или вернуть в нераспределённые."};
+            distributed.Click+=AssignedDepartments_Click;CategoryCards.Children.Add(distributed);
+            var settings=new Button{Content="Настройка категорий",MinWidth=220,Height=48,Margin=new Thickness(0),ToolTip="Правила категорий, источники семейств, общий словарь и запись назначения в параметр."};
+            settings.Click+=CategorySettings_Click;CategoryCards.Children.Add(settings);
+            ClassificationScanText.Text=departmentGroups==null?"Помещения ещё не просканированы.":"Помещений: "+groups.Sum(g=>g.Count)+". Разных назначений: "+groups.Count+".";
+            selectedDepartmentRole="unknown";
+            CategoryTitle.Text="Нераспределённые";CategoryDescription.Text=unassigned>0?"Выберите назначения и категорию, затем нажмите «Распределить».":"Все найденные назначения распределены.";
+            RoomCategoryPanel.Visibility=unassigned>0&&unassignedExpanded?Visibility.Visible:Visibility.Collapsed;
+            DepartmentValues.ItemsSource=groups.Where(g=>Engine.DepartmentRole(g.Value)=="unknown").ToList();
             RefreshDepartmentRooms();
         }
         private void DepartmentValues_Changed(object s,SelectionChangedEventArgs e){if(DepartmentRoomsGrid!=null)RefreshDepartmentRooms();}
@@ -115,14 +116,14 @@ namespace KPLN_CalculateTEP.Forms
         {
             var selected=DepartmentValues.SelectedItems.Cast<TEP.DepartmentGroup>().ToList();
             var visible=selected.Count>0?selected:DepartmentValues.Items.Cast<TEP.DepartmentGroup>().ToList();
-            var rooms=visible.SelectMany(g=>g.Rooms).ToList();DepartmentRoomsGrid.ItemsSource=rooms;
-            DepartmentRoomsTitle.Text="Помещений в списке: "+rooms.Count;
-            AssignDepartmentButton.IsEnabled=selected.Count>0&&!selected.Any(g=>string.Equals(g.Value,"Квартира",StringComparison.OrdinalIgnoreCase));
+            var rooms=Engine.CategoryUsesFamilies(selectedDepartmentRole)?Engine.CategoryFamilyInstances(selectedDepartmentRole):visible.SelectMany(g=>g.Rooms).ToList();DepartmentRoomsGrid.ItemsSource=rooms;
+            DepartmentRoomsTitle.Text=(Engine.CategoryUsesFamilies(selectedDepartmentRole)?"Экземпляров семейств: ":"Помещений: ")+rooms.Count;
+            AssignDepartmentButton.IsEnabled=selected.Count>0;
         }
         private void AssignDepartment_Click(object s,RoutedEventArgs e)
         {Try(()=>{string role=DepartmentTarget.SelectedValue as string;if(role==null)return;
             foreach(var group in DepartmentValues.SelectedItems.Cast<TEP.DepartmentGroup>().ToList())Engine.AssignDepartment(group.Value,role);
-            checkedConfiguration=null;RefreshDepartmentCards();Status.Text="Распределение обновлено. Перед расчётом помещения будут проверены.";});}
+            Engine.SetCategorySource(role,false);checkedConfiguration=null;RefreshDepartmentCards();Status.Text="Распределение обновлено. Перед расчётом помещения будут проверены.";AutoSaveCategoryAssignments();});}
         private string ScanConfiguration()
         {
             var copy=TEP.Engine.Deserialize<TEP.Settings>(TEP.Engine.Serialize(Config));
@@ -133,18 +134,18 @@ namespace KPLN_CalculateTEP.Forms
         {
             ScanRoomDepartments();
             var issues=Engine.CheckParameters(ReportProgress);
-            CoefficientInputs.IsEnabled=true;RoomScanText.Text=Engine.RoomScanSummary;
+            CoefficientInputs.IsEnabled=true;
             checkedConfiguration=ScanConfiguration();ShowIssues(issues);
             string message=TEP.Engine.PreflightMessage(Config.Metrics,issues);
             if(issues.Any(i=>i.Severity=="Ошибка"))
             {
-                SummaryGrid.ItemsSource=null;DetailsGrid.ItemsSource=null;FloorReport.Document=new FlowDocument();
-                Steps.SelectedItem=ResultsTab;ReportTabs.SelectedIndex=3;ReportStatus.Text=message;ReportStatus.Foreground=ErrorTextBrush;
+                SummaryGrid.ItemsSource=null;RefreshObjectReview(null);FloorReport.Document=new FlowDocument();
+                if(ResultsTab.IsEnabled){Steps.SelectedItem=ResultsTab;ReportTabs.SelectedItem=IssuesTab;}ReportStatus.Text=message;ReportStatus.Foreground=ErrorTextBrush;
                 Status.Text=message+" Нажмите «Рассчитать ТЭП».";
             }
             else
             {
-                Steps.SelectedIndex=1;RoomTabs.SelectedItem=RoomOptionsTab;RoomOptionsScroll.ScrollToTop();Status.Text=message;
+                Steps.SelectedIndex=1;SettingsScroll.ScrollToTop();Status.Text=message;
             }
             return true;
         }
@@ -153,31 +154,29 @@ namespace KPLN_CalculateTEP.Forms
         public AR_CalculateTEP(TEP.Engine engine)
         {
             Engine=engine;InitializeComponent();DataContext=this;ConfigureTables();
+            RoomNavigationPanel.Children.Add(CreateRoomNavigationButton(DepartmentRoomsGrid,this));
             Loaded+=(s,e)=>Dispatcher.BeginInvoke(DispatcherPriority.Background,new Action(()=>
             {
                 SetBusy(true);
                 try {
                     if(!Engine.IsInitialized)Engine.Initialize(ReportProgress);
                     Config.CreateViews=false;Rebind();ConfigureTables();ShowReport(Engine.Last);
-                    try{ScanRoomDepartments();Status.Text="Модель загружена. Распределите назначения помещений по категориям.";}
+                    try{ScanRoomDepartments();Status.Text=(Engine.SettingsStatus??"Модель загружена.")+" Распределите назначения помещений по категориям.";}
                     catch(System.OperationCanceledException){Status.Text="Сканирование отменено. Повторите его во вкладке «Классификация».";}
-                    catch(Exception scanError){Status.Text="Не удалось считать назначения: "+scanError.Message;MessageBox.Show(this,Status.Text,"Сканирование помещений",MessageBoxButton.OK,MessageBoxImage.Warning);}
+                    catch(Exception scanError){Status.Text="Не удалось считать назначения: "+scanError.Message;MessageBox.Show(this,Status.Text,"KPLN | Сканирование помещений",MessageBoxButton.OK,MessageBoxImage.Warning);}
                 }
                 catch(System.OperationCanceledException){SetBusy(false);Close();return;}
-                catch(Exception ex){SetBusy(false);MessageBox.Show(this,ex.Message,"Не удалось загрузить модель ТЭП",MessageBoxButton.OK,MessageBoxImage.Error);Close();return;}
+                catch(Exception ex){SetBusy(false);MessageBox.Show(this,ex.Message,"KPLN | Не удалось загрузить модель ТЭП",MessageBoxButton.OK,MessageBoxImage.Error);Close();return;}
                 finally {SetBusy(false);}
             }));
-            RoomTabs.SelectionChanged+=(s,e)=>{
-                if(e.Source!=RoomTabs||busy||!IsLoaded||!Engine.IsInitialized)return;
-                if(RoomTabs.SelectedItem==ClassificationTab||RoomTabs.SelectedItem==RoomOptionsTab)
-                    if(scannedPhase!=Config.Phase||departmentGroups==null)Try(()=>{SetBusy(true);try{ScanRoomDepartments();}finally{SetBusy(false);}});
-            };
             Closing+=(s,e)=>{if(busy)e.Cancel=true;};
+            Closed+=(s,e)=>StopObservingSlabRows();
         }
         private void SetBusy(bool value)
         {
-            busy=value;cancelRequested=false;Steps.IsEnabled=!value;HeaderActions.IsEnabled=!value;
+            busy=value;cancelRequested=false;Steps.IsEnabled=!value;
             CalculateButton.IsEnabled=!value;
+            SaveSettingsButton.IsEnabled=!value;
             CancelButton.Visibility=value?Visibility.Visible:Visibility.Collapsed;CancelButton.IsEnabled=value;
             WorkProgress.Visibility=value?Visibility.Visible:Visibility.Collapsed;
             if(value)progressClock.Restart();
@@ -294,11 +293,12 @@ namespace KPLN_CalculateTEP.Forms
             var display=new Style(typeof(CheckBox),style);display.Setters.Add(new Setter(UIElement.IsHitTestVisibleProperty,false));display.Setters.Add(new Setter(UIElement.FocusableProperty,false));
             grid.Columns.Add(new DataGridCheckBoxColumn{Header=new TextBlock{Text=title,ToolTip=ColumnTip(grid,title,path,false)},Binding=binding,Width=width,IsReadOnly=readOnly,ElementStyle=display,EditingElementStyle=style});
         }
-        private static void ChoiceColumn(DataGrid grid,string title,string path,IEnumerable<TEP.Choice> choices,double width=180)
+        private void ChoiceColumn(DataGrid grid,string title,string path,IEnumerable<TEP.Choice> choices,double width=180)
         {
             var combo=new FrameworkElementFactory(typeof(ComboBox));combo.SetValue(ItemsControl.ItemsSourceProperty,choices.ToList());
             combo.SetValue(ItemsControl.DisplayMemberPathProperty,"Label");combo.SetValue(System.Windows.Controls.Primitives.Selector.SelectedValuePathProperty,"Key");
             combo.SetBinding(System.Windows.Controls.Primitives.Selector.SelectedValueProperty,Bind(path));
+            if(grid==LevelsGrid&&(path=="Kind"||path=="Above"))combo.AddHandler(ComboBox.SelectionChangedEvent,new SelectionChangedEventHandler(LevelKind_Changed));
             combo.SetValue(Control.PaddingProperty,new Thickness(4,2,4,2));combo.SetValue(FrameworkElement.MinHeightProperty,28.0);combo.SetValue(FrameworkElement.HeightProperty,28.0);combo.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);combo.SetValue(FrameworkElement.MarginProperty,new Thickness(4,0,4,0));
             combo.SetValue(FrameworkElement.TagProperty,ColumnTip(grid,title,path,false));
             var template=new DataTemplate{VisualTree=combo};grid.Columns.Add(new DataGridTemplateColumn{Header=new TextBlock{Text=title,ToolTip=ColumnTip(grid,title,path,false)},CellTemplate=template,Width=width});
@@ -313,19 +313,41 @@ namespace KPLN_CalculateTEP.Forms
             else combo.SetValue(FrameworkElement.ToolTipProperty,tooltip);
             grid.Columns.Add(new DataGridTemplateColumn{Header=new TextBlock{Text=title,ToolTip=tooltip},CellTemplate=new DataTemplate{VisualTree=combo},Width=width});
         }
+        private void ParameterSourceColumn(DataGrid grid)
+        {
+            var panel=new FrameworkElementFactory(typeof(Grid));
+            var selector=new FrameworkElementFactory(typeof(ComboBox));selector.SetValue(ComboBox.IsEditableProperty,true);selector.SetValue(ItemsControl.ItemsSourceProperty,Engine.Parameters);selector.SetBinding(ComboBox.TextProperty,Bind("Name"));
+            selector.SetValue(FrameworkElement.MarginProperty,new Thickness(4));selector.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);
+            selector.SetValue(Control.PaddingProperty,new Thickness(4,2,4,2));selector.SetValue(Control.FontSizeProperty,12.0);selector.SetValue(FrameworkElement.HeightProperty,28.0);
+            var selectorStyle=new Style(typeof(ComboBox));var hide=new DataTrigger{Binding=new Binding("Key"),Value="$stairs"};hide.Setters.Add(new Setter(UIElement.VisibilityProperty,Visibility.Collapsed));selectorStyle.Triggers.Add(hide);selector.SetValue(FrameworkElement.StyleProperty,selectorStyle);panel.AppendChild(selector);
+            var button=new FrameworkElementFactory(typeof(Button));button.SetValue(ContentControl.ContentProperty,"Лестницы и Марши");button.AddHandler(Button.ClickEvent,new RoutedEventHandler(Stairs_Click));button.SetValue(FrameworkElement.MarginProperty,new Thickness(4));button.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);
+            button.SetBinding(FrameworkElement.ToolTipProperty,new Binding("Description"));
+            var style=new Style(typeof(Button));style.Setters.Add(new Setter(UIElement.VisibilityProperty,Visibility.Collapsed));var show=new DataTrigger{Binding=new Binding("Key"),Value="$stairs"};show.Setters.Add(new Setter(UIElement.VisibilityProperty,Visibility.Visible));style.Triggers.Add(show);button.SetValue(FrameworkElement.StyleProperty,style);panel.AppendChild(button);
+            grid.Columns.Add(new DataGridTemplateColumn{Header="Параметр / настройка",Width=280,CellTemplate=new DataTemplate{VisualTree=panel}});
+        }
         private void ConfigureTables()
         {
-            foreach(var grid in new[]{LevelsGrid,ParametersGrid,DepartmentRoomsGrid,SummaryGrid,DetailsGrid,IssuesGrid})grid.Columns.Clear();
-            CheckColumn(LevelsGrid,"Учесть","Include");TextColumn(LevelsGrid,"Источник","Source",210,true);TextColumn(LevelsGrid,"Уровень","Name",170,true);TextColumn(LevelsGrid,"Отметка, м","ElevationMeters",110,true,"{0:0.000}");
-            TextColumn(LevelsGrid,"Корпус уточнения","Building",150);TextColumn(LevelsGrid,"Секция уточнения","Section",150);
-            ChoiceColumn(LevelsGrid,"Вид этажа","Kind",TEP.Choices("level"),200);ChoiceColumn(LevelsGrid,"Наземность","Above",TEP.Choices("above"),170);
-            TextColumn(LevelsGrid,"Верх перекрытия, м","TopSlab",150,tip:"Абсолютная отметка в координатах основной модели. Для жилого цоколя проверяется превышение над землёй на 2 м.");
-            TextColumn(LevelsGrid,"Высота, м","Height",110);TextColumn(LevelsGrid,"Доля от кровли","RoofRatio",130,tip:"Число от 0 до 1. Используется для технической надстройки по правилам общественного здания.");
-            TextColumn(LevelsGrid,"Площадь надстройки, м²","RoofArea",170,tip:"Суммарная площадь надстройки на последнем верхнем этаже высотного здания; используется совместно с высотой для порогов 8 м² и 2,5 м.");
+            foreach(var grid in new[]{LevelsGrid,ParametersGrid,DepartmentRoomsGrid,SummaryGrid,IssuesGrid})grid.Columns.Clear();
+            CheckColumn(LevelsGrid,"Учесть","Include");TextColumn(LevelsGrid,"Источник","Source",433.755,true);TextColumn(LevelsGrid,"Уровень","Name",85,true);TextColumn(LevelsGrid,"Отметка, м","ElevationMeters",110,true,"{0:0.000}");
+            ChoiceColumn(LevelsGrid,"Вид этажа","Kind",TEP.Choices("level"),230);ChoiceColumn(LevelsGrid,"Наземность","Above",TEP.Choices("above"),145);
+            TopSlabColumn();
+            LevelGeometryColumns();
             foreach(var grid in new[]{ParametersGrid})
-            {TextColumn(grid,"Назначение","Title",260,true);EditableColumn(grid,"Имя параметра экземпляра / типа","Name",Engine.Parameters,280,"Выберите существующий параметр либо введите точное имя. При нескольких параметрах с одним именем расчёт сообщит неоднозначность.");TextColumn(grid,"Правило чтения","Description",500,true);
-                grid.RowHeight=double.NaN;grid.MinRowHeight=52;grid.Columns[0].MinWidth=260;grid.Columns[1].MinWidth=280;
-                var description=(DataGridTextColumn)grid.Columns.Last();description.Width=500;description.MinWidth=500;
+            {
+                var titleLayout=new FrameworkElementFactory(typeof(DockPanel));titleLayout.SetValue(FrameworkElement.MarginProperty,new Thickness(7,6,7,6));titleLayout.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);
+                var marker=new FrameworkElementFactory(typeof(TextBlock));marker.SetValue(TextBlock.TextProperty,"[!]");marker.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);marker.SetValue(TextBlock.ForegroundProperty,ErrorTextBrush);marker.SetValue(TextBlock.FontWeightProperty,FontWeights.Bold);marker.SetValue(FrameworkElement.MarginProperty,new Thickness(0,0,6,0));marker.SetValue(DockPanel.DockProperty,Dock.Left);
+                var markerStyle=new Style(typeof(TextBlock));markerStyle.Setters.Add(new Setter(UIElement.VisibilityProperty,Visibility.Collapsed));
+                foreach(string key in new[]{"embedded","standalone"}){var trigger=new DataTrigger{Binding=new Binding("Key"),Value=key};trigger.Setters.Add(new Setter(UIElement.VisibilityProperty,Visibility.Visible));markerStyle.Triggers.Add(trigger);}
+                marker.SetValue(FrameworkElement.StyleProperty,markerStyle);titleLayout.AppendChild(marker);
+                var title=new FrameworkElementFactory(typeof(TextBlock));title.SetBinding(TextBlock.TextProperty,new Binding("Title"));title.SetValue(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center);title.SetBinding(FrameworkElement.ToolTipProperty,new Binding("Description"));title.SetValue(TextBlock.TextWrappingProperty,TextWrapping.Wrap);
+                var titleStyle=new Style(typeof(TextBlock));
+                var requiredTrigger=new DataTrigger{Binding=new Binding("IsRequired"),Value=true};requiredTrigger.Setters.Add(new Setter(TextBlock.FontWeightProperty,FontWeights.Bold));titleStyle.Triggers.Add(requiredTrigger);
+                foreach(string key in new[]{"embedded","standalone"}){var trigger=new DataTrigger{Binding=new Binding("Key"),Value=key};trigger.Setters.Add(new Setter(TextBlock.FontWeightProperty,FontWeights.Normal));titleStyle.Triggers.Add(trigger);}
+                title.SetValue(FrameworkElement.StyleProperty,titleStyle);titleLayout.AppendChild(title);
+                grid.Columns.Add(new DataGridTemplateColumn{Header="Назначение",Width=343.85,MinWidth=343.85,IsReadOnly=true,CellTemplate=new DataTemplate{VisualTree=titleLayout}});
+                ParameterSourceColumn(grid);TextColumn(grid,"Правило чтения","Description",500,true);
+                grid.RowHeight=double.NaN;grid.MinRowHeight=52;grid.Columns[1].MinWidth=280;
+                var description=(DataGridTextColumn)grid.Columns.Last();description.Width=new DataGridLength(1,DataGridLengthUnitType.Star);description.MinWidth=260;
                 var wrap=new Style(typeof(TextBlock),description.ElementStyle);wrap.Setters.Add(new Setter(TextBlock.TextWrappingProperty,TextWrapping.Wrap));wrap.Setters.Add(new Setter(TextBlock.TextTrimmingProperty,TextTrimming.None));wrap.Setters.Add(new Setter(FrameworkElement.MarginProperty,new Thickness(7,6,7,6)));description.ElementStyle=wrap;
             }
             TextColumn(DepartmentRoomsGrid,"Номер","Number",85,true);TextColumn(DepartmentRoomsGrid,"Имя","Name",160,true);
@@ -333,9 +355,6 @@ namespace KPLN_CalculateTEP.Forms
             TextColumn(DepartmentRoomsGrid,"Источник","Source",180,true);TextColumn(DepartmentRoomsGrid,"ID","Element",90,true);
             TextColumn(DepartmentRoomsGrid,"Площадь Revit, м²","Area",145,true,"{0:N3}");
             TextColumn(SummaryGrid,"Показатель","Name",540,true);TextColumn(SummaryGrid,"Значение","DisplayValue",135,true,"{0:N"+Config.Decimals+"}");TextColumn(SummaryGrid,"Ед.","Unit",65,true);TextColumn(SummaryGrid,"Статус","Status",180,true);TextColumn(SummaryGrid,"Методика","Method",170,true);TextColumn(SummaryGrid,"Пояснение","Comment",400,true);
-            TextColumn(DetailsGrid,"Показатель","MetricName",300,true);TextColumn(DetailsGrid,"Корпус","Building",145,true);TextColumn(DetailsGrid,"Секция","Section",80,true);TextColumn(DetailsGrid,"Этаж","Level",155,true);TextColumn(DetailsGrid,"Источник","Source",220,true);TextColumn(DetailsGrid,"ElementId","Element",100,true);
-            TextColumn(DetailsGrid,"Назначение","PurposeName",240,true);TextColumn(DetailsGrid,"ID квартиры","Apartment",120,true);TextColumn(DetailsGrid,"Исходное","Raw",105,true,"{0:N3}");TextColumn(DetailsGrid,"Коэф.","Factor",75,true,"{0:0.###}");TextColumn(DetailsGrid,"Учтено","Value",115,true,"{0:N"+Config.Decimals+"}");TextColumn(DetailsGrid,"Ед.","Unit",65,true);
-            CheckColumn(DetailsGrid,"Искл.","Excluded",70,true);CheckColumn(DetailsGrid,"Вручную","Manual",85,true);TextColumn(DetailsGrid,"Обоснование","Reason",480,true);
             TextColumn(IssuesGrid,"Важность","Severity",135,true);TextColumn(IssuesGrid,"Код","Code",185,true);TextColumn(IssuesGrid,"Сообщение","Message",540,true);TextColumn(IssuesGrid,"Показатель","MetricName",300,true);TextColumn(IssuesGrid,"Источник","Source",220,true);TextColumn(IssuesGrid,"Корпус","Building",130,true);TextColumn(IssuesGrid,"ElementId","Element",110,true);TextColumn(IssuesGrid,"Что сделать","Action",480,true);
         }
         private IEnumerable<T> Children<T>(DependencyObject parent) where T:DependencyObject
@@ -350,8 +369,10 @@ namespace KPLN_CalculateTEP.Forms
 
         }
         private void Try(Action action)
-        {try{CommitInputs();action();}catch(Exception ex){MessageBox.Show(this,ex.Message,"ТЭП",MessageBoxButton.OK,MessageBoxImage.Warning);Status.Text=ex.Message;}}
-        private void Rebind(){DataContext=null;DataContext=this;if(CoefficientInputs!=null)CoefficientInputs.IsEnabled=departmentGroups!=null;}
+        {try{CommitInputs();action();}catch(Exception ex){MessageBox.Show(this,ex.Message,"KPLN | ТЭП",MessageBoxButton.OK,MessageBoxImage.Warning);Status.Text=ex.Message;}}
+        private void SaveSettings_Click(object sender,RoutedEventArgs e)
+        {Try(()=>{SetBusy(true);try{Engine.SaveSettings();Rebind();Status.Text="Настройки ТЭП записаны в модель. Сохраните RVT обычной командой Revit, чтобы они остались в файле.";}finally{SetBusy(false);}});}
+        private void Rebind(){RefreshRequiredParameters();DataContext=null;DataContext=this;if(CoefficientInputs!=null)CoefficientInputs.IsEnabled=departmentGroups!=null;}
         private void SelectAll_Click(object sender,RoutedEventArgs e){changing=true;foreach(var m in Config.Metrics)m.Enabled=true;Rebind();changing=false;}
         private void SelectNone_Click(object sender,RoutedEventArgs e){changing=true;foreach(var m in Config.Metrics)m.Enabled=false;Rebind();changing=false;}
         private void Metric_Checked(object sender,RoutedEventArgs e)
@@ -360,18 +381,8 @@ namespace KPLN_CalculateTEP.Forms
             var dependencies=new Dictionary<string,string[]>{{"Gns",new[]{"GnsResidential","GnsNonresidential"}},{"GnsResidential",new[]{"GnsLivingPart","GnsNonlivingPart"}},{"Volume",new[]{"VolumeAbove","VolumeBelow"}},{"Gross",new[]{"GrossAbove","GrossBelow"}},{"Np",new[]{"NpResidential","NpNonresidential"}}};
             string[] keys;if(dependencies.TryGetValue(metric.Key,out keys))
             {changing=true;foreach(var key in keys)Config.Metrics.First(x=>x.Key==key).Enabled=true;Rebind();changing=false;}
+            RefreshRequiredParameters();
         }
-        private void SectionLevel_Click(object s,RoutedEventArgs e)
-        {Try(()=>{var level=LevelsGrid.SelectedItem as TEP.LevelSetting;if(level==null)throw new InvalidOperationException("Выберите уровень для уточнения.");var copy=TEP.Engine.Deserialize<TEP.LevelSetting>(TEP.Engine.Serialize(level));copy.Section="Укажите секцию";Config.Levels.Add(copy);LevelsGrid.SelectedItem=copy;LevelsGrid.ScrollIntoView(copy);});}
-        private void DeleteSectionLevel_Click(object s,RoutedEventArgs e)
-        {foreach(var level in LevelsGrid.SelectedItems.Cast<TEP.LevelSetting>().Where(x=>!string.IsNullOrWhiteSpace(x.Section)||!string.IsNullOrWhiteSpace(x.Building)).ToList())Config.Levels.Remove(level);}
-        private void Check_Click(object s,RoutedEventArgs e)
-        {Try(()=>{SetBusy(true);try{PrepareLinkedSources();PrepareSingleBuilding();CheckBeforeCalculation(true);}catch(System.OperationCanceledException){Status.Text="Проверка параметров отменена. Уже загруженные связи остаются загруженными.";}finally{Engine.ClearSingleBuildingAssumption();SetBusy(false);}});}
-        private void Save_Click(object s,RoutedEventArgs e){Try(()=>{Engine.SaveSettings();Status.Text="Настройки записаны в DataStorage текущего RVT. Сохраните модель, чтобы записать их на диск.";});}
-        private void Import_Click(object s,RoutedEventArgs e)
-        {Try(()=>{var dialog=new OpenFileDialog{Filter="Настройки ТЭП (*.json)|*.json",Title="Импорт настроек"};if(dialog.ShowDialog(this)!=true)return;Engine.ImportSettings(dialog.FileName);checkedConfiguration=null;departmentGroups=null;Rebind();ConfigureTables();SetBusy(true);try{ScanRoomDepartments();}finally{SetBusy(false);}Status.Text="Настройки импортированы. Проверьте параметры помещений, методику и отметки этажей.";});}
-        private void ExportSettings_Click(object s,RoutedEventArgs e)
-        {Try(()=>{var dialog=new SaveFileDialog{Filter="Настройки ТЭП (*.json)|*.json",FileName="ТЭП_настройки.json"};if(dialog.ShowDialog(this)!=true)return;Engine.ExportSettings(dialog.FileName);Status.Text="Настройки экспортированы: "+dialog.FileName;});}
         private void Calculate_Click(object s,RoutedEventArgs e)
         {
             Try(()=>
@@ -380,14 +391,16 @@ namespace KPLN_CalculateTEP.Forms
                 // Verification output is disabled for the current workflow, including imported settings.
                 Config.CreateViews=false;
                 SetBusy(true);
-                try{PrepareLinkedSources();if(departmentGroups==null)ScanRoomDepartments();PrepareSingleBuilding();var run=Engine.Calculate(ReportProgress,false);ShowReport(run);Steps.SelectedItem=ResultsTab;Status.Text="Расчёт завершён. Выполнено показателей: "+run.Summary.Count(x=>!x.NotCalculated)+", пропущено: "+run.Summary.Count(x=>x.NotCalculated)+". Ошибок: "+run.Issues.Count(x=>x.Severity=="Ошибка")+", предупреждений: "+run.Issues.Count(x=>x.Severity=="Предупреждение")+".";}
+                try{PrepareLinkedSources();ScanRoomDepartments();SetBusy(false);ResolveAmbiguousTopSlabs();ResolveLevelGeometryChoices();SetBusy(true);var audit=Engine.AuditInputs(ReportProgress);SetBusy(false);if(!ShowInputAudit(audit))return;Engine.InputAuditForRun=audit;SetBusy(true);var run=Engine.Calculate(ReportProgress,false);ShowReport(run);Steps.SelectedItem=ResultsTab;Status.Text="Расчёт завершён. Выполнено показателей: "+run.Summary.Count(x=>!x.NotCalculated)+", пропущено: "+run.Summary.Count(x=>x.NotCalculated)+". Ошибок: "+run.Issues.Count(x=>x.Severity=="Ошибка")+", предупреждений: "+run.Issues.Count(x=>x.Severity=="Предупреждение")+".";}
                 catch(System.OperationCanceledException){Status.Text="Расчёт отменён; предыдущий отчёт сохранён. Уже загруженные связи остаются загруженными.";}
                 finally{Engine.ClearSingleBuildingAssumption();SetBusy(false);}
             });
         }
         private void ShowReport(TEP.Run run)
         {
-            if(run==null)return;RefreshPrecision(SummaryGrid);RefreshPrecision(DetailsGrid);SummaryGrid.ItemsSource=run.Summary;DetailsGrid.ItemsSource=run.Details;ShowIssues(run.Issues);FloorReport.Document=ColoredReport(run,Config.Decimals);
+            ResultsTab.IsEnabled=run!=null;if(run==null)return;RefreshPrecision(SummaryGrid);SummaryGrid.ItemsSource=run.Summary;RefreshObjectReview(run);ShowIssues(run.Issues);FloorReport.Document=ColoredReport(run,Config.Decimals);
+            ResultAuditContent.Children.Clear();ResultAuditContent.Children.Add(run.InputAudit==null?(UIElement)new TextBlock{Text="В сохранённом результате нет проверки параметров. Выполните новый расчёт.",Margin=new Thickness(12)}:
+                CreateInputAuditTable(run.InputAudit,row=>Try(()=>{Engine.RequestAuditNavigation(row);Close();})));
             string state=run.Summary.Count>0&&run.Summary.All(x=>x.NotCalculated)?"Нет доступных показателей":run.Summary.Any(x=>x.NotCalculated||x.Status=="Неполный результат")?"Частичный расчёт":run.Issues.Any(x=>x.Severity!="Информация")?"Расчёт с замечаниями":"Расчёт завершён";
             ReportStatus.Text=state+" | "+run.Date+" | "+run.Method;ReportStatus.Foreground=run.Issues.Any(x=>x.Severity=="Ошибка")?ErrorTextBrush:(Brush)FindResource("Ink");ReportTabs.SelectedIndex=0;
         }
@@ -433,25 +446,23 @@ namespace KPLN_CalculateTEP.Forms
             }
             return document;
         }
-        private void ShowIssues(IEnumerable<TEP.Issue> issues){displayedIssues=issues.ToList();RefreshIssues();}
+        private void ShowIssues(IEnumerable<TEP.Issue> issues){displayedIssues=issues.OrderByDescending(i=>i.Code=="SPATIAL_UNBOUNDED"||i.Code=="ZERO_AREA").ToList();RefreshIssues();}
         private void DiagnosticMode_Changed(object s,SelectionChangedEventArgs e){RefreshIssues();}
         private void RefreshIssues()
         {
             if(IssuesGrid==null||displayedIssues==null)return;
-            if(Config.IssueDetail!="brief"){IssuesGrid.ItemsSource=displayedIssues;return;}
-            IssuesGrid.ItemsSource=displayedIssues.GroupBy(x=>new{x.Code,x.Severity,x.Metric,x.Source,x.Building,x.Message}).Select(g=>new TEP.Issue{Code=g.Key.Code,Severity=g.Key.Severity,Metric=g.Key.Metric,Source=g.Key.Source,Building=g.Key.Building,
-                Message=g.Key.Message+(g.Count()>1?" (повторений: "+g.Count()+")":""),Element=g.Count()==1?g.First().Element:"",Action=g.First().Action}).ToList();
+            Config.IssueDetail="full";IssuesGrid.ItemsSource=displayedIssues.OrderByDescending(i=>i.Code=="SPATIAL_UNBOUNDED"||i.Code=="ZERO_AREA").ToList();
         }
         private void ExportRun_Click(object s,RoutedEventArgs e)
-        {Try(()=>{if(Engine.Last==null)throw new InvalidOperationException("Сначала выполните расчёт.");var dialog=new SaveFileDialog{Filter="Книга Excel (*.xlsx)|*.xlsx|CSV, все разделы (*.csv)|*.csv",FileName="ТЭП_"+DateTime.Now.ToString("yyyyMMdd_HHmm")+".xlsx"};if(dialog.ShowDialog(this)!=true)return;
+        {Try(()=>{if(Engine.Last==null)throw new InvalidOperationException("Сначала выполните расчёт.");var dialog=new SaveFileDialog{Title="KPLN | Экспорт ТЭП",Filter="Книга Excel (*.xlsx)|*.xlsx|CSV, все разделы (*.csv)|*.csv",FileName="ТЭП_"+DateTime.Now.ToString("yyyyMMdd_HHmm")+".xlsx"};if(dialog.ShowDialog(this)!=true)return;
             TEP.Engine.ExportRun(Engine.Last,dialog.FileName,Config.Decimals);Status.Text="Экспортированы 11 разделов: "+dialog.FileName;});}
         private void Cleanup_Click(object s,RoutedEventArgs e)
-        {Try(()=>{if(MessageBox.Show(this,"Удалить созданные этой версией плагина планы, 3D-виды, цветовые области, расчётные тела и сводные спецификации? Настройки и последний отчёт останутся в RVT.","Удаление результатов ТЭП",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+        {Try(()=>{if(MessageBox.Show(this,"Удалить созданные этой версией плагина планы, 3D-виды, цветовые области, расчётные тела и сводные спецификации? Настройки и последний отчёт останутся в RVT.","KPLN | Удаление результатов ТЭП",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
             Status.Text="Удалено служебных элементов: "+Engine.Cleanup();if(Engine.Last!=null)IssuesGrid.ItemsSource=Engine.Last.Issues.ToList();});}
         private void Navigate_Click(object s,RoutedEventArgs e)
         {
-            TEP.Detail detail=ReportTabs.SelectedIndex==3?null:DetailsGrid.SelectedItem as TEP.Detail;
-            if(ReportTabs.SelectedIndex==3)
+            TEP.Detail detail=null;
+            if(ReportTabs.SelectedItem==IssuesTab)
             {
                 var issue=IssuesGrid.SelectedItem as TEP.Issue;
                 if(issue!=null){var source=Engine.Sources.FirstOrDefault(x=>x.Name==issue.Source);detail=new TEP.Detail{SourceKey=source?.Key,Source=issue.Source,Element=issue.Element};}
@@ -459,7 +470,6 @@ namespace KPLN_CalculateTEP.Forms
             if(detail==null){Status.Text="Выберите строку объекта или ошибки с ElementId.";return;}
             Engine.RequestedDetail=detail;Close();
         }
-        private void Details_DoubleClick(object s,MouseButtonEventArgs e){Navigate_Click(s,e);}
         private void Issues_DoubleClick(object s,MouseButtonEventArgs e){Navigate_Click(s,e);}
     }
 }

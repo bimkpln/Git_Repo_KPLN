@@ -2,6 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace KPLN_CalculateTEP.Common
@@ -10,11 +11,72 @@ namespace KPLN_CalculateTEP.Common
     {
         public partial class Engine
         {
-            private Solid ExteriorRoomContour(List<Record> walls, Record floor, Indicator indicator, double elevation, bool inferExterior=false)
+            private class UnconfirmedEnvelopeException : InvalidOperationException
             {
-                // An outside room sees Finish/CoreBoundary from outside the building. The inside
-                // face used for gross areas still requires the existing wall-section algorithm.
-                if ((int)indicator > 4) throw new InvalidOperationException("Для внутренней границы этажа используется сечение стен.");
+                internal PlanarRegion Candidate {get;}
+                internal string CandidateDescription {get;}
+                internal UnconfirmedEnvelopeException(string message,PlanarRegion candidate=null,string candidateDescription=null) : base(message)
+                {Candidate=candidate;CandidateDescription=candidateDescription;}
+            }
+
+            private sealed class ExteriorFrameConflictException : UnconfirmedEnvelopeException
+            {
+                internal ExteriorFrameConflictException(string message,PlanarRegion candidate,string description)
+                    :base(message,candidate,description){}
+            }
+
+            internal static void ValidateExteriorCoverage(PlanarRegion envelope,PlanarRegion occupied,PlanarRegion material,bool allowUnclassified=false)
+            {
+                if(envelope==null||envelope.IsEmpty)
+                    throw new UnconfirmedEnvelopeException("Не получена замкнутая оболочка этажа.");
+                double missing=RegionDifference(occupied,envelope).Area*.09290304;
+                if(missing>.005)
+                    throw new UnconfirmedEnvelopeException("Вне построенного контура осталось "+missing.ToString("0.###",CultureInfo.InvariantCulture)+
+                        " м² помещений или шахт. Граница этажа неполная; проверьте ограждения и разделители помещений.",envelope,
+                        "Построена только часть контура этажа. Предварительная область сохранена для исправления, в итог ТЭП не включена.");
+                double unknown=RegionDifference(envelope,RegionUnion(occupied,material)).Area*.09290304;
+                if(unknown>.005&&!allowUnclassified)
+                    throw new UnconfirmedEnvelopeException("Внутри оболочки не классифицировано "+unknown.ToString("0.###",CultureInfo.InvariantCulture)+
+                        " м²: область не занята помещениями или сечениями ограждений. Возможен двор, проём или участок без помещений; назначение не подменено автоматически.",envelope,
+                        "Контур построен, но внутри есть неподтверждённая площадь "+unknown.ToString("0.###",CultureInfo.InvariantCulture)+
+                        " м². Область сохранена для проверки и исправления, в итог ТЭП не включена.");
+            }
+
+            private PlanarRegion RecoverExteriorFrameRegion(List<Record> walls,Record floor,Indicator indicator,double elevation,List<Record> rooms,ExteriorFrameConflictException original)
+            {
+                PlanarRegion candidate=null;
+                try
+                {
+                    var metric=Config.Metrics.First(m=>m.Key==indicator.ToString());
+                    var exterior=walls.Where(r=>ContourWallSelected(r,metric)).ToList();
+                    if(exterior.Count==0)throw new InvalidOperationException("На расчётной отметке не найдены выбранные наружные стены.");
+                    candidate=WallContourRegion(exterior,metric,indicator,elevation);
+                    var occupied=rooms.Aggregate(AutomaticShaftFloorRegion(elevation),(r,item)=>RegionUnion(r,RoomNetRegion(item)));
+                    var material=FloorMaterialRegion(PhysicalShellCandidates(walls,floor,elevation),elevation,indicator,candidate);
+                    ValidateExteriorCoverage(candidate,occupied,material);
+                    Notice("EXTERIOR_FRAME_WALL_RECOVERY","Информация","Внешнее помещение не дало отдельной границы здания. Контур восстановлен по геометрии наружных стен на той же отметке; проверены замкнутость и охват помещений.",floor,indicator.ToString());
+                    return candidate;
+                }
+                catch(OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                catch(Exception ex)
+                {
+                    var recovered=ex as UnconfirmedEnvelopeException;
+                    bool useRecovered=recovered?.Candidate!=null&&!recovered.Candidate.IsEmpty;
+                    bool hasWallCandidate=candidate!=null&&!candidate.IsEmpty;
+                    throw new UnconfirmedEnvelopeException(original.Message+" Проверка по наружным стенам: "+ex.Message,
+                        useRecovered?recovered.Candidate:hasWallCandidate?candidate:original.Candidate,
+                        useRecovered?recovered.CandidateDescription:hasWallCandidate?
+                            "Контур построен по геометрии наружных стен, но его полнота не подтверждена. Предварительная область сохранена для проверки, в итог ТЭП не включена.":original.CandidateDescription);
+                }
+            }
+
+            private PlanarRegion ExteriorRoomRegion(List<Record> walls, Record floor, Indicator indicator, double elevation, List<Record> rooms)
+            {
+                bool interior = (int)indicator > 4;
+                var shaftAreas=AutomaticShaftFloorRegion(elevation);
+                var physicalCandidates=PhysicalShellCandidates(walls,floor,elevation);
                 var lastPhase = doc.Phases.Cast<Phase>().Last();
                 if (!string.IsNullOrWhiteSpace(Config.Phase) && !Eq(lastPhase.Name, Config.Phase))
                     throw new InvalidOperationException("Временное внешнее помещение доступно для последней стадии основной модели.");
@@ -36,22 +98,17 @@ namespace KPLN_CalculateTEP.Common
                     if (!phaseMap.TryGetValue(lastPhase.Id, out mapped) || mapped != source.Document.Phases.Cast<Phase>().Last().Id)
                         throw new InvalidOperationException("Связь сопоставляет другую стадию: " + source.Name);
                 }
-                var points = new List<XYZ>();
-                // Enclose every potentially room-bounding wall, including interior-labelled walls,
-                // so the frame can never accidentally cut through an unselected part of a building.
-                foreach (var source in Sources.Where(s => s.Loaded && s.LoadError == null))
-                    foreach (var wall in source.Elements.OfType<Wall>().Where(w => PhaseAccepted(source, w) && CrossesFloor(w, source.Transform, elevation)))
-                    {
-                        var box = wall.get_BoundingBox(null); if (box == null) continue;
-                        var t = source.Transform.Multiply(box.Transform);
-                        for (int i = 0; i < 8; i++) points.Add(t.OfPoint(new XYZ((i & 1) == 0 ? box.Min.X : box.Max.X, (i & 2) == 0 ? box.Min.Y : box.Max.Y, (i & 4) == 0 ? box.Min.Z : box.Max.Z)));
-                    }
+                var points = ExteriorFramePoints(walls,physicalCandidates,elevation);
                 if (points.Count == 0) throw new InvalidOperationException("Не найден габарит стен для внешнего помещения.");
                 const double margin = 20; // XY working frame only; never a measurement-height offset.
                 double left = points.Min(p => p.X) - margin, right = points.Max(p => p.X) + margin;
                 double bottom = points.Min(p => p.Y) - margin, top = points.Max(p => p.Y) + margin;
                 var corners = new[] { new XYZ(left, bottom, elevation), new XYZ(right, bottom, elevation), new XYZ(right, top, elevation), new XYZ(left, top, elevation) };
-                var copied = new List<CurveLoop>();
+                var nativeRegions = new List<PlanarRegion>();
+                var innerBands=PlanarRegion.Empty;
+                var interiorFailures=new List<string>();
+                var exteriorFailures=new List<string>();
+                var frameFailures=new List<string>();
                 using (var transaction = new Transaction(doc, "ТЭП: временное внешнее помещение"))
                 {
                     transaction.Start();
@@ -76,45 +133,106 @@ namespace KPLN_CalculateTEP.Common
                         doc.Regenerate();
                         if (room.Area <= 0 || Math.Abs(height.AsDouble()) > FloorGeometryTolerance || Math.Abs(level.ProjectElevation - elevation) > FloorGeometryTolerance)
                             throw new InvalidOperationException("Внешнее помещение не замкнуто на заданной отметке пола.");
-                        var boundaryOptions = new SpatialElementBoundaryOptions { SpatialElementBoundaryLocation = Methodology.UsesCoreBoundary ? SpatialElementBoundaryLocation.CoreBoundary : SpatialElementBoundaryLocation.Finish };
+                        var boundaryOptions = new SpatialElementBoundaryOptions { SpatialElementBoundaryLocation = !interior && Methodology.UsesCoreBoundary ? SpatialElementBoundaryLocation.CoreBoundary : SpatialElementBoundaryLocation.Finish };
                         var boundaries = room.GetBoundarySegments(boundaryOptions);
                         if (boundaries == null) throw new InvalidOperationException("Revit не вернул границы внешнего помещения.");
-                        var seen = new HashSet<string>();
-                        var candidateIds=new HashSet<string>(walls.Select(w=>(w.Source.Document.Equals(doc)?"host":IDHelper.ElIdValue(w.Source.RootLink).ToString())+"/"+IDHelper.ElIdValue(w.Element.Id)));
+                        var occupied=rooms.Aggregate(shaftAreas,(r,item)=>RegionUnion(r,RoomNetRegion(item)));
+
                         foreach (var ring in boundaries)
                         {
-                            int frame = ring.Count(s => frameIds.Contains(s.ElementId));
-                            if (frame != 0)
+                            var frame = ring.Select(segment => {
+                                if(frameIds.Contains(segment.ElementId))return true;
+                                var line=segment.GetCurve() as Line;
+                                if(line==null)return false;
+                                var a=line.GetEndPoint(0);var b=line.GetEndPoint(1);
+                                return Math.Abs(a.Z-elevation)<=FloorGeometryTolerance&&Math.Abs(b.Z-elevation)<=FloorGeometryTolerance&&
+                                    IsCalculationFrameEdge(a.X,a.Y,b.X,b.Y,left,bottom,right,top,FloorGeometryTolerance);
+                            }).ToArray();
+                            if(frame.All(value=>value))continue;
+                            bool mixedFrame=frame.Any(value=>value);
+                            var segments=ring.Where((s,i)=>!frame[i]).ToList();
+                            var nativeCurves=segments.Select(s=>s.GetCurve().Clone()).ToList();
+                            PlanarRegion native;
+                            try
                             {
-                                if (frame != ring.Count) throw new InvalidOperationException("Внешнее помещение проникло в здание: наружный контур разомкнут.");
+                                native=NativeBoundaryRegion(ring.Select(s=>s.GetCurve().Clone()).ToList(),elevation,frame);
+                            }
+                            catch(OperationCanceledException){throw;}
+                            catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                            catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                            catch(Exception ex)
+                            {
+                                if(mixedFrame)frameFailures.Add(DescribeExteriorFrameConflict(ring,frame,elevation)+" "+ex.Message);
+                                else exteriorFailures.Add(ex.Message);
                                 continue;
                             }
-                            foreach (var segment in ring)
+                            if(mixedFrame)
+                                Notice("EXTERIOR_FRAME_RECOVERED","Информация","Расчётная рамка отделена от границ здания. Обратные служебные участки удалены; замкнутые контуры восстановлены без добавления отрезков.",floor,indicator.ToString());
+                            if(RegionIntersection(native,occupied).Area*.09290304<=.001)
                             {
-                                var element = doc.GetElement(segment.ElementId);
-                                string key = "host/" + IDHelper.ElIdValue(segment.ElementId);
-                                if (element is RevitLinkInstance)
+                                try
                                 {
-                                    var link = (RevitLinkInstance)element;
-                                    element = link.GetLinkDocument()?.GetElement(segment.LinkElementId);
-                                    key = IDHelper.ElIdValue(link.Id) + "/" + IDHelper.ElIdValue(segment.LinkElementId);
+                                    var material=FloorMaterialRegion(physicalCandidates,elevation,indicator,native);
+                                    if(RegionDifference(native,material).Area*.09290304>.005)
+                                        throw new UnconfirmedEnvelopeException("Замкнутая область площадью "+(native.Area*.09290304).ToString("0.###")+" м² не содержит помещений и не подтверждена как отдельная конструкция. Она не включена в здание автоматически.");
+                                    Notice("DETACHED_CONSTRUCTION","Информация","Отдельная область без помещений целиком занята конструкцией и не образует площадь здания: "+(native.Area*.09290304).ToString("0.###")+" м².",floor,indicator.ToString());
                                 }
-                                var wall = element as Wall;
-                                if (wall == null || (!inferExterior&&wall.WallType.Function != WallFunction.Exterior))
-                                    throw new InvalidOperationException("Контур внешнего помещения содержит разделитель или элемент, не обозначенный наружной стеной. Нужна проверка оболочки.");
-                                if(inferExterior&&!candidateIds.Contains(key))throw new InvalidOperationException("Граница внешнего помещения содержит стену вне проверяемых кандидатов оболочки; ID "+IDHelper.ElIdValue(wall.Id));
-                                seen.Add(key);
+                                catch(OperationCanceledException){throw;}
+                                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                                catch(Exception ex){exteriorFailures.Add(ex.Message);nativeRegions.Add(native);}
+                                continue;
                             }
-                            // Preserve actual arcs, ellipses and splines. Never join just endpoints.
-                            var loop = CurveLoop.Create(ring.Select(s => s.GetCurve().Clone()).ToList());
-                            if (loop.IsOpen()) throw new InvalidOperationException("Revit вернул незамкнутую петлю внешнего помещения.");
-                            copied.Add(loop);
+                            if(interior)
+                            {
+                                try
+                                {
+                                    if(nativeCurves.All(c=>c is Line))
+                                    {
+                                        var offsets=new List<double?>();var failures=new List<string>();
+                                        foreach(var segment in segments)
+                                        {
+                                            try{var boundary=ResolveShellBoundary(segment,physicalCandidates,elevation,floor,indicator);offsets.Add(PhysicalBoundaryInset(boundary,segment.GetCurve(),elevation,indicator));}
+                                            catch(OperationCanceledException){throw;}
+                                            catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                                            catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                                            catch(Exception ex){offsets.Add(null);failures.Add(ex.Message);}
+                                        }
+                                        try{innerBands=RegionUnion(innerBands,native.BoundaryBandsFromSegments(nativeCurves.Select(c=>CurvePoints(c).ToArray()).ToList(),offsets));}
+                                        catch(OperationCanceledException){throw;}
+                                        catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                                        catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                                        catch(Exception ex){throw new UnconfirmedEnvelopeException(ex.Message+" Причины недоступных ограждений: "+string.Join(" | ",failures.Take(2)));}
+                                    }
+                                    else
+                                    {
+                                        if(mixedFrame)throw new UnconfirmedEnvelopeException("Наружные криволинейные границы отделены от рамки, но внутренняя сторона объединённой петли требует проверки. Предварительно сохранена наружная граница.");
+                                        var offsets=segments.Select(segment=>PhysicalBoundaryInset(ResolveShellBoundary(segment,physicalCandidates,elevation,floor,indicator),segment.GetCurve(),elevation,indicator)).ToList();
+                                        innerBands=RegionUnion(innerBands,BoundaryBands(nativeCurves,offsets));
+                                    }
+                                }
+                                catch(OperationCanceledException){throw;}
+                                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                                catch(Exception ex){interiorFailures.Add(ex.Message);}
+                            }
+                            else foreach(var segment in segments)
+                            {
+                                // A cancelled straight seam has no interval on the normalized
+                                // boundary and must not be mistaken for a physical shell edge.
+                                if(mixedFrame&&segment.GetCurve() is Line&&
+                                    !native.HasBoundaryOverlap(CurvePoints(segment.GetCurve()),4/PlanarRegion.Scale))continue;
+                                try{ReadNativeShellBoundary(segment,physicalCandidates,floor,indicator);}
+                                catch(OperationCanceledException){throw;}
+                                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                                catch(Exception ex){exteriorFailures.Add(ex.Message);}
+                            }
+                            nativeRegions.Add(native);
                         }
-                        if (copied.Count == 0) throw new InvalidOperationException("Внутри внешнего помещения нет замкнутой оболочки здания.");
-                        // An unseen external wall may enclose a courtyard. An outside probe cannot
-                        // see a disconnected courtyard, so never silently fill it into the GNS.
-                        if (walls.Any(w => !seen.Contains((w.Source.Document.Equals(doc) ? "host" : IDHelper.ElIdValue(w.Source.RootLink).ToString()) + "/" + IDHelper.ElIdValue(w.Element.Id))))
-                            throw new InvalidOperationException("Есть наружные стены, недоступные внешнему помещению (возможен внутренний двор или дополнительная оболочка).");
+                        if (nativeRegions.Count == 0&&frameFailures.Count==0&&exteriorFailures.Count==0) throw new InvalidOperationException("Внутри внешнего помещения нет замкнутой оболочки здания.");
+
+
                     }
                     finally
                     {
@@ -123,26 +241,42 @@ namespace KPLN_CalculateTEP.Common
                         DisposeSpatialCalculators(); localSpatialVolumes.Clear(); parameterCache.Clear(); floorWallFaces.Clear(); floorFaceHeights.Clear();
                     }
                 }
-                // Detached copies survive rollback. All temporary model objects are already gone.
-                var flat = copied.Select(l => FlatLoop(l)).ToList();
-                // Validate area, not merely visual chord deviation. Each disconnected contour is
-                // compared separately; opposite approximation errors cannot cancel between buildings.
-                double tolerance = ArcChordTolerance;
-                var exactAreas = flat.Select(l => Extrude(new List<CurveLoop> { l }).Volume).ToList();
-                Solid result = null;
-                for (int attempt = 0; attempt < 6; attempt++, tolerance /= 4)
+                var result=nativeRegions.Aggregate(PlanarRegion.Empty,RegionUnion);
+                if(frameFailures.Count>0)
+                    throw new ExteriorFrameConflictException(string.Join(" | ",frameFailures.Distinct()),result,
+                        "Сохранены только замкнутые части наружной границы. Полный контур этажа не подтверждён; предварительная область не включена в расчёт.");
+                if(exteriorFailures.Count>0)
+                    throw new UnconfirmedEnvelopeException(string.Join(" | ",exteriorFailures.Distinct()),result,
+                        "Контур построен, но происхождение части границ не подтверждено. Предварительная область сохранена для проверки, в итог ТЭП не включена.");
+                // Complete all native rings before exposing a failed inward measurement as a draft.
+                // Its geometry remains the exterior boundary; no unknown thickness is invented.
+                if(interiorFailures.Count>0)
+                    throw new UnconfirmedEnvelopeException(string.Join(" | ",interiorFailures.Distinct()),result,
+                        "Основа по внешней границе. Для внутреннего контура исправьте границы по внутренним поверхностям наружных стен; внутренний обмер не подтверждён.");
+                var measured=interior?RegionDifference(result,innerBands):result;
+                // Check BOTH omitted rooms and unclassified space. A closed fragment must
+                // not be published as the whole floor after a frame or shell failure.
+                try
                 {
-                    bool accurate = true;
-                    for (int i = 0; i < flat.Count; i++)
-                    {
-                        var part = PlanFromSectionLoops(new[] { flat[i] }, tolerance);
-                        if (part == null || Math.Abs(part.Volume - exactAreas[i]) * .09290304 > .001) { accurate = false; break; }
-                    }
-                    if (!accurate) continue;
-                    result = PlanFromSectionLoops(flat, tolerance); break;
+                    var occupiedRooms=rooms.Aggregate(shaftAreas,(r,item)=>RegionUnion(r,RoomNetRegion(item)));
+                    var allMaterial=FloorMaterialRegion(physicalCandidates,elevation,indicator,result);
+                    ValidateExteriorCoverage(result,occupiedRooms,allMaterial);
+                    // Inward wall bands must not cut away any selected room or shaft.
+                    if(interior)ValidateExteriorCoverage(measured,occupiedRooms,allMaterial,true);
                 }
-                if (result == null) throw new InvalidOperationException("Точность площади внешнего контура 0,001 м² относительно исходных кривых Revit не подтверждена.");
-                Notice("EXTERIOR_ROOM", "Информация", "Контур получен через временное внешнее помещение на отметке пола. Площадь каждой петли сверена с исходными кривыми Revit (расхождение до 0,001 м² до вычитания исключений). Временные помещение, рамка, уровень и вид отменены транзакцией.", floor, indicator.ToString());
+                catch(OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
+                catch(Exception ex)
+                {
+                    throw new UnconfirmedEnvelopeException(ex.Message,measured,(ex as UnconfirmedEnvelopeException)?.CandidateDescription??
+                        "Контур построен, но проверка его состава не завершена. Предварительная область сохранена для исправления, в итог ТЭП не включена.");
+                }
+                result=measured;
+                if (result.IsEmpty) throw new InvalidOperationException("Пустая плоская оболочка этажа.");
+                Notice("EXTERIOR_ROOM", "Информация", "Граница определена внешним помещением на отметке пола по всем стенам выбранных источников. " +
+                    (interior ? "Внутренняя площадь получена 2D-вычитанием полос ограждений и их стыков, без смещения целой петли. " : "") +
+                    "Площадь и вычитания вычисляются в 2D без построения вспомогательного тела. Допуск аппроксимации кривых до 0,001 м²; координатная сетка 0,001 мм. Временные объекты отменены транзакцией.", floor, indicator.ToString());
                 return result;
             }
         }

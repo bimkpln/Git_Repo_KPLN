@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
@@ -43,7 +43,7 @@ namespace KPLN_CalculateTEP.Common
                 if(r.Level.Kind=="basement")
                 {
                     if(forStoreys&&IsPublic(r)&&!IsHigh(r))return true;
-                    double top=RequiredNumber(r.Level.TopSlab,"отметка верха перекрытия цоколя «"+r.Level.Name+"», м")/.3048;
+                    double top=ResolvedTopSlab(r.Level);
                     return top-ground>=2/.3048-1e-8;
                 }
                 return r.Z>=ground-1e-6;
@@ -56,19 +56,19 @@ namespace KPLN_CalculateTEP.Common
                 {
                     if(IsHigh(r))
                     {
-                        double area=RequiredNumber(r.Level.RoofArea,"суммарная площадь верхней надстройки, м²");
-                        double height=RequiredNumber(r.Level.Height,"высота верхней надстройки, м");
+                        double area=ResolvedLevelField(r.Level,"area");
+                        double height=ResolvedLevelField(r.Level,"height");
                         if(area<8&&height<2.5)return false;
                     }
                     else if(!IsPublic(r)||r.Role=="roof-exit")return false;
-                    else if(RequiredNumber(r.Level.RoofRatio,"суммарная доля технических помещений от кровли")<.15)return false;
+                    else if(ResolvedLevelField(r.Level,"ratio")<.15)return false;
                 }
                 if(r.Level.Kind=="void")
                 {
                     if(!IsPublic(r)||IsHigh(r))return false;
-                    return RequiredNumber(r.Level.Height,"высота технического подполья, м")>=1.8;
+                    return ResolvedLevelField(r.Level,"height")>=1.8;
                 }
-                if(IsHigh(r)&&Flag(r.Element,"partial-floor")&&OneOf(r.Role,"technical-space","technical-void"))return false;
+                if(IsHigh(r)&&OneOf(r.Role,"technical-space","technical-void")&&AutomaticDimension(r,"partial-floor")>0)return false;
                 return !aboveOnly||Above(r,true);
             }
             private string Part(Record r)
@@ -81,7 +81,6 @@ namespace KPLN_CalculateTEP.Common
             private bool Eligible(Record r,Indicator metric)
             {
                 if(r.Override.HasValue)return r.Override.Value;
-                string include=Mapped(r.Element,"include");if(Eq(include,"0")||Eq(include,"нет")||Eq(include,"false"))return false;
                 if(r.Level==null||!r.Level.Include||r.Level.Kind=="exclude")return false;
                 if(r.Role=="unknown")throw new InvalidOperationException("Назначение объекта не определено правилами или параметром функции.");
                 string role=r.Role;bool pub=IsPublic(r),gns=(int)metric<=4;
@@ -119,7 +118,7 @@ namespace KPLN_CalculateTEP.Common
                     if(OneOf(role,"ventilated-void","soil-filled"))return false;
                     if(pub&&OneOf(role,"technical-void","technical-space")&&Dimension(r,"height",true)<1.8)
                     {if(string.IsNullOrWhiteSpace(Mapped(r.Element,"service-access")))throw new InvalidOperationException("Для низкого технического пространства укажите, нужен ли проход обслуживания коммуникаций.");return Flag(r.Element,"service-access");}
-                    if(IsHigh(r)&&OneOf(role,"technical-space","technical-void")&&Flag(r.Element,"partial-floor"))return false;
+                    if(IsHigh(r)&&OneOf(role,"technical-space","technical-void")&&AutomaticDimension(r,"partial-floor")>0)return false;
                     if(pub&&role=="mezzanine")return r.SingleStorey||Dimension(r,"mezzanine-ratio")>.4;
                     return true;
                 }
@@ -135,7 +134,7 @@ namespace KPLN_CalculateTEP.Common
                 return false;
             }
             private double Dimension(Record r,string key,bool length=false)
-            {var n=Number(r.Element,key,length);if(!n.HasValue)throw new InvalidOperationException("Нужен параметр: "+Config.Parameters.First(x=>x.Key==key).Title);return n.Value;}
+            {if(OneOf(key,"width","stair-width","roof-ratio","mezzanine-ratio","height"))return AutomaticDimension(r,key);var n=Number(r.Element,key,length);if(!n.HasValue)throw new InvalidOperationException("Нужен параметр: "+Config.Parameters.First(x=>x.Key==key).Title);return n.Value;}
             private double Factor(Record r,Indicator metric)
             {
                 if(metric!=Indicator.ApartmentsTotal)return 1;
@@ -145,10 +144,12 @@ namespace KPLN_CalculateTEP.Common
             public static double PublicMansardHeight(double angle)
             {if(angle<0||angle>90)throw new ArgumentOutOfRangeException("angle");return angle<=30?1.5:angle<=45?1.5-(angle-30)*.4/15:angle<=60?1.1-(angle-45)*.6/15:.5;}
             private bool VerticalExclusion(Record r,Indicator metric,List<Record> all,Solid shape)
+            {return VerticalExclusionArea(r,metric,all,shape?.Volume??0);}
+            private bool VerticalExclusionArea(Record r,Indicator metric,List<Record> all,double areaFeet)
             {
                 bool gns=(int)metric<=4;
                 bool stair=r.Role=="stair-gap"&&(Dimension(r,"width",true)>1.5||Dimension(r,"width",true)>Dimension(r,"stair-width",true));
-                bool vertical=r.Role=="multilight"||stair||r.Role=="opening"&&(!gns||Methodology.CountsGnsOpeningOnOneFloor(shape))||OneOf(r.Role,"shaft","engineering-shaft")&&(!gns||Methodology.CountsGnsShaftOnOneFloor);
+                bool vertical=r.Role=="multilight"||stair||r.Role=="opening"&&(!gns||Methodology.CountsGnsOpeningAreaOnOneFloor(areaFeet*.09290304))||OneOf(r.Role,"shaft","engineering-shaft")&&(!gns||Methodology.CountsGnsShaftOnOneFloor);
                 if(!vertical)return false;
                 if(string.IsNullOrWhiteSpace(r.Vertical))
                 {

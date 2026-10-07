@@ -73,7 +73,13 @@ namespace KPLN_CalculateTEP.Common
             public string Height {get;set;} public string BottomOffset {get;set;} = "0";
             public string ElementLabel {get;set;}
         }
-        public class ParameterMap { public string Key {get;set;} public string Title {get;set;} public string Name {get;set;} public string Description {get;set;} }
+        public class ParameterMap : System.ComponentModel.INotifyPropertyChanged
+        {
+            public string Key {get;set;} public string Title {get;set;} public string Name {get;set;} public string Description {get;set;}
+            private bool isRequired;
+            public bool IsRequired {get{return isRequired;}set{if(isRequired==value)return;isRequired=value;PropertyChanged?.Invoke(this,new System.ComponentModel.PropertyChangedEventArgs(nameof(IsRequired)));}}
+            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        }
         public class Rule
         {
             public bool Enabled {get;set;} = true;
@@ -97,13 +103,55 @@ namespace KPLN_CalculateTEP.Common
             public string Class {get;set;} = "residential";
             public bool Include {get;set;} = true;
         }
-        public class LevelSetting
+        public class LevelSetting : System.ComponentModel.INotifyPropertyChanged
         {
             public string Key {get;set;} public string Source {get;set;} public string Name {get;set;}
             public string Building {get;set;} public string Section {get;set;}
             public double Elevation {get;set;} public bool Include {get;set;} = true;
-            public string Kind {get;set;} = "normal"; public string Above {get;set;} = "auto";
+            private string kind="normal",above="auto";
+            public string Kind {get{return kind;}set{if(kind==value)return;kind=value;NotifySlabRequirement("Kind");}}
+            public string Above {get{return above;}set{if(above==value)return;above=value;NotifySlabRequirement("Above");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool TopSlabRequired {get{return Kind=="basement"&&Above=="auto";}}
+            private void NotifySlabRequirement(string property)
+            {foreach(var name in new[]{property,"TopSlabRequired","TopSlabSummary","HeightRequired","RoofAreaRequired","RoofRatioRequired"})NotifyValue(name);}
             public string TopSlab {get;set;} public string Height {get;set;} public string RoofRatio {get;set;} public string RoofArea {get;set;}
+            public string TopSlabMode {get;set;}
+            public string TopSlabChoice {get;set;}
+            public string HeightMode {get;set;}
+            public string RoofAreaMode {get;set;}
+            public string RoofRatioMode {get;set;}
+            public List<string> RoofSources {get;set;}=new List<string>();
+            private string normativeProfile="residential";
+            private bool hasRoofObjects;
+            private bool hasHighObjects,hasPublicObjects;
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool HasHighObjects {get{return hasHighObjects;}set{hasHighObjects=value;NotifySlabRequirement("HasHighObjects");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool HasPublicObjects {get{return hasPublicObjects;}set{hasPublicObjects=value;NotifySlabRequirement("HasPublicObjects");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public string NormativeProfile {get{return normativeProfile;}set{normativeProfile=value;NotifySlabRequirement("NormativeProfile");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool HasRoofObjects {get{return hasRoofObjects;}set{hasRoofObjects=value;NotifySlabRequirement("HasRoofObjects");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool HeightRequired {get{return Kind=="void"&&(NormativeProfile=="public"||HasPublicObjects)||(Kind=="roof"||HasRoofObjects)&&((NormativeProfile??"").StartsWith("high-")||HasHighObjects);}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool RoofAreaRequired {get{return (Kind=="roof"||HasRoofObjects)&&((NormativeProfile??"").StartsWith("high-")||HasHighObjects);}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public bool RoofRatioRequired {get{return (Kind=="roof"||HasRoofObjects)&&(NormativeProfile=="public"||NormativeProfile=="high-public"||HasPublicObjects);}}
+            private string heightSummary,roofAreaSummary,roofRatioSummary;
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public string HeightSummary {get{return heightSummary??"Задать";}set{heightSummary=value;NotifyValue("HeightSummary");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public string RoofAreaSummary {get{return roofAreaSummary??"Задать";}set{roofAreaSummary=value;NotifyValue("RoofAreaSummary");}}
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public string RoofRatioSummary {get{return roofRatioSummary??"Задать";}set{roofRatioSummary=value;NotifyValue("RoofRatioSummary");}}
+            private void NotifyValue(string name){PropertyChanged?.Invoke(this,new System.ComponentModel.PropertyChangedEventArgs(name));}
+            private string topSlabSummary;
+            [System.Runtime.Serialization.IgnoreDataMember]
+            public string TopSlabSummary {get{return !TopSlabRequired?"":string.IsNullOrEmpty(topSlabSummary)?"Задать":topSlabSummary;}
+                set{topSlabSummary=value;PropertyChanged?.Invoke(this,new System.ComponentModel.PropertyChangedEventArgs("TopSlabSummary"));}}
+            public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
             public double AbsoluteElevationMeters {get;set;}
             public string DatumDisplayName {get{return Source+" / "+Name+" (абс. "+AbsoluteElevationMeters.ToString("0.000")+" м)";}}
             public double ElevationMeters {get{return Elevation*.3048;}}

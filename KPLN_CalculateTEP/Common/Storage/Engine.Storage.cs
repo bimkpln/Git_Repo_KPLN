@@ -49,7 +49,9 @@ namespace KPLN_CalculateTEP.Common
             {var s=StorageSchema();var entity=new Entity(s);entity.Set(s.GetField("Owner"),Owner);entity.Set(s.GetField("Kind"),kind);entity.Set(s.GetField("Payload"),payload??"");e.SetEntity(entity);}
             private T Read<T>(string kind) where T:class
             {
-                var item=new FilteredElementCollector(doc).OfClass(typeof(DataStorage)).FirstOrDefault(e=>Owned(e)&&Kind(e)==kind);
+                var items=new FilteredElementCollector(doc).OfClass(typeof(DataStorage)).Where(e=>Owned(e)&&Kind(e)==kind).OrderBy(e=>IDHelper.ElIdValue(e.Id)).ToList();
+                if(kind=="settings"&&items.Count>1)throw new InvalidOperationException("В RVT несколько записей настроек ТЭП. Произвольная копия не выбрана; кнопка сохранения заменит их одной проверенной записью.");
+                var item=items.FirstOrDefault();
                 if(item==null)return null;var schema=StorageSchema();
                 try{return Deserialize<T>(UnpackStorage(item.GetEntity(schema).Get<string>(schema.GetField("Payload"))));}
                 catch(System.OperationCanceledException){throw;}
@@ -57,11 +59,15 @@ namespace KPLN_CalculateTEP.Common
             }
             private void Write<T>(string kind,T value)
             {
+                string payload=PackStorage(Serialize(value));
                 using(var t=new Transaction(doc,"ТЭП: сохранить "+kind))
                 {
-                    t.Start();var data=new FilteredElementCollector(doc).OfClass(typeof(DataStorage)).FirstOrDefault(e=>Owned(e)&&Kind(e)==kind) as DataStorage;
+                    t.Start();var entries=new FilteredElementCollector(doc).OfClass(typeof(DataStorage)).Where(e=>Owned(e)&&Kind(e)==kind).OrderBy(e=>IDHelper.ElIdValue(e.Id)).ToList();
+                    var data=entries.FirstOrDefault() as DataStorage;
                     if(data==null){data=DataStorage.Create(doc);data.Name=Owner+"/"+kind;}
-                    Tag(data,kind,PackStorage(Serialize(value)));if(t.Commit()!=TransactionStatus.Committed)throw new InvalidOperationException("Транзакция записи отменена.");
+                    Tag(data,kind,payload);
+                    if(kind=="settings")foreach(var duplicate in entries.Skip(1))doc.Delete(duplicate.Id);
+                    if(t.Commit()!=TransactionStatus.Committed)throw new InvalidOperationException("Транзакция записи отменена.");
                 }
             }
             private static string PackStorage(string text)

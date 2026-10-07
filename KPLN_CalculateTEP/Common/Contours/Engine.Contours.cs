@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
@@ -42,6 +42,7 @@ namespace KPLN_CalculateTEP.Common
                 string action=PendingContourAction;PendingContourAction=null;ReopenContours=true;
                 try
                 {
+                    if(action=="review-bind"){BindReviewSelection();return;}
                     var metric=Config.Metrics.Single(m=>m.Key==ContourMetricKey);
                     if(action=="walls")
                     {
@@ -94,7 +95,7 @@ namespace KPLN_CalculateTEP.Common
                     }
                 }
                 catch(Autodesk.Revit.Exceptions.OperationCanceledException){}
-                catch(Exception ex){TaskDialog.Show("Контуры ТЭП",ex.Message);}
+                catch(Exception ex){TaskDialog.Show("KPLN | Контуры ТЭП",ex.Message);}
             }
             private static bool ContourSourceLevel(string key,string source)
             {return key!=null&&key.StartsWith(source+"/",StringComparison.Ordinal)&&key.IndexOf('/',source.Length+1)<0;}
@@ -166,7 +167,7 @@ namespace KPLN_CalculateTEP.Common
                 var interior=WallFaceAtFloor(wall,edge.Record.Source.Transform,curve,elevation,ShellLayerType.Interior);
                 return boundary=="interior"?interior.Offset:WallCoreAtFloor(wall,exterior,interior,true);
             }
-            private Solid AnalyticWallContour(List<Record> records,Metric metric,Indicator indicator,double? floorElevation=null)
+            private PlanarRegion AnalyticWallContourRegion(List<Record> records,Metric metric,Indicator indicator,double? floorElevation=null)
             {
                 double elevation=floorElevation??records.First().Z+RequiredNumber(metric.WallCutHeight,"высота сечения стен, м")/.3048;
                 var remaining=records.Select(r=>new WallEdge{Record=r,Curve=Flat(((LocationCurve)r.Element.Location).Curve.CreateTransformed(r.Source.Transform))}).ToList();
@@ -195,7 +196,7 @@ namespace KPLN_CalculateTEP.Common
                     if(shifted.Count()!=curves.Count)throw new InvalidOperationException("На отметке пола изменилось число участков наружного контура. Площадь не опубликована.");
                     loops.Add(shifted);
                 }
-                return Extrude(loops);
+                return RegionFromLoops(loops);
             }
             private List<ContourInput> ContourInputs(List<Record> records,Metric metric,Indicator indicator)
             {
@@ -260,7 +261,6 @@ namespace KPLN_CalculateTEP.Common
             private bool ContourMaskRequired(Record r,Metric metric,Indicator indicator,List<Record> all)
             {
                 if(r.Override.HasValue)return !r.Override.Value;
-                string include=Mapped(r.Element,"include");if(Eq(include,"0")||Eq(include,"нет")||Eq(include,"false"))return true;
                 if(metric.ContourExclusions=="rules"||indicator==Indicator.Footprint)return false;
                 if(OneOf(r.Role,"structure","envelope","footprint","underground-footprint"))return false;
                 if(r.Role=="unknown")

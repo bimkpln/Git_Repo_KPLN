@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using System;
 using System.Collections.Generic;
@@ -12,7 +12,9 @@ namespace KPLN_CalculateTEP.Common
         public partial class Engine
         {
             private readonly Dictionary<string, List<Solid>> roomFloorContours = new Dictionary<string, List<Solid>>();
-            private readonly HashSet<string> inferredRoomFloorContours = new HashSet<string>();
+            private readonly Dictionary<string,List<Issue>> roomFloorWarnings=new Dictionary<string,List<Issue>>();
+            private readonly Dictionary<string, List<PlanarRegion>> roomFloorRegions = new Dictionary<string, List<PlanarRegion>>();
+            private List<Record> contourRoomRecords = new List<Record>();
             private readonly Dictionary<string, string> roomFloorFailures = new Dictionary<string, string>();
             private readonly HashSet<double> invalidRoomFloors = new HashSet<double>();
 
@@ -36,16 +38,13 @@ namespace KPLN_CalculateTEP.Common
 
             public void PrepareRoomWorkflow()
             {
-                // The old rule table is retained in the backup, never applied invisibly behind the cards.
-                if (Config.RoomWorkflowVersion != 4)
-                {
-                    Config.PreviousWorkflowSettings = Serialize(Config);
-                    Config.RoomWorkflowVersion = 4;
-                }
+                // Obsolete rules are not retained as recursively embedded settings snapshots.
+                Config.PreviousWorkflowSettings=null;
+                Config.RoomWorkflowVersion=4;
                 Config.Departments = Config.Departments ?? new List<DepartmentAssignment>();
-                Config.Departments.RemoveAll(d=>Eq(d.Value,"Квартира"));
                 Config.Rules.Clear();
-                Config.CreateViews = false;
+                Config.CreateViews = false;Config.UseReviewRegions=true;
+                Config.ClassifyFamilies=false;Config.FamilyAreaFromParameter=false;Config.RoomClassificationParameter="@Department";
                 foreach(var map in Config.Parameters.Where(m=>Settings.IsFixedParameter(m.Key)))
                     map.Name=Settings.FixedParameterName(map.Key);
                 Config.ZeroMode = "level";
@@ -81,77 +80,75 @@ namespace KPLN_CalculateTEP.Common
 
             private List<Solid> RoomFloorContours(List<Record> records, Record floor, Indicator indicator)
             {
+                string key = RoomFloorKey(RoomFloorElevation(floor), indicator);
+                List<Solid> result;
+                if (!roomFloorContours.TryGetValue(key, out result))
+                    roomFloorContours[key] = result = RoomFloorRegions(records, floor, indicator).Select(r => BuildPlanarSolid(r, 0, 1, true)).ToList();
+                return result;
+            }
+
+            private List<PlanarRegion> RoomFloorRegions(List<Record> records, Record floor, Indicator indicator)
+            {
                 double cut = RoomFloorElevation(floor);
-                var peers = records.Where(r => r.Element is Room && r.Level != null && r.Level.Include && Math.Abs(r.Z - floor.Z) < 1e-6).ToList();
+                var peers = (contourRoomRecords.Count > 0 ? contourRoomRecords : records)
+                    .Where(r => IsAreaInput(r.Element) && r.Level != null && r.Level.Include && Math.Abs(r.Z - floor.Z) < 1e-6).ToList();
                 if (peers.Any(r => Math.Abs(RoomFloorElevation(r) - cut) > FloorGeometryTolerance))
-                    throw new InvalidOperationException("Помещения одного расчётного этажа имеют разные отметки пола. Общий контур нельзя измерять на одной произвольной высоте; требуется разделение участков перепада.");
+                    throw new InvalidOperationException("Помещения одного этажа имеют разные отметки пола. Требуется разделение участков перепада; произвольная высота не используется.");
                 string key = RoomFloorKey(cut, indicator);
-                List<Solid> contours;
-                string failure;
-                if (roomFloorFailures.TryGetValue(key, out failure)) throw new InvalidOperationException(failure);
-                if (invalidRoomFloors.Contains(Math.Round(floor.Z, 6)))
-                    throw new InvalidOperationException("На этаже есть размещённые помещения с ошибками площади или классификации. Полный контур этажа не рассчитан; см. ошибки помещений.");
-                if (roomFloorContours.TryGetValue(key, out contours))
+                List<PlanarRegion> result; string failure;
+                if (roomFloorRegions.TryGetValue(key, out result))
                 {
-                    if(inferredRoomFloorContours.Contains(key))Notice("EXTERIOR_BY_GEOMETRY","Предупреждение","Повторно использована оболочка, подтверждённая внешним помещением без признака «Наружная» у стен. Отметка пола не изменялась.",floor,indicator.ToString());
-                    return contours;
+                    List<Issue> warnings;
+                    if(roomFloorWarnings.TryGetValue(key,out warnings))foreach(var warning in warnings)
+                        Notice(warning.Code,warning.Severity,warning.Message,floor,indicator.ToString());
+                    return result;
                 }
+                if (roomFloorFailures.TryGetValue(key, out failure)) throw new InvalidOperationException(failure);
                 try
                 {
-                    // Model walls, including linked walls, are geometry sources. Room parameters own classification.
-                    var allWalls = Sources.Where(s => s.Loaded && s.LoadError == null && s.Mode == "include")
+                    var envelope = ReviewRegion("floor/"+key, floor, "Контур этажа - "+((int)indicator<=4?Methodology.GnsWallBoundary:"interior"),cut,()=>
+                    {
+                    var walls = Sources.Where(s => s.Loaded && s.LoadError == null && s.Mode == "include")
                         .SelectMany(s => s.Elements.OfType<Wall>().SelectMany(WallMembers).Distinct()
                             .Where(w => PhaseAccepted(s, w))
                             .Select(w => new Record { Source = s, Element = w, Level = floor.Level, Role = "structure" }))
                         .Where(r => CrossesFloor(r.Element, r.Source.Transform, cut)).ToList();
-                    var walls=allWalls.Where(r=>((Wall)r.Element).WallType.Function==WallFunction.Exterior).ToList();
-                    bool inferred=walls.Count==0;
-                    if(inferred)
+                    if (walls.Count == 0) throw new InvalidOperationException("На отметке пола нет стен выбранных источников и стадии.");
+                    Progress("Плоская оболочка: " + floor.Level.Name + "; стен: " + walls.Count);
+                    if(Config.Phase==Settings.AllPhases)
                     {
-                        if(allWalls.Count==0)throw new InvalidOperationException("На отметке пола "+(cut*.3048).ToString("0.######",CultureInfo.InvariantCulture)+" м нет стен выбранной стадии. Высота сечения не изменялась.");
-                        if((int)indicator>4)throw new InvalidOperationException("На отметке пола есть стены ("+allWalls.Count+"), но ни одна не имеет функцию «Наружная». Внутренняя граница общей площади требует подтверждения стороны оболочки; произвольная сторона стены не используется.");
-                        // Remove only walls proven to be shared by two placed rooms. Every remaining
-                        // candidate must be seen by the exterior room, including courtyard candidates.
-                        var counts=new Dictionary<string,int>();
-                        foreach(var peer in peers)
-                        {
-                            var used=new HashSet<string>();
-                            var rings=((Room)peer.Element).GetBoundarySegments(new SpatialElementBoundaryOptions{SpatialElementBoundaryLocation=SpatialElementBoundaryLocation.Finish});
-                            if(rings==null)continue;
-                            foreach(var segment in rings.SelectMany(r=>r))
-                            {
-                                var wall=peer.Element.Document.GetElement(segment.ElementId) as Wall;
-                                if(wall==null)continue; // Linked/unresolved boundaries remain candidates, never discarded.
-                                foreach(var member in WallMembers(wall))used.Add(peer.Source.Key+"/"+member.UniqueId);
-                            }
-                            foreach(var wallKey in used){int count;counts.TryGetValue(wallKey,out count);counts[wallKey]=count+1;}
-                        }
-                        walls=allWalls.Where(r=>!counts.ContainsKey(r.Key)||counts[r.Key]<2).ToList();
-                        if(walls.Count==0)throw new InvalidOperationException("После исключения общих стен помещений не осталось кандидатов внешней оболочки.");
-                        Notice("EXTERIOR_BY_GEOMETRY","Предупреждение","Стены с функцией «Наружная» не найдены. ГНС проверяется по границе внешнего помещения на той же отметке пола. Разрывы, невидимые кандидаты и возможные дворы сохраняют отказ расчёта.",floor,indicator.ToString());
+                        // A temporary Revit Room belongs to one phase. For an unfiltered set use actual wall sections.
+                        var metric=Config.Metrics.First(m=>m.Key==indicator.ToString());
+                        var exteriorWalls=walls.Where(r=>ContourWallSelected(r,metric)).ToList();
+                        if(exteriorWalls.Count==0)throw new InvalidOperationException("Не найдены наружные стены для контура всех стадий.");
+                        var allStages=WallContourRegion(exteriorWalls,metric,indicator,cut);
+                        var occupied=peers.Aggregate(AutomaticShaftFloorRegion(cut),(region,room)=>RegionUnion(region,RoomNetRegion(room)));
+                        if(RegionDifference(occupied,allStages).Area*.09290304>.005)
+                            throw new UnconfirmedEnvelopeException("Контур всех стадий не охватывает выбранные помещения. Проверьте совмещённые состояния модели или выберите конкретную стадию.",allStages,
+                                "Контур построен по выбранным стенам всех стадий, но не охватывает помещения. Область сохранена для проверки и исправления, в итог ТЭП не включена.");
+                        var material=FloorMaterialRegion(PhysicalShellCandidates(walls,floor,cut),cut,indicator,allStages);
+                        if(RegionDifference(allStages,RegionUnion(occupied,material)).Area*.09290304>.005)
+                            throw new UnconfirmedEnvelopeException("В контуре всех стадий есть область без помещений и подтверждённых конструкций. Её назначение не определено.",allStages,
+                                "Контур построен, но содержит неподтверждённую площадь. Область сохранена для проверки и исправления, в итог ТЭП не включена.");
+                        return allStages;
                     }
-                    Progress("2D-контур наружных стен: " + floor.Level.Name + "; стен: " + walls.Count);
-                    var metric = new Metric { WallBoundary = "auto" };
-                    Solid envelope;
-                    if ((int)indicator <= 4)
+                    try{return ExteriorRoomRegion(walls, floor, indicator, cut, peers);}
+                    catch(ExteriorFrameConflictException ex)
                     {
-                        try { envelope = ExteriorRoomContour(walls, floor, indicator, cut, inferred); }
-                        catch (OperationCanceledException) { throw; }
-                        catch (Exception ex)
-                        {
-                            if(inferred)throw new InvalidOperationException("Геометрически определяемая оболочка не подтверждена: "+ex.Message,ex);
-                            Notice("EXTERIOR_ROOM_FALLBACK", "Информация", "Внешнее помещение: " + ex.Message + " Используется резервное сечение стен на той же отметке.", floor, indicator.ToString());
-                            envelope = WallContour(walls, metric, indicator, cut);
-                        }
+                        // ExteriorRoomRegion has already rolled back every temporary object.
+                        return RecoverExteriorFrameRegion(walls,floor,indicator,cut,peers,ex);
                     }
-                    else envelope = WallContour(walls, metric, indicator, cut);
-                    contours = PlanPieces(envelope).ToList();
-                    if (contours.Count == 0) throw new InvalidOperationException("Не получен замкнутый контур этажа.");
-                    roomFloorContours.Add(key, contours);
-                    if(inferred)inferredRoomFloorContours.Add(key);
-                    return contours;
+                    });
+                    int issueStart=current.Issues.Count;
+                    result = envelope.Components().Select(paths => new PlanarRegion(paths)).ToList();
+                    if (result.Count == 0) throw new InvalidOperationException("Не получена замкнутая оболочка этажа.");
+                    roomFloorWarnings[key]=current.Issues.Skip(issueStart).Where(i=>i.Severity=="Предупреждение").ToList();
+                    roomFloorRegions[key] = result;
+                    return result;
                 }
                 catch (OperationCanceledException) { throw; }
+                catch (Autodesk.Revit.Exceptions.OperationCanceledException) { throw; }
+                catch (Autodesk.Revit.Exceptions.RegenerationFailedException) { throw; }
                 catch (Exception ex)
                 {
                     failure = "Этаж «" + floor.Level.Name + "»: " + ex.Message;
@@ -183,10 +180,69 @@ namespace KPLN_CalculateTEP.Common
                 return result;
             }
 
+            private sealed class FloorCell
+            {
+                internal PlanarRegion Region;
+                internal List<Record> Owners;
+            }
+            private readonly Dictionary<string,PlanarRegion> roomCentreRegions=new Dictionary<string,PlanarRegion>();
+            private PlanarRegion RoomCentreRegion(Record room)
+            {
+                PlanarRegion edited;if(TryEditedObjectOverlay(room,out edited))return edited;
+                if(IsClassifiedFamily(room.Element))return FamilyAreaRegion(room);
+                string key=RoomPlanCacheKey(room,"centre","");PlanarRegion region;
+                if(!roomCentreRegions.TryGetValue(key,out region))
+                {
+                    region=ReviewRegion("centre/"+key,room,"Помещение - по осям для СПП",RoomFloorElevation(room),()=>SectionRegion(SpatialVolume(room,true),RoomFloorElevation(room)));
+                    if(region.IsEmpty)throw new InvalidOperationException("Нет сечения Room по осям ограждений на отметке пола, ID "+IDHelper.ElIdValue(room.Element.Id));
+                    roomCentreRegions[key]=region;
+                }
+                return region;
+            }
+            private List<FloorCell> PartitionRoomFloor(PlanarRegion envelope,List<Record> rooms)
+            {
+                var regions=rooms.Select(room=>{
+                    Progress("2D-разделение этажа: ID "+IDHelper.ElIdValue(room.Element.Id));return RoomCentreRegion(room);
+                }).ToList();
+                return PlanarRegion.PartitionByRooms(envelope,regions,planarCheckpoint)
+                    .Select(cell=>new FloorCell{Region=cell.Region,Owners=cell.Owners.Select(index=>rooms[index]).ToList()}).ToList();
+            }
+            private static Indicator EnvelopeBaseIndicator(Indicator metric)
+            {
+                if(metric==Indicator.GnsLivingPart||metric==Indicator.GnsNonlivingPart)return Indicator.GnsResidential;
+                if(metric==Indicator.NnpEmbedded||metric==Indicator.NnpSeparate)return Indicator.GrossAbove;
+                return metric;
+            }
+            private PlanarRegion FloorCellExclusion(FloorCell cell,Indicator metric,List<Record> records,List<FloorCell> cells)
+            {
+                var included=new List<bool>();
+                foreach(var room in cell.Owners)
+                {
+                    bool value=Eligible(room,metric);
+                    double area=cells.Where(c=>c.Owners.Count==1&&c.Owners[0].Key==room.Key).Sum(c=>c.Region.Area);
+                    if(value&&room.Role=="opening"&&(int)metric<=4)
+                    {
+                        double maximum=area+cells.Where(c=>c.Owners.Count>1&&c.Owners.Any(r=>r.Key==room.Key)).Sum(c=>c.Region.Area);
+                        if(Methodology.CountsGnsOpeningAreaOnOneFloor(area*.09290304)!=Methodology.CountsGnsOpeningAreaOnOneFloor(maximum*.09290304))
+                            throw new InvalidOperationException("Общая конструкция влияет на порог площади проёма 36 м², ID "+IDHelper.ElIdValue(room.Element.Id)+". Нормативное исключение без разделения не подтверждено.");
+                    }
+                    if(value&&VerticalExclusionArea(room,metric,records,area))value=false;
+                    included.Add(value);
+                }
+                if(included.Distinct().Count()>1)
+                    throw new InvalidOperationException("Участок конструкций "+(cell.Region.Area*.09290304).ToString("0.######",CultureInfo.InvariantCulture)+" м² граничит с включаемыми и исключаемыми помещениями. Для этого показателя разделение не определено: ID "+string.Join(", ",cell.Owners.Select(r=>IDHelper.ElIdValue(r.Element.Id)))+". Площадь не распределена пропорционально или по ближайшему помещению.");
+                if(!PlanarRegion.CommonCellInclusion(included))return cell.Region;
+                bool heightCut=(int)metric>4&&cell.Owners.Any(r=>OneOf(r.Role,"under-stair","niche","arch")||NeedsCeilingCheck(r,metric)&&HasSlopedCeiling(r));
+                if(!heightCut)return PlanarRegion.Empty;
+                if(cell.Owners.Count!=1)throw new InvalidOperationException("Для общего участка конструкций требуется отдельное подтверждение высотного исключения.");
+                return RegionDifference(cell.Region,ApplyRoomHeightRules(cell.Owners[0],metric,cell.Region,true));
+            }
+
             private void CalculateRoomEnvelopeAreas(List<Record> records, Indicator indicator)
             {
-                var rooms = records.Where(r => r.Element is Room && r.Level != null && r.Level.Include).ToList();
-                if (rooms.Count == 0) throw new InvalidOperationException("Нет размещённых помещений на включённых этажах. Для расчёта требуются Rooms.");
+                var rooms = records.Where(r => IsAreaInput(r.Element) && r.Level != null && r.Level.Include && r.Source.Mode=="include").ToList();
+                var baseIndicator=EnvelopeBaseIndicator(indicator);
+                if (rooms.Count == 0) throw new InvalidOperationException("Нет размещённых помещений на включённых этажах. Нужны размещённые Rooms или классифицированные экземпляры с геометрией.");
                 foreach (var level in Config.Levels.Where(l => l.Include && !OneOf(l.Kind, "exclude", "attic"))
                     .GroupBy(l => Math.Round(l.Elevation, 6)).Select(g => g.First()))
                 {
@@ -202,72 +258,73 @@ namespace KPLN_CalculateTEP.Common
                     var rows = new List<Detail>();
                     try
                     {
-                        if (!floor.Any(r => ContourBaseIncluded(r, indicator))) continue;
-                        if(invalidRoomFloors.Contains(floor.Key))
+                        if (!floor.Any(r => ContourBaseIncluded(r, baseIndicator))) continue;
+                        int firstIssue = current.Issues.Count;
+                        var contours = RoomFloorRegions(records, first, indicator);
+                        if (invalidRoomFloors.Contains(floor.Key))
                         {
-                            current.Issue("ROOM_FLOOR_SKIPPED","Ошибка","Этаж «"+string.Join(" / ",floor.Select(r=>r.Level.Name).Distinct())+"» ("+(floor.Key*.3048).ToString("0.###",CultureInfo.InvariantCulture)+" м) пропущен: есть размещённые помещения с ошибками. Полную площадь контура подтвердить нельзя. Остальные этажи рассчитываются.",indicator.ToString(),first.Source.Name,
-                                action:"См. ошибки помещений с ID. Пропущенный этаж не включён в сумму и не считается этажом с нулевой площадью.");
+                            double area = contours.Sum(c => c.Area) * .09290304;
+                            Notice("FLOOR_ENVELOPE_ONLY", "Информация", "Этаж «" + first.Level.Name + "»: площадь подтверждённой оболочки до исключений " + area.ToString("0.###", CultureInfo.InvariantCulture) + " м². Это справочная геометрия, в итог ТЭП не включена: состав исключений не подтверждён.", first, indicator.ToString());
+                            foreach (var contour in contours)
+                            {
+                                var reference = PlanarRow(first, indicator, contour, true, "Справочная оболочка до исключений; не является итогом ТЭП");
+                                reference.Purpose = "envelope-reference";
+                                current.Details.Add(reference);
+                            }
+                            Notice("ROOM_FLOOR_SKIPPED", "Ошибка", "Этаж «" + first.Level.Name + "»: оболочка построена независимо от ошибки помещения, но итог после исключений не подтверждён. Другие этажи рассчитываются.", first, indicator.ToString());
                             continue;
                         }
-                        int firstIssue = current.Issues.Count;
-                        var contours = RoomFloorContours(records, first, indicator);
                         var assigned = new HashSet<string>();
                         foreach (var contour in contours)
                         {
-                            var occupants = floor.Where(r => (Intersect(RoomNetPlan(r), contour)?.Volume ?? 0) > 1e-9).ToList();
+                            var occupants = floor.Where(r => RegionIntersection(RoomNetRegion(r), contour).Area > 1e-9).ToList();
                             if (occupants.Count == 0)
                                 throw new InvalidOperationException("В замкнутом контуре этажа нет помещений. Нельзя определить назначение площади и проверить исключения.");
                             foreach (var room in occupants)
                                 if (!assigned.Add(room.Key)) throw new InvalidOperationException("Помещение ID " + IDHelper.ElIdValue(room.Element.Id) + " пересекает несколько отдельных контуров зданий.");
                             if (occupants.Select(r => r.Building + "|" + r.BuildingClass + "|" + r.Profile).Distinct().Count() != 1)
                                 throw new InvalidOperationException("В одном замкнутом контуре разные корпуса или профили здания. Проверьте параметры помещений.");
-                            if (occupants.Select(r => r.Level.Kind + "|" + r.Level.Above + "|" + r.Level.TopSlab).Distinct().Count() != 1)
+                            if (occupants.Select(r => r.Level.Kind + "|" + r.Level.Above + "|" + TopSlabRuleKey(r.Level)).Distinct().Count() != 1)
                                 throw new InvalidOperationException("Помещения одного контура имеют противоречащие настройки наземности / вида этажа.");
                             var owner = occupants.First().Copy();
                             owner.Section = occupants.Select(r => r.Section).Distinct().Count() == 1 ? owner.Section : "";
                             owner.Override = null;
-                            if (!ContourBaseIncluded(owner, indicator)) continue;
-                            Solid exclusions = null, occupied = null;
-                            foreach (var room in occupants)
+                            if (!ContourBaseIncluded(owner, baseIndicator)) continue;
+                            var exclusions=PlanarRegion.Empty;var occupied=PlanarRegion.Empty;
+                            foreach(var room in occupants)
                             {
-                                Progress("2D-помещения: " + owner.Level.Name + "; ID " + IDHelper.ElIdValue(room.Element.Id));
-                                var net = RoomNetPlan(room);
-                                if ((Intersect(occupied, net)?.Volume ?? 0) * .09290304 > .005)
-                                    throw new InvalidOperationException("Пересекающиеся помещения на этаже, ID " + IDHelper.ElIdValue(room.Element.Id) + ". Назначение пересечения неоднозначно.");
-                                occupied = Union(occupied, net);
-                                if (room.Role == "unknown") throw new InvalidOperationException("Не определено назначение помещения ID " + IDHelper.ElIdValue(room.Element.Id) + ". Задайте параметр или правило классификации.");
-                                bool include = Eligible(room, indicator);
-                                if (include && (Subtract(net, contour)?.Volume ?? 0) * .09290304 > .005)
-                                    throw new InvalidOperationException("Граница учитываемого помещения ID " + IDHelper.ElIdValue(room.Element.Id) + " выходит за контур наружных стен. Проверьте геометрию этажа.");
-                                // Ordinary included rooms require no exclusion polygon. Read the
-                                // envelope once; do not reconstruct every room's exterior wall share.
-                                bool vertical = OneOf(room.Role, "multilight", "stair-gap", "opening", "shaft", "engineering-shaft");
-                                bool heightCut = (int)indicator > 4 && (OneOf(room.Role, "under-stair", "niche", "arch") || Number(room.Element, "slope").HasValue);
-                                if (include && !vertical && !heightCut) continue;
-                                var full = RoomBoundaryPlan(room, (int)indicator <= 4 ? "outer" : "gross", indicator.ToString());
-                                var measured = include ? Plan(room, indicator) : null;
-                                if (include && VerticalExclusion(room, indicator, records, measured ?? full)) include = false;
-                                var mask = include ? (ReferenceEquals(full, measured) ? null : Subtract(full, measured)) : full;
-                                mask = Intersect(contour, mask);
-                                exclusions = Union(exclusions, mask);
-                                if (mask != null && mask.Volume > 1e-9)
-                                    rows.Add(Row(room, indicator, mask.Volume * .09290304, 1, true,
-                                        "2D-исключение по назначению, высоте или правилу вертикального пространства", mask));
+                                var net=RoomNetRegion(room);
+                                if(RegionIntersection(occupied,net).Area*.09290304>.005)throw new InvalidOperationException("Пересекающиеся помещения, ID "+IDHelper.ElIdValue(room.Element.Id));
+                                occupied=RegionUnion(occupied,net);
+                                if(room.Role=="unknown")throw new InvalidOperationException("Не распределено назначение помещения ID "+IDHelper.ElIdValue(room.Element.Id));
+                                if(RegionDifference(net,contour).Area*.09290304>.005)throw new InvalidOperationException("Помещение выходит за нормативный контур, ID "+IDHelper.ElIdValue(room.Element.Id));
+                            }
+                            var cells=PartitionRoomFloor(contour,occupants);
+                            foreach(var cell in cells)
+                            {
+                                var mask=FloorCellExclusion(cell,indicator,records,cells);
+                                if(mask.IsEmpty)continue;
+                                exclusions=RegionUnion(exclusions,mask);
+                                rows.Add(PlanarRow(cell.Owners[0],indicator,mask,true,"2D-исключение; сечение Room по осям ограждений и подтверждённые смежные конструкции; ID помещений: "+string.Join(", ",cell.Owners.Select(r=>IDHelper.ElIdValue(r.Element.Id)))));
                             }
                             // Openings without Rooms and parametrically designated exceptions retain their checks.
-                            foreach (var element in records.Where(r => !(r.Element is SpatialElement) && r.Level != null && Math.Abs(r.Z - owner.Z) < 1e-6))
+                            foreach (var element in records.Where(r => !IsAreaInput(r.Element) && r.Level != null && Math.Abs(r.Z - owner.Z) < 1e-6))
                             {
                                 if (!ContourMaskRequired(element, Config.Metrics.Single(m => m.Key == indicator.ToString()), indicator, records)) continue;
-                                var mask = Intersect(contour, ContourMaskPlan(element, indicator));
-                                exclusions = Union(exclusions, mask);
-                                if (mask != null && mask.Volume > 1e-9)
-                                    rows.Add(Row(element, indicator, mask.Volume * .09290304, 1, true, "2D-исключение элемента", mask));
+                                var mask = RegionIntersection(contour, RegionOfPlan(ContourMaskPlan(element, indicator)));
+                                var uniqueMask = RegionDifference(mask, exclusions);
+                                exclusions = RegionUnion(exclusions, mask);
+                                if (!uniqueMask.IsEmpty)
+                                    rows.Add(PlanarRow(element, indicator, uniqueMask, true, "2D-исключение элемента; пересечения вычтены один раз"));
                             }
-                            var result = Subtract(contour, exclusions);
-                            if (result != null && result.Volume > 1e-9)
+                            var result = RegionDifference(contour, exclusions);
+                            double rawArea=contour.Area*.09290304,excludedArea=exclusions.Area*.09290304,netArea=result.Area*.09290304;
+                            if(Math.Abs(rawArea-excludedArea-netArea)>.001)throw new InvalidOperationException("Не сошёлся баланс площади оболочки, исключений и остатка с допуском 0,001 м².");
+                            Notice("FLOOR_AREA_BALANCE","Информация","Этаж «"+owner.Level.Name+"»: оболочка "+rawArea.ToString("0.###",CultureInfo.InvariantCulture)+" м² - исключения "+excludedArea.ToString("0.###",CultureInfo.InvariantCulture)+" м² = "+netArea.ToString("0.###",CultureInfo.InvariantCulture)+" м². Пересечения исключений учтены один раз.",owner,indicator.ToString());
                             {
-                                var row = Row(owner, indicator, result.Volume * .09290304, 1, false,
-                                    "Контур наружных стен на отметке пола " + (RoomFloorElevation(owner) * .3048).ToString("0.######", CultureInfo.InvariantCulture) + " м минус объединение 2D-исключений; внутренние стены учтены", result);
+
+                                var row = PlanarRow(owner, indicator, result, false,
+                                    "Контур наружных стен на отметке пола " + (RoomFloorElevation(owner) * .3048).ToString("0.######", CultureInfo.InvariantCulture) + " м минус объединение 2D-исключений; внутренние стены учтены");
                                 row.Purpose = "envelope";
                                 rows.Add(row);
                             }
@@ -280,6 +337,8 @@ namespace KPLN_CalculateTEP.Common
                         current.Details.AddRange(rows);
                     }
                     catch (OperationCanceledException) { throw; }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException) { throw; }
+                    catch (Autodesk.Revit.Exceptions.RegenerationFailedException) { throw; }
                     catch (Exception ex) { Notice("ROOM_FLOOR_CONTOUR", "Ошибка", first.Level.Name + ": " + ex.Message, first, indicator.ToString()); }
                 }
             }

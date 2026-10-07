@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
@@ -29,18 +29,52 @@ namespace KPLN_CalculateTEP.Common
 {
     public static partial class TepCalculation
     {
+        public class BuildingAssignment
+        {
+            public string Scope {get;set;} = "level";
+            public string Parameter {get;set;} = "";
+            public string Match {get;set;} = "";
+            public bool Contains {get;set;}
+            public string Building {get;set;} = "";
+        }
         public class Settings : System.ComponentModel.INotifyPropertyChanged
         {
+            public const string AllPhases = "@all-phases";
             private static readonly Dictionary<string,string> fixedParameters = new Dictionary<string,string> {
                 {"building","ПОМ_Корпус"}, {"apartment","КВ_Номер"}, {"section","ПОМ_Секция"},
-                {"parking","@ParkingMark"}, {"function","@Department"}, {"part",""}, {"profile",""}, {"coefficient",""}
+                {"parking","@ParkingMark"}, {"function","@Department"}, {"part",""}, {"profile",""}, {"coefficient",""},
+                {"width",""}, {"stair-width",""}, {"roof-ratio",""}, {"partial-floor",""},
+                {"mezzanine-ratio",""}, {"level",""}, {"floor-offset",""}, {"include",""}, {"height",""}, {"slope",""}
             };
             public static bool IsFixedParameter(string key) { return fixedParameters.ContainsKey(key); }
             public static string FixedParameterName(string key) { return fixedParameters[key]; }
             public ObservableCollection<ContourSketch> Contours {get;set;} = new ObservableCollection<ContourSketch>();
-            public int Version {get;set;} = 2;
+            // Increment when saved settings change meaning; add an explicit migration in UpgradeSettings.
+            public const int CurrentVersion=3;
+            public int Version {get;set;} = CurrentVersion;
+            [System.Runtime.Serialization.OnDeserializing]
+            private void InitializeMissingFields(System.Runtime.Serialization.StreamingContext context)
+            {
+                var defaults=new Settings();
+                foreach(var property in typeof(Settings).GetProperties().Where(p=>p.CanRead&&p.CanWrite))
+                    property.SetValue(this,property.GetValue(defaults));
+                // An absent version is not evidence that an unknown payload uses the current schema.
+                Version=0;
+            }
             public int RoomWorkflowVersion {get;set;}
             public List<DepartmentAssignment> Departments {get;set;} = new List<DepartmentAssignment>();
+            public string RoomClassificationParameter {get{return "@Department";}set{ /* Legacy settings cannot change the fixed room source. */ }}
+            public UserDictionary LocalClassificationDictionary {get;set;}
+            public UserDictionary SharedClassificationSnapshot {get;set;}
+            public bool CategorySettingsConfigured {get;set;}
+            public List<CategorySource> CategorySources {get;set;} = new List<CategorySource>();
+            public List<StairFamilySetting> StairFamilies {get;set;} = new List<StairFamilySetting>();
+            public List<CategoryFamily> CategoryFamilies {get;set;} = new List<CategoryFamily>();
+            public bool ClassifyFamilies {get;set;}
+            public string FamilyClassificationParameter {get;set;} = "ТЭП_Назначение";
+            public bool FamilyAreaFromParameter {get;set;}
+            public string FamilyAreaParameter {get;set;} = "Площадь";
+            public bool UseReviewRegions {get;set;} = true;
             public string PreviousWorkflowSettings {get;set;}
             public string LoggiaCoefficient {get;set;} = "0.5";
             public string BalconyCoefficient {get;set;} = "0.3";
@@ -63,6 +97,7 @@ namespace KPLN_CalculateTEP.Common
             public string Prefix {get;set;} = "ТЭП_";
             public int Decimals {get;set;} = 2;
             public string IssueDetail {get;set;} = "full";
+            public List<BuildingAssignment> BuildingAssignments {get;set;} = new List<BuildingAssignment>();
             public List<Metric> Metrics {get;set;} = Catalog();
             public List<ParameterMap> Parameters {get;set;} = DefaultParameters();
             public ObservableCollection<Rule> Rules {get;set;} = new ObservableCollection<Rule>();
@@ -95,24 +130,24 @@ namespace KPLN_CalculateTEP.Common
                 result.First(x=>x.Key=="profile").Description="Уточняет тип здания для отдельных помещений и меняет применяемые нормативные правила. Пустое имя - тип из первого шага.\nПример: ТЭП_ТипЗдания; значение public для общественной части.";
                 result.First(x=>x.Key=="parking").Description="Общий ID машино-места позволяет учесть его один раз. Нужен при выборе показателя количества машино-мест.\nПример: ТЭП_МашиноМесто; значение ММ-015.";
                 result.First(x=>x.Key=="embedded").Description="Показывает, относится ли нежилое помещение к встроенно-пристроенной части. Нужен для показателей ННП.\nПример: ТЭП_ВстроеннаяЧасть; значение да или 1.";
-                result.First(x=>x.Key=="standalone").Description="Разделяет отдельно стоящие и остальные объекты при расчёте ННП. Заполняется вместе с признаком встроенно-пристроенной части.\nПример: ТЭП_ОтдельноСтоящий; значение нет или 0.";
-                result.First(x=>x.Key=="vertical").Description="Связывает по этажам одну шахту, проём или многосветное пространство. Позволяет применить правило учёта нижнего этажа и исключения верхних.\nПример: ТЭП_ВертикальноеПространство; значение ШАХТА-03 одинаково на всех её этажах.";
+                result.First(x=>x.Key=="standalone").Description="Разделяет отдельно стоящие и остальные объекты при расчёте ННП. Заполняется вместе с признаком встроенно-пристроенной части. Пример: ТЭП_ОтдельноСтоящий; значение нет или 0.";
+                result.First(x=>x.Key=="vertical").Description="Для групп, имя которых содержит «шахты», замкнутые границы и связь этажей определяются автоматически. Этот параметр нужен для остальных проёмов и многосветных пространств: одинаковый ID связывает их этажи для правила учёта нижнего этажа и исключения верхних.";
                 result.First(x=>x.Key=="height").Description="Высота в свету нужна для проверки ниш и низких технических пространств. Принимается параметр длины Revit либо текст в метрах.\nПример: ТЭП_ВысотаВСвету; текстовое значение 1,75.";
                 result.First(x=>x.Key=="slope").Description="Угол наклона потолка включает высотные проверки мансардных помещений. Число в градусах от 0 до 90 либо параметр угла Revit; для обычного помещения оставьте значение пустым.\nПример: ТЭП_УголПотолка; значение 45.";
                 result.First(x=>x.Key=="width").Description="Ширина нужна для проверки арочного проёма или лестничного просвета. Параметр длины либо текст в метрах.\nПример: ТЭП_ШиринаПросвета; текстовое значение 1,6.";
                 result.First(x=>x.Key=="roof-ratio").Description="Доля площади надстройки от кровли участвует в правилах общественных зданий. Число от 0 до 1.\nПример: ТЭП_ДоляНадстройки; значение 0,2 означает 20%.";
                 result.First(x=>x.Key=="partial-floor").Description="Указывает, занимает ли техническое пространство только часть этажа; используется для высотных зданий.\nПример: ТЭП_ЧастьЭтажа; значение да или 1.";
-                result.First(x=>x.Key=="transition").Description="Перечисляет корпуса, соединённые переходом. Его учитываемая площадь распределяется между указанными корпусами.\nПример: ТЭП_КорпусаПерехода; значение Корпус 1;Корпус 2.";
+                result.First(x=>x.Key=="transition").Description="Перечисляет корпуса, соединённые переходом. Его учитываемая площадь распределяется между указанными корпусами. Пример: ТЭП_КорпусаПерехода; значение Корпус 1;Корпус 2.";
                 result.First(x=>x.Key=="include").Description="Позволяет явно исключить помещение из расчёта. Значение нет/0 исключает его; да/1 оставляет нормативные проверки включения.\nПример: ТЭП_Учитывать; значение нет.";
                 result.First(x=>x.Key=="mezzanine-ratio").Description="Доля площади антресоли от этажа участвует в проверке общей площади общественного здания. Число от 0 до 1.\nПример: ТЭП_ДоляАнтресоли; значение 0,45 означает 45%.";
-                result.First(x=>x.Key=="service-access").Description="Для общественного технического пространства ниже 1,8 м определяет необходимость прохода обслуживания коммуникаций: да/1 - учитывать, нет/0 - исключать.\nПример: ТЭП_ПроходОбслуживания; значение да.";
+                result.First(x=>x.Key=="service-access").Description="Для общественного технического пространства ниже 1,8 м определяет необходимость прохода обслуживания коммуникаций: да/1 - учитывать, нет/0 - исключать. Пример: ТЭП_ПроходОбслуживания; значение да.";
                 result.First(x=>x.Key=="stair-width").Description="Ширина марша сравнивается с шириной лестничного просвета при его исключении. Параметр длины либо текст в метрах.\nПример: ТЭП_ШиринаМарша; текстовое значение 1,2.";
                 result.First(x=>x.Key=="level").Description="Необязательное уточнение расчётного уровня. Обычно используется уровень самого помещения; заполняйте при необходимости другого расчётного отнесения.\nПример: ТЭП_РасчётныйУровень; точное имя уровня «02 Этаж» либо ссылка на него.";
                 result.First(x=>x.Key=="function").Description="Выберите параметр, в котором записано назначение помещения, либо @Name для имени. Непонятные плагину обозначения сопоставьте во вкладке «Классификация».\nПример: ТЭП_Назначение; значение ЛДЖ - правило с назначением «Лоджия».";
                 foreach(var map in result.Where(m=>IsFixedParameter(m.Key)))map.Name=FixedParameterName(map.Key);
                 return result;
             }
-            public string Parameter(string key) { var p=Parameters.FirstOrDefault(x=>x.Key==key); return p==null?"":p.Name; }
+            public string Parameter(string key) { if(IsFixedParameter(key))return FixedParameterName(key); var p=Parameters.FirstOrDefault(x=>x.Key==key); return p==null?"":p.Name; }
         }
     }
 }

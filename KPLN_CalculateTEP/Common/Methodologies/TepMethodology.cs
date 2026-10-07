@@ -12,7 +12,8 @@ namespace KPLN_CalculateTEP.Common.Methodologies
         internal abstract string GnsWallBoundary { get; }
         internal abstract bool UsesCoreBoundary { get; }
         internal abstract bool ExcludesGnsRole(string role);
-        internal abstract bool CountsGnsOpeningOnOneFloor(Solid shape);
+        internal bool CountsGnsOpeningOnOneFloor(Solid shape) => CountsGnsOpeningAreaOnOneFloor(shape.Volume * .09290304);
+        internal abstract bool CountsGnsOpeningAreaOnOneFloor(double areaSquareMetres);
         internal abstract bool CountsGnsShaftOnOneFloor { get; }
     }
 }

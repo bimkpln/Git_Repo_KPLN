@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
@@ -69,9 +69,9 @@ namespace KPLN_CalculateTEP.Common
                 }
                 finally{parameterCache.Clear();phaseCache.Clear();}
             }
-            private string RoomBuildingValue(Room room)
+            private string RoomBuildingValue(Room room,Source source=null)
             {
-                var value=Mapped(room,"building");
+                var value=Mapped(room,"building");if(string.IsNullOrWhiteSpace(value)){var assigned=AssignedBuilding(source,room);if(!string.IsNullOrWhiteSpace(assigned))value=assigned;}
                 if(singleBuildingAssumption==null)return value;
                 if(!string.IsNullOrWhiteSpace(value)&&!Eq(value,singleBuildingAssumption.BuildingName))
                     throw new InvalidOperationException("Обнаружен другой корпус после подтверждения единого корпуса. Повторите проверку.");
@@ -83,13 +83,21 @@ namespace KPLN_CalculateTEP.Common
                 var saved=current; current=new Run(); current.Issues.AddRange(startupIssues); notices.Clear(); invalidRoomFloors.Clear();
                 try
                 {
-                    ValidateDatums(); PreflightRecords();
+                    WithPreservedReviewInputs(()=>{ValidateDatums();BeginReviewInputs();RefreshLevelGeometry();PreflightRecords();});
                     return current.Issues.ToList();
                 }
                 finally {current=saved; reportProgress=null; parameterCache.Clear();singleBuildingAssumption=null;}
             }
             private void ValidateDatums()
             {
+                RefreshTopSlabs(reportProgress);
+                foreach(var level in Config.Levels.Where(l=>l.Include&&l.Kind=="basement"&&l.Above=="auto"))
+                {
+                    var review=TopSlabReviewFor(level);
+                    if(level.TopSlabMode=="manual"||review.Selected!=null)
+                        current.Issues.Add(new Issue{Code="LEVEL_TOP_SLAB",Severity=level.TopSlabMode=="manual"||review.Problems.Count>0?"Предупреждение":"Информация",Source=level.Source,
+                            Message="Цоколь «"+level.Name+"»: "+level.TopSlabSummary+". "+(level.TopSlabMode=="manual"?"Применена ручная абсолютная отметка.":review.Selected.Elements+" "+string.Join(" ",review.Problems))});
+                }
                 zero=double.NaN;ground=double.NaN;
                 if(Config.Metrics.Any(m=>m.Enabled&&MetricNeedsZero(m.Key)))
                     try {zero=Datum(Config.ZeroMode,Config.ZeroValue,Config.ZeroLevel,Config.ZeroParameter,false);}
@@ -163,6 +171,7 @@ namespace KPLN_CalculateTEP.Common
             private bool PhaseAccepted(Source source,Element e)
             {
                 if(e.DesignOption!=null&&!e.DesignOption.IsPrimary)return false;
+                if(Config.Phase==Settings.AllPhases)return true;
                 Phase phase;if(!phaseCache.TryGetValue(source.Document,out phase))
                 {var phases=source.Document.Phases.Cast<Phase>().ToList();phase=string.IsNullOrWhiteSpace(Config.Phase)?phases.LastOrDefault():phases.FirstOrDefault(p=>Eq(p.Name,Config.Phase));phaseCache[source.Document]=phase;}
                 if(phase==null)throw new InvalidOperationException("В источнике отсутствует выбранная стадия «"+Config.Phase+"».");
@@ -180,33 +189,17 @@ namespace KPLN_CalculateTEP.Common
             }
             private Record MakeRecord(Source source,Element e)
             {
-                var level=e.Document.GetElement(e.LevelId) as Level;
-                if(level==null&&e is SpatialElement)level=(e as SpatialElement).Level;
-                string levelName=Mapped(e,"level");
-                if(!string.IsNullOrWhiteSpace(levelName))
-                {
-                    var parameter=Parameter(e,Config.Parameter("level"));
-                    if(parameter!=null&&parameter.StorageType==StorageType.ElementId)level=e.Document.GetElement(parameter.AsElementId()) as Level;
-                    else level=new FilteredElementCollector(e.Document).OfClass(typeof(Level)).Cast<Level>().SingleOrDefault(l=>Eq(l.Name,levelName));
-                    if(level==null)throw new InvalidOperationException("Параметр расчётного уровня не соответствует уровню модели: "+levelName);
-                }
+                var level=ModelLevel(e);
                 var setting=level==null?null:Config.Levels.FirstOrDefault(x=>x.Key==source.Key+"/"+level.UniqueId);
-                var r=new Record{Source=source,Element=e,Level=setting,Section=e is Room?Mapped(e,"section")??"":"",Apartment=e is Room?RecordParameter(source,e,"apartment"):"",Vertical=RecordParameter(source,e,"vertical"),Role="unknown",Part="auto"};
+                var r=new Record{Source=source,Element=e,Level=setting,Section=IsAreaInput(e)?Mapped(e,"section")??"":"",Apartment=IsAreaInput(e)?RecordParameter(source,e,"apartment"):"",Vertical=RecordParameter(source,e,"vertical"),Role="unknown",Part="auto"};
                 r.Apartment=(r.Apartment??"").Trim(); if(r.Apartment=="0"||r.Apartment=="-")r.Apartment="";
                 string value=Config.Grouping=="links"?source.Name:Config.Grouping=="worksets"?Value(e,"@Workset"):
-                    Config.Grouping=="selection"?Config.ManualBuilding:e is Room?RoomBuildingValue((Room)e):null;
+                    Config.Grouping=="selection"?Config.ManualBuilding:e is Room?RoomBuildingValue((Room)e,source):IsClassifiedFamily(e)?(RecordParameter(source,e,"building")??singleBuildingAssumption?.BuildingName):null;
                 var maps=Config.Buildings.Where(x=>(x.Source=="*"||Eq(x.Source,source.Key)||Eq(x.Source,source.Name))&&(x.MatchValue=="*"||Eq(x.MatchValue,value))).ToList();
                 if(maps.Count>1)throw new InvalidOperationException("Объект соответствует нескольким строкам назначения корпуса.");
-                var map=maps.FirstOrDefault();r.Building=map?.Building??value;
+                var map=maps.FirstOrDefault();r.Building=map?.Building??value;if(string.IsNullOrWhiteSpace(r.Building))r.Building=AssignedBuilding(source,e);
                 if(e is Room&&string.IsNullOrWhiteSpace(r.Building))throw new InvalidOperationException(MissingBuildingMessage(value));
                 r.BuildingIncluded=map?.Include??true;
-                if(level!=null)
-                {
-                    var overrides=Config.Levels.Where(l=>l.Key==source.Key+"/"+level.UniqueId&&(!string.IsNullOrWhiteSpace(l.Building)||!string.IsNullOrWhiteSpace(l.Section))&&
-                        (string.IsNullOrWhiteSpace(l.Building)||Eq(l.Building,r.Building))&&(string.IsNullOrWhiteSpace(l.Section)||Eq(l.Section,r.Section))).ToList();
-                    if(overrides.Count>1)throw new InvalidOperationException("Несколько настроек уровня соответствуют одному корпусу и секции.");
-                    if(overrides.Count==1)r.Level=overrides[0];
-                }
                 r.Profile=Config.Profile=="by-source"?source.Profile:Config.Profile=="by-building"?map?.Profile:Config.Profile;
                 if(r.Profile=="high-mixed"&&map!=null&&OneOf(map.Profile,"high-residential","high-public"))r.Profile=map.Profile;
                 string mappedProfile=Mapped(e,"profile");if(!string.IsNullOrWhiteSpace(mappedProfile))
@@ -219,8 +212,8 @@ namespace KPLN_CalculateTEP.Common
                 if(e.Category!=null&&IDHelper.ElIdValue(e.Category.Id)==(long)BuiltInCategory.OST_StructuralFoundation)r.Role="structure";
                 if(IsParkingFamily(e))r.Role="parking";
                 if(e is Opening)r.Role="opening";
-                if(e is Room)r.Role=DepartmentRole(Value(e,"@Department"));
-                if(e is Room)r.Part=RoomPart(Value(e,"@Department"));
+                if(IsAreaInput(e))r.Role=e is Room?DepartmentRole(ClassificationValue(e)):ClassifiedFamilyRole(e);
+                if(IsAreaInput(e))r.Part=!string.IsNullOrEmpty(r.Apartment)||OneOf(r.Role,"heated","auxiliary","residential-common")?"residential":"nonresidential";
                 ApplyRules(r,"all");
                 // Classification is validated after metric-specific rules in the preflight pass.
                 return r;
@@ -251,14 +244,14 @@ namespace KPLN_CalculateTEP.Common
             }
             private double Datum(string mode,string value,string levelKey,string parameter,bool isGround)
             {
-                if(mode=="manual")return RequiredNumber(value,isGround?"отметка земли, м":"отметка 0.000, м")/.3048;
+                if(mode=="manual")return AbsoluteDatumToInternal(RequiredNumber(value,isGround?"отметка земли, м":"отметка 0.000, м"));
                 if(mode=="level")
                 {var l=Config.Levels.FirstOrDefault(x=>x.Key==levelKey);if(l==null)throw new InvalidOperationException(isGround?"Не выбран уровень земли.":"Выберите уровень первого этажа для нуля здания во вкладке «Квартиры, этажи и отметки».");return l.Elevation;}
                 if(mode=="parameter")
                 {
                     var p=Parameter(doc.ProjectInformation,parameter);if(p==null||!p.HasValue)throw new InvalidOperationException("Не заполнен параметр отметки в сведениях о проекте: "+parameter);
-                    if(p.StorageType==StorageType.Double&&IDHelper.IsLength(p))return p.AsDouble();
-                    return RequiredNumber(Value(doc.ProjectInformation,parameter),parameter)/.3048;
+                    if(p.StorageType==StorageType.Double&&IDHelper.IsLength(p))return AbsoluteDatumToInternal(p.AsDouble()*.3048);
+                    return AbsoluteDatumToInternal(RequiredNumber(Value(doc.ProjectInformation,parameter),parameter));
                 }
                 if(mode=="terrain"&&isGround)
                 {
@@ -299,7 +292,7 @@ namespace KPLN_CalculateTEP.Common
                     foreach(var room in source.Elements.OfType<Room>().Where(IsPlacedRoom))
                     {
                         if(++scanned%100==0)Progress("Определение корпусов по помещениям: "+source.Name+" - "+scanned);
-                        try{if(PhaseAccepted(source,room))values.Add(RoomBuildingValue(room));}
+                        try{if(PhaseAccepted(source,room))values.Add(RoomBuildingValue(room,source));}
                         catch(OperationCanceledException){throw;}
                         catch{values.Add(null);}
                     }
@@ -316,11 +309,11 @@ namespace KPLN_CalculateTEP.Common
                     if(building!=null){foreach(var record in group)record.Building=building;continue;}
                     var affected=Config.Metrics.Where(m=>m.Enabled&&
                         (m.Key=="ParkingCount"?group.Any(r=>IsParkingFamily(r.Element)):
-                        group.Any(r=>!IsParkingFamily(r.Element))&&(m.Key.StartsWith("Volume")||OneOf(m.Key,"Footprint","Storeys","Floors")))).ToList();
+                        group.Any(r=>IsClassifiedFamily(r.Element))||group.Any(r=>!IsParkingFamily(r.Element))&&(m.Key.StartsWith("Volume")||OneOf(m.Key,"Footprint","Storeys","Floors")))).ToList();
                     foreach(var metric in affected)
-                        current.Issue("ELEMENT_BUILDING_UNRESOLVED","Ошибка",
-                            "Не удалось однозначно определить корпус элементов по размещённым помещениям: помещений нет, корпус не заполнен или указано несколько корпусов. Элементов: "+group.Count()+".",
-                            metric.Key,source.Name,action:"Параметр ПОМ_Корпус требуется только у помещений. Для элементов нескольких корпусов необходимо пространственное распределение; автоматическое назначение произвольному корпусу не выполняется.");
+                        current.Issues.Add(new Issue{Code="ELEMENT_BUILDING_UNRESOLVED",Severity="Ошибка",Metric=metric.Key,Source=source.Name,
+                            Message="Корпус конструкции не определён: среди помещений источника нет единственного заполненного корпуса. Задайте соответствие по уровню, источнику или параметру в настройках ТЭП. Если выбранные источники относятся к одному корпусу, можно подтвердить единый корпус. ПОМ_Корпус на конструкции не требуется.",
+                            ElementIds=group.Select(r=>IDHelper.ElIdValue(r.Element.Id).ToString()).Distinct().ToList(),Action="Настройте соответствия корпусов или заполните корпус у помещений."});
                 }
                 records.RemoveAll(r=>!(r.Element is Room)&&string.IsNullOrWhiteSpace(r.Building));
             }
@@ -331,8 +324,25 @@ namespace KPLN_CalculateTEP.Common
                 var distinct=names.Distinct(StringComparer.OrdinalIgnoreCase).Take(2).ToList();
                 return distinct.Count==1?distinct[0]:null;
             }
+            private int placedRoomsScanned;
+            private readonly Dictionary<string,int> roomExclusionReasons=new Dictionary<string,int>();
+            private void TrackRoomExclusion(Element element,string reason)
+            {
+                if(!(element is Room))return;
+                int count;roomExclusionReasons.TryGetValue(reason,out count);roomExclusionReasons[reason]=count+1;
+            }
+            public static string EmptyAreaInputsMessage(int placedRooms,IEnumerable<KeyValuePair<string,int>> reasons)
+            {
+                var counts=reasons.Where(r=>r.Value>0).OrderByDescending(r=>r.Value).ThenBy(r=>r.Key).ToList();
+                string text="Для расчёта площадей принято объектов: 0. Размещённых помещений найдено в доступных источниках: "+placedRooms+".";
+                if(counts.Count>0)text+="\nПричины исключения:\n"+string.Join("\n",counts.Select(r=>r.Key+" Количество: "+r.Value+"."));
+                else text+="\nПроверьте состав включённых источников и наличие размещённых помещений или выбранных расчётных семейств.";
+                if(counts.Any(r=>r.Key.Contains("ПОМ_Корпус")))text+="\nЗаполните ПОМ_Корпус либо, если это действительно один корпус, подтвердите единый корпус внизу окна. После подтверждения проверка и расчёт выполнятся заново.";
+                return text;
+            }
             private List<Record> Collect()
             {
+                placedRoomsScanned=0;roomExclusionReasons.Clear();
                 var records=new List<Record>();
                 foreach(var source in Sources.Where(s=>s.Mode!="exclude"))
                 {
@@ -346,31 +356,37 @@ namespace KPLN_CalculateTEP.Common
                         if(++scanned%100==0)Progress("Классификация: "+source.Name+" - "+scanned+" / "+source.Elements.Count);
                         if(e is SpatialElement && !(e is Room))continue;
                         if(e is Room&&!IsPlacedRoom((Room)e)){unplaced++;continue;}
+                        if(e is Room)placedRoomsScanned++;
                         if(!(e is SpatialElement)&&!(e is HostObject)&&!(e is FamilyInstance)&&!(e is Opening)&&!(e is DirectShape)&&!(e is Ceiling))continue;
-                        if(Config.Grouping=="selection"&&!selection.Contains(IDHelper.ElIdValue(source.RootLink??e.Id)))continue;
+                        if(Config.Grouping=="selection"&&!selection.Contains(IDHelper.ElIdValue(source.RootLink??e.Id))){TrackRoomExclusion(e,"Объект не входит в выбранный набор.");continue;}
                         try
                         {
-                            if(!PhaseAccepted(source,e))continue;
+                            if(!PhaseAccepted(source,e)){TrackRoomExclusion(e,"Помещение не соответствует выбранной стадии.");continue;}
+                            if(e is Room&&CategoryUsesFamilies(DepartmentRole(ClassificationValue(e)))){TrackRoomExclusion(e,"Для категории выбран расчёт по семействам вместо помещений.");continue;}
                             bool parking=IsParkingFamily(e);
                             bool foundation=e.Category!=null&&IDHelper.ElIdValue(e.Category.Id)==(long)BuiltInCategory.OST_StructuralFoundation;
                             bool configured=Config.Rules.Any(rule=>rule.Enabled&&(rule.Metric=="all"||Config.Metrics.Any(m=>m.Enabled&&m.Key==rule.Metric))&&Matches(e,rule));
-                            bool hasFunction=!string.IsNullOrWhiteSpace(Mapped(e,"function"));
+                            bool hasFunction=IsClassifiedFamily(e)||!string.IsNullOrWhiteSpace(Mapped(e,"function"));
                             bool construction=Config.Metrics.Any(m=>m.Enabled&&(m.Key.StartsWith("Volume")||OneOf(m.Key,"Footprint","Storeys","Floors")));
                             if(!(e is SpatialElement)&&!(e is Opening)&&!parking&&!hasFunction&&!configured&&!(construction&&(e is HostObject||foundation)))continue;
                             var spatial=e as SpatialElement;
                             if(spatial!=null&&SpatialArea(spatial)<=1e-9)
                             {
-                                MarkInvalidRoomFloor(source,e);
-                                if(spatial.Level==null)current.Issue("ROOM_LEVEL","Ошибка","У помещения с нулевой площадью не определён этаж. Нельзя установить, какой контур требуется пропустить.",source:source.Name,element:IDHelper.ElIdValue(e.Id).ToString());
-                                current.Issue("SPATIAL_UNBOUNDED","Ошибка","Размещённое помещение ID "+IDHelper.ElIdValue(e.Id)+" на этаже «"+(spatial.Level?.Name??"уровень не определён")+"» имеет нулевую площадь и пропущено. Доступные данные рассчитываются с пометкой о неполноте; полный контур затронутого этажа не публикуется.",source:source.Name,element:IDHelper.ElIdValue(e.Id).ToString(),
+                                TrackRoomExclusion(e,"Нулевая площадь помещения.");
+
+                                current.Issue("SPATIAL_UNBOUNDED","Ошибка","Размещённое помещение ID "+IDHelper.ElIdValue(e.Id)+" на этаже «"+(spatial.Level?.Name??"уровень не определён")+"» имеет нулевую площадь и пропущено. Расчёт остальных объектов продолжается; это помещение не участвует в площадях и количестве квартир.",source:source.Name,element:IDHelper.ElIdValue(e.Id).ToString(),
                                     action:"Проверьте замкнутость границ и наличие нескольких помещений в одном контуре. Полученная сумма не является полным итогом модели.");
                                 continue;
                             }
-                            var record=MakeRecord(source,e);if(record.BuildingIncluded)candidates.Add(record);
+                            var record=MakeRecord(source,e);
+                            if(IsClassifiedFamily(e)&&UsesFamilyParameterArea(e)&&FamilyParameterArea(record)<=1e-9)
+                            {Notice("ZERO_AREA","Предупреждение","У экземпляра нулевая площадь в параметре. Объект пропущен; остальные рассчитываются.",record);continue;}
+                            if(record.BuildingIncluded)candidates.Add(record);else TrackRoomExclusion(e,"Корпус исключён из расчёта в настройках.");
                         }
                         catch(System.OperationCanceledException){throw;}
                     catch(Exception ex)
                         {
+                            TrackRoomExclusion(e,ex.Message);
                             MarkInvalidRoomFloor(source,e);
                             var affected=(e is HostObject)?Config.Metrics.Where(m=>m.Enabled&&(m.Key.StartsWith("Volume")||OneOf(m.Key,"Footprint","Storeys","Floors"))).Select(m=>m.Key).ToList():new List<string>{""};
                             foreach(var metric in affected)current.Issues.Add(new Issue{Code="CLASSIFICATION",Severity=source.Mode=="reference"?"Предупреждение":"Ошибка",Message=ex.Message,Metric=metric,Source=source.Name,Element=IDHelper.ElIdValue(e.Id).ToString(),InputKind=e is Room?"room":IsParkingFamily(e)?"parking":""});
@@ -380,6 +396,7 @@ namespace KPLN_CalculateTEP.Common
                     records.AddRange(candidates);
                 }
                 AssignNonRoomBuildings(records);
+                CollectAutomaticShafts(records);
                 if(Config.Grouping=="selection"&&selection.Count==0)Notice("SELECTION_EMPTY","Ошибка","Ручной режим требует выбора объектов или экземпляров связей до запуска команды.");
                 return records;
             }

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
@@ -80,6 +80,8 @@ namespace KPLN_CalculateTEP.Common
             }
             private Solid Plan(Record r,Indicator metric)
             {
+                if(r.AutomaticShaftRegion!=null)
+                    return BuildPlanarSolid(AutomaticShaftPlan(r),0,1,true);
                 Progress("Геометрия: "+MetricLabels[metric.ToString()]+" / "+r.Source.Name+" / "+r.Level?.Name+"; ID "+IDHelper.ElIdValue(r.Element.Id));
                 string boundary=(int)metric<=4?"outer":GrossMetric(metric)?"gross":"net";
                 if(boundary=="outer"&&r.Element is SpatialElement&&!(r.Element is Area))Notice("EXTERIOR_FUNCTION","Предупреждение","Автоматический внешний контур использует функцию наружных стен и их ядро. Проверьте маркировку наружных стен и полноту помещений на служебном плане.",r,metric.ToString());
@@ -102,28 +104,10 @@ namespace KPLN_CalculateTEP.Common
                     }
                     shapes[key]=shape;
                 }
-                if(boundary!="outer")
+                if(boundary!="outer"&&shape!=null)
                 {
-                    double min=0;
-                    bool residentialRoom=metric==Indicator.ApartmentsTotal||metric==Indicator.ApartmentsHeated||!IsPublic(r)&&r.Part!="nonresidential"&&r.Role!="public";
-                    if(residentialRoom&&r.Role=="under-stair")min=1.600001;
-                    if(residentialRoom&&r.Role=="niche"&&Dimension(r,"height",true)<2)return null;
-                    if(residentialRoom&&r.Role=="arch"&&Dimension(r,"width",true)<2)return null;
-                    var slope=Number(r.Element,"slope");
-                    if(slope.HasValue)
-                    {
-                        if(!IsPublic(r)&&r.Role!="public"&&r.Part!="nonresidential")
-                        {if(r.Element is Area&&r.Override==true){Notice("MANSARD_MANUAL","Предупреждение","Использован явно включённый контур жилой мансарды. Проверьте согласованное обоснование высотной границы.",r,metric.ToString());return shape;}
-                            throw new InvalidOperationException("Для жилой мансарды в исходном ТЗ неоднозначно заданы пороги высоты. Подготовьте зону учитываемой части и отдельное правило включения с обоснованием.");}
-                        min=metric==Indicator.PublicCalculated?1.5:PublicMansardHeight(slope.Value);
-                    }
-                    if(min>0&&r.Element is SpatialElement&&!(r.Element is Area))
-                    {
-                        var volume=SpatialVolume(r,boundary=="gross");var section=Section(volume,(r.Element is Room?RoomFloorElevation(r):r.Z)+min/.3048);
-                        shape=Intersect(shape,section);
-                    }
-                    else if(min>0&&r.Element is Area)
-                        Notice("AREA_HEIGHT","Предупреждение","Зона должна быть заранее обрезана по нормативной высоте: "+min.ToString("0.###")+" м.",r,metric.ToString());
+                    var region=ApplyRoomHeightRules(r,metric,ProjectionRegion(shape),boundary=="gross");
+                    shape=region.IsEmpty?null:BuildPlanarSolid(region,0,1,true);
                 }
                 return shape;
             }

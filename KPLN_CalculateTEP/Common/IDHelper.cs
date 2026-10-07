@@ -4,6 +4,22 @@ namespace KPLN_CalculateTEP.Common
 {
     internal static class IDHelper
     {
+        internal static bool IsText(Definition definition)
+        {
+#if Debug2020 || Revit2020
+            return definition.ParameterType==ParameterType.Text;
+#else
+            return definition.GetDataType()==SpecTypeId.String.Text;
+#endif
+        }
+        internal static ExternalDefinitionCreationOptions TextDefinitionOptions(string name)
+        {
+#if Debug2020 || Revit2020
+            return new ExternalDefinitionCreationOptions(name,ParameterType.Text);
+#else
+            return new ExternalDefinitionCreationOptions(name,SpecTypeId.String.Text);
+#endif
+        }
 #if Debug2020 || Revit2020 || Debug2023 || Revit2023
         internal static long ElIdValue(ElementId id) => id.IntegerValue;
 #else
@@ -56,6 +72,15 @@ namespace KPLN_CalculateTEP.Common
             return UnitUtils.ConvertFromInternalUnits(valueInternal, DisplayUnitType.DUT_SQUARE_METERS);
 #else
             return UnitUtils.ConvertFromInternalUnits(valueInternal, UnitTypeId.SquareMeters);
+#endif
+        }
+
+        internal static bool IsArea(Parameter parameter)
+        {
+#if Debug2020 || Revit2020
+            return parameter.Definition.ParameterType == ParameterType.Area;
+#else
+            return parameter.Definition.GetDataType() == SpecTypeId.Area;
 #endif
         }
 

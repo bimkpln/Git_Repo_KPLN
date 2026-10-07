@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
@@ -34,30 +34,41 @@ namespace KPLN_CalculateTEP.Common
             public Run Calculate(Action<string> progress=null,bool? createViews=null)
             {
                 reportProgress=progress;var previous=Last;
+                var previousReviewInputs=reviewInputs.ToList();var previousReviewBindings=reviewBindings.ToList();string previousReviewConfiguration=reviewConfiguration;
                 using(var group=new TransactionGroup(doc,"ТЭП: расчёт и проверочные виды"))
                 {
                     group.Start();
                     try {var run=CalculateCore(progress,createViews);Progress("Завершение расчёта...");if(group.Assimilate()!=TransactionStatus.Committed)throw new InvalidOperationException("Revit отменил группу транзакций расчёта.");Last=run;return run;}
-                    catch {if(group.GetStatus()==TransactionStatus.Started)group.RollBack();Last=previous;throw;}
-                    finally {singleBuildingAssumption=null;createViewsForRun=null;planarBodies=null;planarCheckpoint=null;reportProgress=null;parameterCache.Clear();phaseCache.Clear();ClearVolumeCaches();floorSurfaces.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();roomHeightSections.Clear();}
+                    catch
+                    {
+                        if(group.GetStatus()==TransactionStatus.Started)group.RollBack();Last=previous;
+                        reviewInputs.Clear();foreach(var input in previousReviewInputs)reviewInputs.Add(input.Key,input.Value);
+                        reviewBindings=previousReviewBindings;reviewConfiguration=previousReviewConfiguration;
+                        throw;
+                    }
+                    finally {automaticAreaInputs=false;singleBuildingAssumption=null;createViewsForRun=null;planarBodies=null;planarCheckpoint=null;reportProgress=null;parameterCache.Clear();phaseCache.Clear();ClearVolumeCaches();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();measuredRoomRegions.Clear();}
                 }
             }
             private Run CalculateCore(Action<string> progress,bool? createViews)
             {
                 planarBodies=new Dictionary<Solid,Tuple<LayeredBody,string>>();progressMessage="Подготовка расчёта контуров...";planarCheckpoint=()=>reportProgress?.Invoke(progressMessage);planarVolumeCuts=0;
                 parameterCache.Clear();phaseCache.Clear();ClearVolumeCaches();timings.Clear();slowOperations.Clear();volumeCacheHits=0;spatialCacheHits=0;booleanTouchSkips=0;booleanSplitRecoveries=0;booleanIntersectionRecoveries=0;booleanNormalizedRecoveries=0;
-                PrepareRoomWorkflow();SnapshotSources();Normalize(Config);notices.Clear();shapes.Clear();appliedCorrections.Clear();roomFloorContours.Clear();inferredRoomFloorContours.Clear();roomFloorFailures.Clear();invalidRoomFloors.Clear();floorSurfaces.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();roomHeightSections.Clear();
+                PrepareRoomWorkflow();SnapshotSources();Normalize(Config);notices.Clear();shapes.Clear();appliedCorrections.Clear();roomFloorContours.Clear();roomFloorRegions.Clear();roomCentreRegions.Clear();roomFloorWarnings.Clear();roomNetRegions.Clear();boundarySupportRegions.Clear();contourRoomRecords.Clear();roomFloorFailures.Clear();invalidRoomFloors.Clear();floorWallFaces.Clear();floorFaceHeights.Clear();nativeWallLayers.Clear();measuredRoomRegions.Clear();
                 if(createViews.HasValue)Config.CreateViews=createViews.Value;
                 createViewsForRun=Config.CreateViews;
-                current=new Run{Author=app.Application.Username,Method=Choices("method").First(x=>x.Key==Config.Method).Label};
-                current.CreateViews=ViewsEnabled;
+                current=new Run{Author=app.Application.Username,Method=Choices("method").First(x=>x.Key==Config.Method).Label,InputAudit=InputAuditForRun};InputAuditForRun=null;
+                current.CreateViews=ViewsEnabled;current.AutomaticAreaRegions=true;
                 current.Issues.AddRange(startupIssues.Where(i=>string.IsNullOrEmpty(i.Source)||Sources.Any(s=>s.Name==i.Source&&s.Mode!="exclude")));
                 foreach(var c in Config.Corrections)
                 {if(string.IsNullOrWhiteSpace(c.Author))c.Author=current.Author;if(string.IsNullOrWhiteSpace(c.Date))c.Date=current.Date;}
                 current.Configuration=Serialize(Config);
                 ValidateDatums();
+                BeginReviewInputs();
+                RefreshLevelGeometry();
                 var records=PreflightRecords();
                 var preflightIssues=current.Issues.ToList();
+                PrepareAutomaticAreaInputs(records);
+                RefreshLevelGeometry();ReportLevelGeometry();automaticDimensions.Clear();automaticDimensionErrors.Clear();
                 var blockedMetrics=new HashSet<string>(Config.Metrics.Where(m=>m.Enabled&&PreflightMetricBlocked(m.Key,preflightIssues)).Select(m=>m.Key));
                 if(Config.Metrics.Any(m=>m.Enabled&&MetricBlocked(m.Key,preflightIssues)))
                 {
@@ -65,7 +76,7 @@ namespace KPLN_CalculateTEP.Common
                     current.Issue("PREFLIGHT_PARTIAL","Предупреждение",message);
                     progress?.Invoke(message+" Выполняю доступные показатели.");
                 }
-                current.Issue("ROOM_WORKFLOW","Информация","ГНС: внешнее временное помещение с резервным сечением стен; площади квартир и помещений: Room.Area с коэффициентами, особыми нормативными проверками и контролем пересечений в 2D. Объёмы сохраняют геометрический расчёт.");
+                current.Issue("ROOM_WORKFLOW","Информация","Поэтажная оболочка: все стены на отметке пола, внешнее временное помещение с резервным сечением; площадь застройки: объединение проекций в 2D без устранения пересечений объёмов; площади квартир и помещений: нормативные 2D-сечения и классифицированные экземпляры с коэффициентами, особыми нормативными проверками и контролем пересечений в 2D. Объёмы сохраняют геометрический расчёт.");
                 var invalidInputs=new HashSet<double>(invalidRoomFloors);
                 foreach(var metric in Config.Metrics.Where(x=>x.Enabled))
                 {
@@ -77,15 +88,19 @@ namespace KPLN_CalculateTEP.Common
                         var adjusted=new List<Record>();
                         foreach(var original in records)
                         {
+                            if(original.AutomaticShaftRegion!=null&&!(RoomEnvelopeTotal(indicator)||RoomEnvelopePart(indicator)||RoomAreaMetric(indicator)))continue;
                             Progress("Правила: "+metric.Name+" - "+(adjusted.Count+1)+" / "+records.Count);
+                            var localErrors=preflightIssues.Where(i=>i.Severity=="Ошибка"&&i.Source==original.Source.Name&&i.Element==IDHelper.ElIdValue(original.Element.Id).ToString()&&IssueAffectsMetric(i,metric.Key)).ToList();
+                            if(localErrors.Count>0){if(RoomEnvelopeTotal(indicator)||RoomEnvelopePart(indicator))MarkInvalidRoomFloor(original.Source,original.Element);continue;}
                             var r=original.Copy();try{ApplyRules(r,metric.Key);adjusted.Add(r);}
                             catch(System.OperationCanceledException){throw;}
                     catch(Exception ex){MarkInvalidRoomFloor(r.Source,r.Element);Notice("RULE_CONFLICT","Ошибка",ex.Message,r,metric.Key);}
                         }
                         adjusted=Representations(adjusted,metric);
+                        contourRoomRecords=adjusted.Where(r=>IsAreaInput(r.Element)).ToList();
                         foreach(var group in adjusted.GroupBy(r=>r.Building))
-                        {bool single=group.Where(r=>r.Level!=null&&r.Level.Include&&r.Role!="mezzanine").Select(r=>Math.Round(r.Z,6)).Distinct().Count()==1;foreach(var r in group)r.SingleStorey=single;}
-                        if(RoomEnvelopeTotal(indicator))CalculateRoomEnvelopeAreas(adjusted,indicator);
+                        {bool single=group.Where(r=>r.AutomaticShaftRegion==null&&r.Level!=null&&r.Level.Include&&r.Role!="mezzanine").Select(r=>Math.Round(r.Z,6)).Distinct().Count()==1;foreach(var r in group)r.SingleStorey=single;}
+                        if(RoomEnvelopeTotal(indicator)||RoomEnvelopePart(indicator))CalculateRoomEnvelopeAreas(adjusted,indicator);
                         else if(metric.ContourMode!="current")CalculateContours(adjusted,indicator,metric);
                         else if(indicator==Indicator.Storeys||indicator==Indicator.Floors)CalculateFloors(adjusted,indicator);
                         else if(indicator==Indicator.ApartmentsCount||indicator==Indicator.ParkingCount)CalculateCounts(adjusted,indicator);
@@ -96,6 +111,8 @@ namespace KPLN_CalculateTEP.Common
                         ApplyDeltas(indicator);
                     }
                     catch(System.OperationCanceledException){throw;}
+                    catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                    catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
                     catch(Exception ex){current.Issue("METRIC_FAILED","Ошибка",ex.Message,metric.Key);}
                     current.Issue("CALCULATION_PATH","Информация","Геометрия "+GeometryVersion+"; источник контура: "+Choices("contour").First(c=>c.Key==metric.ContourMode).Label+
                         ". Плоские операции: сетка 0,001 мм; отклонение аппроксимации дуг, эллипсов и сплайнов не более 0,1 мм. Непризматические тела сохраняют обработку Revit.",metric.Key);
@@ -111,10 +128,11 @@ namespace KPLN_CalculateTEP.Common
                 current.Configuration=Serialize(Config);Last=current;
                 DisposeSpatialCalculators();
                 if(ViewsEnabled) {progress?.Invoke("Построение проверочных видов...");Measure("Создание проверочной графики",null,"",()=>{CreateGraphics(current);return true;});}
+                FinalizeConfirmedReviewBindings();
                 RefreshStatuses();
                 if(ViewsEnabled&&Config.CreateSchedule){progress?.Invoke("Создание сводной спецификации...");CreateSchedule(current);}
                 RefreshStatuses();
-                WriteTimings();
+                WriteTimings();current.ReviewAreas=SnapshotReviewInputs();
                 try{if(!settingsLoadFailed)SaveSettings();Write("run",current);}catch(System.OperationCanceledException){throw;}
                     catch(Exception ex){current.Issue("SAVE_FAILED","Ошибка","Расчёт выполнен, но запись в RVT не удалась: "+ex.Message);RefreshStatuses();}
                 return current;
@@ -128,7 +146,7 @@ namespace KPLN_CalculateTEP.Common
                     measurement=RoomFloorElevation(r)+RoomMeasurementHeight(boundary,metric.ToString(),r.Role)/.3048;
                     reason+="; отметка обмера "+(measurement.Value*.3048).ToString("0.######",CultureInfo.InvariantCulture)+" м";
                 }
-                return new Detail{Metric=metric.ToString(),SourceKey=r.Source.Key,Source=r.Source.Name,Building=r.Building,Section=r.Section,
+                return new Detail{Metric=metric.ToString(),SourceKey=r.Source.Key,Source=r.Source.Name,Building=r.Building,Section=r.Section,ObjectName=r.Element.Name,
                     Level=r.Level?.Name??"Без уровня",Elevation=r.Z,MeasurementElevation=measurement,Element=IDHelper.ElIdValue(r.Element.Id).ToString(),UniqueId=r.Element.UniqueId,
                     Purpose=r.Role,Apartment=r.Apartment,Profile=r.Profile,Method=current.Method,Unit=Config.Metrics.First(m=>m.Key==metric.ToString()).Unit,
                     Raw=raw,Factor=factor,Value=excluded?0:raw*factor,Excluded=excluded,Manual=r.Manual,Reason=reason,Shape=shape,VolumeShape=volume};
@@ -206,8 +224,8 @@ namespace KPLN_CalculateTEP.Common
                 var keys=new HashSet<string>();
                 foreach(var r in records.Where(x=>x.Source.Mode!="exclude").OrderBy(r=>r.Z).ThenBy(r=>r.Key,StringComparer.Ordinal))
                 {
-                    if(apartments&&!(r.Element is Room)||!apartments&&!IsParkingFamily(r.Element))continue;
-                    if(r.Override==false||Eq(Mapped(r.Element,"include"),"0")||Eq(Mapped(r.Element,"include"),"нет"))continue;
+                    if(apartments&&!IsAreaInput(r.Element)||!apartments&&!IsParkingFamily(r.Element))continue;
+                    if(r.Override==false)continue;
                     if(apartments?(mode=="instances"?!(r.Element is FamilyInstance)||(r.Role!="apartment-family"&&r.Override!=true):string.IsNullOrWhiteSpace(r.Apartment)):r.Role!="parking")continue;
                     if(!apartments&&mode=="instances"&&!(r.Element is FamilyInstance))continue;
                     try
@@ -220,7 +238,7 @@ namespace KPLN_CalculateTEP.Common
                         string key=apartments?ApartmentKey(r):r.Source.Key+"|"+r.Building+"|"+r.Section+"|"+(mode=="id"?id:r.Element.UniqueId);
                         bool duplicate=!keys.Add(key);bool excluded=duplicate||r.Source.Mode=="reference";
                         if(duplicate&&!apartments)Notice("PARKING_DUPLICATE","Предупреждение","Повторный ID машино-места учтён один раз: "+id,r,metric.ToString());
-                        Solid shape=null;try{if(ViewsEnabled)shape=r.Element is Room?RoomAreaBoundary(r):Plan(r,Indicator.PublicRooms);}catch(System.OperationCanceledException){throw;}
+                        Solid shape=null;try{if(ViewsEnabled)shape=r.Element is Room?BuildPlanarSolid(RoomNetRegion(r),0,1,true):Plan(r,Indicator.PublicRooms);}catch(System.OperationCanceledException){throw;}
                     catch(Exception ex){Notice("COUNT_GRAPHICS","Предупреждение","Количество определено, но нет контура: "+ex.Message,r,metric.ToString());}
                         current.Details.Add(Row(r,metric,1,1,excluded,duplicate?"Повторный объект той же квартиры / места":"Уникальный идентификатор: "+id,shape));
                     }
@@ -228,44 +246,107 @@ namespace KPLN_CalculateTEP.Common
                     catch(Exception ex){Notice("COUNT_INPUT","Ошибка",ex.Message,r,metric.ToString());}
                 }
             }
+            public static bool IsFloorCountEvidence(string elementKind,string role)
+            {
+                // A wall assigned to a configured storey is evidence even if this storey has no Rooms.
+                // Shaft boundary lines, roofs, ceilings and arbitrary family instances do not prove a floor.
+                return OneOf(elementKind,"room","space","area","floor","wall","classified-area")||OneOf(role,"envelope","footprint","apartment-family");
+            }
+            public static string FloorCountIdentity(string building,string section,double elevation)
+            {
+                Func<string,string> part=value=>{string text=(value??"").Trim().ToUpperInvariant();return text.Length+":"+text;};
+                return part(building)+part(section)+Math.Round(elevation,6).ToString("R",CultureInfo.InvariantCulture);
+            }
+            public static bool IsMissingFloorSelection(LevelSetting level)
+            {return level!=null&&!level.Include&&!OneOf(level.Kind,"exclude","attic","roof","void");}
+            private bool HasFloorCountEvidence(Record record)
+            {
+                if(record.AutomaticShaftRegion!=null)return false;
+                var element=record.Element;
+                string kind=element is Room?"room":element is Space?"space":element is Area?"area":element is Floor?"floor":element is Wall?"wall":IsClassifiedFamily(element)?"classified-area":"other";
+                return IsFloorCountEvidence(kind,record.Role);
+            }
             private void CalculateFloors(List<Record> records,Indicator metric)
             {
-                foreach(var g in records.Where(r=>r.Source.Mode=="include"&&r.Level!=null&&(r.Element is SpatialElement||r.Element is Floor||OneOf(r.Role,"envelope","footprint","apartment-family"))).GroupBy(r=>r.Building+"|"+r.Section+"|"+Math.Round(r.Z,6)))
+                string metricKey=metric.ToString();
+                var physical=records.Where(r=>r.Source.Mode=="include"&&HasFloorCountEvidence(r)).ToList();
+                var floors=GroupFloorCountRecords(physical,metricKey);
+                var present=new HashSet<string>(physical.Where(r=>r.Level!=null).Select(r=>r.Level.Key),StringComparer.Ordinal);
+                foreach(var group in physical.Where(r=>r.Level==null).GroupBy(r=>r.Source.Key))
+                    Notice("FLOOR_LEVEL_MISSING","Ошибка","У части помещений или конструкций не определён уровень. Полнота количества этажей не подтверждена; пропущено объектов: "+group.Count()+".",group.First(),metricKey);
+                foreach(var group in floors.Where(g=>!g.Any(r=>r.Level.Include&&!OneOf(r.Level.Kind,"exclude","attic","roof","void")))
+                    .SelectMany(g=>g.Where(r=>IsMissingFloorSelection(r.Level))).GroupBy(r=>r.Source.Key))
                 {
-                    try
+                    var excluded=group.Select(r=>r.Level).GroupBy(l=>l.Key).Select(g=>g.First()).OrderBy(l=>l.Elevation).ThenBy(l=>l.Name).ToList();
+                    Notice("FLOOR_SELECTION_INCOMPLETE","Ошибка","В модели есть помещения или стены / перекрытия на выключенных этажах: "+string.Join(", ",excluded.Select(l=>"«"+l.Name+"»"))+". Они не включены в количество этажей. Поэтажные строки объёма могут содержать их конструкции, поэтому полученное количество не подтверждает этажность всего здания. Проверьте «Учесть» и вид этажа в таблице уровней.",group.First(),metricKey);
+                }
+                foreach(var source in Sources.Where(s=>s.Mode=="include"&&s.Loaded&&s.LoadError==null))
+                {
+                    var unresolved=Config.Levels.Where(l=>l.Key.StartsWith(source.Key+"/",StringComparison.Ordinal)&&l.Key.Substring(source.Key.Length+1).IndexOf('/')<0&&l.Include&&!OneOf(l.Kind,"exclude","attic")&&!present.Contains(l.Key)).OrderBy(l=>l.Elevation).ToList();
+                    if(unresolved.Count>0)current.Issue("FLOOR_LEVEL_UNCONFIRMED","Ошибка","На включённых уровнях не найдены пригодные помещения, стены, перекрытия или выбранные расчётные семейства: "+string.Join(", ",unresolved.Select(l=>"«"+l.Name+"»"))+". Эти уровни не посчитаны. Проверьте, являются ли они этажами, состав источников и ошибки объектов; служебные уровни исключите из расчёта.",metricKey,source.Name);
+                }
+                var owners=physical.GroupBy(r=>FloorCountIdentity(r.Building,r.Section,0)).ToDictionary(g=>g.Key,g=>Tuple.Create((g.First().Building??"").Trim(),(g.First().Section??"").Trim()));
+                foreach(var g in floors)
+                {
+                    var counted=new List<Record>();
+                    foreach(var record in g.OrderBy(r=>r.Z).ThenBy(r=>r.Level.Name,StringComparer.Ordinal))
                     {
-                        var eligible=g.Where(r=>CountLevel(r,metric==Indicator.Storeys)).ToList();if(eligible.Count==0)continue;
-                        current.Details.Add(Row(eligible[0],metric,1,1,false,"Один этаж на корпус и секцию; совпадающие отметки объединены"));
+                        try{if(CountLevel(record,metric==Indicator.Storeys))counted.Add(record);}
+                        catch(System.OperationCanceledException){throw;}
+                        catch(Exception ex){Notice("FLOOR_INPUT","Ошибка",ex.Message,record,metricKey);}
                     }
-                    catch(System.OperationCanceledException){throw;}
-                    catch(Exception ex){Notice("FLOOR_INPUT","Ошибка",ex.Message,g.First(),metric.ToString());}
+                    if(counted.Count>0)
+                    {
+                        var included=counted[0];
+                        var owner=owners[FloorCountIdentity(included.Building,included.Section,0)];
+                        var levels=counted.Select(r=>r.Level).GroupBy(l=>l.Name+"/"+l.Elevation.ToString("R",CultureInfo.InvariantCulture))
+                            .Select(group=>group.First()).OrderBy(l=>l.Elevation).ThenBy(l=>l.Name).ToList();
+                        string evidence=string.Join("; ",levels.Select(l=>"«"+l.Name+"» ("+(l.Elevation*.3048).ToString("+0.000;-0.000;0.000",CultureInfo.InvariantCulture)+" м)"));
+                        var row=Row(included,metric,1,1,false,"Один включённый этаж на корпус и секцию; подтверждён помещением, стеной или перекрытием. Уровни с одним явным номером этажа объединены независимо от отметки; остальные объединены только по совпадающей отметке с допуском 1 мм. Уровни: "+evidence);
+                        var designations=counted.Select(r=>FloorCountDesignation(r.Level.Name)).Where(d=>d!=null).Distinct().ToList();
+                        row.Level=designations.Count==1?designations[0]+" этаж":string.Join(" / ",levels.Select(l=>l.Name).Distinct());
+                        if(levels.Count>1)row.FloorLevels=evidence;
+                        row.Building=owner.Item1;row.Section=owner.Item2;current.Details.Add(row);
+                    }
                 }
             }
             private void CalculateFootprints(List<Record> records)
             {
                 foreach(var group in records.Where(r=>r.Source.Mode!="exclude").GroupBy(r=>new{r.Building,r.Section,Reference=r.Source.Mode=="reference",ReferenceKey=r.Source.Mode=="reference"?r.Source.Key:""}))
                 {
-                    var list=group.ToList();var metric=Indicator.Footprint;var inputs=new List<Tuple<Record,Solid>>();
+                    var list=group.ToList();var metric=Indicator.Footprint;var inputs=new List<Tuple<Record,PlanarRegion>>();
                     try
                     {
                         var explicitGround=list.Where(r=>r.Role=="footprint"&&r.Override!=false).ToList();
                         if(explicitGround.Count>0)
-                            foreach(var r in explicitGround){var plan=Plan(r,metric);if(plan!=null)inputs.Add(Tuple.Create(r,plan));}
+                            foreach(var r in explicitGround){var plan=Plan(r,metric);if(plan!=null)inputs.Add(Tuple.Create(r,RegionOfPlan(plan)));}
                         else
                         {
-                            var volume=BuildingVolume(list,metric.ToString());var lookup=list.ToDictionary(r=>r.Key,StringComparer.Ordinal);int processed=0;
+                            var scope=FootprintSourceScope(records.Where(r=>group.Key.Reference?r.Source.Key==group.Key.ReferenceKey:r.Source.Mode=="include"),group.Key.Building);
+                            var volume=Measure("Подготовка исходных тел для 2D-застройки",null,metric.ToString(),()=>BuildVolumeSet(list,metric.ToString(),false));
+                            double lowest=list.Where(r=>r.Level!=null&&r.Level.Include&&r.Level.Kind!="exclude").Min(r=>r.Z);var lookup=list.ToDictionary(r=>r.Key,StringComparer.Ordinal);int processed=0;var rejected=new HashSet<string>();
                             foreach(var fragment in volume.Fragments)
                             {
                                 var r=lookup[fragment.RecordKey];
                                 Progress("Проекция застройки: "+(++processed)+" / "+volume.Fragments.Count+"; ID "+IDHelper.ElIdValue(r.Element.Id));
-                                Measure("Проекции и сечения для застройки",r,metric.ToString(),()=>
+                                try
                                 {
-                                    var plan=Section(fragment.Shape,ground);if(plan!=null)inputs.Add(Tuple.Create(r,plan));
-                                    var below=Half(fragment.Shape,ground,false);
-                                    if(below!=null&&below.Volume>1e-9)inputs.Add(Tuple.Create(r,Projection(below)));
-                                    return true;
-                                });
+                                    Measure("Проекции и сечения для застройки",r,metric.ToString(),()=>
+                                    {
+                                        var plan=FootprintRegion(fragment.Shape,lowest,ground);
+                                        if(!plan.IsEmpty)
+                                        {
+                                            if(AcceptFootprintRegion(r,fragment.Shape,plan,scope))inputs.Add(Tuple.Create(r,plan));
+                                            else rejected.Add(r.Key);
+                                        }
+                                        return true;
+                                    });
+                                }
+                                catch(OperationCanceledException){throw;}
+                                catch(Exception ex){rejected.Add(r.Key);Notice("FOOTPRINT_PROJECTION","Ошибка",ex.Message+"; "+DescribeGeometryElement(r.Element,r.Source.Transform,r.Source.Name),r,metric.ToString());}
+
                             }
+                            inputs.RemoveAll(input=>rejected.Contains(input.Item1.Key));
                         }
                         foreach(var r in list.Where(r=>r.Override!=false))
                         {
@@ -277,19 +358,19 @@ namespace KPLN_CalculateTEP.Common
                                 double lowest=Enumerable.Range(0,8).Select(i=>r.Source.Transform.OfPoint(box.Transform.OfPoint(new XYZ((i&1)==0?box.Min.X:box.Max.X,(i&2)==0?box.Min.Y:box.Max.Y,(i&4)==0?box.Min.Z:box.Max.Z))).Z).Min();
                                 extra=lowest-ground<4.5/.3048;
                             }
-                            if(extra){var plan=Plan(r,metric);if(plan!=null)inputs.Add(Tuple.Create(r,plan));}
+                            if(extra){var plan=Plan(r,metric);if(plan!=null)inputs.Add(Tuple.Create(r,RegionOfPlan(plan)));}
                         }
-                        var masks=new PlanIndex();foreach(var r in list.Where(r=>r.Override==false))masks.Add(Plan(r,metric),r);
+                        var masks=PlanarRegion.Empty;foreach(var r in list.Where(r=>r.Override==false))masks=RegionUnion(masks,ReviewRegion("footprint-mask/"+r.Key,r,"Застройка - исключение",ground,()=>RegionOfPlan(Plan(r,metric))));
+                        inputs=PersistFootprintInputs(inputs);
                         if(inputs.Count==0)throw new InvalidOperationException("Пустой контур застройки на отметке земли. Проверьте отметку или задайте контур застройки.");
-                        var used=new PlanIndex();int count=0;
+                        var used=PlanarRegion.Empty;int count=0;
                         foreach(var input in inputs.OrderBy(x=>x.Item1.Key,StringComparer.Ordinal))
                         {
                             var r=input.Item1;Progress("Фрагменты застройки: "+(++count)+" / "+inputs.Count+"; ID "+IDHelper.ElIdValue(r.Element.Id));
-                            var shape=RemoveNearby(input.Item2,masks,r,metric.ToString(),"Исключения площади застройки");
-                            shape=RemoveNearby(shape,used,r,metric.ToString(),"Пересечения площади застройки");
-                            if(shape==null||shape.Volume<1e-9)continue;
-                            var row=Row(r,metric,shape.Volume*.09290304,1,group.Key.Reference,group.Key.Reference?"Справочный контур источника, без включения в итог":"Фрагмент контура застройки исходного объекта; пересечения учтены один раз",shape);
-                            row.Level="План застройки";row.Elevation=ground;current.Details.Add(row);used.Add(shape,r);
+                            var shape=RegionDifference(RegionDifference(input.Item2,masks),used);
+                            if(shape.IsEmpty)continue;
+                            var row=PlanarRow(r,metric,shape,group.Key.Reference,group.Key.Reference?"Справочный контур источника, без включения в итог":"Плоский фрагмент застройки; пересечения проекций учтены один раз без объединения объёмов");
+                            row.Level="План застройки";row.Elevation=ground;current.Details.Add(row);used=RegionUnion(used,shape);
                         }
                         if(explicitGround.Count>0&&!list.Any(r=>r.Role=="underground-footprint"))
                             Notice("FOOTPRINT_UNDERGROUND","Предупреждение","Задан ручной наземный контур без подземного. Подтвердите отсутствие выступающих подземных частей либо добавьте их контур.",list.First(),metric.ToString());
@@ -326,7 +407,7 @@ namespace KPLN_CalculateTEP.Common
             {
                 var rows=current.Details.Where(d=>d.Metric==m.Key&&!d.Excluded).ToList();
                 bool floors=m.Key=="Storeys"||m.Key=="Floors";
-                double value=floors?rows.GroupBy(d=>d.Building+"|"+d.Section).Select(g=>g.Sum(d=>d.Value)).DefaultIfEmpty(0).Max():rows.Sum(d=>d.Value);
+                double value=floors?rows.GroupBy(d=>FloorCountIdentity(d.Building,d.Section,0)).Select(g=>g.Sum(d=>d.Value)).DefaultIfEmpty(0).Max():rows.Sum(d=>d.Value);
                 bool failed=rows.Count==0&&MetricBlocked(m.Key,current.Issues);
                 current.Summary.Add(new Summary{Key=m.Key,Name=m.Name,Unit=m.Unit,Value=value,Method=current.Method,NotCalculated=failed,
                     Comment=floors?"Итог проекта - максимальное значение по корпусам / секциям. Поэтажные строки показывают состав.":"",Status=failed?"Не рассчитано":rows.Count==0?"Нет данных":"Рассчитано"});

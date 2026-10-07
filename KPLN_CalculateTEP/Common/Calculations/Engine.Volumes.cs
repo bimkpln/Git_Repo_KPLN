@@ -68,7 +68,7 @@ namespace KPLN_CalculateTEP.Common
                 foreach(var r in records.OrderBy(x=>x.Key,StringComparer.Ordinal))
                     foreach(var value in new[]{r.Key,r.Source.Mode,r.Building,r.Section,r.Profile,r.BuildingClass,r.Role,r.Part,r.Apartment,r.Vertical,
                         r.Override.HasValue?r.Override.Value.ToString():null,r.Factor?.ToString("R",CultureInfo.InvariantCulture),r.Manual.ToString(),r.SingleStorey.ToString(),r.BuildingIncluded.ToString(),
-                        r.Level?.Key,r.Level?.Include.ToString(),r.Level?.Kind,r.Level?.Above,r.Level?.TopSlab,r.Level?.Height,r.Level?.RoofRatio,r.Level?.RoofArea,
+                        r.Level?.Key,r.Level?.Include.ToString(),r.Level?.Kind,r.Level?.Above,r.Level?.TopSlab,r.Level?.TopSlabMode,r.Level?.TopSlabChoice,r.Level?.Height,r.Level?.RoofRatio,r.Level?.RoofArea,
                         r.Z.ToString("R",CultureInfo.InvariantCulture)})SignaturePart(key,value);
                 return key.ToString();
             }
@@ -244,7 +244,7 @@ namespace KPLN_CalculateTEP.Common
                 }
                 return result;
             }
-            private VolumeSet BuildVolumeSet(List<Record> records,string metric)
+            private VolumeSet BuildVolumeSet(List<Record> records,string metric,bool deduplicate=true)
             {
                 var result=new VolumeSet();var inputs=new List<Tuple<Record,Solid>>();
                 var ordered=records.OrderBy(r=>r.Key,StringComparer.Ordinal).ToList();
@@ -292,7 +292,8 @@ namespace KPLN_CalculateTEP.Common
                     catch(Exception ex){Notice("VOLUME_MASK","Ошибка",ex.Message,r,metric);throw new InvalidOperationException("Не удалось построить исключаемый объём "+r.Source.Name+" / ID "+IDHelper.ElIdValue(r.Element.Id)+": "+ex.Message,ex);}
                 }
                 var expandedInputs=new List<Tuple<Record,Solid>>();
-                foreach(var input in inputs)foreach(var part in DecomposeVolumeInput(input.Item2,input.Item1,metric))expandedInputs.Add(Tuple.Create(input.Item1,part));
+                foreach(var input in inputs)
+                    foreach(var part in deduplicate?DecomposeVolumeInput(input.Item2,input.Item1,metric):new List<Solid>{input.Item2})expandedInputs.Add(Tuple.Create(input.Item1,part));
                 inputs=expandedInputs;
                 var used=new PlanIndex(true);processed=0;
                 foreach(var input in inputs)
@@ -302,12 +303,12 @@ namespace KPLN_CalculateTEP.Common
                     try
                     {
                         // Clipping, differences and union distribution commute. Never construct a whole-building solid.
-                        var shape=Measure("Обрезка по нижнему этажу",r,metric,()=>Half(input.Item2,lowest,true));
+                        var shape=deduplicate?Measure("Обрезка по нижнему этажу",r,metric,()=>Half(input.Item2,lowest,true)):input.Item2;
                         var fragments=RemoveNearbyVolumes(new List<Solid>{shape},masks,r,metric,"Исключаемые помещения / элементы");
-                        fragments=RemoveNearbyVolumes(fragments,used,r,metric,"Устранение повторного учёта пересекающихся тел");
+                        if(deduplicate)fragments=RemoveNearbyVolumes(fragments,used,r,metric,"Устранение повторного учёта пересекающихся тел");
                         // Publish only after every subtraction for this input succeeds; never keep a partial retry.
                         foreach(var fragment in fragments.Where(f=>CheckedVolume(f)>=1e-9))
-                        {used.Add(fragment,r);result.Fragments.Add(new VolumeFragment{RecordKey=r.Key,Shape=fragment});}
+                        {if(deduplicate)used.Add(fragment,r);result.Fragments.Add(new VolumeFragment{RecordKey=r.Key,Shape=fragment});}
                     }
                     catch(System.OperationCanceledException){throw;}
                     catch(Exception ex){result.Problems.Add(Tuple.Create(r.Key,"VOLUME_BOOLEAN",ex.Message));Notice("VOLUME_BOOLEAN","Ошибка",ex.Message,r,metric);}

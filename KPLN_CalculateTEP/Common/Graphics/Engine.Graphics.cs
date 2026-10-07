@@ -212,19 +212,169 @@ namespace KPLN_CalculateTEP.Common
                 catch(System.OperationCanceledException){throw;}
                     catch(Exception ex){run.Issue("SCHEDULE_FAILED","Ошибка","Сводная спецификация не создана; транзакция отменена: "+ex.Message);}
             }
-            public void NavigateRequested()
+            public static void TraceNavigation(string message)
             {
-                var d=RequestedDetail;if(d==null)return;
                 try
                 {
-                    if(!string.IsNullOrWhiteSpace(d.ViewId)){var view=doc.GetElement(d.ViewId) as View;if(view!=null)ui.ActiveView=view;}
-                    var source=Sources.FirstOrDefault(s=>s.Key==d.SourceKey);ElementId id=source?.RootLink;
-                    if(id==null&&source?.Document==doc)
-                    {var element=string.IsNullOrWhiteSpace(d.UniqueId)?null:doc.GetElement(d.UniqueId);long numeric;if(element==null&&long.TryParse(d.Element,out numeric))element=doc.GetElement(IDHelper.CreateElementId(numeric));id=element?.Id;}
-                    if(id!=null&&doc.GetElement(id)!=null){ui.Selection.SetElementIds(new List<ElementId>{id});ui.ShowElements(id);}
+                    string folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"KPLN","CalculateTEP");
+                    Directory.CreateDirectory(folder);string path=Path.Combine(folder,"navigation.log");
+                    if(File.Exists(path)&&new FileInfo(path).Length>1024*1024)File.WriteAllText(path,"");
+                    File.AppendAllText(path,DateTime.Now.ToString("O")+" | "+message+Environment.NewLine);
                 }
-                catch(System.OperationCanceledException){throw;}
-                    catch(Exception ex){TaskDialog.Show("ТЭП: переход к объекту",ex.Message);}
+                catch { /* Diagnostics must never interrupt Revit navigation. */ }
+            }
+            public void ScheduleRequestedNavigation(UIApplication application)
+            {
+                var detail=RequestedDetail;if(detail==null)return;
+                RequestedDetail=null;
+                // Addin Manager may invoke Execute inside its own ExternalEvent. Wait until it returns too.
+                var started=DateTime.UtcNow;ElementId requestedView=null;
+                EventHandler<Autodesk.Revit.UI.Events.IdlingEventArgs> handler=null;
+                handler=(sender,args)=>
+                {
+                    var currentApplication=sender as UIApplication??application;
+                    try
+                    {
+                        if(!doc.IsValidObject)
+                            throw new InvalidOperationException("Переход отменён: исходный документ закрыт. Откройте модель и повторите переход.");
+                        var activeUi=currentApplication.ActiveUIDocument;
+                        var activeDocument=activeUi!=null&&activeUi.IsValidObject?activeUi.Document:null;
+                        if(activeDocument==null||!activeDocument.IsValidObject)
+                            throw new InvalidOperationException("Переход отменён: в Revit нет активного документа. Активируйте исходную модель и повторите переход.");
+                        // Idling can return another .NET wrapper for the same open RVT; Document has no == operator.
+                        if(!doc.Equals(activeDocument))
+                            throw new InvalidOperationException("Переход отменён: активна модель «"+activeDocument.Title+"», а объект находится в модели «"+doc.Title+"». Активируйте исходную модель и повторите переход.");
+                        if(requestedView!=null&&DateTime.UtcNow-started>TimeSpan.FromSeconds(20))
+                            throw new InvalidOperationException("Revit не завершил переключение вида. Повторите переход после завершения текущей операции.");
+                        if(doc.IsModifiable||doc.IsReadOnly)
+                            throw new InvalidOperationException("Revit ещё занят изменением документа. Повторите переход после завершения текущей операции.");
+                        if(requestedView==null)
+                        {
+                            TraceNavigation("Navigation document matched: "+doc.Title+"; same wrapper="+ReferenceEquals(doc,activeDocument));
+                            var target=ResolveNavigationElement(detail);
+                            var view=NavigationView(detail,target.Item1,target.Item2,activeUi);
+                            if(view==null){currentApplication.Idling-=handler;TraceNavigation("Navigation cancelled: view creation declined");return;}
+                            started=DateTime.UtcNow; // Time spent reading the creation prompt is not a view-switch timeout.
+                            requestedView=view.Id;
+                            if(activeUi.ActiveView.Id!=requestedView)
+                            {
+                                TraceNavigation("Request view "+IDHelper.ElIdValue(requestedView));
+                                activeUi.RequestViewChange(view);
+                                return;
+                            }
+                        }
+                        if(activeUi.ActiveView.Id!=requestedView)return;
+                        // Remove the callback before selection, view notifications or error dialogs can re-enter it.
+                        currentApplication.Idling-=handler;
+                        TraceNavigation("Select and zoom: source="+detail.SourceKey+"; ID="+detail.Element);
+                        NavigateToDetail(detail,activeUi);
+                        TraceNavigation("Navigation complete");
+                    }
+                    catch(Exception ex)
+                    {
+                        currentApplication.Idling-=handler;
+                        TraceNavigation("Navigation failed: "+ex);
+                        TaskDialog.Show("KPLN | ТЭП: переход к объекту",ex.Message);
+                    }
+                };
+                application.Idling+=handler;
+                TraceNavigation("Navigation queued: source="+detail.SourceKey+"; ID="+detail.Element);
+            }
+            private Tuple<Source,Element> ResolveNavigationElement(Detail detail)
+            {
+                var source=Sources.FirstOrDefault(s=>s.Key==detail.SourceKey);
+                if(source?.Document==null||!source.Document.IsValidObject)throw new InvalidOperationException("Источник элемента не загружен.");
+                var element=string.IsNullOrWhiteSpace(detail.UniqueId)?null:source.Document.GetElement(detail.UniqueId);long numeric;
+                if(element==null&&long.TryParse(detail.Element,out numeric))element=source.Document.GetElement(IDHelper.CreateElementId(numeric));
+                if(element==null)throw new InvalidOperationException("Элемент больше не существует в источнике.");
+                return Tuple.Create(source,element);
+            }
+            private View NavigationView(Detail detail,Source source,Element element,UIDocument activeUi)
+            {
+                if(!string.IsNullOrWhiteSpace(detail.ViewId))
+                {
+                    var explicitView=doc.GetElement(detail.ViewId) as View;
+                    if(explicitView!=null&&!explicitView.IsTemplate)return explicitView;
+                }
+                var level=source.Document.GetElement(element.LevelId) as Level;
+                if(level!=null)
+                {
+                    double z=source.Transform.OfPoint(new XYZ(0,0,level.ProjectElevation)).Z;
+                    var plans=new FilteredElementCollector(doc).OfClass(typeof(ViewPlan)).Cast<ViewPlan>()
+                        .Where(v=>!v.IsTemplate&&v.ViewType==ViewType.FloorPlan&&v.GenLevel!=null&&Math.Abs(v.GenLevel.ProjectElevation-z)<FloorGeometryTolerance).ToList();
+                    var plan=plans.FirstOrDefault(v=>v.Id==activeUi.ActiveView.Id)??plans.FirstOrDefault(v=>!Owned(v))??plans.FirstOrDefault();
+                    if(plan!=null)return plan;
+                    return ConfirmNavigationPlan(level,z);
+                }
+                var active=activeUi.ActiveGraphicalView;
+                if(active is View3D&&!active.IsTemplate)return active;
+                throw new InvalidOperationException("Не найден существующий план этажа для этого помещения. Откройте подходящий 3D-вид и повторите переход.");
+            }
+            private ViewPlan ConfirmNavigationPlan(Level sourceLevel,double elevation)
+            {
+                var hostLevel=new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>()
+                    .Where(l=>Math.Abs(l.ProjectElevation-elevation)<FloorGeometryTolerance).OrderBy(l=>l.Name).FirstOrDefault();
+                var planType=new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)).Cast<ViewFamilyType>()
+                    .Where(t=>t.ViewFamily==ViewFamily.FloorPlan).OrderBy(t=>t.Name).FirstOrDefault();
+                if(planType==null)throw new InvalidOperationException("В модели нет типа плана этажа. Создать вид для перехода не удалось.");
+                string levelName=hostLevel?.Name??sourceLevel.Name;
+                var prompt=new TaskDialog("KPLN | Переход к помещению")
+                {
+                    MainInstruction="План этажа «"+levelName+"» не найден. Создать вид?",
+                    MainContent="Будет создан план для показа выбранного помещения в текущей модели."
+                        +(hostLevel==null?"\nДля помещения из связи также потребуется создать уровень на отметке "+(elevation*.3048).ToString("0.000",CultureInfo.CurrentCulture)+" м относительно внутреннего начала модели.":"")
+                        +"\nПри отказе модель останется без изменений, переход отменится.",
+                    CommonButtons=TaskDialogCommonButtons.Yes|TaskDialogCommonButtons.No,
+                    DefaultButton=TaskDialogResult.No
+                };
+                if(prompt.Show()!=TaskDialogResult.Yes)return null;
+                using(var transaction=new Transaction(doc,"ТЭП: создать план для перехода к помещению"))
+                {
+                    transaction.Start();
+                    if(hostLevel==null)
+                    {
+                        hostLevel=Level.Create(doc,elevation);
+                        var levelNames=new HashSet<string>(new FilteredElementCollector(doc).OfClass(typeof(Level)).Cast<Level>().Select(l=>l.Name),StringComparer.OrdinalIgnoreCase);
+                        string baseName="ТЭП - "+sourceLevel.Name,name=baseName;int number=2;
+                        while(levelNames.Contains(name))name=baseName+" ("+(number++)+")";
+                        hostLevel.Name=name;
+                    }
+                    var view=ViewPlan.Create(doc,planType.Id,hostLevel.Id);
+                    var viewNames=new HashSet<string>(new FilteredElementCollector(doc).OfClass(typeof(View)).Cast<View>().Select(v=>v.Name),StringComparer.OrdinalIgnoreCase);
+                    string baseViewName="ТЭП - Проверка помещений - "+levelName,viewName=baseViewName;int suffix=2;
+                    while(viewNames.Contains(viewName))viewName=baseViewName+" ("+(suffix++)+")";
+                    view.Name=viewName;
+                    if(transaction.Commit()!=TransactionStatus.Committed)throw new InvalidOperationException("Revit отменил создание плана. Переход не выполнен.");
+                    TraceNavigation("Navigation plan created after confirmation: "+IDHelper.ElIdValue(view.Id));
+                    return view;
+                }
+            }
+            private void NavigateToDetail(Detail detail,UIDocument activeUi)
+            {
+                var target=ResolveNavigationElement(detail);var source=target.Item1;var element=target.Item2;
+                if(source.Document.Equals(doc))activeUi.Selection.SetElementIds(new List<ElementId>{element.Id});
+                else
+                {
+                    var link=doc.GetElement(source.RootLink) as RevitLinkInstance;
+                    if(link==null)throw new InvalidOperationException("Экземпляр связи больше не существует.");
+                    var setter=activeUi.Selection.GetType().GetMethod("SetReferences",new[]{typeof(IList<Reference>)});
+                    if(setter!=null&&source.Document.Equals(link.GetLinkDocument()))
+                        setter.Invoke(activeUi.Selection,new object[]{new List<Reference>{new Reference(element).CreateLinkReference(link)}});
+                    else activeUi.Selection.SetElementIds(new List<ElementId>{link.Id});
+                }
+                // No ShowElements: its automatic view search can open another modal dialog or scan the whole model.
+                var box=element.get_BoundingBox(null);var points=new List<XYZ>();
+                if(box!=null)
+                {
+                    var transform=source.Transform.Multiply(box.Transform);
+                    foreach(double x in new[]{box.Min.X,box.Max.X})foreach(double y in new[]{box.Min.Y,box.Max.Y})foreach(double z in new[]{box.Min.Z,box.Max.Z})points.Add(transform.OfPoint(new XYZ(x,y,z)));
+                }
+                else if(element.Location is LocationPoint location)points.Add(source.Transform.OfPoint(location.Point));
+                var uiView=activeUi.GetOpenUIViews().FirstOrDefault(v=>v.ViewId==activeUi.ActiveView.Id);
+                if(points.Count==0||uiView==null)throw new InvalidOperationException("Объект выделен, но его положение на виде определить не удалось.");
+                const double margin=3;
+                uiView.ZoomAndCenterRectangle(new XYZ(points.Min(p=>p.X)-margin,points.Min(p=>p.Y)-margin,points.Min(p=>p.Z)-margin),
+                    new XYZ(points.Max(p=>p.X)+margin,points.Max(p=>p.Y)+margin,points.Max(p=>p.Z)+margin));
             }
         }
     }

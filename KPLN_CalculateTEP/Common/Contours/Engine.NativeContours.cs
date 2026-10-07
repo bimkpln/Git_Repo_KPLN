@@ -15,7 +15,7 @@ namespace KPLN_CalculateTEP.Common
             {
                 internal Record Record;
                 internal List<Face> Exterior,Interior;
-                internal Solid Section,Finish;
+                internal PlanarRegion Section=PlanarRegion.Empty,Finish=PlanarRegion.Empty;
                 internal double MinX,MinY,MaxX,MaxY;
             }
             private void ReadNativeWallLayers(List<Record> records)
@@ -109,10 +109,9 @@ namespace KPLN_CalculateTEP.Common
                 }
                 return false;
             }
-            private static bool OnPlanBoundary(Solid plan,XYZ point)
+            private static bool OnPlanBoundary(PlanarRegion region,XYZ point)
             {
-                if(plan==null)return false;
-                var region=RequireLayeredBody(plan).Layers.Single().Region;
+                if(region==null||region.IsEmpty)return false;
                 var p=new[]{point.X,point.Y,0.0};
                 foreach(var ring in region.Paths)
                     for(int i=0;i<ring.Count;i++)
@@ -122,10 +121,10 @@ namespace KPLN_CalculateTEP.Common
                     }
                 return false;
             }
-            private Solid NativeWallContour(List<Record> records,string boundary,double elevation)
+            private PlanarRegion NativeWallContourRegion(List<Record> records,string boundary,double elevation)
             {
                 if(boundary=="core")ReadNativeWallLayers(records);
-                var shells=new List<NativeShell>();Solid all=null;
+                var shells=new List<NativeShell>();var all=PlanarRegion.Empty;
                 foreach(var r in records)
                 {
                     Progress("Сечения ограждений: "+r.Source.Name+"; ID "+IDHelper.ElIdValue(r.Element.Id));
@@ -140,28 +139,28 @@ namespace KPLN_CalculateTEP.Common
                         foreach(var layer in nativeWallLayers[r.Key])
                         {
                             // Parts created in the host already contain the link instance transform.
-                            var plan=Section(layer.Item2,elevation);
-                            if(layer.Item1<first)shell.Finish=Union(shell.Finish,plan);
-                            else shell.Section=Union(shell.Section,plan);
+                            var plan=SectionRegion(layer.Item2,elevation);
+                            if(layer.Item1<first)shell.Finish=RegionUnion(shell.Finish,plan);
+                            else shell.Section=RegionUnion(shell.Section,plan);
                         }
                     }
-                    else foreach(var solid in Solids(wall))shell.Section=Union(shell.Section,Section(SolidUtils.CreateTransformed(solid,r.Source.Transform),elevation));
-                    if(shell.Section==null)throw new InvalidOperationException("Пустое сечение ограждения на отметке обмера: ID "+IDHelper.ElIdValue(wall.Id));
-                    var points=RequireLayeredBody(shell.Section).Layers.Single().Region.Paths.SelectMany(x=>x).ToList();
+                    else foreach(var solid in Solids(wall))shell.Section=RegionUnion(shell.Section,SectionRegion(SolidUtils.CreateTransformed(solid,r.Source.Transform),elevation));
+                    if(shell.Section.IsEmpty)throw new InvalidOperationException("Пустое сечение ограждения на отметке обмера: ID "+IDHelper.ElIdValue(wall.Id));
+                    var points=shell.Section.Paths.SelectMany(x=>x).ToList();
                     shell.MinX=points.Min(p=>p.X)/PlanarRegion.Scale;shell.MaxX=points.Max(p=>p.X)/PlanarRegion.Scale;
                     shell.MinY=points.Min(p=>p.Y)/PlanarRegion.Scale;shell.MaxY=points.Max(p=>p.Y)/PlanarRegion.Scale;
-                    all=Union(all,shell.Section);shells.Add(shell);
+                    all=RegionUnion(all,shell.Section);shells.Add(shell);
                 }
-                if(all==null)throw new InvalidOperationException("Не получены сечения наружных ограждений.");
+                if(all.IsEmpty)throw new InvalidOperationException("Не получены сечения наружных ограждений.");
                 var rings=new List<List<double[]>>();
-                foreach(var ring in RequireLayeredBody(all).Layers.Single().Region.Paths)
+                foreach(var ring in all.Paths)
                 {
                     bool outside=false,inside=false,unclassified=false;
                     for(int i=0;i<ring.Count;i++)
                     {
                         planarCheckpoint?.Invoke();var a=ring[i];var b=ring[(i+1)%ring.Count];
                         var p=new XYZ(((double)a.X+b.X)/2/PlanarRegion.Scale,((double)a.Y+b.Y)/2/PlanarRegion.Scale,elevation);
-                        bool outer=shells.Any(s=>boundary=="core"&&s.Finish!=null?OnPlanBoundary(s.Finish,p):OnShell(s,s.Exterior,p));
+                        bool outer=shells.Any(s=>boundary=="core"&&!s.Finish.IsEmpty?OnPlanBoundary(s.Finish,p):OnShell(s,s.Exterior,p));
                         bool inner=shells.Any(s=>OnShell(s,s.Interior,p));
                         outside|=outer;inside|=inner;unclassified|=!outer&&!inner;
                     }
@@ -169,9 +168,11 @@ namespace KPLN_CalculateTEP.Common
                     if(boundary=="interior"?inside:outside)rings.Add(ring.Select(p=>new[]{p.X/PlanarRegion.Scale,p.Y/PlanarRegion.Scale}).ToList());
                 }
                 if(rings.Count==0)throw new InvalidOperationException("Сечение ограждений не содержит замкнутой нормативной границы.");
-                return BuildPlanarSolid(PlanarRegion.FromRings(rings),0,1,true);
+                return PlanarRegion.FromRings(rings);
             }
             private Solid WallContour(List<Record> records,Metric metric,Indicator indicator,double? floorElevation=null)
+            { return BuildPlanarSolid(WallContourRegion(records, metric, indicator, floorElevation), 0, 1, true); }
+            private PlanarRegion WallContourRegion(List<Record> records,Metric metric,Indicator indicator,double? floorElevation=null)
             {
                 double elevation=floorElevation??records.First().Z+RequiredNumber(metric.WallCutHeight,"высота сечения стен, м")/.3048;
                 string boundary=metric.WallBoundary;
@@ -179,16 +180,20 @@ namespace KPLN_CalculateTEP.Common
                 var failures=new List<string>();
                 // Cheap exact analytic path remains useful for ordinary walls with door openings.
                 // Native sections remove its restrictions on axes, surface types and layer layout.
-                try{return AnalyticWallContour(records,metric,indicator,elevation);}
+                try{return AnalyticWallContourRegion(records,metric,indicator,elevation);}
                 catch(OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
                 catch(Exception ex){failures.Add("Аналитические поверхности: "+ex.Message);}
                 try
                 {
-                    var result=NativeWallContour(records,boundary,elevation);
+                    var result=NativeWallContourRegion(records,boundary,elevation);
                     Notice("NATIVE_ENVELOPE","Информация","Контур этажа получен из сечений фактической геометрии ограждений; замкнутость осей не требуется.",metric:indicator.ToString());
                     return result;
                 }
                 catch(OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.OperationCanceledException){throw;}
+                catch(Autodesk.Revit.Exceptions.RegenerationFailedException){throw;}
                 catch(Exception ex){failures.Add("Геометрические сечения: "+ex.Message);}
                 throw new InvalidOperationException(string.Join(" | ",failures));
             }

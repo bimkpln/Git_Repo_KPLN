@@ -15,7 +15,7 @@ namespace KPLN_CalculateTEP.ExternalCommands
             Document doc = uiapp.ActiveUIDocument.Document;
 
             //Тест
-            TaskDialog.Show("wOw", "whazuuup from button", TaskDialogCommonButtons.Ok);
+            TaskDialog.Show("KPLN | wOw", "whazuuup from button", TaskDialogCommonButtons.Ok);
             return Result.Succeeded;
         }
     }

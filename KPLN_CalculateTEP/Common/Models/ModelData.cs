@@ -54,7 +54,10 @@ namespace KPLN_CalculateTEP.Common
             internal Source Source; internal Element Element; internal LevelSetting Level;
             internal string Building,Section,Profile,BuildingClass,Role,Part,Apartment,Vertical;
             internal double? Factor; internal bool Manual; internal bool? Override; internal bool SingleStorey; internal bool BuildingIncluded=true;
-            internal string Key {get {return Source.Key+"/"+Element.UniqueId;}}
+            internal PlanarRegion AutomaticShaftRegion;
+            internal string AutomaticShaftPart;
+            internal string AutomaticShaftError;
+            internal string Key {get {return Source.Key+"/"+Element.UniqueId+(AutomaticShaftPart==null?"":"/shaft/"+AutomaticShaftPart);}}
             internal double Z {get {return Level==null?0:Level.Elevation;}}
             internal Record Copy() {return (Record)MemberwiseClone();}
         }

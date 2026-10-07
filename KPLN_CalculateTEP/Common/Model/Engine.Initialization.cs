@@ -31,6 +31,7 @@ namespace KPLN_CalculateTEP.Common
     {
         public partial class Engine
         {
+            public string SettingsStatus {get;private set;}
             private void Progress(string message){progressMessage=message;reportProgress?.Invoke(message);}
             public void Initialize(Action<string> progress)
             {
@@ -42,13 +43,23 @@ namespace KPLN_CalculateTEP.Common
                 Sources.Add(new Source {Key="host",Name=doc.Title,Document=doc,Transform=Transform.Identity});
                 Discover(doc,"host",Transform.Identity,null,new HashSet<Document>{doc});
                 ReadSourceElements();
-                try{Config=Read<Settings>("settings")??new Settings();Normalize(Config);}
+                try
+                {
+                    var saved=Read<Settings>("settings");Config=saved??new Settings();
+                    var changes=UpgradeSettings(Config);Normalize(Config);
+                    SettingsStatus=saved==null?"Настройки RVT ещё не сохранены.":"Настройки прочитаны из RVT.";
+                    if(changes.Count>0)
+                    {
+                        SettingsStatus+=" "+string.Join(" ",changes);
+                        startupIssues.Add(new Issue{Code="SETTINGS_MIGRATION",Severity="Предупреждение",Message=string.Join(" ",changes),Action="Проверьте восстановленные настройки и нажмите «Сохранить настройки в RVT»."});
+                    }
+                }
                 catch(System.OperationCanceledException){throw;}
-                    catch(Exception ex){Config=new Settings();settingsLoadFailed=true;startupIssues.Add(new Issue{Code="SETTINGS_RECOVERY",Severity="Предупреждение",Message=ex.Message,
-                    Action="Загружены начальные настройки. Повреждённая запись не перезаписывается автоматически; проверьте настройки и явно сохраните их либо импортируйте JSON."});}
+                    catch(Exception ex){Config=new Settings();settingsLoadFailed=true;SettingsStatus="Сохранённые настройки не прочитаны: "+ex.Message+" Загружены начальные значения; исходная запись RVT сохранена.";startupIssues.Add(new Issue{Code="SETTINGS_RECOVERY",Severity="Предупреждение",Message=SettingsStatus,
+                    Action="Проверьте начальные настройки и нажмите «Сохранить настройки в RVT», чтобы явно заменить неподдерживаемую или повреждённую запись."});}
                 RestoreSourceOptions();RefreshCatalogs();PrepareRoomWorkflow();
                 Progress("Загрузка сохранённого отчёта...");
-                try{Last=Read<Run>("run");}catch(System.OperationCanceledException){throw;}
+                try{Last=Read<Run>("run");RestoreReviewInputs();}catch(System.OperationCanceledException){throw;}
                     catch(Exception ex){startupIssues.Add(new Issue{Code="RUN_RECOVERY",Severity="Предупреждение",Message=ex.Message,Action="Выполните новый расчёт."});}
                 IsInitialized=true;
                 }
@@ -173,7 +184,8 @@ namespace KPLN_CalculateTEP.Common
             }
             private static void Normalize(Settings s)
             {
-                if(s.Version!=2) throw new InvalidOperationException("Формат настроек не соответствует этой версии ТЭП.");
+                if(s.Version!=Settings.CurrentVersion)UpgradeSettings(s);
+                s.BuildingAssignments=s.BuildingAssignments??new List<BuildingAssignment>();s.IssueDetail="full";
                 s.Departments=s.Departments??new List<DepartmentAssignment>();
                 if(s.Departments.Any(d=>d==null||!Roles().Any(r=>r.Key==d.Role)) || s.Departments.GroupBy(d=>(d.Value??"" ).Trim(),StringComparer.OrdinalIgnoreCase).Any(g=>g.Count()>1))
                     throw new InvalidOperationException("В классификации назначений есть неизвестные категории или повторяющиеся значения.");
@@ -198,10 +210,31 @@ namespace KPLN_CalculateTEP.Common
                 }
                 foreach(var c in s.Contours)
                     if(!s.Metrics.Any(m=>m.Key==c.Metric)||!Choices("sketch-kind").Any(x=>x.Key==c.Kind))throw new InvalidOperationException("Некорректная привязка ручного контура.");
+                s.RoomClassificationParameter="@Department";
                 s.Parameters=s.Parameters??Settings.DefaultParameters();
-                foreach(var p in Settings.DefaultParameters()) {var existing=s.Parameters.FirstOrDefault(x=>x.Key==p.Key);if(existing==null)s.Parameters.Add(p);else {existing.Title=p.Title;existing.Description=p.Description;}}
+                s.StairFamilies=s.StairFamilies??new List<StairFamilySetting>();
+                s.CategorySources=s.CategorySources??new List<CategorySource>();s.CategoryFamilies=s.CategoryFamilies??new List<CategoryFamily>();
+                if(s.CategorySources.Any(c=>c==null||!Roles().Any(r=>r.Key==c.Role)||c.Role=="unknown"&&c.Families)||s.CategorySources.GroupBy(c=>c.Role).Any(g=>g.Count()>1))
+                    throw new InvalidOperationException("Некорректный источник категории в настройках.");
+                if(s.CategoryFamilies.Any(c=>c==null||!Roles().Any(r=>r.Key==c.Role)||c.Role=="unknown"||string.IsNullOrWhiteSpace(c.Family)||string.IsNullOrWhiteSpace(c.Type)))
+                    throw new InvalidOperationException("Некорректное назначение типа семейства в настройках.");
+                if(s.CategoryFamilies.GroupBy(c=>c.Caption,StringComparer.OrdinalIgnoreCase).Any(g=>g.Select(c=>c.Role).Distinct().Count()>1))
+                    throw new InvalidOperationException("Тип семейства назначен разным категориям.");
+                foreach(var p in Settings.DefaultParameters()) {var existing=s.Parameters.FirstOrDefault(x=>x.Key==p.Key);if(existing==null)s.Parameters.Add(p);else {existing.Title=p.Title;existing.Description=p.Description;if(Settings.IsFixedParameter(p.Key))existing.Name=Settings.FixedParameterName(p.Key);}}
                 s.Rules=s.Rules??new ObservableCollection<Rule>();s.Buildings=s.Buildings??new ObservableCollection<BuildingMap>();
                 s.Levels=s.Levels??new ObservableCollection<LevelSetting>();s.Corrections=s.Corrections??new ObservableCollection<Correction>();
+                // Level settings are shared by all buildings and sections. Discard legacy overrides
+                // so settings loaded from an earlier version cannot silently alter the calculation.
+                foreach(var refinement in s.Levels.Where(l=>!string.IsNullOrWhiteSpace(l.Building)||!string.IsNullOrWhiteSpace(l.Section)).ToList())
+                    s.Levels.Remove(refinement);
+                foreach(var level in s.Levels)
+                {
+                    if(string.IsNullOrEmpty(level.TopSlabMode))level.TopSlabMode=string.IsNullOrWhiteSpace(level.TopSlab)?"auto":"manual";
+                    if(string.IsNullOrEmpty(level.HeightMode))level.HeightMode=string.IsNullOrWhiteSpace(level.Height)?"auto":"manual";
+                    if(string.IsNullOrEmpty(level.RoofAreaMode))level.RoofAreaMode=string.IsNullOrWhiteSpace(level.RoofArea)?"auto":"manual";
+                    if(string.IsNullOrEmpty(level.RoofRatioMode))level.RoofRatioMode=string.IsNullOrWhiteSpace(level.RoofRatio)?"auto":"manual";
+                    level.RoofSources=level.RoofSources??new List<string>();level.NormativeProfile=s.Profile;
+                }
                 s.Sources=s.Sources??new List<SourceOption>();s.Decimals=Math.Max(0,Math.Min(6,s.Decimals));
                 var defaults=new Settings();
                 foreach(var name in new[]{"IncludedColor","ExcludedColor","ManualColor","PublicColor","SummerColor","TechnicalColor","ErrorColor"})
@@ -227,11 +260,12 @@ namespace KPLN_CalculateTEP.Common
             }
             private void SnapshotSources(){Config.Sources=Sources.Select(s=>new SourceOption{Key=s.Key,Mode=s.Mode,Profile=s.Profile}).ToList();}
             public void ImportSettings(string path)
-            {var value=Deserialize<Settings>(File.ReadAllText(path,Encoding.UTF8));Normalize(value);Config=value;settingsLoadFailed=false;RestoreSourceOptions();RefreshCatalogs();PrepareRoomWorkflow();}
+            {var value=Deserialize<Settings>(File.ReadAllText(path,Encoding.UTF8));UpgradeSettings(value);Normalize(value);Config=value;settingsLoadFailed=false;RestoreSourceOptions();RefreshCatalogs();PrepareRoomWorkflow();}
             public void ExportSettings(string path){PrepareRoomWorkflow();SnapshotSources();File.WriteAllText(path,Serialize(Config),new UTF8Encoding(true));}
-            public void SaveSettings(){PrepareRoomWorkflow();SnapshotSources();Normalize(Config);Write("settings",Config);settingsLoadFailed=false;}
+            public void SaveSettings(){Normalize(Config);PrepareRoomWorkflow();SnapshotSources();Normalize(Config);Write("settings",Config);settingsLoadFailed=false;startupIssues.RemoveAll(i=>i.Code=="SETTINGS_RECOVERY"||i.Code=="SETTINGS_MIGRATION"||i.Code=="SETTINGS_REFERENCES");SettingsStatus="Настройки записаны в текущую модель RVT.";}
             private void RefreshCatalogs()
             {
+                var actualLevels=new HashSet<string>(StringComparer.Ordinal);
                 var scannedDocuments=new HashSet<Document>();
                 var names=new HashSet<string>(Parameters,StringComparer.OrdinalIgnoreCase){"@Name","@Category","@Type","@Family","@Workset"};
                 foreach(var s in Sources.Where(x=>x.Loaded&&x.LoadError==null))
@@ -252,6 +286,9 @@ namespace KPLN_CalculateTEP.Common
                     foreach(Level level in new FilteredElementCollector(s.Document).OfClass(typeof(Level)))
                     {
                         string key=s.Key+"/"+level.UniqueId;
+                        if(Owned(level)&&Kind(level)=="review-level")
+                        {foreach(var obsolete in Config.Levels.Where(l=>l.Key==key).ToList())Config.Levels.Remove(obsolete);continue;}
+                        actualLevels.Add(key);
                         var existing=Config.Levels.FirstOrDefault(x=>x.Key==key&&string.IsNullOrWhiteSpace(x.Building)&&string.IsNullOrWhiteSpace(x.Section));
                         if(existing==null){existing=new LevelSetting{Key=key};Config.Levels.Add(existing);
                             var story=level.get_Parameter(BuiltInParameter.LEVEL_IS_BUILDING_STORY);
@@ -263,6 +300,13 @@ namespace KPLN_CalculateTEP.Common
                             setting.AbsoluteElevationMeters=doc.ActiveProjectLocation.GetProjectPosition(point).Elevation*.3048;
                         }
                     }
+                }
+                int removed=RemoveMissingSettingsReferences(Config,new HashSet<string>(Sources.Select(s=>s.Key)),new HashSet<string>(Sources.Where(s=>s.Loaded&&s.LoadError==null).Select(s=>s.Key)),actualLevels);
+                if(removed>0)
+                {
+                    string message="Очищены ссылки настроек на удалённые уровни и источники: "+removed+". Настройки незагруженных связей сохранены.";
+                    SettingsStatus=(SettingsStatus??"")+" "+message;
+                    startupIssues.Add(new Issue{Code="SETTINGS_REFERENCES",Severity="Предупреждение",Message=message,Action="Проверьте первый этаж и уровень земли; сохраните настройки в RVT."});
                 }
                 catalogsReady=true;
                 Parameters=names.OrderBy(x=>x).ToList();Categories=Sources.Where(s=>s.Loaded).GroupBy(s=>s.Document).Select(g=>g.First()).SelectMany(s=>s.Elements).Select(e=>e.Category.Name).Distinct().OrderBy(x=>x).ToList();
