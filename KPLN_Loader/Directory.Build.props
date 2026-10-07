@@ -1,0 +1,4 @@
+﻿<Project>
+  <!-- Только решение Loader. Остальные проекты репозитория пока не затрагиваются. -->
+  <Import Project="$(MSBuildThisFileDirectory)build\KPLN.Revit.props" />
+</Project>

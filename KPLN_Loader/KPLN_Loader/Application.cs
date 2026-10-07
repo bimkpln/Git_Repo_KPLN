@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
+using TaskDialog = Autodesk.Revit.UI.TaskDialog;
+using TaskDialogIcon = Autodesk.Revit.UI.TaskDialogIcon;
 using Autodesk.Revit.UI.Events;
 using KPLN_Loader.Common;
 using KPLN_Loader.Core.Entities;

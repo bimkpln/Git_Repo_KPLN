@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace KPLN_Loader.Core.Entities
 {
@@ -10,12 +9,6 @@ namespace KPLN_Loader.Core.Entities
         /// </summary>
         [Key]
         internal int Id { get; set; }
-
-        /// <summary>
-        /// Id отдела
-        /// </summary>
-        [ForeignKey(nameof(SubDepartment))]
-        internal int SubDepartmentId { get; set; }
 
         /// <summary>
         /// Путь к модулю

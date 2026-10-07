@@ -148,25 +148,16 @@ namespace KPLN_Loader.Services.Abstract
         {
             _logger.Info($"БД {DbProviderName}: Получить коллекцию модулей");
 
-            if (currentUser.IsDebugMode)
-            {
-                return ExecuteQuery<Module>(
-                    $"SELECT * FROM {MainDB_Tables.Modules} m " +
-                    $"WHERE m.{nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
-                    $"AND EXISTS (SELECT 1 FROM {MainDB_Tables.ModulesMatrix} mm " +
-                    $"WHERE mm.{nameof(Module)}Id = m.{nameof(Module.Id)} " +
-                    $"AND (mm.{nameof(Module.SubDepartmentId)} = 1 OR mm.{nameof(Module.SubDepartmentId)} = @{nameof(User.SubDepartmentId)})) " +
-                    $"AND (m.{nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR m.{nameof(Module.IsDebugMode)} = {SqlTrueLiteral});",
-                    new { currentUser.SubDepartmentId });
-            }
+            string debugModeLiteral = currentUser.IsDebugMode ? SqlTrueLiteral : SqlFalseLiteral;
 
+            // Разделы загрузки определяются только матрицей; EXISTS исключает дубли модулей.
             return ExecuteQuery<Module>(
-                $"SELECT * FROM {MainDB_Tables.Modules} m " +
+                $"SELECT m.* FROM {MainDB_Tables.Modules} m " +
                 $"WHERE m.{nameof(Module.IsEnabled)} = {SqlTrueLiteral} " +
                 $"AND EXISTS (SELECT 1 FROM {MainDB_Tables.ModulesMatrix} mm " +
-                $"WHERE mm.{nameof(Module)}Id = m.{nameof(Module.Id)} " +
-                $"AND (mm.{nameof(Module.SubDepartmentId)} = 1 OR mm.{nameof(Module.SubDepartmentId)} = @{nameof(User.SubDepartmentId)})) " +
-                $"AND (m.{nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR m.{nameof(Module.IsDebugMode)} = {SqlFalseLiteral});",
+                $"WHERE mm.{nameof(ModuleMatrix.ModuleId)} = m.{nameof(Module.Id)} " +
+                $"AND (mm.{nameof(ModuleMatrix.SubDepartmentId)} = 1 OR mm.{nameof(ModuleMatrix.SubDepartmentId)} = @{nameof(User.SubDepartmentId)})) " +
+                $"AND (m.{nameof(Module.IsLibraryModule)} = {SqlTrueLiteral} OR m.{nameof(Module.IsDebugMode)} = {debugModeLiteral});",
                 new { currentUser.SubDepartmentId });
         }
 

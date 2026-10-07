@@ -1,4 +1,6 @@
 ﻿using Autodesk.Revit.UI;
+using TaskDialog = Autodesk.Revit.UI.TaskDialog;
+using TaskDialogIcon = Autodesk.Revit.UI.TaskDialogIcon;
 using System.Windows.Forms;
 
 namespace KPLN_Loader.Services
