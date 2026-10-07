@@ -92,11 +92,16 @@ namespace KPLN_Library_DBWorker.Core
             if (launchTimeUtc <= LastStartDateUtc.Value)
                 return false;
 
-            // Интервалы отсчитываются от заданного старта, чтобы задержка загрузки Revit
-            // в 06:00/18:00 не сдвигала расписание. Пропущенные интервалы не нагоняем очередью.
-            double currentInterval = Math.Floor((launchTimeUtc - StartDateUtc.Value).TotalHours / IntervalHours.Value);
-            double lastInterval = Math.Floor((LastStartDateUtc.Value - StartDateUtc.Value).TotalHours / IntervalHours.Value);
-            return currentInterval > lastInterval;
+            // Привязываем последнюю фактическую попытку к предшествующему слоту планировщика
+            // (06:00/18:00), чтобы задержка старта внутри слота не сдвигала следующий запуск.
+            // StartDateUtc задаёт только фазу 12-часовой сетки, а не границы IntervalHours.
+            long schedulerStepTicks = TimeSpan.FromHours(12).Ticks;
+            long elapsedTicks = LastStartDateUtc.Value.Ticks - StartDateUtc.Value.Ticks;
+            DateTime lastScheduledStartUtc = LastStartDateUtc.Value.AddTicks(-(elapsedTicks % schedulerStepTicks));
+
+            // После пропуска или выходных полный интервал считаем от выполненной попытки.
+            // Время завершения не влияет на расписание, очереди за пропущенные слоты нет.
+            return (launchTimeUtc - lastScheduledStartUtc).TotalHours >= IntervalHours.Value;
         }
 
         /// <summary>
