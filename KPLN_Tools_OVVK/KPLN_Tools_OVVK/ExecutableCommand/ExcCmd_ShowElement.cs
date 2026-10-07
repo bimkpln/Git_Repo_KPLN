@@ -9,16 +9,16 @@ using System.Text;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class CommandShowElement : IExecutableCommand
+    internal class ExcCmd_ShowElement : IExecutableCommand
     {
         private readonly IEnumerable<Element> _elementCollection;
 
-        public CommandShowElement(IEnumerable<Element> elemColl)
+        public ExcCmd_ShowElement(IEnumerable<Element> elemColl)
         {
             _elementCollection = elemColl;
         }
 
-        public CommandShowElement(Element element)
+        public ExcCmd_ShowElement(Element element)
         {
             _elementCollection = new List<Element>(1) { element };
         }

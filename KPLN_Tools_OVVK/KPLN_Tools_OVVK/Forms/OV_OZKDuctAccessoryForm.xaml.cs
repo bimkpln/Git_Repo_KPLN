@@ -40,7 +40,7 @@ namespace KPLN_Tools_OVVK.Forms
 
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandOZKDuctAccessory_Start(OZKDuctAccessoryEntities));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_OZKDuctAccessory_Start(OZKDuctAccessoryEntities));
             Close();
         }
 

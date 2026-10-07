@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -161,12 +161,12 @@
     <Compile Include="ExternalCommands\ExtCmd_OV_VentConfigurator.cs" />
     <Compile Include="ExternalCommands\ExtCmd_OVVK_ScheduleIncrementor.cs" />
     <Compile Include="ExternalCommands\ExtCmd_AUPT_TagPlacer.cs" />
-    <Compile Include="ExecutableCommand\CommandDuctThickness_Start.cs" />
-    <Compile Include="ExecutableCommand\CommandOZKDuctAccessory_Start.cs" />
-    <Compile Include="ExecutableCommand\CommandSystemManager_MergeSystem.cs" />
-    <Compile Include="ExecutableCommand\CommandSystemManager_ViewCreator.cs" />
-    <Compile Include="ExecutableCommand\CommandSystemManager_VMUpdater.cs" />
-    <Compile Include="ExecutableCommand\CommandShowElement.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_DuctThickness_Start.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_OZKDuctAccessory_Start.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_SystemManager_MergeSystem.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_SystemManager_ViewCreator.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_SystemManager_VMUpdater.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_ShowElement.cs" />
     <Compile Include="ExecutableCommand\ExcCmd_SchIncSetter.cs" />
     <Compile Include="Forms\Converters\JoinStringsConverter.cs" />
     <Compile Include="Forms\Models\AUPTTagPlacerM.cs" />

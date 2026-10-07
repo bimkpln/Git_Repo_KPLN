@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class CommandSystemManager_ViewCreator : IExecutableCommand
+    internal class ExcCmd_SystemManager_ViewCreator : IExecutableCommand
     {
         private readonly OVVK_SystemManager_VM _viewModel;
         private readonly string[] _systemSumParameters;
@@ -25,7 +25,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandSystemManager_ViewCreator(OVVK_SystemManager_VM currentViewModel, string[] systemSumParameters)
+        public ExcCmd_SystemManager_ViewCreator(OVVK_SystemManager_VM currentViewModel, string[] systemSumParameters)
         {
             _viewModel = currentViewModel;
             _systemSumParameters = systemSumParameters;

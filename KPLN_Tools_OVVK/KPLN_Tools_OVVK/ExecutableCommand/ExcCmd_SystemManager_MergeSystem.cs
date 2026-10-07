@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class CommandSystemManager_MergeSystem : IExecutableCommand
+    internal class ExcCmd_SystemManager_MergeSystem : IExecutableCommand
     {
         private readonly OVVK_SystemManager_VM _viewModel;
         private readonly OVVK_MergeSystem[] _sysDataToMerge;
@@ -24,7 +24,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandSystemManager_MergeSystem(OVVK_SystemManager_VM viewModel, OVVK_MergeSystem[] sysDataToMerge)
+        public ExcCmd_SystemManager_MergeSystem(OVVK_SystemManager_VM viewModel, OVVK_MergeSystem[] sysDataToMerge)
         {
             _viewModel = viewModel;
             _sysDataToMerge = sysDataToMerge;

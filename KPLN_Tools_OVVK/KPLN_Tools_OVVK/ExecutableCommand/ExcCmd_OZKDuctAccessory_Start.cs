@@ -12,7 +12,7 @@ using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class CommandOZKDuctAccessory_Start : IExecutableCommand
+    internal class ExcCmd_OZKDuctAccessory_Start : IExecutableCommand
     {
         private readonly OZKDuctAccessoryEntity[] _ozkDuctAccessoryEntities;
         private readonly ExtensibleStorageBuilder _extensibleStorageBuilder;
@@ -21,7 +21,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         private readonly Guid _widthParamGuid = new Guid("fd1b8e1f-13f5-4aa9-b3c4-d5e75af268d5");
         private readonly Guid _diamParamGuid = new Guid("f27d783d-2505-477e-9292-1b13689e06a4");
 
-        public CommandOZKDuctAccessory_Start(OZKDuctAccessoryEntity[] ozkDuctAccessoryEntities)
+        public ExcCmd_OZKDuctAccessory_Start(OZKDuctAccessoryEntity[] ozkDuctAccessoryEntities)
         {
             _ozkDuctAccessoryEntities = ozkDuctAccessoryEntities;
 

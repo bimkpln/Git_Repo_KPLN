@@ -7,11 +7,11 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
     /// <summary>
     /// Класс по обновлению данных для OVVK_SystemManager_ViewModel (кнопки на OnIdling)
     /// </summary>
-    internal class CommandSystemManager_VMUpdater : IExecutableCommand
+    internal class ExcCmd_SystemManager_VMUpdater : IExecutableCommand
     {
         private readonly OVVK_SystemManager_VM _viewModel;
 
-        public CommandSystemManager_VMUpdater(OVVK_SystemManager_VM viewModel)
+        public ExcCmd_SystemManager_VMUpdater(OVVK_SystemManager_VM viewModel)
         {
             _viewModel = viewModel;
         }

@@ -67,7 +67,7 @@ namespace KPLN_Tools_OVVK.Forms
         private void StartBtn_Click(object sender, RoutedEventArgs e)
         {
             KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(
-                new CommandDuctThickness_Start(CurrentDuctThicknessEntity, _elementsToSet, _configType));
+                new ExcCmd_DuctThickness_Start(CurrentDuctThicknessEntity, _elementsToSet, _configType));
 
             Close();
         }

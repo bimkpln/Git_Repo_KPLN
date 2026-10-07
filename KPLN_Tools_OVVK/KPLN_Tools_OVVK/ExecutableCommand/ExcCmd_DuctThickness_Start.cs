@@ -14,7 +14,7 @@ using System.Windows.Forms;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class CommandDuctThickness_Start : IExecutableCommand
+    internal class ExcCmd_DuctThickness_Start : IExecutableCommand
     {
         private readonly DuctThicknessEntity _currentDuctThicknessEntity;
         private readonly Element[] _elementsToSet;
@@ -32,7 +32,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public CommandDuctThickness_Start(DuctThicknessEntity ductThicknessEntity, Element[] elementsToSet, ConfigType configType)
+        public ExcCmd_DuctThickness_Start(DuctThicknessEntity ductThicknessEntity, Element[] elementsToSet, ConfigType configType)
         {
             _currentDuctThicknessEntity = ductThicknessEntity;
             _elementsToSet = elementsToSet;

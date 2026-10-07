@@ -50,8 +50,8 @@ namespace KPLN_Tools_OVVK.Forms
             OVVK_MergeSystemsForm mergeSysForm = new OVVK_MergeSystemsForm(CurrentViewModel);
             if ((bool)mergeSysForm.ShowDialog())
             {
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_MergeSystem(CurrentViewModel, mergeSysForm.SysDataToMerge.ToArray()));
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_VMUpdater(CurrentViewModel));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_SystemManager_MergeSystem(CurrentViewModel, mergeSysForm.SysDataToMerge.ToArray()));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_SystemManager_VMUpdater(CurrentViewModel));
             }
         }
 
@@ -79,7 +79,7 @@ namespace KPLN_Tools_OVVK.Forms
             
             if ((bool)elementMultiPick.ShowDialog())
             {
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandSystemManager_ViewCreator(
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_SystemManager_ViewCreator(
                     CurrentViewModel,
                     elementMultiPick.SelectedElements.Select(ent => ent.Name).ToArray()));
 
@@ -89,7 +89,7 @@ namespace KPLN_Tools_OVVK.Forms
 
         private void BtnSelectWarningsElems_Click(object sender, RoutedEventArgs e)
         {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new CommandShowElement(CurrentViewModel.WarningsElementColl));
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_ShowElement(CurrentViewModel.WarningsElementColl));
             Close();
         }
 
