@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="15.0">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{B4C7FDF2-A848-4869-94C5-57789CDD330D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>KPLN_CalculateTEP</RootNamespace>
+    <AssemblyName>KPLN_CalculateTEP</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2020|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\2020\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
+    <ErrorReport>none</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2023|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\2023\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
+    <ErrorReport>none</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug2024|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\2024\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
+    <ErrorReport>none</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2020|x64' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\2020\</OutputPath>
+    <DefineConstants>TRACE;Revit2020</DefineConstants>
+    <ErrorReport>none</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2023|x64' ">
+    <OutputPath>bin\2023\</OutputPath>
+    <DefineConstants>TRACE;Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Revit2024|x64' ">
+    <OutputPath>bin\2024\</OutputPath>
+    <DefineConstants>TRACE;Revit2024</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>none</ErrorReport>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="KPLN_Loader">
+      <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Debug2020' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Debug2023' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Debug2024' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2020' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2023' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit2024' ">
+      <ItemGroup>
+        <Reference Include="RevitAPI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="RevitAPIUI">
+          <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Common\Calculations\Engine.Calculation.cs" />
+    <Compile Include="Common\Calculations\Engine.FloorCounting.cs" />
+    <Compile Include="Common\Calculations\Engine.Preflight.cs" />
+    <Compile Include="Common\Calculations\Engine.PartialCalculation.cs" />
+    <Compile Include="Common\Calculations\Engine.RoomAreas.cs" />
+    <Compile Include="Common\Contours\Engine.ExteriorRoom.cs" />
+    <Compile Include="Common\Contours\Engine.ExteriorFrame.cs" />
+    <Compile Include="Common\Calculations\Engine.RoomWorkflow.cs" />
+    <Compile Include="Common\Calculations\Engine.Volumes.cs" />
+    <Compile Include="Common\Catalogs.cs" />
+    <Compile Include="Common\Contours\Engine.Contours.cs" />
+    <Compile Include="Common\Contours\Engine.NativeContours.cs" />
+    <Compile Include="Common\Diagnostics\Engine.Diagnostics.cs" />
+    <Compile Include="Common\Engine.cs" />
+    <Compile Include="Common\Export\Engine.Export.cs" />
+    <Compile Include="Common\Geometry\Clipper.cs" />
+    <Compile Include="Common\Geometry\Engine.Geometry.cs" />
+    <Compile Include="Common\Geometry\Engine.PlanarAreas.cs" />
+    <Compile Include="Common\Geometry\Engine.InputGeometry.cs" />
+    <Compile Include="Common\Geometry\Engine.FloorGeometry.cs" />
+    <Compile Include="Common\Geometry\Engine.CurveContours.cs" />
+    <Compile Include="Common\Geometry\RationalContours.cs" />
+    <Compile Include="Common\Geometry\Engine.SpatialGeometry.cs" />
+    <Compile Include="Common\Geometry\PlanarProfiles.cs" />
+    <Compile Include="Common\Graphics\Engine.Graphics.cs" />
+    <Compile Include="Common\IDHelper.cs" />
+    <Compile Include="Common\Methodologies\Engine.CommonRules.cs" />
+    <Compile Include="Common\Methodologies\NewMethodologyCalculation.cs" />
+    <Compile Include="Common\Methodologies\OldMethodologyCalculation.cs" />
+    <Compile Include="Common\Methodologies\TepMethodology.cs" />
+    <Compile Include="Common\Model\Engine.Initialization.cs" />
+    <Compile Include="Common\Model\Engine.ModelData.cs" />
+    <Compile Include="Common\Model\Engine.LevelSlabs.cs" />
+    <Compile Include="Common\Model\Engine.LevelGeometry.cs" />
+    <Compile Include="Common\Geometry\Engine.AutomaticDimensions.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.Stairs.cs" />
+    <Compile Include="Common\Geometry\Engine.HeightRange.cs" />
+    <Compile Include="Common\Geometry\Engine.Clearance.cs" />
+    <Compile Include="Common\Model\Engine.AutomaticShafts.cs" />
+    <Compile Include="Common\Model\Engine.Departments.cs" />
+    <Compile Include="Common\Models\Definitions.cs" />
+    <Compile Include="Common\Models\ModelData.cs" />
+    <Compile Include="Common\Models\Report.cs" />
+    <Compile Include="Common\Models\Settings.cs" />
+    <Compile Include="Common\Storage\Engine.Storage.cs" />
+    <Compile Include="Common\Storage\Engine.SettingsMigration.cs" />
+    <Compile Include="Common\TepCalculation.cs" />
+    <Compile Include="Common\Model\Engine.ClassificationInputs.cs" />
+    <Compile Include="Common\Model\Engine.CategorySources.cs" />
+    <Compile Include="Common\Model\Engine.CategorySettings.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.CategorySettings.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.Distribution.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.ApartmentParameters.cs" />
+    <Compile Include="Common\Model\Engine.InputAudit.cs" />
+    <Compile Include="Common\Model\Engine.BuildingAssignments.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.Buildings.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.ObjectReview.cs" />
+    <Compile Include="Common\Graphics\Engine.EditableInputs.cs" />
+    <Compile Include="Common\Graphics\Engine.ObjectOverlays.cs" />
+    <Compile Include="Common\Graphics\Engine.AutomaticAreas.cs" />
+    <Compile Include="ExternalCommands\Command_AR_CalculateTEP.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.InputAudit.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.LevelSlabs.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.LevelGeometry.cs" />
+    <Compile Include="Forms\AR_CalculateTEP.xaml.cs">
+      <DependentUpon>AR_CalculateTEP.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Module.cs" />
+    <Compile Include="ModuleData.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Forms\AR_CalculateTEP.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Imagens\CalculateTEPBig.png" />
+    <EmbeddedResource Include="Imagens\CalculateTEPSmall.png" />
+  </ItemGroup>
+</Project>

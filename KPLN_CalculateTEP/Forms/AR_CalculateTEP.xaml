@@ -1,0 +1,421 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="KPLN_CalculateTEP.Forms.AR_CalculateTEP" Title="KPLN | ТЭП | Расчёт по помещениям" Width="1488" Height="840" MinWidth="960" MinHeight="640" WindowStartupLocation="CenterOwner" Background="#F3F5F8" FontFamily="Segoe UI" FontSize="13" Language="ru-RU" UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Ink" Color="#233348"/>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="Caption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="19"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#596B80"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,6,0,12"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="#E8EEF5"/>
+            <Setter Property="Foreground" Value="#233348"/>
+            <Setter Property="BorderBrush" Value="#B9C9DA"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="#246FAE"/>
+                                <Setter TargetName="Frame" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Frame" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="#147BCC"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Frame" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="7,5"/>
+            <Setter Property="MinHeight" Value="31"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="7,5"/>
+            <Setter Property="MinHeight" Value="31"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="MaxDropDownHeight" Value="440"/>
+            <Setter Property="ToolTip">
+                <Setter.Value>
+                    <MultiBinding StringFormat="{}{0}&#10;{1}">
+                        <Binding Path="Tag" RelativeSource="{RelativeSource Self}"/>
+                        <Binding Path="SelectedItem.Description" RelativeSource="{RelativeSource Self}"/>
+                    </MultiBinding>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
+        </Style>
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="ToolTip" Value="{Binding Description}"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="250"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
+            <Setter Property="Padding" Value="8,6"/>
+        </Style>
+        <Style TargetType="ToolTip">
+            <Setter Property="MaxWidth" Value="520"/>
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Padding" Value="14"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#D9E1EB"/>
+        </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#E8EDF3"/>
+            <Setter Property="BorderBrush" Value="#D8E1EA"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="RowHeight" Value="36"/>
+            <Setter Property="ColumnHeaderHeight" Value="38"/>
+            <Setter Property="AlternatingRowBackground" Value="#F7F9FC"/>
+            <Setter Property="SelectionMode" Value="Extended"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="EnableRowVirtualization" Value="True"/>
+            <Setter Property="EnableColumnVirtualization" Value="True"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#EAF0F7"/>
+            <Setter Property="Foreground" Value="#34475D"/>
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="BorderBrush" Value="#D9E1EB"/>
+        </Style>
+        <Style TargetType="DataGridCell">
+            <Setter Property="Padding" Value="7,3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="TabItem">
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style TargetType="CheckBox">
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,5,16,5"/>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TabControl x:Name="Steps" Grid.Row="0" Background="Transparent" BorderBrush="#D9E1EB">
+            <TabItem Header="1. Показатели" x:Name="IndicatorsTab">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="20">
+                        <GroupBox Header="Методика и профиль здания">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="170"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Расчёт ГНС"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding Methods}" DisplayMemberPath="Label" SelectedValuePath="Key" SelectedValue="{Binding Config.Method}" Tag="Выберите методику ГНС. Меняет правила наружного контура, проёмов, шахт, террас и эксплуатируемой кровли; различия указаны у вариантов списка." x:Name="MethodSelector"/>
+                                <TextBlock Grid.Column="3" Text="Тип здания"/>
+                                <ComboBox Grid.Column="4" ItemsSource="{Binding Profiles}" DisplayMemberPath="Label" SelectedValuePath="Key" SelectedValue="{Binding Config.Profile}" Tag="Тип здания определяет правила включения помещений и этажей. Параметр типа здания у помещения может уточнять этот выбор." x:Name="ProfileSelector" SelectionChanged="NormativeProfile_Changed"/>
+                                <TextBlock Grid.Row="2" Grid.ColumnSpan="5" Text="Выберите методику ГНС и тип здания, затем отметьте нужные показатели ниже. От выбора зависят учитываемые помещения, этажи и исключения." Style="{StaticResource Hint}" Margin="0,10,0,0"/>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" Text="{Binding SelectedItem.Description, ElementName=MethodSelector}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"/>
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,12" Text="{Binding SelectedItem.Description, ElementName=ProfileSelector}" Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2"/>
+                            </Grid>
+                        </GroupBox>
+                        <TextBlock Text="Показатели расчёта" Style="{StaticResource Caption}"/>
+                        <DockPanel Margin="0,0,0,10">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Content="Выбрать всё" Click="SelectAll_Click" ToolTip="Включает все показатели расчёта и их подгруппы."/>
+                                <Button Content="Снять всё" Click="SelectNone_Click" Margin="0" ToolTip="Отключает все показатели. Перед расчётом включите необходимые."/>
+                            </StackPanel>
+                            <TextBlock Text="25 показателей и подгрупп" FontSize="16" FontWeight="SemiBold"/>
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Config.Metrics}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="White" BorderBrush="#E1E7EF" BorderThickness="0,0,0,1" Padding="12,6">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="65"/>
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox Content="{Binding Name}" IsChecked="{Binding Enabled}" ToolTip="{Binding Description}" Checked="Metric_Checked" ToolTipService.ShowDuration="60000"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Unit}" HorizontalAlignment="Right" Foreground="#607187"/>
+                                            <TextBlock Text="{Binding Description}" Style="{StaticResource Hint}" Margin="0,0,0,6" Grid.Row="1" Grid.ColumnSpan="2"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="2. Настройки">
+                <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="18">
+
+
+                            <StackPanel Margin="20">
+                            <TextBlock Text="Параметры" Style="{StaticResource Caption}"/>
+                            <Grid x:Name="PhaseAndCoefficients">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="200"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="Стадия" Margin="0,0,12,0"/>
+                                <ComboBox x:Name="PhaseChoice" Grid.Column="1" ItemsSource="{Binding PhaseChoices}" DisplayMemberPath="Label" SelectedValuePath="Key" SelectedValue="{Binding PhaseSelection, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding PhaseDescription}"/>
+                                <Grid x:Name="CoefficientInputs" Grid.Column="2" IsEnabled="False" Margin="20,0,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="85"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="85"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="Коэффициент лоджий" Margin="0,0,12,0"/>
+                                    <TextBox Grid.Column="1" Margin="0" Text="{Binding Config.LoggiaCoefficient}" ToolTip="Умножает площадь лоджий при расчёте общей площади квартир с летними помещениями. На исходную площадь и ГНС не влияет. Пример: 0,5"/>
+                                    <TextBlock Grid.Column="2" Text="Балконы и террасы" Margin="20,0,12,0"/>
+                                    <TextBox Grid.Column="3" Text="{Binding Config.BalconyCoefficient}" ToolTip="Умножает площадь балконов и террас при расчёте общей площади квартир с летними помещениями. Применяется один раз. Пример: 0,3"/>
+                                </Grid>
+                            </Grid>
+                            <TextBlock Text="{Binding PhaseDescription}" Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+                            <TextBlock Text="Коэффициенты меняют только общую площадь квартир с летними помещениями. Площадь без летних помещений и ГНС от этих значений не меняются. Пример: лоджия 6 м² × 0,5 = 3 м²; балкон 6 м² × 0,3 = 1,8 м²." Style="{StaticResource Hint}" Margin="0,4,0,0"/>
+                            <DataGrid x:Name="ParametersGrid" VerticalAlignment="Top" Margin="0,16,0,20" ItemsSource="{Binding RoomParameters}"/>
+                        <Grid Margin="0,24,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="Высотные отметки и состав этажей" Style="{StaticResource Caption}"/>
+                            <GroupBox Grid.Row="1" Header="Ноль здания и уровень земли">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="Первый этаж (ноль здания)" TextWrapping="NoWrap" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <ComboBox x:Name="FirstFloorLevel" Grid.Column="1" ItemsSource="{Binding ZeroLevels}" DisplayMemberPath="DatumDisplayName" SelectedValuePath="Key" SelectedValue="{Binding Config.ZeroLevel}" ToolTip="Выберите уровень первого этажа. Ноль здания принимается по этому уровню; в списке указана абсолютная отметка в общих координатах основной модели. Для связи учтено её размещение. Ноль разделяет строительный объём на надземную и подземную части."/>
+                                    </Grid>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <TextBlock Grid.Column="1" Text="Способ" Margin="0,0,10,6"/>
+                                        <TextBlock Grid.Row="1" Text="Уровень земли"/>
+                                        <ComboBox x:Name="GroundModeChoice" Grid.Row="1" Grid.Column="1" Margin="0,0,16,0" ItemsSource="{Binding DatumModes}" DisplayMemberPath="Label" SelectedValuePath="Key" SelectedValue="{Binding Config.GroundMode, UpdateSourceTrigger=PropertyChanged}" Tag="Выберите источник отметки земли. Справа появится поле выбранного способа."/>
+                                        <StackPanel x:Name="GroundManualInput" Grid.Column="2" Grid.RowSpan="2">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers><DataTrigger Binding="{Binding SelectedValue, ElementName=GroundModeChoice}" Value="manual"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="Отметка, м" Margin="0,0,0,6"/>
+                                            <TextBox Text="{Binding Config.GroundValue, UpdateSourceTrigger=PropertyChanged}" ToolTip="Введите абсолютную отметку земли в метрах. Она определяет наземность этажей и сечение площади застройки.&#10;Пример: 155,80"/>
+                                        </StackPanel>
+                                        <StackPanel x:Name="GroundLevelInput" Grid.Column="2" Grid.RowSpan="2">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers><DataTrigger Binding="{Binding SelectedValue, ElementName=GroundModeChoice}" Value="level"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="Уровень" Margin="0,0,0,6"/>
+                                            <ComboBox ItemsSource="{Binding ZeroLevels}" DisplayMemberPath="DatumDisplayName" SelectedValuePath="Key" SelectedValue="{Binding Config.GroundLevel}" Tag="Выберите уровень, по которому определяется отметка земли. В списке показана абсолютная отметка с учётом размещения связи."/>
+                                        </StackPanel>
+                                        <StackPanel x:Name="GroundParameterInput" Grid.Column="2" Grid.RowSpan="2">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers><DataTrigger Binding="{Binding SelectedValue, ElementName=GroundModeChoice}" Value="parameter"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="Параметр проекта" Margin="0,0,0,6"/>
+                                            <TextBox Text="{Binding Config.GroundParameter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Введите точное имя параметра сведений о проекте с отметкой земли.&#10;Пример: ТЭП_Отметка земли"/>
+                                        </StackPanel>
+                                        <StackPanel x:Name="GroundTerrainInput" Grid.Column="2" Grid.RowSpan="2">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers><DataTrigger Binding="{Binding SelectedValue, ElementName=GroundModeChoice}" Value="terrain"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <TextBlock Text="По поверхности модели" Margin="0,0,0,6"/>
+                                            <TextBlock Text="Отметка определяется автоматически по поверхности модели." TextWrapping="Wrap" VerticalAlignment="Center" MinHeight="30"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="Ноль здания берётся из выбранного уровня первого этажа. Земля определяет наземность этажей и сечение площади застройки." Style="{StaticResource Hint}" Margin="0,10,0,0"/>
+                                </StackPanel>
+                            </GroupBox>
+                            <StackPanel Grid.Row="2">
+                                <Button Content="Соответствия корпусов" Click="Buildings_Click" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                                <!-- Keep this small settings table's row/cell containers stable during column resizing and UI Automation queries. -->
+                                <DataGrid x:Name="LevelsGrid" Height="300" ItemsSource="{Binding Config.Levels}" EnableRowVirtualization="False" EnableColumnVirtualization="False" VirtualizingPanel.IsVirtualizing="False" VirtualizingPanel.VirtualizationMode="Standard"/>
+                            </StackPanel>
+                        </Grid>
+                            </StackPanel>
+
+                                            <Separator Margin="0,20"/>
+
+                        <StackPanel Margin="0,12">
+                            <TextBlock Text="Распределение назначений" Style="{StaticResource Caption}"/>
+                            <WrapPanel x:Name="CategoryCards" Margin="0,8,0,12"/>
+                            <TextBlock x:Name="ClassificationScanText" Margin="0,0,0,10" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <StackPanel x:Name="RoomCategoryPanel">
+                            <TextBlock x:Name="CategoryTitle" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="CategoryDescription" Style="{StaticResource Hint}" Margin="0,6,0,10"/>
+                                <ListBox x:Name="DepartmentValues" SelectionMode="Extended" DisplayMemberPath="Caption" SelectionChanged="DepartmentValues_Changed" Height="120" ToolTip="Выберите нераспределённые назначения и укажите категорию ниже."/>
+                                <DockPanel Margin="0,8,0,0">
+                                    <Button x:Name="AssignDepartmentButton" DockPanel.Dock="Right" Content="Распределить" Click="AssignDepartment_Click" IsEnabled="False" Margin="12,0,0,0" ToolTip="Назначает выбранные помещения категории. Параметры модели не изменяются."/>
+                                    <ComboBox x:Name="DepartmentTarget" ItemsSource="{Binding CategoryTargetChoices}" DisplayMemberPath="Label" SelectedValuePath="Key" SelectedIndex="0" ToolTip="Выберите категорию для выбранных значений назначения. После | указан текущий источник категории."/>
+                                </DockPanel>
+                            <TextBlock x:Name="DepartmentRoomsTitle" Margin="0,8" TextWrapping="Wrap"/>
+                            <DataGrid x:Name="DepartmentRoomsGrid" Height="185" IsReadOnly="True"/>
+                            <StackPanel x:Name="RoomNavigationPanel" Orientation="Horizontal" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                                            <Separator Margin="0,20"/>
+                                        </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="3. Результат" x:Name="ResultsTab" IsEnabled="False">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,12">
+                        <TextBlock x:Name="ReportStatus" Text="Выполните расчёт или откройте сохранённый результат" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,16,0"/>
+                    </DockPanel>
+                    <TabControl Grid.Row="1" x:Name="ReportTabs">
+                        <TabItem Header="Итоги">
+                            <DockPanel>
+                                <TextBlock Text="Итог по каждому выбранному показателю. Результат с ошибками требует проверки; подробности находятся во вкладке «Ошибки и проверки»." Style="{StaticResource Hint}" Margin="10,8,10,10" DockPanel.Dock="Top"/>
+                                <DataGrid x:Name="SummaryGrid" IsReadOnly="True"/>
+                            </DockPanel>
+                        </TabItem>
+<TabItem Header="Ошибки и проверки" x:Name="IssuesTab">
+                            <DockPanel>
+                                <TextBlock Text="Что помешало расчёту и какие данные проверить. Ошибки выделены красным. Двойной щелчок по сообщению с ID открывает соответствующий объект." Style="{StaticResource Hint}" Margin="10,8,10,10" DockPanel.Dock="Top"/>
+                                <DataGrid x:Name="IssuesGrid" IsReadOnly="True" MouseDoubleClick="Issues_DoubleClick"/>
+                            </DockPanel>
+                        </TabItem>
+                        <TabItem Header="Заполнение параметров" x:Name="ResultParametersTab"><Grid x:Name="ResultAuditContent" MinWidth="0" MinHeight="0" ClipToBounds="True"/></TabItem>
+<TabItem Header="По этажам">
+                            <DockPanel>
+                                <TextBlock Text="Площади каждого этажа по корпусам и секциям. Текст можно выделить и скопировать." Style="{StaticResource Hint}" Margin="10,8,10,10" DockPanel.Dock="Top"/>
+                                <RichTextBox x:Name="FloorReport" IsReadOnly="True" IsDocumentEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Background="White" FontFamily="Consolas" FontSize="13" ToolTip="Поэтажная расшифровка последнего расчёта: площадь каждого этажа по корпусу и секции. Текст можно выделить и скопировать."/>
+                            </DockPanel>
+                        </TabItem>
+                        <TabItem Header="Объекты и области" x:Name="ObjectsTab">
+                            <Grid Margin="12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="360" MinWidth="280"/><ColumnDefinition Width="6"/><ColumnDefinition Width="*" MinWidth="350"/></Grid.ColumnDefinitions>
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                                        <TextBlock x:Name="ObjectCount" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                        <TextBox x:Name="ObjectSearch" TextChanged="ReviewSearch_Changed" ToolTip="Поиск по имени, ID, этажу, квартире или источнику"/>
+                                    </StackPanel>
+                                    <ListBox x:Name="ObjectsList" SelectionChanged="ReviewObject_Changed" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                        <ListBox.ItemTemplate><DataTemplate><StackPanel Margin="6,7">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Foreground="#596B80" Margin="0,4,0,3"/>
+                                            <TextBlock Text="{Binding AreaCount}" Foreground="#245C91"/>
+                                        </StackPanel></DataTemplate></ListBox.ItemTemplate>
+                                    </ListBox>
+                                </DockPanel>
+                                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"/>
+                                <Grid Grid.Column="2" Margin="12,0,0,0">
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                    <DockPanel>
+                                        <Button x:Name="NavigateObjectButton" Content="К исходному объекту" Click="NavigateObject_Click" DockPanel.Dock="Right" Margin="10,0,0,0"/>
+                                        <StackPanel><TextBlock x:Name="SelectedObjectTitle" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock x:Name="SelectedObjectDescription" TextWrapping="Wrap" Margin="0,5,0,0"/></StackPanel>
+                                    </DockPanel>
+                                    <TextBlock Grid.Row="1" Text="Изменённая граница учитывается при следующем расчёте. Перепривязка нужна для выбора другой области." Style="{StaticResource Hint}" Margin="0,12"/>
+                                    <ListBox x:Name="ReviewGrid" Grid.Row="2" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionMode="Single" BorderBrush="#D8E1EA">
+                                        <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,6"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.ItemContainerStyle>
+                                        <ListBox.ItemTemplate><DataTemplate>
+                                            <Border BorderBrush="#E8EDF3" BorderThickness="0,0,0,1" Padding="10,9">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding DisplayKind}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                    <WrapPanel Margin="0,6,0,8">
+                                                        <TextBlock Text="{Binding RegionElementId, StringFormat=ID области: {0}}" Margin="0,0,18,4"/>
+                                                        <TextBlock Text="{Binding AreaDescription}" Margin="0,0,18,4"/>
+                                                        <TextBlock Text="{Binding MeasurementElevationMeters, StringFormat=Отметка расчётного контура: {0:N3} м}" Margin="0,0,0,4" ToolTip="Высотная координата контура в основной модели Revit. У помещений учитываются отметка уровня, смещение пола и нормативная высота обмера. Отрицательное значение означает расположение ниже начала координат модели, а не отрицательную площадь."/>
+                                                    </WrapPanel>
+                                                    <TextBlock Text="{Binding ReviewState}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                                    <TextBlock Text="{Binding DraftDescription}" TextWrapping="Wrap" Margin="0,0,0,6" Foreground="#B42318"/>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="Перейти" Tag="open" Click="ReviewAction_Click" Padding="8,4" IsEnabled="{Binding CanOpen}"/>
+                                                        <Button Content="Перепривязать" Tag="bind" Click="ReviewAction_Click" Padding="8,4" Margin="0" ToolTip="Выбрать другую цветовую область в Revit"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="#596B80"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate></ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <TextBlock x:Name="EmptyAreas" Grid.Row="2" Margin="18,60,18,0" VerticalAlignment="Top" TextWrapping="Wrap" Foreground="#596B80" IsHitTestVisible="False"/>
+                                </Grid>
+                            </Grid>
+                        </TabItem>
+</TabControl>
+                </Grid>
+            </TabItem>
+        </TabControl>
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Row="1" Margin="0,0,20,0" VerticalAlignment="Center">
+                <TextBlock x:Name="Status" Text="Загрузка модели..." TextWrapping="Wrap" Foreground="#596B80"/>
+                <ProgressBar x:Name="WorkProgress" Height="5" Margin="0,7,0,0" IsIndeterminate="True" Visibility="Collapsed" ToolTip="Идёт обработка модели. Текущий этап и число обработанных объектов показаны над полосой."/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="CancelButton" Content="Отменить" Click="Cancel_Click" Visibility="Collapsed" ToolTip="Отменяет работу после текущей операции Revit. Изменения этого расчёта откатываются, предыдущий отчёт сохраняется."/>
+                <Button x:Name="CalculateButton" Content="Рассчитать ТЭП" Click="Calculate_Click" Background="#245C91" Foreground="White" FontWeight="SemiBold" MinWidth="150" Margin="8,0,0,0" ToolTip="Проверяет настройки, предупреждает о недостающих данных и автоматически рассчитывает доступные показатели. Недоступные показатели отмечает в результате с причиной. Прогресс показан слева; расчёт можно отменить."/>
+                <Button x:Name="ExportRunButton" Content="Экспорт отчёта" Click="ExportRun_Click" Margin="8,0,0,0" ToolTip="Сохраняет последний расчёт и диагностику в XLSX или CSV.">
+                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding IsSelected, ElementName=ResultsTab}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                </Button>
+                <Button x:Name="SaveSettingsButton" Content="Сохранить настройки в RVT" Click="SaveSettings_Click" Margin="8,0,0,0" ToolTip="Записывает настройки ТЭП в текущую модель без расчёта. Чтобы сохранить их на диске, затем сохраните RVT обычной командой Revit."/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
