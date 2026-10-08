@@ -16,7 +16,7 @@ namespace KPLN_Tools.Common
         internal static int ElIdInt(ElementId id) => (int)id.Value;
 #endif
 
-#if Debug2023 || Revit2023 || Debug2024 || Revit2024
+#if Debug2023 || Revit2023 || Debug2024 || Revit2024 || Debug2026 || Revit2026
         internal static FilterRule CreateContainsRule(ElementId parameterId, string value) =>
             ParameterFilterRuleFactory.CreateContainsRule(parameterId, value);
 #else

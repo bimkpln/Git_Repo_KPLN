@@ -36,7 +36,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
             return batchAddingParametersWindowСhoice.CreateTypeInstanceList();
         }
 
-#if Revit2024 || Debug2024
+#if Revit2024 || Debug2024 || Revit2026 || Debug2026
         public Dictionary<string, ForgeTypeId> CreateGroupingDictionary()
         {
             return batchAddingParametersWindowСhoice.CreateGroupingDictionary();

@@ -1,0 +1,22 @@
+﻿<Project>
+  <!-- Подключается явно только проектами, перенесёнными на Revit 2026. -->
+  <PropertyGroup>
+    <RevitVer>2026</RevitVer>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <MSBuildProjectExtensionsPath>$(MSBuildProjectDirectory)\obj\NuGet\$(TargetFramework)\</MSBuildProjectExtensionsPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+    <KPLNLoaderPath Condition="'$(KPLNLoaderPath)' == ''">X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2026\KPLN_Loader\KPLN_Loader.dll</KPLNLoaderPath>
+    <KPLNLoaderPath Condition="!Exists('$(KPLNLoaderPath)')">C:\ProgramData\Autodesk\Revit\Addins\2026\KPLN_Loader\KPLN_Loader.dll</KPLNLoaderPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Revit2026PlatformInfo.cs" Link="Properties\Revit2026PlatformInfo.cs" />
+  </ItemGroup>
+</Project>

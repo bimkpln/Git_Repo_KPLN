@@ -2,7 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+#if Debug2026 || Revit2026
+using System.Text.Json;
+#else
 using System.Web.Script.Serialization;
+#endif
 
 namespace KPLN_RevitMcpBridge.Server
 {
@@ -15,6 +19,58 @@ namespace KPLN_RevitMcpBridge.Server
 
     internal static class Json
     {
+#if Debug2026 || Revit2026
+        private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
+        {
+            IncludeFields = true,
+            MaxDepth = 64
+        };
+
+        public static string Serialize(object value) => JsonSerializer.Serialize(value, SerializerOptions);
+
+        public static Dictionary<string, object> Parse(string value)
+        {
+            try
+            {
+                if (value == null || value.Length > 8 * 1024 * 1024) throw new FormatException();
+
+                using (var document = JsonDocument.Parse(value, new JsonDocumentOptions { MaxDepth = 64 }))
+                {
+                    if (document.RootElement.ValueKind != JsonValueKind.Object) throw new FormatException();
+                    return (Dictionary<string, object>)ReadValue(document.RootElement);
+                }
+            }
+            catch { throw new BridgeException("invalid_json", "Ожидается JSON-объект."); }
+        }
+
+        // Сервисы ожидают обычные Dictionary/IList и числа, а не JsonElement.
+        private static object ReadValue(JsonElement value)
+        {
+            switch (value.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    var data = new Dictionary<string, object>();
+                    foreach (var property in value.EnumerateObject()) data[property.Name] = ReadValue(property.Value);
+                    return data;
+                case JsonValueKind.Array:
+                    var items = new ArrayList();
+                    foreach (var item in value.EnumerateArray()) items.Add(ReadValue(item));
+                    return items;
+                case JsonValueKind.String:
+                    return value.GetString();
+                case JsonValueKind.Number:
+                    if (value.TryGetInt32(out var intValue)) return intValue;
+                    if (value.TryGetInt64(out var longValue)) return longValue;
+                    return value.GetDouble();
+                case JsonValueKind.True:
+                    return true;
+                case JsonValueKind.False:
+                    return false;
+                default:
+                    return null;
+            }
+        }
+#else
         private static JavaScriptSerializer Serializer() => new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024, RecursionLimit = 64 };
         public static string Serialize(object value) => Serializer().Serialize(value);
         public static Dictionary<string, object> Parse(string value)
@@ -22,6 +78,8 @@ namespace KPLN_RevitMcpBridge.Server
             try { return Serializer().Deserialize<Dictionary<string, object>>(value) ?? throw new Exception(); }
             catch { throw new BridgeException("invalid_json", "Ожидается JSON-объект."); }
         }
+#endif
+
         public static object Get(this IDictionary<string, object> data, string key)
         { object value; return data.TryGetValue(key, out value) ? value : null; }
         public static string Text(this IDictionary<string, object> data, string key, bool required = false)

@@ -356,7 +356,7 @@ namespace KPLN_BIMTools_Ribbon.Forms
                 {
                     DirectoryInfo resultPathDI = new DirectoryInfo(docExchWrapper.SettingResultPath);
                     if (resultPathDI.Exists)
-                        Process.Start(resultPathDI.FullName);
+                        Process.Start(new ProcessStartInfo(resultPathDI.FullName) { UseShellExecute = true });
                     else
                     {
                         UserDialog cd = new UserDialog("ОШИБКА", $"Данного пути либо не существует, либо это путь на Revit-Server:\n\"{resultPathDI.FullName}\"");

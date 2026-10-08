@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Suite Condition="'$(Suite)' == ''">Parameters</Suite>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <DefineConstants>TRACE;Revit2026</DefineConstants>
+    <LangVersion>7.3</LangVersion>
+    <OutputPath>bin\$(Suite)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Suite)\</IntermediateOutputPath>
+    <AssemblyName Condition="'$(Suite)' == 'Publication'">KPLN_Publication</AssemblyName>
+  </PropertyGroup>
+  <!-- Повторно используем сценарии и API doubles существующих тестов. -->
+  <ItemGroup>
+    <Compile Include="..\$(Suite)\Program.cs" />
+    <Compile Include="..\$(Suite)\Fake*.cs" />
+    <Compile Include="..\..\Server\Protocol.cs" Condition="'$(Suite)' != 'Lifecycle'" />
+    <Compile Include="..\..\Server\WorkItem.cs" Condition="'$(Suite)' == 'Dispatcher' OR '$(Suite)' == 'Transport'" />
+    <Compile Include="..\..\Server\HttpBridgeServer.cs" Condition="'$(Suite)' == 'Transport'" />
+    <Compile Include="..\..\Services\ParameterService.cs" Condition="'$(Suite)' == 'Parameters'" />
+    <Compile Include="..\..\Services\FamilyTypeService.cs" Condition="'$(Suite)' == 'FamilyTypes'" />
+    <Compile Include="..\..\Services\PublicationPrintService.cs" Condition="'$(Suite)' == 'Publication'" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Suite)' == 'Inspection'">
+    <Compile Include="..\..\Services\ElementLocationService.cs" />
+    <Compile Include="..\..\Services\ModelInspectionService.cs" />
+    <Compile Include="..\..\Services\InterferenceService.cs" />
+    <Compile Include="..\..\Services\SheetPdfExportService.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Suite)' == 'Lifecycle'">
+    <Compile Include="..\..\Module.cs" />
+    <Compile Include="..\..\ModuleData.cs" />
+    <Compile Include="..\..\ExternalCommands\BridgeStatusExtCmd.cs" />
+  </ItemGroup>
+  <Target Name="ValidateSuite" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(Suite)' != 'Parameters' AND '$(Suite)' != 'FamilyTypes' AND '$(Suite)' != 'Transport' AND '$(Suite)' != 'Dispatcher' AND '$(Suite)' != 'Inspection' AND '$(Suite)' != 'Lifecycle' AND '$(Suite)' != 'Publication'" Text="Unknown test suite: $(Suite)" />
+  </Target>
+</Project>

@@ -147,7 +147,8 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
 
             bool invalidVersion = DBPrjWrapper.WrRevitVersion != 2020
                 && DBPrjWrapper.WrRevitVersion != 2023
-                && DBPrjWrapper.WrRevitVersion != 2024;
+                && DBPrjWrapper.WrRevitVersion != 2024
+                && DBPrjWrapper.WrRevitVersion != 2026;
 
             if (string.IsNullOrWhiteSpace(DBPrjWrapper.WrName)
                 || invalidCode
@@ -158,7 +159,7 @@ namespace KPLN_BIMTools_Ribbon.Forms.ViewModels
                 ShowError(
                     "Заполните имя, код, стадию, версию Revit и путь к папке стадии. " +
                     "Код должен состоять из заглавных букв, цифр и символов «.» или «_». " +
-                    "Поддерживаются Revit 2020, 2023 и 2024.");
+                    "Поддерживаются Revit 2020, 2023, 2024 и 2026.");
                 return false;
             }
 

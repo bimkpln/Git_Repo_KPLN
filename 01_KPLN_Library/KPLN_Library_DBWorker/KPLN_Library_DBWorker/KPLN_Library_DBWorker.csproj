@@ -1,7 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.props')" />
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Revit2026Build Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'">true</Revit2026Build>
+    <Configurations>Debug2020;Revit2020;Debug2023;Revit2023;Debug2024;Revit2024;Debug2026;Revit2026;Revit2020_ExtraNet;Revit2023_ExtraNet</Configurations>
+    <Platforms>x64</Platforms>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+  </PropertyGroup>
+  <Import Project="..\..\..\build\KPLN.Revit2026.props" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.props" Condition="'$(Revit2026Build)' != 'true' AND (Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.props'))" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="'$(Revit2026Build)' != 'true' AND (Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props'))" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
@@ -10,7 +18,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>KPLN_Library_DBWorker</RootNamespace>
     <AssemblyName>KPLN_Library_DBWorker</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion Condition="'$(Revit2026Build)' != 'true'">v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <NuGetPackageImportStamp>
@@ -92,95 +100,95 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Dapper, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Dapper, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Dapper.2.0.143\lib\net461\Dapper.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.5.1\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Microsoft.Bcl.AsyncInterfaces, Version=8.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.8.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.8.0.2\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Microsoft.Extensions.Logging.Abstractions, Version=8.0.0.2, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.Logging.Abstractions.8.0.2\lib\net462\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="MySqlConnector, Version=2.0.0.0, Culture=neutral, PublicKeyToken=d33d3e53aa5f8c92, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="MySqlConnector, Version=2.0.0.0, Culture=neutral, PublicKeyToken=d33d3e53aa5f8c92, processorArchitecture=MSIL">
       <HintPath>..\packages\MySqlConnector.2.5.0\lib\net48\MySqlConnector.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="RevitServerAPILib, Version=0.1.10.34061, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitServerAPILib, Version=0.1.10.34061, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
     </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.ComponentModel.DataAnnotations" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data.SQLite, Version=2.0.3.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.ComponentModel.DataAnnotations" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Core" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Data.SQLite, Version=2.0.3.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Data.SQLite.2.0.3\lib\net471\System.Data.SQLite.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Diagnostics.DiagnosticSource, Version=8.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Diagnostics.DiagnosticSource, Version=8.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Diagnostics.DiagnosticSource.8.0.1\lib\net462\System.Diagnostics.DiagnosticSource.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Drawing" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Numerics" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="System.Transactions" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Transactions" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Windows.Forms" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Xml.Linq" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Data.DataSetExtensions" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Microsoft.CSharp" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Data" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Net.Http" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Xml" />
   </ItemGroup>
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug2020' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -188,15 +196,15 @@
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -204,15 +212,15 @@
     </When>
     <When Condition=" '$(Configuration)'=='Debug2024' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2024\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -220,15 +228,15 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -236,15 +244,15 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -252,15 +260,15 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2024' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2024\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -323,13 +331,69 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="'$(Revit2026Build)' != 'true'" />
+  <Target Condition="'$(Revit2026Build)' != 'true'" Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.5.1\build\EntityFramework.props'))" />
     <Error Condition="!Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.5.1\build\EntityFramework.targets'))" />
   </Target>
-  <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets')" />
+  <Import Project="..\packages\EntityFramework.6.5.1\build\EntityFramework.targets" Condition="'$(Revit2026Build)' != 'true' AND (Exists('..\packages\EntityFramework.6.5.1\build\EntityFramework.targets'))" />
+  <!-- Revit 2026: .NET 8; старые конфигурации используют прежние ссылки и targets. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2026|x64'">
+    <OutputPath>bin\Debug\2026\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2026</DefineConstants>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2026|x64'">
+    <OutputPath>bin\2026\</OutputPath>
+    <DefineConstants>Revit2026</DefineConstants>
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Revit2026Build)' == 'true'">
+    <Reference Include="Dapper">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\Dapper.2.0.143\lib\net5.0\Dapper.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="KPLN_Loader">
+      <HintPath>$(KPLNLoaderPath)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\Microsoft.Extensions.DependencyInjection.Abstractions.8.0.2\lib\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\Microsoft.Extensions.Logging.Abstractions.8.0.2\lib\net8.0\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\MySqlConnector.2.5.0\lib\net8.0\MySqlConnector.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\Newtonsoft.Json.13.0.3\lib\net6.0\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2026\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2026\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitServerAPILib">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Data.SQLite">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\System.Data.SQLite.2.0.3\lib\netstandard2.1\System.Data.SQLite.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
 </Project>

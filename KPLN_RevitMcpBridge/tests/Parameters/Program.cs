@@ -17,6 +17,13 @@ internal static class Program
     private static object Row(string id, object before, object after, string parameter = "1", string units = null) => new { element_unique_id = id, parameter_id = parameter, expected_value = before, value = after, value_units = units };
     private static void Main()
     {
+        foreach (var invalidJson in new[] { "null", "[]", "42", "{\"value\":" })
+            Fails(() => Json.Parse(invalidJson), "invalid_json");
+        var nested = Json.Parse("{\"rows\":[{\"id\":9223372036854775807,\"name\":\"Размер\",\"enabled\":true,\"value\":null}]}");
+        var row = (Dictionary<string, object>)nested.List("rows")[0];
+        Assert(Json.Integer(row.Get("id"), "id") == long.MaxValue, "64-bit JSON identifier");
+        Assert(row.Text("name") == "Размер" && row.Flag("enabled") && row.Get("value") == null, "nested JSON values");
+
         var originalCulture = Thread.CurrentThread.CurrentCulture;
         try
         {

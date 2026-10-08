@@ -643,11 +643,7 @@ namespace KPLN_BIMTools_Ribbon.Common
                     if (wex.Message.Contains("404"))
                         return false;
                     else
-                        throw wex;
-                }
-                catch (Exception ex)
-                {
-                    throw ex;
+                        throw;
                 }
 
             }

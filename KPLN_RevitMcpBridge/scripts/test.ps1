@@ -11,4 +11,10 @@ foreach ($suite in @('Dispatcher','Transport','Parameters','FamilyTypes','Lifecy
     if ($suite -eq 'Publication') { $exe = 'KPLN_Publication.exe' }
     & (Join-Path $root "tests\$suite\bin\$exe")
     if ($LASTEXITCODE -ne 0) { throw "Test failed: $suite" }
+
+    & dotnet build (Join-Path $root 'tests\Revit2026\Revit2026.csproj') "/p:Suite=$suite" /v:minimal /nologo
+    if ($LASTEXITCODE -ne 0) { throw "Revit 2026 test build failed: $suite" }
+    $assembly = if ($suite -eq 'Publication') { 'KPLN_Publication' } else { 'Revit2026' }
+    & dotnet (Join-Path $root "tests\Revit2026\bin\$suite\net8.0-windows\$assembly.dll")
+    if ($LASTEXITCODE -ne 0) { throw "Revit 2026 test failed: $suite" }
 }

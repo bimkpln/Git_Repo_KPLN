@@ -1,6 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Revit2026Build Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'">true</Revit2026Build>
+    <Configurations>Debug2020;Revit2020;Debug2023;Revit2023;Debug2024;Revit2024;Debug2026;Revit2026;Revit2020_ExtraNet;Revit2023_ExtraNet</Configurations>
+    <Platforms>x64</Platforms>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+  </PropertyGroup>
+  <Import Project="..\..\..\build\KPLN.Revit2026.props" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="'$(Revit2026Build)' != 'true' AND (Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props'))" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
@@ -9,7 +17,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>KPLN_Library_Forms</RootNamespace>
     <AssemblyName>KPLN_Library_Forms</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion Condition="'$(Revit2026Build)' != 'true'">v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
@@ -90,43 +98,43 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="HtmlAgilityPack, Version=1.12.4.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="HtmlAgilityPack, Version=1.12.4.0, Culture=neutral, PublicKeyToken=bd319b19eaf3b43a, processorArchitecture=MSIL">
       <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\HtmlAgilityPack.1.12.4\lib\Net45\HtmlAgilityPack.dll</HintPath>
     </Reference>
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="RevitServerAPILib">
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="PresentationCore" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="PresentationFramework" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitServerAPILib">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_Forms\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
     </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-    <Reference Include="WindowsBase" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Core" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Drawing" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Windows.Forms" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Xaml" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Xml.Linq" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Data.DataSetExtensions" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="Microsoft.CSharp" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Data" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Net.Http" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System.Xml" />
+    <Reference Condition="'$(Revit2026Build)' != 'true'" Include="WindowsBase" />
   </ItemGroup>
   <Choose>
     <When Condition=" '$(Configuration)'=='Debug2020' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -134,19 +142,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Debug2023' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -154,19 +162,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Debug2024' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2024\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\2024\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -174,19 +182,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2020' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -194,19 +202,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -214,19 +222,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2024' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2024\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -234,19 +242,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2020_ExtraNet' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2020\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2020\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2020\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -254,19 +262,19 @@
     </When>
     <When Condition=" '$(Configuration)'=='Revit2023_ExtraNet' ">
       <ItemGroup>
-        <Reference Include="KPLN_Loader">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Loader">
           <HintPath>X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\2023\KPLN_Loader\KPLN_Loader.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="KPLN_Library_DBWorker">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="KPLN_Library_DBWorker">
           <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2023\KPLN_Library_DBWorker.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPI.dll</HintPath>
           <Private>False</Private>
         </Reference>
-        <Reference Include="RevitAPIUI">
+        <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPIUI">
           <HintPath>C:\Program Files\Autodesk\Revit 2023\RevitAPIUI.dll</HintPath>
           <Private>False</Private>
         </Reference>
@@ -356,5 +364,59 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="'$(Revit2026Build)' != 'true'" />
+  <!-- Revit 2026: .NET 8; старые конфигурации используют прежние ссылки и targets. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2026|x64'">
+    <OutputPath>bin\Debug\2026\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2026</DefineConstants>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2026|x64'">
+    <OutputPath>bin\2026\</OutputPath>
+    <DefineConstants>Revit2026</DefineConstants>
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(Revit2026Build)' == 'true'">
+    <Reference Include="HtmlAgilityPack">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\HtmlAgilityPack.1.12.4\lib\netstandard2.0\HtmlAgilityPack.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="KPLN_Loader">
+      <HintPath>$(KPLNLoaderPath)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2026\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2026\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitServerAPILib">
+      <HintPath>..\..\..\KPLN_BIMTools_Ribbon\packages\RevitServerAPILib.0.1.10\lib\net40\RevitServerAPILib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(Configuration)' == 'Debug2026'">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\Debug\2026\KPLN_Library_DBWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(Configuration)' == 'Revit2026'">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_DBWorker">
+          <HintPath>..\..\..\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2026\KPLN_Library_DBWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
 </Project>
