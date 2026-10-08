@@ -7,6 +7,9 @@ namespace KPLN_Publication
     public class Logger
     {
         private readonly Action<string> _write;
+#if Debug2026 || Revit2026
+        private readonly TextWriterTraceListener _listener;
+#endif
 
         // Для вызова без окна: без глобальных Debug.Listeners и записи рядом с DLL.
         public Logger(Action<string> write)
@@ -16,7 +19,9 @@ namespace KPLN_Publication
 
         public Logger()
         {
+#if !Debug2026 && !Revit2026
             Debug.Listeners.Clear();
+#endif
             string assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
             string folder = System.IO.Path.GetDirectoryName(assemblyLocation);
             folder = System.IO.Path.Combine(folder, "logs");
@@ -27,7 +32,12 @@ namespace KPLN_Publication
             string logFilePath = System.IO.Path.Combine(folder, logFileName);
             TextWriterTraceListener tr =
                 new TextWriterTraceListener(System.IO.File.CreateText(logFilePath));
+#if Debug2026 || Revit2026
+            // В .NET 8 нет Debug.Listeners; журнал принадлежит текущей операции.
+            _listener = tr;
+#else
             Debug.Listeners.Add(tr);
+#endif
         }
 
         public void Write(string message)
@@ -38,8 +48,13 @@ namespace KPLN_Publication
                 return;
             }
 
+#if Debug2026 || Revit2026
+            _listener.WriteLine(message);
+            _listener.Flush();
+#else
             Debug.WriteLine(message);
             Debug.Flush();
+#endif
         }
     }
 }

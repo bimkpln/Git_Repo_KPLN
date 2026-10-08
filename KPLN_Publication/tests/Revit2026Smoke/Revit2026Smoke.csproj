@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <DefineConstants>Revit2026</DefineConstants>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="itextsharp">
+      <HintPath>..\..\packages\iTextSharp.5.5.13.4\lib\net461\itextsharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BouncyCastle.Cryptography">
+      <HintPath>..\..\packages\BouncyCastle.Cryptography.2.4.0\lib\net6.0\BouncyCastle.Cryptography.dll</HintPath>
+    </Reference>
+    <Compile Include="..\..\KPLN_Publication\Common\PdfWorker\*.cs" Link="PdfWorker\%(Filename)%(Extension)" />
+    <Compile Include="..\..\KPLN_Publication\Logger.cs" Link="Logger.cs" />
+  </ItemGroup>
+</Project>

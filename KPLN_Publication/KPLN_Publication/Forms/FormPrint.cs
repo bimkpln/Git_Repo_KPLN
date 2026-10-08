@@ -416,7 +416,7 @@ namespace KPLN_Publication
 
         private void buttonHelp_Click(object sender, EventArgs e)
         {
-            System.Diagnostics.Process.Start("http://moodle/mod/book/view.php?id=502&chapterid=667");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("http://moodle/mod/book/view.php?id=502&chapterid=667") { UseShellExecute = true });
         }
 
         private void radioButtonRastr_CheckedChanged(object sender, EventArgs e)

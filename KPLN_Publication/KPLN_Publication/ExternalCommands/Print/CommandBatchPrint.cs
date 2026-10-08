@@ -641,7 +641,7 @@ namespace KPLN_Publication.ExternalCommands.Print
 
             if (printToFile)
             {
-                System.Diagnostics.Process.Start(outputFolder);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(outputFolder) { UseShellExecute = true });
                 logger.Write("Открыта папка " + outputFolder);
             }
 
@@ -846,7 +846,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
             }
 
-            System.Diagnostics.Process.Start(outputFolder);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(outputFolder) { UseShellExecute = true });
             logger.Write("Открыта папка " + outputFolder);
 
             return exportedSheetCount;
