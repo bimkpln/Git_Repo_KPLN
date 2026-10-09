@@ -157,7 +157,7 @@ namespace KPLN_CalculateTEP.Common
                     {Notice("VERTICAL_LEVELS","Ошибка","Проём задан одним объектом без поэтажных контуров. Для вычитания на верхних этажах задайте зоны с общим ID вертикального пространства.",r,metric.ToString());return false;}
                     throw new InvalidOperationException("Для многосветного пространства / проёма / шахты нужен общий ID вертикального пространства на всех этажах.");
                 }
-                var matching=all.Where(x=>x.Building==r.Building&&x.Section==r.Section&&x.Vertical==r.Vertical&&x.Level!=null&&x.Level.Include).ToList();
+                var matching=all.Where(x=>x.Source.Mode==r.Source.Mode&&x.Building==r.Building&&x.Section==r.Section&&x.Vertical==r.Vertical&&x.Level!=null&&x.Level.Include).ToList();
                 if(matching.Count==0)return false;return r.Z>matching.Min(x=>x.Z)+1e-6;
             }
         }

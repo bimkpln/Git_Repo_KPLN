@@ -46,6 +46,13 @@ namespace KPLN_CalculateTEP.Common
             }
             public static bool MetricBlocked(string metric,IEnumerable<Issue> issues)
             {return issues.Any(i=>i.Severity=="Ошибка"&&IssueAffectsMetric(i,metric));}
+            internal static bool PreflightIssueRejectsInput(Issue issue,string source,string element,string metric,bool automaticShaft)
+            {
+                // One group ID owns several independent shaft contours. Rejected candidates
+                // have already been removed; their diagnostics cannot remove accepted siblings.
+                if(automaticShaft&&OneOf(issue.Code,"AUTO_SHAFT_UNCONFIRMED","AUTO_SHAFT_CONTINUITY","AUTO_SHAFT_REGION"))return false;
+                return issue.Severity=="Ошибка"&&issue.Source==source&&issue.Element==element&&IssueAffectsMetric(issue,metric);
+            }
             // A missing room area taints completeness, but does not prevent processing other rooms/floors.
             // Keep MetricBlocked unchanged for final status, empty results and balance checks.
             public static bool PreflightMetricBlocked(string metric,IEnumerable<Issue> issues)

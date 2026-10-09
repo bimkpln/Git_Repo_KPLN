@@ -100,7 +100,11 @@ namespace KPLN_CalculateTEP.Forms
             foreach(var column in new[]{Tuple.Create("Источник","Source",240.0),Tuple.Create("Имя","Name",240.0),Tuple.Create("Параметр / проверка","Parameter",250.0),Tuple.Create("Инфо","Info",350.0)})
             {
                 var style=new Style(typeof(TextBlock));style.Setters.Add(new Setter(TextBlock.TextWrappingProperty,TextWrapping.Wrap));
-                var problem=new DataTrigger{Binding=new Binding("Problem"),Value=true};problem.Setters.Add(new Setter(TextBlock.ForegroundProperty,ErrorTextBrush));style.Triggers.Add(problem);
+                var optional=new MultiDataTrigger();optional.Conditions.Add(new Condition(new Binding("Problem"),true));optional.Conditions.Add(new Condition(new Binding("Required"),false));
+                optional.Setters.Add(new Setter(TextBlock.ForegroundProperty,Brushes.Gray));style.Triggers.Add(optional);
+                var problem=new MultiDataTrigger();problem.Conditions.Add(new Condition(new Binding("Problem"),true));problem.Conditions.Add(new Condition(new Binding("Required"),true));
+                problem.Setters.Add(new Setter(TextBlock.ForegroundProperty,ErrorTextBrush));style.Triggers.Add(problem);
+                var critical=new DataTrigger{Binding=new Binding("Critical"),Value=true};critical.Setters.Add(new Setter(TextBlock.ForegroundProperty,ErrorTextBrush));style.Triggers.Add(critical);
                 style.Setters.Add(new Setter(FrameworkElement.MarginProperty,new Thickness(6,4,6,4)));
                 style.Setters.Add(new Setter(FrameworkElement.VerticalAlignmentProperty,VerticalAlignment.Center));
                 if(column.Item2=="Parameter")style.Setters.Add(new Setter(FrameworkElement.ToolTipProperty,new Binding("TechnicalCode")));

@@ -150,6 +150,8 @@ namespace KPLN_CalculateTEP.Common
                         failures.Add("Не получена грань сечения.");
                     }
                     catch (OperationCanceledException) { throw; }
+                    catch (Autodesk.Revit.Exceptions.OperationCanceledException) { throw; }
+                    catch (Autodesk.Revit.Exceptions.RegenerationFailedException) { throw; }
                     catch (Exception ex) { failures.Add(ex.Message); }
                 }
                 throw new InvalidOperationException("Не получено сечение на заданной отметке без смещения высоты: " + string.Join(" | ", failures));

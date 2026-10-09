@@ -86,7 +86,7 @@ namespace KPLN_CalculateTEP.Common
                     if(envelope)prepare(()=>{RoomCentreRegion(room);});
                 }
                 contourRoomRecords=rooms;
-                foreach(var shaft in records.Where(r=>r.AutomaticShaftRegion!=null))
+                foreach(var shaft in records.Where(r=>r.AutomaticShaftRegion!=null).Concat(unconfirmedAutomaticShafts))
                 {
                     try{AutomaticShaftPlan(shaft);}
                     catch(OperationCanceledException){throw;}
