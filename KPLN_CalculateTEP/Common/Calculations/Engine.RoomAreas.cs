@@ -42,7 +42,8 @@ namespace KPLN_CalculateTEP.Common
                         bool eligible=Eligible(r,metric);
                         if(room&&(eligible||!RoomAreaMaskRequired(r,metric)))continue;
                         // Keep separately modelled shafts/openings and the same vertical-space rules.
-                        var region=room?EligibleRoomRegion(r,metric):ReviewRegion("room-mask/"+metric+"/"+r.Key,r,"Исключение - "+RoleLabel(r.Role),r.Z,()=>RegionOfPlan(Plan(r,metric)));
+                        var region=r.AutomaticShaftRegion!=null?AutomaticShaftPlan(r):
+                            room?EligibleRoomRegion(r,metric):ReviewRegion("room-mask/"+metric+"/"+r.Key,r,"Исключение - "+RoleLabel(r.Role),r.Z,()=>RegionOfPlan(Plan(r,metric)));
                         if(region.IsEmpty)continue;
                         if(!room&&eligible&&!VerticalExclusionArea(r,metric,records,region.Area))continue;
                         string key=floorKey(r);PlanarRegion existing;

@@ -31,7 +31,8 @@ namespace KPLN_CalculateTEP.Common
                 if(!Problem&&!Critical)return "Заполнено / проверено: "+Parameter;
                 if(TechnicalCode=="AUTO_SHAFT_BUILDING")return "Не определён корпус шахт";
                 if(TechnicalCode=="ELEMENT_BUILDING_UNRESOLVED")return "Не определён корпус конструкций";
-                if(TechnicalCode=="AUTO_SHAFT_CONTINUITY")return "Пересекаются разные границы шахт на одном этаже";
+                if(TechnicalCode=="AUTO_SHAFT_CONTINUITY")return "Неоднозначные границы шахт на одном этаже";
+                if(TechnicalCode=="AUTO_SHAFT_UNCONFIRMED"||TechnicalCode=="AUTO_SHAFT_REGION")return "Границы шахт не подтверждены геометрией";
                 if(TechnicalCode=="ROOMS_EMPTY")return "Нет объектов для расчёта площадей";
                 if(Critical&&(Parameter=="Площадь"||TechnicalCode=="ZERO_AREA"))return "Нулевая площадь";
                 return Parameter+": "+State;
@@ -71,7 +72,7 @@ namespace KPLN_CalculateTEP.Common
                     case "AUTO_REFERENCE":case "ROOM_LEVEL":case "PARKING_LEVEL":return "Расчётный уровень объекта";
                     case "AUTO_STAIR_SOURCE":return "Лестницы и марши";
                     case "HEIGHT_GEOMETRY":return "Высота в свету и наклон потолка";
-                    case "AUTO_SHAFTS":case "AUTO_SHAFT_GEOMETRY":case "AUTO_SHAFT_CONTINUITY":return "Геометрия и непрерывность шахт";
+                    case "AUTO_SHAFTS":case "AUTO_SHAFT_GEOMETRY":case "AUTO_SHAFT_CONTINUITY":case "AUTO_SHAFT_UNCONFIRMED":case "AUTO_SHAFT_REGION":case "AUTO_SHAFT_CONFIRMED":return "Геометрия и непрерывность шахт";
                     case "AUTO_SHAFT_BUILDING":return "Корпус шахт";
                     case "SOURCE_UNLOADED":return "Доступность источника";
                     case "SOURCE_TILTED":return "Наклон связанной модели";
@@ -116,7 +117,18 @@ namespace KPLN_CalculateTEP.Common
             }
             public InputAudit AuditInputs(Action<string> progress=null)
             {
-                ClearSingleBuildingAssumption();PrepareRoomWorkflow();LoadClassificationDictionary();
+                ClearSingleBuildingAssumption();return AuditInputsCore(progress);
+            }
+            public InputAudit RefreshAcceptedInputAudit(InputAudit original,Action<string> progress=null)
+            {
+                var accepted=singleBuildingAssumption;
+                if(accepted==null)return original;
+                try{return AuditInputsCore(progress);}
+                finally{singleBuildingAssumption=accepted;}
+            }
+            private InputAudit AuditInputsCore(Action<string> progress)
+            {
+                PrepareRoomWorkflow();LoadClassificationDictionary();
                 parameterCache.Clear();phaseCache.Clear();
                 var audit=new InputAudit();var buildings=new List<string>();int buildingErrors=0,index=0;
                 foreach(var source in Sources.Where(s=>s.Mode!="exclude"&&s.Loaded&&s.LoadError==null))
@@ -139,7 +151,7 @@ namespace KPLN_CalculateTEP.Common
                                 row.Value=Value(element,name);row.State=AuditParameterState(p!=null,row.Value,required);
                                 row.Problem=p==null||string.IsNullOrWhiteSpace(row.Value);
                                 if(room!=null&&name=="ПОМ_Корпус"&&row.Problem)
-                                {var assigned=AssignedBuilding(source,room);if(!string.IsNullOrWhiteSpace(assigned)){row.Value=assigned;row.State="Корпус задан соответствием в настройках ТЭП; параметр модели не изменён";row.Problem=false;}}
+                                {var assigned=RoomBuildingValue(room,source);if(!string.IsNullOrWhiteSpace(assigned)){row.Value=assigned;row.State=singleBuildingAssumption!=null?"Корпус принят по подтверждению единого корпуса; параметр модели не изменён":"Корпус задан соответствием в настройках ТЭП; параметр модели не изменён";row.Problem=false;}}
                                 if(required&&name=="КВ_Номер"&&(row.Value=="0"||row.Value=="-")){row.State="Не задан номер квартиры (0 или -)";row.Problem=true;}
                             }
                             catch(Exception ex){row.State=ex.Message;row.Problem=true;}

@@ -138,8 +138,10 @@ namespace KPLN_CalculateTEP.Common
                 long category=IDHelper.ElIdValue(instance.Category.Id);
                 if(category==(long)BuiltInCategory.OST_StructuralColumns||category==(long)BuiltInCategory.OST_Columns||
                     category==(long)BuiltInCategory.OST_CurtainWallPanels||category==(long)BuiltInCategory.OST_CurtainWallMullions)return true;
-                BuiltInParameter parameter;
-                return Enum.TryParse("FAMILY_ROOM_BOUNDING",out parameter)&&(element.get_Parameter(parameter)?.AsInteger()??0)==1;
+                var parameter=instance.get_Parameter(BuiltInParameter.WALL_ATTR_ROOM_BOUNDING);
+                // An explicit instance value, including false, takes precedence over its type.
+                if(parameter==null)parameter=instance.Symbol?.get_Parameter(BuiltInParameter.WALL_ATTR_ROOM_BOUNDING);
+                return parameter!=null&&parameter.HasValue&&parameter.StorageType==StorageType.Integer&&parameter.AsInteger()==1;
             }
 
             private List<Record> PhysicalShellCandidates(List<Record> walls,Record floor,double elevation)

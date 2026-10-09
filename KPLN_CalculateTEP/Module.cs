@@ -47,6 +47,7 @@ namespace KPLN_CalculateTEP
             if (arToolsPullDownBtn.GetItems().Any(i => i.Name == "Command_AR_CalculateTEP"))
                 return true;
 
+            // Revit displays LargeImage in a pulldown too; use the same 16px icon as the other menu items.
             PushButtonData calculateTEP = CreateBtnData(
                 "Command_AR_CalculateTEP",
                 "Расчёт ТЭП",
@@ -58,7 +59,7 @@ namespace KPLN_CalculateTEP
                     ModuleData.ModuleName),
                 typeof(Command_AR_CalculateTEP).FullName,
                 "KPLN_CalculateTEP.Imagens.CalculateTEPSmall.png",
-                "KPLN_CalculateTEP.Imagens.CalculateTEPBig.png",
+                "KPLN_CalculateTEP.Imagens.CalculateTEPSmall.png",
                 "http://moodle");
             arToolsPullDownBtn.AddPushButton(calculateTEP);
 
