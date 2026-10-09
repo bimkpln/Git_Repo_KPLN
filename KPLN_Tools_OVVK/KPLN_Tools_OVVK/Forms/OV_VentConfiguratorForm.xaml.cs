@@ -9,15 +9,16 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Data;
-using System.Windows.Input;
-using Command = KPLN_Tools_OVVK.ExternalCommands.ExtCmd_OV_VentConfigurator;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using ComboBox = System.Windows.Controls.ComboBox;
-using TextBox = System.Windows.Controls.TextBox;
+using Command = KPLN_Tools_OVVK.ExternalCommands.ExtCmd_OV_VentConfigurator;
 using Document = Autodesk.Revit.DB.Document;
+using TextBox = System.Windows.Controls.TextBox;
 
 namespace KPLN_Tools_OVVK.Forms
 {
@@ -29,6 +30,7 @@ namespace KPLN_Tools_OVVK.Forms
         private string _lastSavedPath;
         private string _workingFamilyPath;
         private string _workingSourcePath;
+        private string _familyUpdateNotice;
         private string _familyContextKey;
         private Command.ProjectItem _headerProject;
         private sealed class WorkspaceState
@@ -37,6 +39,7 @@ namespace KPLN_Tools_OVVK.Forms
             internal Command.FamilyTypeItem Selected;
         }
         private readonly Dictionary<string, WorkspaceState> _workspaces = new Dictionary<string, WorkspaceState>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, FrameworkElement> _parameterEditors = new Dictionary<string, FrameworkElement>(StringComparer.Ordinal);
         private string _errorDetails;
         private bool _hasOperationError;
         private readonly ObservableCollection<Command.FamilyTypeItem> _types = new ObservableCollection<Command.FamilyTypeItem>();
@@ -113,6 +116,57 @@ namespace KPLN_Tools_OVVK.Forms
             if (_isBusy) return;
             if (_sectionCatalog == null) QueueRequest(Command.RequestKind.LoadSectionCatalog);
             else CreateType();
+        }
+
+        private void CopyType_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isBusy || _currentType?.Configuration == null) return;
+            var copy = _currentType.CreateCopy(_types);
+            copy.SelectedTab = ConfigurationTabs.SelectedIndex;
+            copy.SelectedSectionIndex = Math.Max(0, _configuration.Blocks.IndexOf(_selectedSection));
+            _types.Add(copy);
+            _switchingType = true;
+            try { FamilyTypesListBox.SelectedItem = copy; }
+            finally { _switchingType = false; }
+            SelectType(copy);
+            SetStatus("Создана копия типа. Укажите имя и нажмите «Сохранить».", false);
+        }
+
+        internal bool HasUnsavedEdits
+        { get { return _types.Any(t => !t.IsCreate && t.Configuration != null && t.HasUserChanges); } }
+
+        internal bool HasUnsavedTypes
+        {
+            get
+            {
+                foreach (var item in _types.Where(t => !t.IsCreate && t.Configuration != null)) item.MarkChanged();
+                return _types.Any(t => !t.IsCreate && t.Configuration != null && t.IsDirty);
+            }
+        }
+
+        private void UpdateFamily_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isBusy || !Command.CanUpdateProjectFamily()) return;
+            try
+            {
+                RaiseRequest(new Command.FamilyRequest
+                {
+                    Kind = Command.RequestKind.UpdateFamily,
+                    OutputPath = _workingFamilyPath,
+                    TypeName = _currentType?.Name,
+                    Types = _types.Where(t => !t.IsCreate).Select(t => {
+                        t.MarkChanged(); return new Command.FamilyTypeItem
+                        {
+                            Name = t.Name,
+                            PersistedName = t.PersistedName,
+                            IsDirty = t.IsDirty,
+                            Configuration = t.Configuration?.Copy(),
+                            LoadError = t.LoadError
+                        };
+                    }).ToList()
+                });
+            }
+            catch (Exception ex) { SetBusy(false); SetOperationError(Command.OperationError.Create("Обновление семейства", ex, null)); }
         }
 
         private void CreateType()
@@ -230,6 +284,10 @@ namespace KPLN_Tools_OVVK.Forms
         {
             _isBusy = value;
             CreateTypeButton.IsEnabled = !value;
+            CopyTypeButton.IsEnabled = !value && _currentType?.Configuration != null;
+            bool canUpdate = Command.CanUpdateProjectFamily();
+            UpdateFamilyButton.Visibility = canUpdate ? Visibility.Visible : Visibility.Collapsed;
+            UpdateFamilyButton.IsEnabled = !value && canUpdate && !string.IsNullOrWhiteSpace(_workingFamilyPath);
             EditorPanel.IsEnabled = !value;
             OpenButton.IsEnabled = !value && _configuration != null;
             AddButton.IsEnabled = OpenButton.IsEnabled;
@@ -256,6 +314,36 @@ namespace KPLN_Tools_OVVK.Forms
             SetStatus(error.Summary, true);
             _errorDetails = error.Details;
             StatusTextBlock.ToolTip = error.Summary;
+        }
+
+        private void NavigateToParameter(string name)
+        {
+            if (_configuration == null) return;
+            name = Command.FamilyParameterNames.Canonical(name);
+            if (_configuration.Info.Assignments().ContainsKey(name))
+            {
+                ConfigurationTabs.SelectedIndex = 0;
+                var names = new[] { Command.InstallationInfo.SystemNameParameter, Command.InstallationInfo.ManufacturerParameter,
+                    Command.InstallationInfo.MarkParameter, Command.InstallationInfo.UnitParameter, Command.InstallationInfo.DescriptionParameter,
+                    Command.InstallationInfo.ProductCodeParameter, Command.InstallationInfo.MassTextParameter };
+                var box = InfoPanel.Children.OfType<TextBox>().ElementAtOrDefault(Array.IndexOf(names, name));
+                if (box != null) { box.BringIntoView(); box.Focus(); box.SelectAll(); }
+                return;
+            }
+            ConfigurationTabs.SelectedIndex = 1;
+            for (int i = 0; i < _configuration.Blocks.Count; i++)
+            {
+                int slot = _configuration.SlotAt(i);
+                string prefix = Command.InstallationConfiguration.ParameterName(slot);
+                prefix = prefix.Substring(0, prefix.Length - "Тип".Length);
+                if (!name.StartsWith(prefix, StringComparison.Ordinal) && !Command.SharedParameters.ForSection(_configuration.Blocks[i].Type).Contains(name)) continue;
+                _selectedSection = _configuration.Blocks[i]; RenderBlocks(); RenderSelectedSection(); break;
+            }
+            FrameworkElement editor;
+            if (name == "Секции_Промежуточные_Количество") editor = SectionCountComboBox;
+            else if (name == Command.ValveControl.ParameterName) editor = AddValveCheckBox;
+            else _parameterEditors.TryGetValue(name, out editor);
+            if (editor != null) { editor.BringIntoView(); editor.Focus(); (editor as TextBox)?.SelectAll(); }
         }
 
         private void ErrorDetails_Click(object sender, RoutedEventArgs e)
@@ -315,6 +403,25 @@ namespace KPLN_Tools_OVVK.Forms
             layout.Children.Add(report); dialog.Content = layout; dialog.ShowDialog();
         }
 
+        internal string ChooseExistingFamilyPath(string familyName, string failure)
+        {
+            if (!string.IsNullOrWhiteSpace(failure))
+                MessageBox.Show(this, failure + "\n\nВыберите RFA для основы. Типы и заполненные значения будут перенесены из модели. "
+                    + "Наличие этих типов в выбранном файле не требуется.",
+                    "KPLN. Чтение существующих типов", MessageBoxButton.OK, MessageBoxImage.Information);
+            var dialog = new OpenFileDialog
+            {
+                Title = "Выберите семейство для чтения или переноса типов из модели",
+                Filter = "Семейство Revit (*.rfa)|*.rfa",
+                DefaultExt = ".rfa",
+                CheckFileExists = true,
+                CheckPathExists = true,
+                Multiselect = false
+            };
+            if (Directory.Exists(Command.ProjectFamiliesRoot)) dialog.InitialDirectory = Command.ProjectFamiliesRoot;
+            return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+        }
+
         internal string ChooseOutputPath(string projectCode, string familyPath)
         {
             var dialog = new SaveFileDialog
@@ -353,7 +460,7 @@ namespace KPLN_Tools_OVVK.Forms
             _sectionCatalog = family.Catalog;
             _currentType.Name = typeName; _currentType.PersistedName = typeName; _currentType.SavedPath = family.Path; _currentType.SourcePath = family.SourcePath ?? family.Path; _currentType.MarkSaved();
             foreach (var item in _types.Where(t => !t.IsCreate && t != _currentType))
-                if (item.SavedPath == null || item.SavedPath == previous && family.Types.Any(t => t.Name == item.PersistedName)) { item.SavedPath = family.Path; item.SourcePath = family.SourcePath ?? family.Path; }
+                if (item.SavedPath == null || item.SavedPath == previous) { item.SavedPath = family.Path; item.SourcePath = family.SourcePath ?? family.Path; }
             foreach (var saved in family.Types)
             {
                 var existing = _types.FirstOrDefault(t => !t.IsCreate && t.SavedPath == family.Path && t.PersistedName == saved.PersistedName);
@@ -401,7 +508,8 @@ namespace KPLN_Tools_OVVK.Forms
                         Path = _workingFamilyPath,
                         SourcePath = _workingSourcePath,
                         Catalog = _sectionCatalog,
-                        Types = _types.Where(t => !t.IsCreate).ToList()
+                        Types = _types.Where(t => !t.IsCreate).ToList(),
+                        UpdateNotice = _familyUpdateNotice
                     },
                     Selected = _currentType
                 };
@@ -455,6 +563,9 @@ namespace KPLN_Tools_OVVK.Forms
 
         internal void SetFamily(Command.FamilyPackage family)
         {
+            _familyUpdateNotice = family.UpdateNotice;
+            FamilyUpdateNoticeTextBlock.Text = _familyUpdateNotice;
+            FamilyUpdateNoticeTextBlock.Visibility = string.IsNullOrWhiteSpace(_familyUpdateNotice) ? Visibility.Collapsed : Visibility.Visible;
             _switchingType = true;
             try
             {
@@ -542,6 +653,7 @@ namespace KPLN_Tools_OVVK.Forms
 
         private void SetConfiguration(Command.InstallationConfiguration configuration)
         {
+            _parameterEditors.Clear();
             _configuration = configuration;
             InfoPanel.DataContext = configuration.Info;
             ClearInfoObserver();
@@ -625,7 +737,7 @@ namespace KPLN_Tools_OVVK.Forms
         {
             if (!_switchingType && _currentType != null) _currentType.MarkChanged();
             RecalculateLocally();
-            if (!_switchingType && ReferenceEquals(sender, _selectedSection) && e.PropertyName == "Type") RenderSectionParameters();
+            if (!_switchingType && e.PropertyName == "Type") { ObserveSections(); if (ReferenceEquals(sender, _selectedSection)) RenderSectionParameters(); }
         }
 
         private void BooleanChanged(object sender, PropertyChangedEventArgs e)
@@ -952,6 +1064,7 @@ namespace KPLN_Tools_OVVK.Forms
                 Style = (Style)FindResource("DimensionTextBoxStyle"),
                 ToolTip = tooltip
             };
+            _parameterEditors[Command.FamilyParameterNames.Canonical(parameterName)] = input;
             input.SetBinding(TextBox.TextProperty, ValueBinding(value, "Text"));
             input.SetBinding(TextBox.IsReadOnlyProperty, new Binding("IsReadOnly") { Source = value });
             panel.Children.Add(input);
@@ -975,6 +1088,7 @@ namespace KPLN_Tools_OVVK.Forms
                 check.SetBinding(CheckBox.IsCheckedProperty, ValueBinding(value, "Value"));
                 input = check;
             }
+            _parameterEditors[Command.FamilyParameterNames.Canonical(parameterName)] = input;
             input.ToolTip = ParameterTooltip(parameterName, nameOnly: true);
             input.SetBinding(UIElement.IsEnabledProperty, new Binding("IsEnabled") { Source = value });
             panel.Children.Add(input);
@@ -1069,6 +1183,7 @@ namespace KPLN_Tools_OVVK.Forms
                 MaxDropDownHeight = 360,
                 IsTextSearchEnabled = true
             };
+            _parameterEditors[Command.InstallationConfiguration.ParameterName(slot)] = selector;
             TextSearch.SetTextPath(selector, "TypeName");
             ScrollViewer.SetHorizontalScrollBarVisibility(selector, ScrollBarVisibility.Disabled);
             selector.SetBinding(ComboBox.SelectedItemProperty, ValueBinding(_selectedSection, "Type"));
@@ -1128,6 +1243,15 @@ namespace KPLN_Tools_OVVK.Forms
                 if (kind != Command.RequestKind.LoadSectionCatalog)
                 {
                     if (_configuration == null || _currentType == null) throw new InvalidOperationException("Сначала создайте тип.");
+                    var problems = _configuration.Problems();
+                    if (problems.Count > 0)
+                    {
+                        MessageBox.Show(this, "Тип «" + _currentType.Name + "». Исправьте поля:\n\n"
+                            + string.Join("\n", problems.Select(p => p.ParameterName + ": " + p.Message)),
+                            "KPLN. Параметры установки", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        NavigateToParameter(problems[0].ParameterName);
+                        return;
+                    }
                     var missing = _configuration.IncompleteFields();
                     if (string.IsNullOrWhiteSpace(TypeNameTextBox.Text)) missing.Insert(0, "Имя типа");
                     if (missing.Count > 0)

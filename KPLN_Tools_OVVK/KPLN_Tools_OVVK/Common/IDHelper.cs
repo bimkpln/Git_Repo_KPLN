@@ -17,6 +17,47 @@ namespace KPLN_Tools_OVVK.Common
 {
     internal static class IDHelper
     {
+        internal static string ParameterDataType(FamilyParameter parameter)
+        { return ParameterDataType(parameter.Definition); }
+
+        internal static string ParameterDataType(Definition definition)
+        {
+#if KPLN_LEGACY_UNITS
+            return definition.ParameterType.ToString();
+#else
+            return definition.GetDataType().TypeId;
+#endif
+        }
+
+        internal static bool HaveCompatibleParameterDataTypes(Parameter source, FamilyParameter target)
+        {
+            if (source.StorageType != target.StorageType) return false;
+#if KPLN_LEGACY_UNITS
+            return source.Definition.ParameterType == target.Definition.ParameterType;
+#else
+            var sourceType = source.Definition.GetDataType();
+            var targetType = target.Definition.GetDataType();
+            // TypeId — строка с версией схемы. NameEquals сравнивает сам тип данных,
+            // поэтому длина старого RFA совместима с длиной обновлённого RVT.
+            if (sourceType.NameEquals(targetType)) return true;
+            // Разные спецификации линейных размеров (например, длина и размер трубы)
+            // хранят значение в футах. Никакого повторного перевода из миллиметров здесь нет.
+            return source.StorageType == StorageType.Double
+                && UnitUtils.IsMeasurableSpec(sourceType) && UnitUtils.IsMeasurableSpec(targetType)
+                && UnitUtils.IsValidUnit(sourceType, UnitTypeId.Millimeters)
+                && UnitUtils.IsValidUnit(targetType, UnitTypeId.Millimeters);
+#endif
+        }
+
+        internal static bool IsLengthParameter(FamilyParameter parameter)
+        {
+#if KPLN_LEGACY_UNITS
+            return parameter.Definition.ParameterType == ParameterType.Length;
+#else
+            return parameter.Definition.GetDataType() == SpecTypeId.Length;
+#endif
+        }
+
         internal static long ElIdValue(ElementId id)
         {
 #if KPLN_ELEMENT_ID_INT32
