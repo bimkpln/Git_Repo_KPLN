@@ -1,103 +1,63 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Library_Forms.UI;
-using KPLN_Library_Forms.UIFactory;
-using KPLN_Tools_OVVK.ExecutableCommand;
-using KPLN_Tools_OVVK.Forms.Models;
-using System.Linq;
+using Autodesk.Revit.UI;
+using KPLN_Tools_OVVK.ExternalEventHandler;
+using KPLN_Tools_OVVK.Forms.ViewModels;
+using System;
 using System.Windows;
-using System.Windows.Input;
 
 namespace KPLN_Tools_OVVK.Forms
 {
     public partial class OVVK_SystemManagerForm : Window
     {
+        private static OVVK_SystemManagerForm _currentInstance;
+        private OVVK_SystemManagerSubscriptionHandler _subscriptionHandler;
+
         public OVVK_SystemManagerForm(Document doc)
         {
-            CurrentViewModel = new OVVK_SystemManager_VM(doc);
-            if (!CurrentViewModel.ElementColl.Any())
-            {
-                MessageBox.Show("В модели отсутсвуют элементы ОВВК для анализа!", "KPLN: Внимание", MessageBoxButton.OK);
-                return;
-            }
+            CurrentOVVK_SystemManagerVM = new OVVK_SystemManagerVM(this, doc);
 
             InitializeComponent();
+            DataContext = CurrentOVVK_SystemManagerVM;
 
-            this.DataContext = CurrentViewModel;
-            PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
+            _currentInstance = this;
+            Closed += OnClosed;
         }
 
-        public OVVK_SystemManager_VM CurrentViewModel { get; private set; }
 
-        private void HandlePressBtn(object sender, KeyEventArgs e)
+        public OVVK_SystemManagerVM CurrentOVVK_SystemManagerVM { get; }
+
+        internal void StartTracking(UIApplication app)
         {
-            if (e.Key == Key.Escape)
-                Close();
+            _subscriptionHandler = new OVVK_SystemManagerSubscriptionHandler(
+                app, CurrentOVVK_SystemManagerVM.CurrentOVVK_SystemManagerM, Close);
+            _subscriptionHandler.StartTracking();
         }
 
-        private void BtnParamSearch_Click(object sender, RoutedEventArgs e)
+        public static bool TryActivateExisting()
         {
-            ElementSinglePick paramForm = SelectParameterFromRevit.CreateForm(this, CurrentViewModel.CurrentDoc, CurrentViewModel.ElementColl, StorageType.String);
-            paramForm.ShowDialog();
-
-            if (paramForm.SelectedElement != null)
-                CurrentViewModel.ParameterName = paramForm.SelectedElement.Name;
-
-            UpdateEnable();
-        }
-
-        private void BtnSummSystems_Click(object sender, RoutedEventArgs e)
-        {
-            OVVK_MergeSystemsForm mergeSysForm = new OVVK_MergeSystemsForm(CurrentViewModel);
-            if ((bool)mergeSysForm.ShowDialog())
+            if (_currentInstance == null || !_currentInstance.IsLoaded)
             {
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_SystemManager_MergeSystem(CurrentViewModel, mergeSysForm.SysDataToMerge.ToArray()));
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_SystemManager_VMUpdater(CurrentViewModel));
-            }
-        }
-
-        private void BtnCreateViews_Click(object sender, RoutedEventArgs e)
-        {
-            // Анализ вида
-            View activeView = CurrentViewModel.CurrentDoc.ActiveView;
-            if (activeView == null || activeView.ViewType != ViewType.ThreeD)
-            {
-                System.Windows.Forms.MessageBox.Show(
-                    $"Скрипт нужно запускать при открытом 3D-виде, т.к. на основании его будут создаваиться аналоги",
-                    "Ошибка",
-                    System.Windows.Forms.MessageBoxButtons.OK,
-                    System.Windows.Forms.MessageBoxIcon.Error);
-
-                return;
+                _currentInstance = null;
+                return false;
             }
 
-            ElementMultiPick elementMultiPick = new ElementMultiPick(
-                this, 
-                CurrentViewModel
-                    .SystemSumParameters
-                    .Where(pName => !pName.Contains("ВНИМАНИЕ!!!"))
-                    .Select(pName => new KPLN_Library_Forms.Common.ElementEntity(pName)));
-            
-            if ((bool)elementMultiPick.ShowDialog())
-            {
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_SystemManager_ViewCreator(
-                    CurrentViewModel,
-                    elementMultiPick.SelectedElements.Select(ent => ent.Name).ToArray()));
+            if (_currentInstance.WindowState == WindowState.Minimized)
+                _currentInstance.WindowState = WindowState.Normal;
 
-                Close();
-            }
+            _currentInstance.Show();
+            _currentInstance.Activate();
+            _currentInstance.Focus();
+            return true;
         }
 
-        private void BtnSelectWarningsElems_Click(object sender, RoutedEventArgs e)
-        {
-            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmd_ShowElement(CurrentViewModel.WarningsElementColl));
-            Close();
-        }
 
-        private void UpdateEnable()
+        private void OnClosed(object sender, EventArgs e)
         {
-            BtnSummSystems.IsEnabled = CurrentViewModel.SystemSumParameters.Any(sumParam => !sumParam.Contains("ВНИМАНИЕ!!!"));
-            BtnCreateViews.IsEnabled = CurrentViewModel.SystemSumParameters.Any(sumParam => !sumParam.Contains("ВНИМАНИЕ!!!"));
-            BtnSelectWarningsElems.IsEnabled = CurrentViewModel.WarningsElementColl.Any();
+            _subscriptionHandler?.RequestStopTracking();
+            CurrentOVVK_SystemManagerVM.Release();
+
+            if (ReferenceEquals(_currentInstance, this))
+                _currentInstance = null;
         }
     }
 }

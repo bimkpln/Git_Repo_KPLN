@@ -3,16 +3,16 @@ using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.ExternalCommands;
-using KPLN_Tools_OVVK.Forms.Models;
+using KPLN_Tools_OVVK.Forms.Entities;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class ExcCmd_SystemManager_ViewCreator : IExecutableCommand
+    internal sealed class ExcCmd_SystemManager_ViewCreator : IExecutableCommand
     {
-        private readonly OVVK_SystemManager_VM _viewModel;
+        private readonly OVVK_SystemManagerM _model;
         private readonly string[] _systemSumParameters;
         private readonly List<ElementId> _docCatIdColl = new List<ElementId>();
 
@@ -25,18 +25,18 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public ExcCmd_SystemManager_ViewCreator(OVVK_SystemManager_VM currentViewModel, string[] systemSumParameters)
+        public ExcCmd_SystemManager_ViewCreator(OVVK_SystemManagerM currentViewModel, string[] systemSumParameters)
         {
-            _viewModel = currentViewModel;
+            _model = currentViewModel;
             _systemSumParameters = systemSumParameters;
         }
 
         public Result Execute(UIApplication app)
         {
             #region Подготовка коллекции и элементов
-            Autodesk.Revit.DB.View activeView = _viewModel.CurrentDoc.ActiveView;
+            Autodesk.Revit.DB.View activeView = _model.CurrentDoc.ActiveView;
 
-            _docCatIdColl.AddRange(_viewModel.ElementColl.Select(e => e.Category.Id).Distinct());
+            _docCatIdColl.AddRange(_model.ElementColl.Select(e => e.Category.Id).Distinct());
 
             // Вывод критических ошибок и остановка работы
             if (_errorDict.Keys.Count != 0)
@@ -52,7 +52,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             }
 
             // Получение шаблона вида
-            Autodesk.Revit.DB.View viewTempl = (Autodesk.Revit.DB.View)_viewModel.CurrentDoc.GetElement(activeView.get_Parameter(BuiltInParameter.VIEW_TEMPLATE).AsElementId());
+            Autodesk.Revit.DB.View viewTempl = (Autodesk.Revit.DB.View)_model.CurrentDoc.GetElement(activeView.get_Parameter(BuiltInParameter.VIEW_TEMPLATE).AsElementId());
             if (viewTempl == null)
             {
                 DialogResult userRes = MessageBox.Show(
@@ -103,11 +103,11 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             #endregion
 
             #region Обработка коллекции
-            using (Transaction t = new Transaction(_viewModel.CurrentDoc, $"KPLN: Создание видов"))
+            using (Transaction t = new Transaction(_model.CurrentDoc, $"KPLN: Создание видов"))
             {
                 t.Start();
 
-                if (!CreateViews(_viewModel.CurrentDoc, viewTempl))
+                if (!CreateViews(_model.CurrentDoc, viewTempl))
                 {
                     t.RollBack();
                     return Result.Cancelled;
@@ -156,12 +156,12 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
             foreach (string sysName in _systemSumParameters)
             {
-                string filterName = $"prog_{_viewModel.ParameterName} = НРВ_{sysName}";
+                string filterName = $"prog_{_model.ParameterName} = НРВ_{sysName}";
 
 #if Revit2020 || Debug2020
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_viewModel.ElementColl.FirstOrDefault().LookupParameter(_viewModel.ParameterName).Id, sysName, false);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_model.ElementColl.FirstOrDefault().LookupParameter(_model.ParameterName).Id, sysName, false);
 #else
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_viewModel.ElementColl.FirstOrDefault().LookupParameter(_viewModel.ParameterName).Id, sysName);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_model.ElementColl.FirstOrDefault().LookupParameter(_model.ParameterName).Id, sysName);
 #endif
                 ElementParameterFilter filterRules = new ElementParameterFilter(fRule);
 
@@ -175,7 +175,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                     viewFilterId = newViewFilter.Id;
                 }
 
-                string newViewName = sysName.Contains(_viewModel.SysNameSeparator) ? $"Схема систем_{sysName}" : $"Схема системы_{sysName}";
+                string newViewName = sysName.Contains(_model.SysNameSeparator) ? $"Схема систем_{sysName}" : $"Схема системы_{sysName}";
                 bool viewNameError = false;
                 foreach (KeyValuePair<ElementId, string> kvp in docViewDict)
                 {

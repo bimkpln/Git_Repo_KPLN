@@ -3,7 +3,7 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.ExecutableCommand;
-using KPLN_Tools_OVVK.Forms.Models;
+using KPLN_Tools_OVVK.Forms.Entities;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -15,11 +15,11 @@ namespace KPLN_Tools_OVVK.Forms
 {
     public partial class OVVK_MergeSystemsForm : Window
     {
-        private readonly OVVK_SystemManager_VM _ovvk_ViewModel;
+        private readonly OVVK_SystemManagerM _model;
 
-        public OVVK_MergeSystemsForm(OVVK_SystemManager_VM ovvk_ViewModel)
+        public OVVK_MergeSystemsForm(OVVK_SystemManagerM model)
         {
-            _ovvk_ViewModel = ovvk_ViewModel;
+            _model = model;
 
             InitializeComponent();
             SysIControll.ItemsSource = SysDataToMerge;
@@ -37,15 +37,32 @@ namespace KPLN_Tools_OVVK.Forms
 
         private void AddNewGroup_Click(object sender, RoutedEventArgs e)
         {
-            SysDataToMerge.Add(new OVVK_MergeSystem(_ovvk_ViewModel.SystemSumParameters.Where(ssp => !ssp.Contains("ВНИМАНИЕ!!!")).ToArray()));
+            SysDataToMerge.Add(new OVVK_MergeSystem(_model.SystemSumParameters.ToArray()));
         }
 
         private void Run_Click(object sender, RoutedEventArgs e)
         {
-            if (SysDataToMerge.Any()) 
-                this.DialogResult = true;
+            if (!SysDataToMerge.Any())
+                return;
 
-            Close();
+            if (SysDataToMerge.Any(group => string.IsNullOrWhiteSpace(group.FirstParamName)
+                || string.IsNullOrWhiteSpace(group.LastParamName)
+                || group.FirstParamName == group.LastParamName))
+            {
+                MessageBox.Show(this, "В каждой группе выбери две разные системы.",
+                    "KPLN: Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            string[] names = SysDataToMerge.SelectMany(group => new[] { group.FirstParamName, group.LastParamName }).ToArray();
+            if (names.Distinct().Count() != names.Length)
+            {
+                MessageBox.Show(this, "Одна система может участвовать только в одной группе объединения за запуск.",
+                    "KPLN: Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            DialogResult = true;
         }
 
         private void Del_Click(object sender, RoutedEventArgs e)

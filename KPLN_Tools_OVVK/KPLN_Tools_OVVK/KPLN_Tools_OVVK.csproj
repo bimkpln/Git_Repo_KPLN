@@ -171,7 +171,10 @@
     <Compile Include="Forms\Converters\JoinStringsConverter.cs" />
     <Compile Include="Forms\Models\AUPTTagPlacerM.cs" />
     <Compile Include="Forms\Models\AUPTTagPlacerVM.cs" />
-    <Compile Include="Forms\Models\OVVK_SystemManager_VM.cs" />
+    <Compile Include="Forms\Entities\OVVK_SystemManagerM.cs" />
+    <Compile Include="Forms\ViewModels\OVVK_SystemManagerVM.cs" />
+    <Compile Include="ExecutableCommand\OVVK_SystemManagerExcCmd.cs" />
+    <Compile Include="ExternalEventHandler\OVVK_SystemManagerSubscriptionHandler.cs" />
     <Compile Include="Forms\Models\ScheduleFormM.cs" />
     <Compile Include="Forms\Models\ScheduleFormVM.cs" />
     <Compile Include="Forms\Models\ScheduleSubFormVM.cs" />

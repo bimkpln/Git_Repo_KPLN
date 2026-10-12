@@ -2,32 +2,58 @@ using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.Services;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Tools_OVVK.Forms;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows;
 
 namespace KPLN_Tools_OVVK.ExternalCommands
 {
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
-    internal class ExtCmd_OVVK_SystemManager : IExternalCommand
+    internal sealed class ExtCmd_OVVK_SystemManager : IExternalCommand
     {
         internal const string PluginName = "Менеджер систем";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            //Get application and documnet objects
-            UIApplication uiapp = commandData.Application;
-            UIDocument uidoc = uiapp.ActiveUIDocument;
-            Document doc = uidoc.Document;
-            
-            OVVK_SystemManagerForm form = new OVVK_SystemManagerForm(doc);
-            WindowHandleSearch.MainWindowHandle.SetAsOwner(form);
-            form.Show();
+            return ExecuteByUIApp(commandData.Application);
+        }
 
-            return Result.Succeeded;
+
+        internal Result ExecuteByUIApp(UIApplication app)
+        {
+            OVVK_SystemManagerForm form = null;
+
+            try
+            {
+                if (OVVK_SystemManagerForm.TryActivateExisting())
+                    return Result.Succeeded;
+
+                Document doc = app.ActiveUIDocument?.Document;
+                if (doc == null || doc.IsFamilyDocument)
+                    return Result.Cancelled;
+
+
+                form = new OVVK_SystemManagerForm(doc);
+                WindowHandleSearch.MainWindowHandle.SetAsOwner(form);
+                if (form.CurrentOVVK_SystemManagerVM.CurrentOVVK_SystemManagerM.ElementColl.Count == 0)
+                {
+                    MessageBox.Show("В модели отсутствуют элементы ОВВК для анализа.", "KPLN: Внимание", MessageBoxButton.OK);
+                    form.Close();
+                    return Result.Cancelled;
+                }
+
+                form.StartTracking(app);
+                form.Show();
+                return Result.Succeeded;
+            }
+            catch (Exception ex)
+            {
+                form?.Close();
+                HtmlOutput.PrintError(ex);
+                return Result.Failed;
+            }
         }
     }
 }

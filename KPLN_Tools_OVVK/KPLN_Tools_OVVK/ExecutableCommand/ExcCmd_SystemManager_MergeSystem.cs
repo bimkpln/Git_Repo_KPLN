@@ -4,15 +4,15 @@ using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.ExternalCommands;
-using KPLN_Tools_OVVK.Forms.Models;
+using KPLN_Tools_OVVK.Forms.Entities;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
 {
-    internal class ExcCmd_SystemManager_MergeSystem : IExecutableCommand
+    internal sealed class ExcCmd_SystemManager_MergeSystem : IExecutableCommand
     {
-        private readonly OVVK_SystemManager_VM _viewModel;
+        private readonly OVVK_SystemManagerM _model;
         private readonly OVVK_MergeSystem[] _sysDataToMerge;
 
         /// <summary>
@@ -24,31 +24,31 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
-        public ExcCmd_SystemManager_MergeSystem(OVVK_SystemManager_VM viewModel, OVVK_MergeSystem[] sysDataToMerge)
+        public ExcCmd_SystemManager_MergeSystem(OVVK_SystemManagerM viewModel, OVVK_MergeSystem[] sysDataToMerge)
         {
-            _viewModel = viewModel;
+            _model = viewModel;
             _sysDataToMerge = sysDataToMerge;
         }
 
         public Result Execute(UIApplication app)
         {
-            using (Transaction t = new Transaction(_viewModel.CurrentDoc, $"KPLN: Объединение систем"))
+            using (Transaction t = new Transaction(_model.CurrentDoc, $"KPLN: Объединение систем"))
             {
                 t.Start();
 
-                foreach (Element elem in _viewModel.ElementColl)
+                foreach (Element elem in _model.ElementColl)
                 {
-                    Parameter elemSysParam = elem.LookupParameter(_viewModel.ParameterName);
+                    Parameter elemSysParam = elem.LookupParameter(_model.ParameterName);
                     if (elemSysParam == null)
                     {
-                        AddToErrorDict(_warningDict, $"У элемента нет параметра \"{_viewModel.ParameterName}\"", elem.Id);
+                        AddToErrorDict(_warningDict, $"У элемента нет параметра \"{_model.ParameterName}\"", elem.Id);
                         continue;
                     }
 
                     if (elemSysParam.IsReadOnly)
                     {
                         if (elem is FamilyInstance fi && fi.SuperComponent == null)
-                            AddToErrorDict(_warningDict, $"У элемента параметра \"{_viewModel.ParameterName}\" - ТОЛЬКО для чтения. Нужно исправить семейство", elem.Id);
+                            AddToErrorDict(_warningDict, $"У элемента параметра \"{_model.ParameterName}\" - ТОЛЬКО для чтения. Нужно исправить семейство", elem.Id);
                         
                         continue;
                     }
@@ -59,7 +59,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                     
                     foreach (OVVK_MergeSystem dataToMerge in _sysDataToMerge)
                     {
-                        string newSysName = $"{dataToMerge.FirstParamName}/{dataToMerge.LastParamName}";
+                        string newSysName = $"{dataToMerge.FirstParamName}{_model.SysNameSeparator}{dataToMerge.LastParamName}";
                         if (elemSysParamData.Equals(dataToMerge.FirstParamName) || elemSysParamData.Equals(dataToMerge.LastParamName))
                             elemSysParam.Set(newSysName);
                     }
