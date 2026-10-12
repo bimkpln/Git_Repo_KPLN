@@ -211,6 +211,62 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Forms\Entities\VentConfigurator\RequestKind.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\EditableValue.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\ConnectionKind.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\SharedParameters.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\SectionTypeChoice.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\SectionDefinition.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyParameterNames.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\SectionCatalog.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\ParameterDependency.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyDependencies.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\DimensionValue.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\BooleanValue.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\SectionValue.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\InstallationInfo.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyTypeItem.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\LocalGeometry.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\ValveControl.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\ConfigurationIssue.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\InstallationConfiguration.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyActionPlan.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\CompositionSnapshot.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyUpgradeParameter.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyUpgradeSnapshot.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyPackage.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\TypeWritePlan.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\OperationError.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\OpenDocumentItem.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\ProjectItem.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\ProjectMatch.cs" />
+    <Compile Include="Services\VentConfigurator\ProjectFamilyStorage.cs" />
+    <Compile Include="Services\VentConfigurator\ProjectDatabase.cs" />
+    <Compile Include="Services\VentConfigurator\ProjectPathMatcher.cs" />
+    <Compile Include="Forms\Entities\VentConfigurator\FamilyRequest.cs" />
+    <Compile Include="Services\VentConfigurator\FamilyLoadOptions.cs" />
+    <Compile Include="Services\VentConfigurator\VentConfiguratorSettings.cs" />
+    <Compile Include="Services\VentConfigurator\VentTypeName.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Context.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Upgrade.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Import.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Requests.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Persistence.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Parameters.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Catalog.cs" />
+    <Compile Include="Services\VentConfigurator\VentFamilyService.Diagnostics.cs" />
+    <Compile Include="ExecutableCommand\ExcCmd_OV_VentConfigurator.cs" />
+    <Compile Include="ExternalEventHandler\OV_VentConfiguratorSubscriptionHandler.cs" />
+    <Compile Include="Forms\Entities\OV_VentConfiguratorM.cs" />
+    <Compile Include="Forms\ViewModels\OV_VentConfiguratorVM.cs" />
+    <Compile Include="Forms\ViewModels\OV_VentConfiguratorVM.Requests.cs" />
+    <Compile Include="Forms\ViewModels\OV_VentConfiguratorVM.Editing.cs" />
+    <Compile Include="Forms\OV_VentConfiguratorForm.Rendering.cs">
+      <DependentUpon>OV_VentConfiguratorForm.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\OV_VentConfiguratorForm.Dialogs.cs">
+      <DependentUpon>OV_VentConfiguratorForm.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Imagens\ovvkMain16.png" />
@@ -291,4 +347,9 @@
     <EmbeddedResource Include="Imagens\VentilationConfigurator\Шумоглушитель.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <None Include="Tests\VentConfigurator\DomainTests.cs" />
+    <None Include="Tests\VentConfigurator\Run-DomainTests.ps1" />
+    <None Include="Tests\VentConfigurator\Run-WindowTests.ps1" />
+  </ItemGroup>
 </Project>
