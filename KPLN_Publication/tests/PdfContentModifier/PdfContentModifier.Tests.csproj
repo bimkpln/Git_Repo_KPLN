@@ -1,0 +1,34 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <OutputPath>bin\</OutputPath>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>PdfContentModifier.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="itextsharp">
+      <HintPath>..\..\packages\iTextSharp.5.5.13.4\lib\net461\itextsharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="BouncyCastle.Cryptography">
+      <HintPath>..\..\packages\BouncyCastle.Cryptography.2.4.0\lib\net461\BouncyCastle.Cryptography.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="BorderHideRegression.cs" />
+    <Compile Include="ParserRegression.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\PdfWorker\PdfContentModifier.cs" Link="PdfContentModifier.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\PdfWorker\PdfContentStreamBuilder.cs" Link="PdfContentStreamBuilder.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\PdfWorker\PdfContentOperatorHandler.cs" Link="PdfContentOperatorHandler.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\PdfWorker\PdfResourceDictionary.cs" Link="PdfResourceDictionary.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\PdfWorker\PdfContentToBlackWhiteConverter.cs" Link="PdfContentToBlackWhiteConverter.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

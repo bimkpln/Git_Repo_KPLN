@@ -106,6 +106,15 @@ namespace KPLN_Publication
                 textBox_PDFPath.Text = printSettings.outputPDFFolder;
                 checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
                 checkBoxOrientation.Checked = printSettings.isUseOrientation;
+                checkBoxExcludeBorders.Checked = checkBoxExcludeBorders.Enabled && printSettings.isExcludeBorders;
+            }
+
+            // Недоступное скрытие рамки сбрасываем и в конфиге, даже если форму закроют без печати.
+            if (!checkBoxExcludeBorders.Enabled && _printSettings.isExcludeBorders)
+            {
+                checkBoxExcludeBorders.Checked = false;
+                _printSettings.isExcludeBorders = false;
+                YayPrintSettings.SaveSettings(_printSettings);
             }
 
             if (checkBox_isPDFExport.Enabled)
@@ -196,7 +205,7 @@ namespace KPLN_Publication
         {
             string tt_text = "Выбери галку, чтобы скрыть рамки листа." +
                 "\nВАЖНО:" +
-                "\n1. Скрывается цвет RGD '003,002,051', если он используется " +
+                "\n1. Скрывается цвет RGB '003,002,051', если он используется " +
                 "в проекте для документации - он тоже скроектся!" +
                 "\n2. Работает ТОЛЬКО с принтером PDFCreator.";
             System.Windows.Forms.CheckBox cbx = sender as System.Windows.Forms.CheckBox;

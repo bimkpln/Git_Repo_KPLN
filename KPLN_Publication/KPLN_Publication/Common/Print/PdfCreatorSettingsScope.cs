@@ -2,6 +2,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace KPLN_Publication
 {
@@ -11,6 +12,7 @@ namespace KPLN_Publication
         private const string Root = @"Software\pdfforge\PDFCreator\Settings";
         private const string Profile = Root + @"\ConversionProfiles\0";
         private readonly List<Action> _restore = new List<Action>();
+        private readonly List<Func<bool>> _verify = new List<Func<bool>>();
 
         internal static void Validate()
         {
@@ -91,16 +93,36 @@ namespace KPLN_Publication
                 bool existed = key.GetValueNames().Contains(name);
                 object previous = key.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
                 RegistryValueKind kind = existed ? key.GetValueKind(name) : RegistryValueKind.String;
+                if (existed && previous == null)
+                    throw new InvalidOperationException("Настройки PDFCreator изменились во время чтения: " + path + "\\" + name);
+
                 _restore.Add(() =>
                 {
-                    using (var target = Registry.CurrentUser.OpenSubKey(path, true))
+                    using (var target = existed ? Registry.CurrentUser.CreateSubKey(path) : Registry.CurrentUser.OpenSubKey(path, true))
                     {
-                        if (target == null)
-                            throw new InvalidOperationException("Исчез раздел настроек PDFCreator: " + path);
                         if (existed)
                             target.SetValue(name, previous, kind);
-                        else
+                        else if (target != null)
                             target.DeleteValue(name, false);
+                    }
+                });
+                _verify.Add(() =>
+                {
+                    using (var target = Registry.CurrentUser.OpenSubKey(path))
+                    {
+                        bool present = target != null && target.GetValueNames().Contains(name);
+                        if (present != existed)
+                            return false;
+                        if (!existed)
+                            return true;
+
+                        object actual = target.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+                        if (target.GetValueKind(name) != kind)
+                            return false;
+                        if (previous is Array && actual is Array)
+                            return ((Array)previous).Cast<object>().SequenceEqual(((Array)actual).Cast<object>());
+
+                        return Equals(previous, actual);
                     }
                 });
                 key.SetValue(name, value, RegistryValueKind.String);
@@ -109,15 +131,58 @@ namespace KPLN_Publication
 
         public void Dispose()
         {
-            var errors = new List<Exception>();
-            for (int i = _restore.Count - 1; i >= 0; i--)
+            if (_restore.Count == 0)
+                return;
+
+            try
             {
-                try { _restore[i](); }
-                catch (Exception ex) { errors.Add(ex); }
+                RestoreAndVerify(_restore, _verify, Thread.Sleep, 8);
             }
-            _restore.Clear();
-            if (errors.Count != 0)
-                throw new AggregateException("Не удалось полностью восстановить настройки PDFCreator.", errors);
+            finally
+            {
+                _restore.Clear();
+                _verify.Clear();
+            }
+        }
+
+        // PDFCreator может пересоздавать разделы после закрытия выходного PDF.
+        // Повторяем только восстановление снимка, не отправку задания печати.
+        internal static void RestoreAndVerify(IList<Action> restore, IList<Func<bool>> verify, Action<int> wait, int attempts)
+        {
+            if (restore.Count != verify.Count || attempts < 1)
+                throw new ArgumentException("Неверный пакет восстановления настроек.");
+
+            var errors = new List<Exception>();
+            wait(250);
+            for (int attempt = 0; attempt < attempts; attempt++)
+            {
+                errors.Clear();
+                for (int i = restore.Count - 1; i >= 0; i--)
+                {
+                    try { restore[i](); }
+                    catch (Exception ex) { errors.Add(ex); }
+                }
+
+                // Две проверки замечают позднюю запись кэша PDFCreator поверх снимка.
+                bool restored = errors.Count == 0;
+                for (int check = 0; check < 2; check++)
+                {
+                    wait(150);
+                    foreach (var matches in verify)
+                    {
+                        try { restored &= matches(); }
+                        catch (Exception ex) { errors.Add(ex); restored = false; }
+                    }
+                }
+                if (restored)
+                    return;
+            }
+
+            if (errors.Count == 0)
+                errors.Add(new InvalidOperationException("Значения профиля продолжают изменяться после восстановления."));
+
+            string detail = string.Join("; ", errors.Select(e => e.GetType().Name + ": " + e.Message).Distinct());
+            throw new AggregateException("Не удалось восстановить и проверить настройки PDFCreator. " + detail, errors);
         }
     }
 }

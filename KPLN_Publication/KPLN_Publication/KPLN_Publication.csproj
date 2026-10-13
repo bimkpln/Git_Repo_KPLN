@@ -22,6 +22,9 @@
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\Revit 2020\Revit.exe</StartProgram>
+    <StartWorkingDirectory>C:\Program Files\Autodesk\Revit 2020</StartWorkingDirectory>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug\2020</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
@@ -31,6 +34,9 @@
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\Revit 2023\Revit.exe</StartProgram>
+    <StartWorkingDirectory>C:\Program Files\Autodesk\Revit 2023</StartWorkingDirectory>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug\2023</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
@@ -40,6 +46,9 @@
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\Revit 2024\Revit.exe</StartProgram>
+    <StartWorkingDirectory>C:\Program Files\Autodesk\Revit 2024</StartWorkingDirectory>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug\2024</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
@@ -386,6 +395,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Properties\launchSettings.json" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="formats.txt">

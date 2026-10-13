@@ -93,11 +93,31 @@ namespace KPLN_Publication.PdfWorker
             foreach (Color c in hideColors)
                 _hideColors.Add(c);
 
-            _modifier.Modify(reader, pageNumber);
+            _modifier.Modify(reader, pageNumber, ShouldModifyForBorderHide);
+        }
+
+        private bool ShouldModifyForBorderHide(string oper, List<PdfObject> operands)
+        {
+            if (oper == "RG")
+                return true;
+
+            // Вложенные формы проверяем на рамки; заливки и растровые изображения не перекрашиваем.
+            if (oper != "Do" || operands.Count < 2)
+                return false;
+
+            PdfName name = operands[0] as PdfName;
+            PdfDictionary xobjects = _modifier.ResourceDictionary.GetAsDict(PdfName.XOBJECT);
+            PdfStream stream = name == null || xobjects == null ? null : xobjects.GetDirectObject(name) as PdfStream;
+            return stream != null && stream.GetAsName(PdfName.SUBTYPE) == PdfName.FORM;
         }
 
         private bool IsKeepColor(BaseColor cr)
         {
+            // Как и для растровых цветов, сохраняем белый, чёрный и оттенки серого.
+            // В том числе белую рамку, скрытую предыдущим проходом.
+            if (cr.R == cr.G && cr.G == cr.B)
+                return true;
+
             bool bKeep = false;
 
             foreach (Color c in _excludeColors)
@@ -199,9 +219,9 @@ namespace KPLN_Publication.PdfWorker
             {
                 return new List<PdfObject>()
                 {
-                     new PdfNumber(255),
-                     new PdfNumber(255),
-                     new PdfNumber(255),
+                     new PdfNumber(1),
+                     new PdfNumber(1),
+                     new PdfNumber(1),
                      new PdfLiteral("RG")
                 };
             }

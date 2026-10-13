@@ -11,12 +11,13 @@ This code is provided 'as is'. Author disclaims any implied warranty.
 Zuev Aleksandr, 2020, all rigths reserved.*/
 #endregion
 
+using iTextSharp.text.pdf;
+using iTextSharp.text.pdf.parser;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using iTextSharp.text.pdf;
 
 
 namespace KPLN_Publication.PdfWorker
@@ -29,6 +30,7 @@ namespace KPLN_Publication.PdfWorker
         private Dictionary<string, PdfContentOperatorHandler> _operators = new Dictionary<string, PdfContentOperatorHandler>();
         private Stack<PdfContentStreamBuilder> _contentStreamBuilderStack = new Stack<PdfContentStreamBuilder>();
         private PdfResourceDictionary _resourceDictionaryStack = new PdfResourceDictionary();
+        private Func<string, List<PdfObject>, bool> _operatorFilter;
 
         #endregion
 
@@ -36,14 +38,28 @@ namespace KPLN_Publication.PdfWorker
 
         public void Modify(PdfReader reader, int pageNumber)
         {
+            Modify(reader, pageNumber, null);
+        }
+
+        public void Modify(PdfReader reader, int pageNumber, Func<string, List<PdfObject>, bool> operatorFilter)
+        {
             PdfDictionary pageDictionary = reader.GetPageN(pageNumber);
             PdfDictionary resourcesDictionary = pageDictionary.GetAsDict(PdfName.RESOURCES);
 
             byte[] contentBytes = reader.GetPageContent(pageNumber);
 
-            contentBytes = this.Modify(contentBytes, resourcesDictionary);
-
-            reader.SetPageContent(pageNumber, contentBytes);
+            // Ограничение действует и во вложенных Form XObject, обрабатываемых тем же модификатором.
+            Func<string, List<PdfObject>, bool> previousFilter = _operatorFilter;
+            _operatorFilter = operatorFilter;
+            try
+            {
+                contentBytes = this.Modify(contentBytes, resourcesDictionary);
+                reader.SetPageContent(pageNumber, contentBytes);
+            }
+            finally
+            {
+                _operatorFilter = previousFilter;
+            }
         }
 
         #endregion
@@ -59,36 +75,62 @@ namespace KPLN_Publication.PdfWorker
 
             List<PdfObject> operands = new List<PdfObject>();
 
-            while (ps.Parse(operands).Count > 0)
+            try
             {
-                PdfLiteral oper = (PdfLiteral)operands[operands.Count - 1];
-
-                //System.Diagnostics.Debug.WriteLine("[Debug] Opr: " + oper.ToString());
-
-                PdfContentOperatorHandler operHandler = null;
-
-                if (_operators.TryGetValue(oper.ToString(), out operHandler))
+                while (true)
                 {
-                    try
+                    long operationStart = tokeniser.FilePointer;
+                    if (ps.Parse(operands).Count == 0)
+                        break;
+
+                    PdfLiteral oper = (PdfLiteral)operands[operands.Count - 1];
+
+                    // После BI идут бинарные данные изображения, а не обычные PDF-операторы.
+                    // Штатный парсер определяет конец изображения; исходные байты сохраняем без изменений.
+                    if (oper.ToString() == "BI")
                     {
-                        operands = operHandler(oper, operands);
+                        InlineImageUtils.ParseInlineImage(ps, _resourceDictionaryStack.GetAsDict(PdfName.COLORSPACE));
+                        int imageLength = checked((int)(tokeniser.FilePointer - operationStart));
+                        byte[] imageContent = new byte[imageLength];
+                        Buffer.BlockCopy(contentBytes, checked((int)operationStart), imageContent, 0, imageLength);
+                        _contentStreamBuilderStack.Peek().Push(new PdfLiteral(imageContent));
+                        continue;
                     }
-                    catch (System.Runtime.InteropServices.ExternalException)
+
+                    //System.Diagnostics.Debug.WriteLine("[Debug] Opr: " + oper.ToString());
+
+                    PdfContentOperatorHandler operHandler = null;
+
+                    if (_operators.TryGetValue(oper.ToString(), out operHandler))
                     {
-                        // Игнорирую элементы на листе, которые невозможно перекрасить (например печать организации)
+                        try
+                        {
+                            if (_operatorFilter == null || _operatorFilter(oper.ToString(), operands))
+                                operands = operHandler(oper, operands);
+                        }
+                        catch (System.Runtime.InteropServices.ExternalException)
+                        {
+                            // Игнорирую элементы на листе, которые невозможно перекрасить (например печать организации)
+                        }
+                        catch (Exception)
+                        {
+                            // Игнорирую неподдерживаемые или нестандартные элементы (например облака точек в связях),
+                            // чтобы преобразование в монохром продолжалось для остального содержимого листа.
+                        }
                     }
-                    catch (Exception)
-                    {
-                        // Игнорирую неподдерживаемые или нестандартные элементы (например облака точек в связях),
-                        // чтобы преобразование в монохром продолжалось для остального содержимого листа.
-                    }
+
+                    _contentStreamBuilderStack.Peek().Push(operands);
                 }
 
-                _contentStreamBuilderStack.Peek().Push(operands);
+                return _contentStreamBuilderStack.Peek().GetBytes();
             }
-
-            _resourceDictionaryStack.Pop();
-            return _contentStreamBuilderStack.Pop().GetBytes();
+            finally
+            {
+                // Ошибка во вложенном Form XObject не должна оставлять его состояние в стеке страницы.
+                _resourceDictionaryStack.Pop();
+                _contentStreamBuilderStack.Pop();
+                tokeniser.Close();
+            }
         }
 
         #endregion
