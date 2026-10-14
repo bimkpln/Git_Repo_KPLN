@@ -1,5 +1,6 @@
 ﻿using Autodesk.Revit.DB;
 using KPLN_Library_ConfigWorker.Core;
+using KPLN_Tools_OVVK.Common.OVVK_System;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -43,6 +44,9 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         private string _parameterName = string.Empty;
         private string _sysNameSeparator = "/";
         private string _operationMessage = string.Empty;
+        private OVVK_SystemManagerRowM _selectedSystemRow;
+        private readonly Dictionary<string, List<ElementId>> _systemElementIds = new Dictionary<string, List<ElementId>>();
+        private readonly Dictionary<OVVK_SystemManagerRowKind, List<ElementId>> _errorElementIds = new Dictionary<OVVK_SystemManagerRowKind, List<ElementId>>();
         private bool _isBusy;
         private bool _isDocumentActive = true;
 
@@ -87,7 +91,13 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public List<Element> WarningsElementColl { get; } = new List<Element>();
 
         [JsonIgnore]
+        public List<Element> TypeParameterElementColl { get; } = new List<Element>();
+
+        [JsonIgnore]
         public ObservableCollection<string> SystemSumParameters { get; private set; } = new ObservableCollection<string>();
+
+        [JsonIgnore]
+        public ObservableCollection<OVVK_SystemManagerRowM> SystemRows { get; private set; } = new ObservableCollection<OVVK_SystemManagerRowM>();
 
         [JsonIgnore]
         public bool HasParameterErrors { get; private set; }
@@ -100,6 +110,9 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             get => _parameterName;
             set
             {
+                if (_parameterName != (value ?? string.Empty))
+                    SelectedSystemRow = null;
+
                 _parameterName = value ?? string.Empty;
                 NotifyPropertyChanged();
                 NotifyPropertyChanged(nameof(ParameterDisplayName));
@@ -111,6 +124,22 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         {
             get => _sysNameSeparator;
             set => _sysNameSeparator = string.IsNullOrEmpty(value) ? "/" : value;
+        }
+
+        [JsonIgnore]
+        public OVVK_SystemManagerRowM SelectedSystemRow
+        {
+            get => _selectedSystemRow;
+            set
+            {
+                if (_selectedSystemRow == value)
+                    return;
+
+                _selectedSystemRow = value;
+                NotifyPropertyChanged();
+                NotifyPropertyChanged(nameof(CanSelectSystem));
+                NotifyPropertyChanged(nameof(SelectSystemButtonText));
+            }
         }
 
         [JsonIgnore]
@@ -150,7 +179,10 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool CanSelectParameter => CanRefresh && ElementColl.Count > 0;
 
         [JsonIgnore]
-        public bool CanRun => CanSelectParameter && !HasParameterErrors && !string.IsNullOrWhiteSpace(ParameterName);
+        public bool CanFillSystemName => CanRefresh && !string.IsNullOrWhiteSpace(ParameterName);
+
+        [JsonIgnore]
+        public bool CanRun => CanSelectParameter && !HasParameterErrors && !HasTypeParameters && !string.IsNullOrWhiteSpace(ParameterName);
 
         [JsonIgnore]
         public bool CanMergeSystems => CanRun && SystemSumParameters.Count > 1;
@@ -159,10 +191,26 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool CanCreateViews => CanRun && SystemSumParameters.Count > 0;
 
         [JsonIgnore]
-        public bool CanSelectWarnings => CanRefresh && WarningsElementColl.Count > 0;
+        public bool CanSelectSystem => CanRefresh && SelectedSystemRow != null && SystemRows.Contains(SelectedSystemRow);
 
         [JsonIgnore]
-        public string UserMainStatus => $"Элементов: {ElementColl.Count}   Систем: {SystemSumParameters.Count}   С замечаниями: {WarningsElementColl.Count}";
+        public string SelectSystemButtonText => SelectedSystemRow?.IsIssue == true
+            ? "Выделить элементы"
+            : "Выделить систему";
+
+        [JsonIgnore]
+        public bool HasTypeParameters => TypeParameterElementColl.Count > 0;
+
+        [JsonIgnore]
+        public string TypeParameterWarning => HasTypeParameters
+            ? $"ВАЖНО: У {TypeParameterElementColl.Count} элементов «{ParameterName}» — параметр типа. "
+                + "Заполнение меняет значение у всех экземпляров типа. При повторной записи остаётся последнее значение. "
+                + "Для разных систем используй параметр экземпляра. Выбери оранжевую строку, чтобы выделить эти элементы."
+            : string.Empty;
+
+        [JsonIgnore]
+        public string UserMainStatus => $"Элементов: {ElementColl.Count}   Систем: {SystemSumParameters.Count}   С замечаниями: {WarningsElementColl.Count}"
+            + (HasTypeParameters ? $"   Параметр типа: {TypeParameterElementColl.Count}" : string.Empty);
 
         [JsonIgnore]
         public string UserHelp
@@ -180,9 +228,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                 if (string.IsNullOrWhiteSpace(ParameterName))
                     return "ВАЖНО: Выбери текстовый параметр для группирования элементов по системам.";
                 if (HasParameterErrors)
-                    return "ВАЖНО: У части элементов выбранный параметр отсутствует или имеет другой тип. Выдели элементы с ошибками.";
-                if (WarningsElementColl.Count > 0)
-                    return "ВАЖНО: Есть элементы с пустым значением системы. Проверь их перед обработкой.";
+                    return "ВАЖНО: Выбери красную строку и нажми «Выделить элементы», чтобы проверить ошибки параметра системы.";
 
                 return string.Empty;
             }
@@ -195,33 +241,66 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public void Refresh()
         {
             _operationMessage = string.Empty;
+            ElementColl = CollectElements(CurrentDoc).ToList();
+            UpdateSystemParamData();
+        }
+
+        /// <summary>
+        /// Единый набор категорий и исключений для списка менеджера и заполнения параметра.
+        /// Если передан viewId, рассматриваются только элементы этого вида.
+        /// </summary>
+        internal static Element[] CollectElements(Document doc, ElementId viewId = null, Action<int, int> reportProgress = null)
+        {
+            if (viewId != null && !FilteredElementCollector.IsViewValidForElementIteration(doc, viewId))
+                throw new InvalidOperationException("На текущем виде нельзя собрать элементы. Открой план или 3D-вид либо выбери всю модель.");
+
             var elements = new List<Element>();
+            int processedCategories = 0;
+            int categoryCount = _familyCategories.Length + _curveCategories.Length;
 
             foreach (BuiltInCategory category in _familyCategories)
             {
-                elements.AddRange(new FilteredElementCollector(CurrentDoc)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(category)
-                    .WhereElementIsNotElementType()
-                    .Cast<FamilyInstance>()
-                    .Where(instance => !_excludedFamilyPrefixes.Any(prefix => instance.Symbol.FamilyName.StartsWith(prefix))));
+                reportProgress?.Invoke(processedCategories, categoryCount);
+                using (var collector = viewId == null ? new FilteredElementCollector(doc) : new FilteredElementCollector(doc, viewId))
+                {
+                    elements.AddRange(collector
+                        .OfClass(typeof(FamilyInstance))
+                        .OfCategory(category)
+                        .WhereElementIsNotElementType()
+                        .Cast<FamilyInstance>()
+                        .Where(instance => !_excludedFamilyPrefixes.Any(prefix => instance.Symbol.FamilyName.StartsWith(prefix))));
+                }
+
+                processedCategories++;
             }
 
             foreach (BuiltInCategory category in _curveCategories)
             {
-                elements.AddRange(new FilteredElementCollector(CurrentDoc)
-                    .OfCategory(category)
-                    .WhereElementIsNotElementType());
+                reportProgress?.Invoke(processedCategories, categoryCount);
+                using (var collector = viewId == null ? new FilteredElementCollector(doc) : new FilteredElementCollector(doc, viewId))
+                {
+                    elements.AddRange(collector
+                        .OfCategory(category)
+                        .WhereElementIsNotElementType());
+                }
+
+                processedCategories++;
             }
 
-            ElementColl = elements;
-            UpdateSystemParamData();
+            reportProgress?.Invoke(categoryCount, categoryCount);
+            return elements.ToArray();
         }
 
         public void UpdateSystemParamData()
         {
+            OVVK_SystemManagerRowM selectedRow = SelectedSystemRow;
             var systemNames = new HashSet<string>();
+            var typeParameters = new Dictionary<ElementId, Parameter>();
+            var invalidNames = new HashSet<string>();
+            _systemElementIds.Clear();
+            _errorElementIds.Clear();
             WarningsElementColl.Clear();
+            TypeParameterElementColl.Clear();
             HasParameterErrors = false;
 
             if (!string.IsNullOrWhiteSpace(ParameterName))
@@ -229,42 +308,103 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                 foreach (Element element in ElementColl)
                 {
                     Parameter parameter = element.LookupParameter(ParameterName);
+                    bool isTypeParameter = false;
+                    if (parameter == null)
+                    {
+                        // Как при заполнении: сначала экземпляр, затем его тип.
+                        ElementId typeId = element.GetTypeId();
+                        if (!typeParameters.TryGetValue(typeId, out Parameter typeParameter))
+                        {
+                            typeParameter = CurrentDoc.GetElement(typeId)?.LookupParameter(ParameterName);
+                            typeParameters.Add(typeId, typeParameter);
+                        }
+
+                        if (typeParameter != null)
+                        {
+                            TypeParameterElementColl.Add(element);
+                            parameter = typeParameter;
+                            isTypeParameter = true;
+                        }
+                    }
+
                     if (parameter == null || parameter.StorageType != StorageType.String)
                     {
-                        HasParameterErrors = true;
-                        WarningsElementColl.Add(element);
+                        AddError(element, OVVK_SystemManagerRowKind.InvalidParameterError);
                         continue;
                     }
 
                     string systemName = parameter.AsString();
 
-                    // У вложенных общих семейств сохраняем поиск системы у главного родителя.
-                    if (string.IsNullOrWhiteSpace(systemName) && element is FamilyInstance instance)
+                    // Пустое собственное значение нельзя скрывать заполненным параметром родителя.
+                    if (!parameter.HasValue || string.IsNullOrWhiteSpace(systemName))
                     {
-                        Element parent = instance;
-                        while (parent is FamilyInstance family && family.SuperComponent != null)
-                            parent = family.SuperComponent;
-
-                        if (!parent.Id.Equals(element.Id))
-                        {
-                            Parameter parentParameter = parent.LookupParameter(ParameterName);
-                            if (parentParameter != null && parentParameter.StorageType == StorageType.String)
-                                systemName = parentParameter.AsString();
-                        }
+                        AddError(element, OVVK_SystemManagerRowKind.EmptyParameterError);
+                        continue;
                     }
 
-                    if (string.IsNullOrWhiteSpace(systemName))
-                        WarningsElementColl.Add(element);
-                    else
-                        systemNames.Add(systemName);
+                    if (SystemNameValidation.IsServiceValue(systemName))
+                    {
+                        AddError(element, OVVK_SystemManagerRowKind.SystemNameError);
+                        invalidNames.Add(systemName);
+                        continue;
+                    }
+
+                    // Заполненные параметры типа остаются предупреждением, а не отдельными системами.
+                    if (isTypeParameter)
+                        continue;
+
+                    systemNames.Add(systemName);
+                    if (!_systemElementIds.TryGetValue(systemName, out List<ElementId> elementIds))
+                    {
+                        elementIds = new List<ElementId>();
+                        _systemElementIds.Add(systemName, elementIds);
+                    }
+
+                    elementIds.Add(element.Id);
                 }
             }
 
             SystemSumParameters = new ObservableCollection<string>(systemNames.OrderBy(name => name));
+            var rows = new List<OVVK_SystemManagerRowM>();
+            foreach (var error in _errorElementIds.OrderBy(pair => pair.Key))
+            {
+                string details = error.Key == OVVK_SystemManagerRowKind.SystemNameError
+                    ? "Значения: " + string.Join("; ", invalidNames.OrderBy(name => name).Take(10))
+                    : null;
+                rows.Add(new OVVK_SystemManagerRowM(error.Key, error.Value.Count, details));
+            }
+            if (HasTypeParameters)
+                rows.Add(new OVVK_SystemManagerRowM(TypeParameterElementColl.Count));
+            rows.AddRange(SystemSumParameters.Select(name => new OVVK_SystemManagerRowM(name)));
+
+            SystemRows = new ObservableCollection<OVVK_SystemManagerRowM>(rows);
             NotifyPropertyChanged(nameof(ElementColl));
             NotifyPropertyChanged(nameof(WarningsElementColl));
+            NotifyPropertyChanged(nameof(TypeParameterElementColl));
             NotifyPropertyChanged(nameof(SystemSumParameters));
+            NotifyPropertyChanged(nameof(SystemRows));
+
+            // ItemsSource может сбросить выбор WPF при замене коллекции.
+            SelectedSystemRow = selectedRow == null ? null : SystemRows.FirstOrDefault(row =>
+                row.Kind == selectedRow.Kind && row.SystemName == selectedRow.SystemName);
+            NotifyPropertyChanged(nameof(SelectedSystemRow));
             NotifyState();
+        }
+
+        internal ElementId[] GetSystemElementIds(OVVK_SystemManagerRowM row)
+        {
+            if (row?.IsError == true)
+                return _errorElementIds.TryGetValue(row.Kind, out List<ElementId> errorIds)
+                    ? errorIds.ToArray()
+                    : new ElementId[0];
+
+            if (row?.IsTypeParameterWarning == true)
+                return TypeParameterElementColl.Select(element => element.Id).ToArray();
+
+            string systemName = row?.SystemName;
+            return systemName != null && _systemElementIds.TryGetValue(systemName, out List<ElementId> elementIds)
+                ? elementIds.ToArray()
+                : new ElementId[0];
         }
 
         internal void SetOperationMessage(string message)
@@ -283,12 +423,28 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         {
             NotifyPropertyChanged(nameof(CanRefresh));
             NotifyPropertyChanged(nameof(CanSelectParameter));
+            NotifyPropertyChanged(nameof(CanFillSystemName));
             NotifyPropertyChanged(nameof(CanRun));
             NotifyPropertyChanged(nameof(CanMergeSystems));
             NotifyPropertyChanged(nameof(CanCreateViews));
-            NotifyPropertyChanged(nameof(CanSelectWarnings));
+            NotifyPropertyChanged(nameof(CanSelectSystem));
+            NotifyPropertyChanged(nameof(HasTypeParameters));
+            NotifyPropertyChanged(nameof(TypeParameterWarning));
             NotifyPropertyChanged(nameof(UserMainStatus));
             NotifyPropertyChanged(nameof(UserHelp));
+        }
+
+        private void AddError(Element element, OVVK_SystemManagerRowKind kind)
+        {
+            HasParameterErrors = true;
+            WarningsElementColl.Add(element);
+            if (!_errorElementIds.TryGetValue(kind, out List<ElementId> ids))
+            {
+                ids = new List<ElementId>();
+                _errorElementIds.Add(kind, ids);
+            }
+
+            ids.Add(element.Id);
         }
 
         private void NotifyPropertyChanged([CallerMemberName] string propertyName = null)

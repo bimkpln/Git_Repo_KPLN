@@ -67,38 +67,9 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                     return Result.Cancelled;
             }
 
-            // Анализ парамтеров шаблона на блокировку парамтеров фильтрации
-            if (viewTempl != null)
-            {
-                ICollection<ElementId> viewTemplNonControlIds = viewTempl.GetNonControlledTemplateParameterIds();
-                bool isFiltersNonControlled = viewTemplNonControlIds.Any();
-                foreach (ElementId id in viewTemplNonControlIds)
-                {
-                    // Для ревит 2020 нет возможности вытянуть чере API элемент фильтров шаблона. НО ID всегда один и тот же, даже для Ревит 2023 (но лучше отдельно прописать)
-#if Revit2020 || Debug2020 || Revit2023 || Debug2023
-                    if (id.IntegerValue == -1006964)
-#else
-                    if (id.Value == -1006964)
-#endif
-                    {
-                        isFiltersNonControlled = true;
-                        break;
-                    }
-                    else
-                        isFiltersNonControlled = false;
-                }
-
-                if (!isFiltersNonControlled)
-                {
-                    MessageBox.Show(
-                        $"В шаблоне вида галка, управляющая фильтрами должна быть СНЯТА. Работа экстренно завершена!",
-                        "Ошибка",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
-
-                    return Result.Cancelled;
-                }
-            }
+            // Повторная проверка перед изменением модели.
+            if (!ValidateTemplateFilters(viewTempl))
+                return Result.Cancelled;
 
             #endregion
 
@@ -136,6 +107,29 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             #endregion
 
             return Result.Succeeded;
+        }
+
+        internal static bool ValidateTemplateFilters(Autodesk.Revit.DB.View viewTemplate)
+        {
+            if (viewTemplate == null)
+                return true;
+
+            // В Revit 2020 параметр управления фильтрами проверяется по его постоянному ID.
+            bool filtersNotControlled = viewTemplate.GetNonControlledTemplateParameterIds().Any(id =>
+#if Revit2020 || Debug2020 || Revit2023 || Debug2023
+                id.IntegerValue == -1006964);
+#else
+                id.Value == -1006964);
+#endif
+            if (filtersNotControlled)
+                return true;
+
+            MessageBox.Show(
+                "В шаблоне вида галка, управляющая фильтрами должна быть СНЯТА. Работа экстренно завершена!",
+                "Ошибка",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return false;
         }
 
         /// <summary>

@@ -150,6 +150,10 @@
     <Compile Include="Common\OVVK_System\DuctThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\DuctProtectionParameters.cs" />
     <Compile Include="Common\OVVK_System\OVVK_MergeSystem.cs" />
+    <Compile Include="Common\OVVK_System\SystemNameResolver.cs" />
+    <Compile Include="Common\OVVK_System\SystemNameValidation.cs" />
+    <Compile Include="Common\OVVK_System\SystemNameFillService.cs" />
+    <Compile Include="Common\OVVK_System\SystemRefreshService.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />
@@ -172,8 +176,12 @@
     <Compile Include="Forms\Models\AUPTTagPlacerM.cs" />
     <Compile Include="Forms\Models\AUPTTagPlacerVM.cs" />
     <Compile Include="Forms\Entities\OVVK_SystemManagerM.cs" />
+    <Compile Include="Forms\Entities\OVVK_MergeSystemsConfigM.cs" />
+    <Compile Include="Forms\Entities\OVVK_SystemManagerRowM.cs" />
     <Compile Include="Forms\ViewModels\OVVK_SystemManagerVM.cs" />
     <Compile Include="ExecutableCommand\OVVK_SystemManagerExcCmd.cs" />
+    <Compile Include="ExecutableCommand\OVVK_SystemNameFillExcCmd.cs" />
+    <Compile Include="ExecutableCommand\OVVK_SystemRefreshExcCmd.cs" />
     <Compile Include="ExternalEventHandler\OVVK_SystemManagerSubscriptionHandler.cs" />
     <Compile Include="Forms\Models\ScheduleFormM.cs" />
     <Compile Include="Forms\Models\ScheduleFormVM.cs" />

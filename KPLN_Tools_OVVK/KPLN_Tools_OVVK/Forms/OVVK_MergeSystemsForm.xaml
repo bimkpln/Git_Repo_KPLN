@@ -11,7 +11,7 @@
         SizeToContent="WidthAndHeight"
         ResizeMode="CanResizeWithGrip"
         Topmost="True"
-        Title="KPLN: ОВВК_Менеджер систем"
+        Title="KPLN: ОВВК — Объединить системы"
         WindowStartupLocation="CenterOwner">
     <Window.Resources>
         <ResourceDictionary>
@@ -63,8 +63,10 @@
     
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <StackPanel>
@@ -128,5 +130,14 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
+        <DockPanel Grid.Row="2" LastChildFill="False" HorizontalAlignment="Center" Margin="0,6,0,0">
+            <Button Click="SaveConfig_Click" Content="Сохранить"
+                    ToolTip="Сохранить группы объединения для текущей модели и параметра"
+                    Style="{StaticResource MainButtons}"/>
+            <Button Click="Clear_Click" Content="Очистить"
+                    ToolTip="Удалить все группы из окна. Значения элементов Revit не изменяются."
+                    Style="{StaticResource MainButtons}"/>
+        </DockPanel>
+        <TextBlock Grid.Row="3" x:Name="ConfigStatus" Style="{StaticResource TBlock}" Foreground="#2B2F38" MaxWidth="500"/>
     </Grid>
 </Window>

@@ -58,7 +58,7 @@ namespace KPLN_Tools_OVVK
                 typeof(ExtCmd_OVVK_SystemManager).FullName,
                 "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
                 "KPLN_Tools_OVVK.Imagens.systemMangerSmall.png",
-                "http://moodle");
+                "http://moodle/mod/book/view.php?id=502&chapterid=1301");
 
             PushButtonData ventilationSettingsConfigurator = CreateBtnData(
                 ExtCmd_OV_VentConfigurator.PluginName,

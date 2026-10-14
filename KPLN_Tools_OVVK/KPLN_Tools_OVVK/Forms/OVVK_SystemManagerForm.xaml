@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="KPLN: ОВВК — Менеджер систем"
-        Width="850" Height="600" MinWidth="680" MinHeight="440"
+        Width="850" Height="700" MinWidth="680" MinHeight="440"
         ResizeMode="CanResizeWithGrip"
         FontFamily="Consolas, 'Segoe UI', monospace"
         Background="#2B2F38"
@@ -78,7 +78,9 @@
                     </Grid.RowDefinitions>
                     <TextBlock Text="Системы по выбранному параметру" Style="{StaticResource ManagerText}"
                                FontWeight="Bold" Margin="0,0,0,12"/>
-                    <ListBox Grid.Row="1" ItemsSource="{Binding SystemSumParameters}"
+                    <ListBox Grid.Row="1" ItemsSource="{Binding SystemRows}"
+                             SelectedItem="{Binding SelectedSystemRow, Mode=TwoWay}"
+                             SelectionMode="Single"
                              Background="Transparent" Foreground="#EDEDED" BorderThickness="0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -92,42 +94,100 @@
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="14"/>
+                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontSize="14">
+                                    <TextBlock.ToolTip>
+                                        <TextBlock Text="{Binding Description}" MaxWidth="420" TextWrapping="Wrap"/>
+                                    </TextBlock.ToolTip>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FFB454"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                    <Setter Property="Foreground" Value="#FF7777"/>
+                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
                 </Grid>
             </Border>
 
-            <StackPanel Grid.Column="2">
-                <TextBlock Text="Действия" Style="{StaticResource ManagerText}" FontWeight="Bold" Margin="0,0,0,12"/>
-                <Button Content="Обновить список" Command="{Binding RefreshSystemsCmd}"
-                        IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanRefresh}" Style="{StaticResource ManagerAction}"/>
-                <Button Content="Объединить системы" Command="{Binding MergeSystemsCmd}"
-                        IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanMergeSystems}"
-                        ToolTip="Объединить значения выбранного параметра. Нужны минимум две системы."
-                        Style="{StaticResource ManagerAction}"/>
-                <Button Content="Создать 3D-виды" Command="{Binding CreateViewsCmd}"
-                        IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanCreateViews}" Style="{StaticResource ManagerAction}">
-                    <Button.ToolTip>
-                        <TextBlock MaxWidth="310" TextWrapping="Wrap"
-                                   Text="Создаёт аксонометрические схемы на основе открытого 3D-вида. В шаблоне вида управление фильтрами должно быть отключено."/>
-                    </Button.ToolTip>
-                </Button>
-                <Button Content="Выделить ошибки" Command="{Binding SelectWarningsCmd}"
-                        IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanSelectWarnings}"
-                        ToolTip="Выделить элементы с пустым, отсутствующим или неподходящим параметром системы"
-                        Style="{StaticResource ManagerAction}" Background="#804044"/>
-            </StackPanel>
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <TextBlock Text="Действия" Style="{StaticResource ManagerText}" FontWeight="Bold" Margin="0,0,0,12"/>
+                    <Button Content="{Binding CurrentOVVK_SystemManagerM.SelectSystemButtonText}" Command="{Binding SelectSystemCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanSelectSystem}"
+                            ToolTip="Выделить элементы выбранной строки: системы, ошибки или предупреждения">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource ManagerAction}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentOVVK_SystemManagerM.SelectedSystemRow.IsWarning}" Value="True">
+                                        <Setter Property="Background" Value="#FFB454"/>
+                                        <Setter Property="Foreground" Value="#2B2F38"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentOVVK_SystemManagerM.SelectedSystemRow.IsError}" Value="True">
+                                        <Setter Property="Background" Value="#C94850"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Content="Обновить список" Command="{Binding RefreshSystemsCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanRefresh}" Style="{StaticResource ManagerAction}"/>
+                    <Button Content="Обновить имя системы" Command="{Binding RefreshSystemNamesCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanRefresh}"
+                            ToolTip="Сопоставить сокращения с именами типов систем и обновить системы труб и воздуховодов во всей модели"
+                            Style="{StaticResource ManagerAction}"/>
+                    <Button Content="Заполнить параметр" Command="{Binding FillSystemNameCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanFillSystemName}"
+                            Style="{StaticResource ManagerAction}">
+                        <Button.ToolTip>
+                            <TextBlock MaxWidth="310" TextWrapping="Wrap"
+                                       Text="Записать имена типов систем в параметр из строки «Группировать по» на текущем виде или во всей модели. Применяются категории и исключения менеджера. Вложенные семейства получают значение родителя. Существующие значения будут обновлены."/>
+                        </Button.ToolTip>
+                    </Button>
+                    <Button Content="Объединить системы" Command="{Binding MergeSystemsCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanMergeSystems}"
+                            ToolTip="Объединить значения выбранного параметра. Нужны минимум две системы и параметр экземпляра у всех элементов."
+                            Style="{StaticResource ManagerAction}"/>
+                    <Button Content="Создать 3D-виды" Command="{Binding CreateViewsCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanCreateViews}" Style="{StaticResource ManagerAction}">
+                        <Button.ToolTip>
+                            <TextBlock MaxWidth="310" TextWrapping="Wrap"
+                                       Text="Создаёт аксонометрические схемы на основе открытого 3D-вида. Нужен параметр экземпляра у всех элементов. В шаблоне вида управление фильтрами должно быть отключено."/>
+                        </Button.ToolTip>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <Grid Grid.Row="2" Margin="0,12,0,0" DataContext="{Binding CurrentOVVK_SystemManagerM}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <TextBlock Text="{Binding UserHelp}" Style="{StaticResource ManagerText}" Foreground="#FF7777" Margin="0,0,0,8"/>
-            <TextBlock Grid.Row="1" Text="{Binding UserMainStatus}" Style="{StaticResource ManagerText}" Foreground="#AEB8C8"/>
+            <TextBlock Text="{Binding TypeParameterWarning}" Foreground="#FFB454" TextWrapping="Wrap" Margin="0,0,0,8">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource ManagerText}">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasTypeParameters}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Grid.Row="1" Text="{Binding UserHelp}" Style="{StaticResource ManagerText}" Foreground="#FF7777" Margin="0,0,0,8"/>
+            <TextBlock Grid.Row="2" Text="{Binding UserMainStatus}" Style="{StaticResource ManagerText}" Foreground="#AEB8C8"/>
         </Grid>
     </Grid>
 </Window>
