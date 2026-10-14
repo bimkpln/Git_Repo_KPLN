@@ -36,7 +36,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             #region Подготовка коллекции и элементов
             Autodesk.Revit.DB.View activeView = _model.CurrentDoc.ActiveView;
 
-            _docCatIdColl.AddRange(_model.ElementColl.Select(e => e.Category.Id).Distinct());
+            _docCatIdColl.AddRange(_model.ElementColl.Where(e => e.Category != null).Select(e => e.Category.Id).Distinct());
 
             // Вывод критических ошибок и остановка работы
             if (_errorDict.Keys.Count != 0)
@@ -150,22 +150,39 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
             foreach (string sysName in _systemSumParameters)
             {
+                // Параметр берём у выбранной корректной системы, а не у первого элемента модели.
+                Element element = _model.GetSystemElementIds(new OVVK_SystemManagerRowM(sysName))
+                    .Select(id => doc.GetElement(id)).FirstOrDefault(item => item != null);
+                Parameter parameter = element?.LookupParameter(_model.ParameterName);
+                if (parameter == null || parameter.StorageType != StorageType.String)
+                    continue;
+
+                var filterableCategories = new HashSet<ElementId>(ParameterFilterUtilities.GetAllFilterableCategories());
+                List<ElementId> categories = _docCatIdColl.Where(id => filterableCategories.Contains(id)
+                    && ParameterFilterUtilities.GetFilterableParametersInCommon(doc, new[] { id }).Contains(parameter.Id)).ToList();
+                if (categories.Count == 0)
+                    throw new System.InvalidOperationException("Не найдены категории для фильтра системы «" + sysName + "».");
+
                 string filterName = $"prog_{_model.ParameterName} = НРВ_{sysName}";
 
 #if Revit2020 || Debug2020
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_model.ElementColl.FirstOrDefault().LookupParameter(_model.ParameterName).Id, sysName, false);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(parameter.Id, sysName, false);
 #else
-                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(_model.ElementColl.FirstOrDefault().LookupParameter(_model.ParameterName).Id, sysName);
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotEqualsRule(parameter.Id, sysName);
 #endif
                 ElementParameterFilter filterRules = new ElementParameterFilter(fRule);
 
                 ElementId viewFilterId = null;
                 ParameterFilterElement oldEqualFRule = docFilters.FirstOrDefault(df => df.Name.Equals(filterName));
                 if (oldEqualFRule != null)
+                {
+                    oldEqualFRule.SetCategories(categories);
+                    oldEqualFRule.SetElementFilter(filterRules);
                     viewFilterId = oldEqualFRule.Id;
+                }
                 else
                 {
-                    ParameterFilterElement newViewFilter = ParameterFilterElement.Create(doc, filterName, _docCatIdColl, filterRules);
+                    ParameterFilterElement newViewFilter = ParameterFilterElement.Create(doc, filterName, categories, filterRules);
                     viewFilterId = newViewFilter.Id;
                 }
 
@@ -184,11 +201,22 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                     continue;
 
                 Autodesk.Revit.DB.View newView = doc.GetElement(doc.ActiveView.Duplicate(ViewDuplicateOption.Duplicate)) as Autodesk.Revit.DB.View;
-                newView.AddFilter(viewFilterId);
+                if (!newView.GetFilters().Contains(viewFilterId))
+                    newView.AddFilter(viewFilterId);
                 newView.SetFilterVisibility(viewFilterId, false);
 
                 if (viewTempl != null)
                     newView.ApplyViewTemplateParameters(viewTempl);
+
+                // Элементы замечаний и категории без этого параметра не входят в схему системы.
+                var excludedIds = new HashSet<ElementId>(_model.WarningsElementColl.Concat(_model.TypeParameterElementColl)
+                    .Select(item => item.Id));
+                ElementId[] hiddenIds = _model.ElementColl
+                    .Where(item => excludedIds.Contains(item.Id) || item.Category == null || !categories.Contains(item.Category.Id))
+                    .Where(item => item.CanBeHidden(newView) && !item.IsHidden(newView))
+                    .Select(item => item.Id).Distinct().ToArray();
+                if (hiddenIds.Length > 0)
+                    newView.HideElements(hiddenIds);
 
                 newView.Name = newViewName;
             }

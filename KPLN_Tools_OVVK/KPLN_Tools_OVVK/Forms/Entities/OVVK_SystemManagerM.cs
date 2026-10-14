@@ -44,7 +44,6 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         private string _parameterName = string.Empty;
         private string _sysNameSeparator = "/";
         private string _operationMessage = string.Empty;
-        private OVVK_SystemManagerRowM _selectedSystemRow;
         private readonly Dictionary<string, List<ElementId>> _systemElementIds = new Dictionary<string, List<ElementId>>();
         private readonly Dictionary<OVVK_SystemManagerRowKind, List<ElementId>> _errorElementIds = new Dictionary<OVVK_SystemManagerRowKind, List<ElementId>>();
         private bool _isBusy;
@@ -129,18 +128,40 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         [JsonIgnore]
         public OVVK_SystemManagerRowM SelectedSystemRow
         {
-            get => _selectedSystemRow;
+            get => SelectedSystemRows.FirstOrDefault();
             set
             {
-                if (_selectedSystemRow == value)
-                    return;
-
-                _selectedSystemRow = value;
-                NotifyPropertyChanged();
-                NotifyPropertyChanged(nameof(CanSelectSystem));
-                NotifyPropertyChanged(nameof(SelectSystemButtonText));
+                SetSelectedRows(value == null ? new OVVK_SystemManagerRowM[0] : new[] { value });
             }
         }
+
+        internal void SetSelectedRows(IEnumerable<OVVK_SystemManagerRowM> selectedRows)
+        {
+            var selected = new HashSet<OVVK_SystemManagerRowM>(selectedRows);
+            foreach (OVVK_SystemManagerRowM row in SystemRows)
+                row.IsSelected = selected.Contains(row);
+            NotifySelection();
+        }
+
+        [JsonIgnore]
+        public OVVK_SystemManagerRowM[] SelectedSystemRows => SystemRows.Where(row => row.IsSelected).ToArray();
+
+        [JsonIgnore]
+        public string[] SelectedSystemNames => SelectedSystemRows
+            .Where(row => row.Kind == OVVK_SystemManagerRowKind.System)
+            .Select(row => row.SystemName).Distinct().ToArray();
+
+        [JsonIgnore]
+        public bool HasSelectedErrors => SelectedSystemRows.Any(row => row.IsError);
+
+        [JsonIgnore]
+        public bool HasSelectedWarnings => SelectedSystemRows.Any(row => row.IsWarning);
+
+        [JsonIgnore]
+        public string CreateViewsButtonText => $"Создать 3D-виды ({SelectedSystemNames.Length})";
+
+        [JsonIgnore]
+        public string SelectionSummary => $"Выбрано строк: {SelectedSystemRows.Length}. Систем для 3D-видов: {SelectedSystemNames.Length}.";
 
         [JsonIgnore]
         public bool IsBusy
@@ -188,15 +209,15 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool CanMergeSystems => CanRun && SystemSumParameters.Count > 1;
 
         [JsonIgnore]
-        public bool CanCreateViews => CanRun && SystemSumParameters.Count > 0;
+        public bool CanCreateViews => CanRefresh && !string.IsNullOrWhiteSpace(ParameterName) && SelectedSystemNames.Length > 0;
 
         [JsonIgnore]
-        public bool CanSelectSystem => CanRefresh && SelectedSystemRow != null && SystemRows.Contains(SelectedSystemRow);
+        public bool CanSelectSystem => CanRefresh && SelectedSystemRows.Length > 0;
 
         [JsonIgnore]
-        public string SelectSystemButtonText => SelectedSystemRow?.IsIssue == true
+        public string SelectSystemButtonText => SelectedSystemRows.Any(row => row.IsIssue)
             ? "Выделить элементы"
-            : "Выделить систему";
+            : SelectedSystemRows.Length > 1 ? "Выделить системы" : "Выделить систему";
 
         [JsonIgnore]
         public bool HasTypeParameters => TypeParameterElementColl.Count > 0;
@@ -293,7 +314,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
 
         public void UpdateSystemParamData()
         {
-            OVVK_SystemManagerRowM selectedRow = SelectedSystemRow;
+            var selectedKeys = SelectedSystemRows.Select(row => new { row.Kind, row.SystemName }).ToArray();
             var systemNames = new HashSet<string>();
             var typeParameters = new Dictionary<ElementId, Parameter>();
             var invalidNames = new HashSet<string>();
@@ -377,6 +398,13 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                 rows.Add(new OVVK_SystemManagerRowM(TypeParameterElementColl.Count));
             rows.AddRange(SystemSumParameters.Select(name => new OVVK_SystemManagerRowM(name)));
 
+            foreach (OVVK_SystemManagerRowM oldRow in SystemRows)
+                oldRow.PropertyChanged -= OnRowPropertyChanged;
+            foreach (OVVK_SystemManagerRowM row in rows)
+            {
+                row.IsSelected = selectedKeys.Any(key => key.Kind == row.Kind && key.SystemName == row.SystemName);
+                row.PropertyChanged += OnRowPropertyChanged;
+            }
             SystemRows = new ObservableCollection<OVVK_SystemManagerRowM>(rows);
             NotifyPropertyChanged(nameof(ElementColl));
             NotifyPropertyChanged(nameof(WarningsElementColl));
@@ -384,10 +412,8 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             NotifyPropertyChanged(nameof(SystemSumParameters));
             NotifyPropertyChanged(nameof(SystemRows));
 
-            // ItemsSource может сбросить выбор WPF при замене коллекции.
-            SelectedSystemRow = selectedRow == null ? null : SystemRows.FirstOrDefault(row =>
-                row.Kind == selectedRow.Kind && row.SystemName == selectedRow.SystemName);
-            NotifyPropertyChanged(nameof(SelectedSystemRow));
+            // Восстанавливаем выбор после уведомлений WPF о замене коллекции.
+            SetSelectedRows(SystemRows.Where(row => selectedKeys.Any(key => key.Kind == row.Kind && key.SystemName == row.SystemName)));
             NotifyState();
         }
 
@@ -418,6 +444,26 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             return new { DocumentKey, ParameterName, SysNameSeparator };
         }
 
+
+        private void OnRowPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(OVVK_SystemManagerRowM.IsSelected))
+                NotifySelection();
+        }
+
+        private void NotifySelection()
+        {
+            NotifyPropertyChanged(nameof(SelectedSystemRow));
+            NotifyPropertyChanged(nameof(SelectedSystemRows));
+            NotifyPropertyChanged(nameof(SelectedSystemNames));
+            NotifyPropertyChanged(nameof(HasSelectedErrors));
+            NotifyPropertyChanged(nameof(HasSelectedWarnings));
+            NotifyPropertyChanged(nameof(SelectSystemButtonText));
+            NotifyPropertyChanged(nameof(CreateViewsButtonText));
+            NotifyPropertyChanged(nameof(SelectionSummary));
+            NotifyPropertyChanged(nameof(CanSelectSystem));
+            NotifyPropertyChanged(nameof(CanCreateViews));
+        }
 
         private void NotifyState()
         {

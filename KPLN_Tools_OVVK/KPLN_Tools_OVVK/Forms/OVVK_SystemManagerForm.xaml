@@ -76,11 +76,14 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Text="Системы по выбранному параметру" Style="{StaticResource ManagerText}"
-                               FontWeight="Bold" Margin="0,0,0,12"/>
-                    <ListBox Grid.Row="1" ItemsSource="{Binding SystemRows}"
-                             SelectedItem="{Binding SelectedSystemRow, Mode=TwoWay}"
-                             SelectionMode="Single"
+                    <StackPanel Margin="0,0,0,12">
+                        <TextBlock Text="Системы по выбранному параметру" Style="{StaticResource ManagerText}" FontWeight="Bold"/>
+                        <TextBlock Text="Ctrl / Shift — выбрать несколько строк. 3D-виды создаются только для выбранных систем; замечания пропускаются."
+                                   TextWrapping="Wrap" Foreground="#AEB8C8" Margin="0,6,0,0"/>
+                        <TextBlock Text="{Binding SelectionSummary}" Foreground="#AEB8C8" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ListBox Grid.Row="1" x:Name="SystemsList" SelectionChanged="SystemsList_SelectionChanged"
+                             SelectionMode="Extended" IsEnabled="{Binding CanRefresh}"
                              Background="Transparent" Foreground="#EDEDED" BorderThickness="0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -88,6 +91,7 @@
                              VirtualizingStackPanel.VirtualizationMode="Recycling">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                 <Setter Property="Padding" Value="4,6"/>
                             </Style>
@@ -124,16 +128,17 @@
                     <TextBlock Text="Действия" Style="{StaticResource ManagerText}" FontWeight="Bold" Margin="0,0,0,12"/>
                     <Button Content="{Binding CurrentOVVK_SystemManagerM.SelectSystemButtonText}" Command="{Binding SelectSystemCmd}"
                             IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanSelectSystem}"
-                            ToolTip="Выделить элементы выбранной строки: системы, ошибки или предупреждения">
+                            ToolTip="Выделить элементы всех выбранных строк: систем, ошибок и предупреждений">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource ManagerAction}">
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding CurrentOVVK_SystemManagerM.SelectedSystemRow.IsWarning}" Value="True">
+                                    <DataTrigger Binding="{Binding CurrentOVVK_SystemManagerM.HasSelectedWarnings}" Value="True">
                                         <Setter Property="Background" Value="#FFB454"/>
                                         <Setter Property="Foreground" Value="#2B2F38"/>
                                     </DataTrigger>
-                                    <DataTrigger Binding="{Binding CurrentOVVK_SystemManagerM.SelectedSystemRow.IsError}" Value="True">
+                                    <DataTrigger Binding="{Binding CurrentOVVK_SystemManagerM.HasSelectedErrors}" Value="True">
                                         <Setter Property="Background" Value="#C94850"/>
+                                        <Setter Property="Foreground" Value="#FFFFFF"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -157,11 +162,11 @@
                             IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanMergeSystems}"
                             ToolTip="Объединить значения выбранного параметра. Нужны минимум две системы и параметр экземпляра у всех элементов."
                             Style="{StaticResource ManagerAction}"/>
-                    <Button Content="Создать 3D-виды" Command="{Binding CreateViewsCmd}"
+                    <Button Content="{Binding CurrentOVVK_SystemManagerM.CreateViewsButtonText}" Command="{Binding CreateViewsCmd}"
                             IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanCreateViews}" Style="{StaticResource ManagerAction}">
                         <Button.ToolTip>
                             <TextBlock MaxWidth="310" TextWrapping="Wrap"
-                                       Text="Создаёт аксонометрические схемы на основе открытого 3D-вида. Нужен параметр экземпляра у всех элементов. В шаблоне вида управление фильтрами должно быть отключено."/>
+                                       Text="Создать схемы только для выбранных обычных строк систем. Выбранные ошибки и предупреждения пропускаются и не блокируют остальные системы. Основа — открытый 3D-вид; в его шаблоне управление фильтрами должно быть отключено."/>
                         </Button.ToolTip>
                     </Button>
                 </StackPanel>

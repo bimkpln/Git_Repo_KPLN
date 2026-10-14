@@ -33,7 +33,11 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
             FillSystemNameCmd = new RelayCommand<object>(_ => QueueAction(FillSystemName), _ => CurrentOVVK_SystemManagerM.CanFillSystemName);
             SelectSystemCmd = new RelayCommand<object>(_ => SelectSystem(), _ => CurrentOVVK_SystemManagerM.CanSelectSystem);
             MergeSystemsCmd = new RelayCommand<object>(_ => QueueAction(MergeSystems), _ => CurrentOVVK_SystemManagerM.CanMergeSystems);
-            CreateViewsCmd = new RelayCommand<object>(_ => QueueAction(CreateViews), _ => CurrentOVVK_SystemManagerM.CanCreateViews);
+            CreateViewsCmd = new RelayCommand<object>(_ =>
+            {
+                string[] selectedNames = CurrentOVVK_SystemManagerM.SelectedSystemNames;
+                QueueAction(app => CreateViews(app, selectedNames));
+            }, _ => CurrentOVVK_SystemManagerM.CanCreateViews);
             CloseWindowCmd = new RelayCommand<object>(_ => _mainWindow.Close());
 
             CurrentOVVK_SystemManagerM.PropertyChanged += OnModelPropertyChanged;
@@ -72,12 +76,13 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
 
         private void SelectSystem()
         {
-            // Запоминаем строку в момент нажатия кнопки, до выполнения очереди Revit.
-            OVVK_SystemManagerRowM selectedRow = CurrentOVVK_SystemManagerM.SelectedSystemRow;
+            // Запоминаем выбранные строки до выполнения очереди Revit.
+            OVVK_SystemManagerRowM[] selectedRows = CurrentOVVK_SystemManagerM.SelectedSystemRows;
             QueueAction(app =>
             {
                 CurrentOVVK_SystemManagerM.Refresh();
-                app.ActiveUIDocument.Selection.SetElementIds(CurrentOVVK_SystemManagerM.GetSystemElementIds(selectedRow));
+                app.ActiveUIDocument.Selection.SetElementIds(selectedRows
+                    .SelectMany(row => CurrentOVVK_SystemManagerM.GetSystemElementIds(row)).Distinct().ToArray());
             });
         }
 
@@ -149,12 +154,15 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
             CurrentOVVK_SystemManagerM.Refresh();
         }
 
-        private void CreateViews(UIApplication app)
+        private void CreateViews(UIApplication app, string[] selectedNames)
         {
             CurrentOVVK_SystemManagerM.Refresh();
-            if (CurrentOVVK_SystemManagerM.HasParameterErrors || CurrentOVVK_SystemManagerM.HasTypeParameters
-                || CurrentOVVK_SystemManagerM.SystemSumParameters.Count == 0)
+            string[] systemNames = selectedNames.Where(name => CurrentOVVK_SystemManagerM.SystemSumParameters.Contains(name)).ToArray();
+            if (systemNames.Length == 0)
+            {
+                CurrentOVVK_SystemManagerM.SetOperationMessage("Выбранные системы больше не доступны. Выбери обычные строки систем в списке.");
                 return;
+            }
 
             View activeView = CurrentOVVK_SystemManagerM.CurrentDoc.ActiveView;
             if (!(activeView is View3D) || activeView.IsTemplate || !activeView.CanViewBeDuplicated(ViewDuplicateOption.Duplicate))
@@ -171,13 +179,8 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
                 return;
 
 
-            var systemsForm = new ElementMultiPick(_mainWindow,
-                CurrentOVVK_SystemManagerM.SystemSumParameters.Select(name => new ElementEntity(name)));
-            if (systemsForm.ShowDialog() != true || !systemsForm.SelectedElements.Any())
-                return;
-
             Result result = new ExcCmd_SystemManager_ViewCreator(CurrentOVVK_SystemManagerM,
-                systemsForm.SelectedElements.Select(element => element.Name).ToArray()).Execute(app);
+                systemNames).Execute(app);
             if (result == Result.Succeeded)
                 _mainWindow.Close();
         }
