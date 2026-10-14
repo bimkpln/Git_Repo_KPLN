@@ -33,7 +33,7 @@ namespace KPLN_Publication
             foreach (MainEntity ent in mEntities)
             {
                 if (!(ent.MainView is ViewSheet sheet))
-                    return $" В коллекцию с листами попал вид Ревит {ent}";
+                    continue;
 
                 logger.Write(" ");
                 logger.Write(" Проверяется лист " + ent.MainView.Name);
@@ -182,27 +182,32 @@ namespace KPLN_Publication
         {
             PrintSetup pSetup = pManager.PrintSetup;
 
-            IPrintSetting ps = pSetup.InSession as IPrintSetting;
+            bool isSheet = mEntity.MainView is ViewSheet;
+            // У вида нет штампа: сохраняем размер, ориентацию и масштаб текущего профиля Revit.
+            IPrintSetting ps = isSheet ? pSetup.InSession : pSetup.CurrentPrintSetting;
             PrintParameters pps = ps.PrintParameters;
 
             pps.HideCropBoundaries = true;
             pps.HideReforWorkPlanes = true;
             pps.HideScopeBoxes = true;
             pps.HideUnreferencedViewTags = false;
-            pps.ZoomType = ZoomType.Zoom;
-            pps.Zoom = 100;
+            if (isSheet)
+            {
+                pps.ZoomType = ZoomType.Zoom;
+                pps.Zoom = 100;
 
-            pps.PaperPlacement = PaperPlacementType.Margins;
-            pps.MarginType = MarginType.UserDefined;
+                pps.PaperPlacement = PaperPlacementType.Margins;
+                pps.MarginType = MarginType.UserDefined;
 #if Debug2020 || Revit2020 || Debug2023 || Revit2023
-            // ВАЖНО: Не смотря на то, что UserDefinedMarginX и UserDefinedMarginY для Р2023 Obsolete - нужно использовать именно их.
-            // Скорее всего - это коллизия в API, т.к. на Р2024 смещение происходит, а для Р2023 - нет.
-            pps.UserDefinedMarginX = offsetX;
-            pps.UserDefinedMarginY = offsetY;
+                // ВАЖНО: Не смотря на то, что UserDefinedMarginX и UserDefinedMarginY для Р2023 Obsolete - нужно использовать именно их.
+                // Скорее всего - это коллизия в API, т.к. на Р2024 смещение происходит, а для Р2023 - нет.
+                pps.UserDefinedMarginX = offsetX;
+                pps.UserDefinedMarginY = offsetY;
 #else
-            pps.OriginOffsetX = offsetX;
-            pps.OriginOffsetY = offsetY;
+                pps.OriginOffsetX = offsetX;
+                pps.OriginOffsetY = offsetY;
 #endif
+            }
 
             //RasterQualityType rqt =(RasterQualityType)Enum.Parse(typeof(RasterQualityType), printSettings.rasterQuality);
             pps.RasterQuality = printSettings.rasterQuality;
@@ -219,46 +224,49 @@ namespace KPLN_Publication
 
 
 
-            if (mEntity.RevitPaperSize == null)
+            if (isSheet)
             {
-                string msg = "Не найден размер формата для листа "
-                    + mEntity.ToString() + ". Назначен формат по умолчанию.";
-                if (!showDialogs)
-                    throw new InvalidOperationException("Не найден формат бумаги для " + mEntity);
-
-                Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
-
-                foreach (PaperSize curPsize in pManager.PaperSizes)
+                if (mEntity.RevitPaperSize == null)
                 {
-                    if (curPsize.Name.Equals("A4"))
+                    string msg = "Не найден размер формата для листа "
+                        + mEntity.ToString() + ". Назначен формат по умолчанию.";
+                    if (!showDialogs)
+                        throw new InvalidOperationException("Не найден формат бумаги для " + mEntity);
+
+                    Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
+
+                    foreach (PaperSize curPsize in pManager.PaperSizes)
                     {
-                        ps.PrintParameters.PaperSize = curPsize;
-                        mEntity.IsVertical = true;
+                        if (curPsize.Name.Equals("A4"))
+                        {
+                            ps.PrintParameters.PaperSize = curPsize;
+                            mEntity.IsVertical = true;
+                        }
                     }
                 }
-            }
-            else
-            {
-                try
+                else
                 {
-                    ps.PrintParameters.PaperSize = mEntity.RevitPaperSize;
-                }
-                catch (Exception ex)
-                {
-                    if (!showDialogs)
-                        throw new InvalidOperationException("Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name, ex);
+                    try
+                    {
+                        ps.PrintParameters.PaperSize = mEntity.RevitPaperSize;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!showDialogs)
+                            throw new InvalidOperationException("Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name, ex);
 
-                    string msg = "Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name
-                        + "\nНазначен формат по умолчанию. Попробуйте запустить печать еще раз."
-                        + "\nИнформация об ошибке: " + ex.Message;
-                    Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
+                        string msg = "Не удалось назначить формат бумаги " + mEntity.RevitPaperSize.Name
+                            + "\nНазначен формат по умолчанию. Попробуйте запустить печать еще раз."
+                            + "\nИнформация об ошибке: " + ex.Message;
+                        Autodesk.Revit.UI.TaskDialog.Show("Error", msg);
+                    }
                 }
+
+                if (mEntity.IsVertical)
+                    pps.PageOrientation = PageOrientationType.Portrait;
+                else
+                    pps.PageOrientation = PageOrientationType.Landscape;
             }
-
-            if (mEntity.IsVertical)
-                pps.PageOrientation = PageOrientationType.Portrait;
-            else
-                pps.PageOrientation = PageOrientationType.Landscape;
 
             pSetup.CurrentPrintSetting = ps;
             string printSetupName = "YayPrint: " + DateTime.Now.ToShortTimeString() + "x" + (offsetX * 25.4).ToString("F0");

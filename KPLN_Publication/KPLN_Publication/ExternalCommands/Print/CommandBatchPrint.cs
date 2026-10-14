@@ -3,10 +3,12 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_DBWorker;
+using KPLN_Library_Forms.Services;
+using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
+using KPLN_Library_Forms.UI.ViewModels;
 using KPLN_Loader.Forms;
 using KPLN_Publication.Forms;
-using KPLN_Publication.Forms.MVVMCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,8 +24,16 @@ namespace KPLN_Publication.ExternalCommands.Print
     {
         internal const string PluginName = "Пакетная выдача";
 
+        // Классический MAX_PATH: последний символ зарезервирован под завершающий ноль.
+        private const int WindowsMaxPath = 260;
+        private const int WindowsMaxDirectoryPath = 248;
+        private readonly List<string> _redirectedExportFolders = new List<string>();
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
+            _redirectedExportFolders.Clear();
+            string exportResult = "Экспорт прерван. В указанных папках могут находиться уже выданные файлы.";
+
             try
             {
                 Logger logger = new Logger();
@@ -48,6 +58,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     .Select(id => mainDoc.GetElement(id))
                     .Where(el => el is ViewPlan || el is ViewSection)
                     .Cast<View>()
+                    .Where(view => !view.IsTemplate && view.CanBePrinted)
                     .ToArray();
 
                 if (selSheets.Any() && selViews.Any())
@@ -209,7 +220,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                     logger.Write($"Экспорт в dwg успешно завершен для {dwgExportedSheetCount} листа/-ов");
                 }
 
-                BalloonTip.Show("Экспорт завершен!", msg);
+                exportResult = msg;
+                if (_redirectedExportFolders.Count == 0)
+                    BalloonTip.Show("Экспорт завершен!", msg);
 
                 return Result.Succeeded;
             }
@@ -218,6 +231,27 @@ namespace KPLN_Publication.ExternalCommands.Print
                 PrintError(e, "Произошла ошибка во время запуска скрипта");
 
                 return Result.Failed;
+            }
+            finally
+            {
+                // Показываем фактические папки и при ошибке после частичной выдачи.
+                if (_redirectedExportFolders.Count != 0)
+                {
+                    CustomMessageBox resultWindow = new CustomMessageBox(
+                        "Изменена папка экспорта",
+                        exportResult + "\n\nПуть превышает допустимую длину Windows. " +
+                        "Для экспорта выбраны папки на системном диске:\n\n" +
+                        string.Join("\n\n", _redirectedExportFolders) +
+                        "\n\nВыделите нужный путь и нажмите Ctrl+C.")
+                    {
+                        Title = "KPLN: Пакетная выдача",
+                        Width = 720,
+                        Height = 360,
+                        WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+                    };
+                    WindowHandleSearch.MainWindowHandle.SetAsOwner(resultWindow);
+                    resultWindow.ShowDialog();
+                }
             }
         }
 
@@ -264,7 +298,8 @@ namespace KPLN_Publication.ExternalCommands.Print
             bool printToFile = form.printToFile;
             if (printToFile)
             {
-                outputFolder = CreateFolderToEXport(mainDoc, outputFolder, printerName);
+                outputFolder = CreateFolderToEXport(mainDoc, outputFolder, "PDF",
+                    GetExportFileNames(mainDoc, allSheets, printSettings, true), logger, printerName);
                 logger.Write("Создана папка для печати: " + outputFolder);
             }
 
@@ -272,6 +307,8 @@ namespace KPLN_Publication.ExternalCommands.Print
 
             //печатаю листы из каждого выбранного revit-файла
             List<string> pdfFileNames = new List<string>();
+            // Данные для обработки PDF сохраняем до закрытия связанных документов.
+            List<Tuple<string, bool, bool, string>> printedFiles = new List<Tuple<string, bool, bool, string>>();
             foreach (string docTitle in allSheets.Keys)
             {
                 Document openedDoc = null;
@@ -349,23 +386,13 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 if (docTitle != mainDocTitle)
                 {
-                    List<ViewSheet> linkSheets = new FilteredElementCollector(openedDoc)
-                        .OfClass(typeof(ViewSheet))
-                        .Cast<ViewSheet>()
-                        .ToList();
-                    List<MainEntity> tempSheets = new List<MainEntity>();
-                    foreach (MainEntity ms in mSheets)
+                    mSheets = mSheets.Select(entity =>
                     {
-                        foreach (ViewSheet vs in linkSheets)
-                        {
-                            if (ms.ViewId.Equals(vs.Id))
-                            {
-                                MainEntity newMs = new MainEntity(vs);
-                                tempSheets.Add(newMs);
-                            }
-                        }
-                    }
-                    mSheets = tempSheets;
+                        View view = openedDoc.GetElement(entity.ViewId) as View;
+                        if (view == null)
+                            throw new InvalidOperationException("Не найден лист/вид в открытой связи: " + entity.ViewId);
+                        return new MainEntity(view);
+                    }).ToList();
                 }
                 logger.Write("Листов для печати найдено в данном файле: " + mSheets.Count.ToString());
 
@@ -373,17 +400,19 @@ namespace KPLN_Publication.ExternalCommands.Print
                 pManager.SelectNewPrintDriver(printerName);
                 pManager = openedDoc.PrintManager;
                 pManager.PrintRange = Autodesk.Revit.DB.PrintRange.Current;
+                pManager.PrintToFile = printToFile;
                 pManager.Apply();
 
 
                 //список основных надписей нужен потому, что размеры листа хранятся в них
                 //могут быть примечания, сделанные Основной надписью, надо их отфильровать, поэтому >0.6
-                List<FamilyInstance> titleBlocks = new FilteredElementCollector(openedDoc)
+                List<FamilyInstance> titleBlocks = mSheets.Any(entity => entity.MainView is ViewSheet)
+                    ? new FilteredElementCollector(openedDoc)
                     .WhereElementIsNotElementType()
                     .OfCategory(BuiltInCategory.OST_TitleBlocks)
                     .Cast<FamilyInstance>()
                     .Where(t => t.get_Parameter(BuiltInParameter.SHEET_HEIGHT).AsDouble() > 0.6)
-                    .ToList();
+                    .ToList() : new List<FamilyInstance>();
                 logger.Write("Найдено основных надписей: " + titleBlocks.Count.ToString());
 
 
@@ -405,116 +434,113 @@ namespace KPLN_Publication.ExternalCommands.Print
                     ProcessTitle = "Экспорт в pdf видов/листов...",
                     MaxProgress = mSheets.Count
                 };
-                ProgressWindow window = null;
-                ManualResetEvent formReady = new ManualResetEvent(false);
-                Thread uiThread = new Thread(() =>
+                ProgressWindow window = ProgressWindow.ShowInBackground(progressInfoViewModel, "KPLN: Пакетная выдача");
+
+
+                try
                 {
-                    window = new ProgressWindow(progressInfoViewModel);
-                    window.Show();
-                    formReady.Set();
-                    System.Windows.Threading.Dispatcher.Run();
-                });
-                uiThread.SetApartmentState(ApartmentState.STA);
-                uiThread.IsBackground = true;
-                uiThread.Start();
-                formReady.WaitOne();
-
-
-                //печатаю каждый лист
-                foreach (MainEntity msheet in mSheets)
-                {
-                    if (progressInfoViewModel.IsCancellationRequested)
+                    //печатаю каждый лист
+                    foreach (MainEntity msheet in mSheets)
                     {
-                        logger.Write("Пользователь отменил процесс экспорта в pdf");
-                        break;
-                    }
-
-                    logger.Write(" ");
-                    logger.Write("Печатается лист: " + msheet.MainView.Name);
-                    if (printSettings.isRefreshSchedules)
-                    {
-                        SchedulesRefresh.Start(openedDoc, msheet.MainView);
-                        logger.Write("Спецификации обновлены успешно");
-                    }
-
-                    using (Transaction t = new Transaction(openedDoc))
-                    {
-                        t.Start("Профили печати");
-
-                        string fileName = msheet.NameByConstructor(printSettings.pdfNameConstructor);
-
-                        if (printerName == "PDFCreator" && printSettings.isUseOrientation)
+                        if (progressInfoViewModel.IsCancellationRequested)
                         {
-                            if (msheet.IsVertical)
-                            {
-                                SupportRegistry.SetOrientationForPdfCreator(OrientationType.Portrait);
-                                logger.Write("Принудительно установлена Portrait ориентация");
-                            }
-                            if (!msheet.IsVertical)
-                            {
-                                SupportRegistry.SetOrientationForPdfCreator(OrientationType.Landscape);
-                                logger.Write("Принудительно установлена Landscape ориентация");
-                            }
+                            logger.Write("Пользователь отменил процесс экспорта в pdf");
+                            break;
                         }
 
-                        for (int i = 0; i < msheet.TitleBlocks.Count; i++)
+                        logger.Write(" ");
+                        logger.Write("Печатается лист: " + msheet.MainView.Name);
+                        if (!msheet.MainView.CanBePrinted)
+                            throw new InvalidOperationException("Вид недоступен для печати: " + msheet.MainView.Name);
+                        if (msheet.MainView is ViewSheet && printSettings.isRefreshSchedules)
                         {
-                            string tempFilename = "";
-                            if (msheet.TitleBlocks.Count > 1)
-                            {
-                                logger.Write("На листе более 1 основной надписи! Печать части №" + i.ToString());
-                                tempFilename = fileName.Replace(".pdf", "_" + i.ToString() + ".pdf");
-                            }
-                            else
-                            {
-                                logger.Write("На листе 1 основная надпись Id " + msheet.TitleBlocks.First().Id.ToString());
-                                tempFilename = fileName;
-                            }
-
-                            string fullFilename = System.IO.Path.Combine(outputFolder, tempFilename);
-                            fullFilename = fullFilename.Replace("\\\\", "\\");
-                            logger.Write("Печать в файл " + fullFilename);
-                            pdfFileNames.Add(fullFilename);
-
-                            //смещаю область для печати многолистовых спецификаций
-                            double offsetX = -i * msheet.WidthMm / 25.4; //смещение задается в футах!
-                            logger.Write("Смещение печати по X: " + offsetX.ToString("F3"));
-
-                            PrintSetting ps = PrintSupport.CreatePrintSetting(openedDoc, pManager, msheet, printSettings, offsetX, 0);
-
-                            pManager.PrintSetup.CurrentPrintSetting = ps;
-                            pManager.PrintToFileName = fullFilename;
-                            logger.Write("Настройки печати применены, " + ps.Name);
-
-                            pManager.Apply();
-                            pManager.SubmitPrint(msheet.MainView);
-                            pManager.Apply();
-
-                            logger.Write("Лист успешно отправлен на принтер");
-                            msheet.PdfFileName = fullFilename;
-                            printedSheetCount++;
+                            SchedulesRefresh.Start(openedDoc, msheet.MainView);
+                            logger.Write("Спецификации обновлены успешно");
                         }
 
-                        if (printerName == "PDFCreator" && printSettings.isUseOrientation)
-                            System.Threading.Thread.Sleep(5000);
+                        using (Transaction t = new Transaction(openedDoc))
+                        {
+                            t.Start("Профили печати");
 
-                        t.RollBack();
+                            string fileName = FileNameTemplate.WithExtension(msheet.NameByConstructor(printSettings.pdfNameConstructor), ".pdf");
+
+                            if (msheet.MainView is ViewSheet && printerName == "PDFCreator" && printSettings.isUseOrientation)
+                            {
+                                if (msheet.IsVertical)
+                                {
+                                    SupportRegistry.SetOrientationForPdfCreator(OrientationType.Portrait);
+                                    logger.Write("Принудительно установлена Portrait ориентация");
+                                }
+                                if (!msheet.IsVertical)
+                                {
+                                    SupportRegistry.SetOrientationForPdfCreator(OrientationType.Landscape);
+                                    logger.Write("Принудительно установлена Landscape ориентация");
+                                }
+                            }
+
+                            bool isSheet = msheet.MainView is ViewSheet;
+                            int partCount = isSheet ? msheet.TitleBlocks.Count : 1;
+                            for (int i = 0; i < partCount; i++)
+                            {
+                                string tempFilename = "";
+                                if (partCount > 1)
+                                {
+                                    logger.Write("На листе более 1 основной надписи! Печать части №" + i.ToString());
+                                    tempFilename = fileName.Replace(".pdf", "_" + i.ToString() + ".pdf");
+                                }
+                                else
+                                {
+                                    if (isSheet)
+                                        logger.Write("На листе 1 основная надпись Id " + msheet.TitleBlocks.First().Id.ToString());
+                                    tempFilename = fileName;
+                                }
+
+                                string fullFilename = System.IO.Path.Combine(outputFolder, tempFilename);
+                                if (printToFile)
+                                    CheckExportFilePath(fullFilename);
+                                logger.Write("Печать в файл " + fullFilename);
+                                pdfFileNames.Add(fullFilename);
+
+                                //смещаю область для печати многолистовых спецификаций
+                                double offsetX = isSheet ? -i * msheet.WidthMm / 25.4 : 0; //смещение задается в футах!
+                                logger.Write("Смещение печати по X: " + offsetX.ToString("F3"));
+
+                                PrintSetting ps = PrintSupport.CreatePrintSetting(openedDoc, pManager, msheet, printSettings, offsetX, 0);
+
+                                pManager.PrintSetup.CurrentPrintSetting = ps;
+                                pManager.PrintToFileName = fullFilename;
+                                logger.Write("Настройки печати применены, " + ps.Name);
+
+                                pManager.Apply();
+                                if (!pManager.SubmitPrint(msheet.MainView))
+                                    throw new InvalidOperationException("Не удалось напечатать лист/вид: " + msheet.MainView.Name);
+                                pManager.Apply();
+
+                                logger.Write("Лист успешно отправлен на принтер");
+                                msheet.PdfFileName = fullFilename;
+                                printedFiles.Add(Tuple.Create(fullFilename, isSheet, msheet.ForceColored, msheet.MainView.Name));
+                                printedSheetCount++;
+                            }
+
+                            if (msheet.MainView is ViewSheet && printerName == "PDFCreator" && printSettings.isUseOrientation)
+                                System.Threading.Thread.Sleep(5000);
+
+                            t.RollBack();
+                        }
+
+                        ++progressInfoViewModel.CurrentProgress;
                     }
 
-                    ++progressInfoViewModel.CurrentProgress;
-                    progressInfoViewModel.DoEvents();
-                }
 
-                
-                if (!progressInfoViewModel.IsCancellationRequested)
-                {
-                    window.Dispatcher.Invoke(() =>
-                    {
+                    if (!progressInfoViewModel.IsCancellationRequested)
                         progressInfoViewModel.IsComplete = true;
-                        window.UpdateLayout();
-                    });
                 }
-    
+                catch
+                {
+                    window.CloseSafely();
+                    throw;
+                }
+
                 if (rlt != null)
                 {
 
@@ -527,6 +553,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                     logger.Write("Ссылочный документ закрыт");
                 }
             }
+            if (!printToFile)
+                return printedSheetCount;
+
             //если требуется постобработка файлов - ждем, пока они напечатаются
             if (printSettings.colorsType == ColorType.MonochromeWithExcludes || printSettings.isMergePdfs || printSettings.isExcludeBorders)
             {
@@ -554,12 +583,6 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
             }
 
-            List<MainEntity> printedSheets = new List<MainEntity>();
-            foreach (List<MainEntity> mss in allSheets.Values)
-            {
-                printedSheets.AddRange(mss);
-            }
-
             logger.Write("PDF файлы которые должны быть напечатаны:");
             foreach (string pdfname in pdfFileNames)
             {
@@ -577,9 +600,9 @@ namespace KPLN_Publication.ExternalCommands.Print
             if (printSettings.isExcludeBorders)
             {
                 logger.Write("Преобразование PDF файла со скрытием границ");
-                foreach (MainEntity msheet in printedSheets)
+                foreach (var printedFile in printedFiles.Where(file => file.Item2))
                 {
-                    string file = msheet.PdfFileName;
+                    string file = printedFile.Item1;
                     string outFile = file.Replace(".pdf", "_OUT_Border.pdf");
                     logger.Write("Файл будет преобразован из " + file + " в " + outFile);
 
@@ -596,15 +619,15 @@ namespace KPLN_Publication.ExternalCommands.Print
             if (printSettings.colorsType == ColorType.MonochromeWithExcludes)
             {
                 logger.Write("Преобразование PDF файла в черно-белый");
-                foreach (MainEntity msheet in printedSheets)
+                foreach (var printedFile in printedFiles)
                 {
-                    if (msheet.ForceColored)
+                    if (printedFile.Item3)
                     {
-                        logger.Write("Лист не преобразовывается в черно-белый: " + msheet.MainView.Name);
+                        logger.Write("Лист/вид не преобразовывается в черно-белый: " + printedFile.Item4);
                         continue;
                     }
 
-                    string file = msheet.PdfFileName;
+                    string file = printedFile.Item1;
                     string outFile = file.Replace(".pdf", "_OUT_Color.pdf");
                     logger.Write("Файл будет преобразован из " + file + " в " + outFile);
 
@@ -665,7 +688,8 @@ namespace KPLN_Publication.ExternalCommands.Print
             YayPrintSettings.SaveSettings(printSettings);
             logger.Write("Настройки экспорта сохранены");
 
-            outputFolder = CreateFolderToEXport(mainDoc, outputFolder);
+            outputFolder = CreateFolderToEXport(mainDoc, outputFolder, "DWG",
+                GetExportFileNames(mainDoc, allSheets, printSettings, false), logger);
             logger.Write("Создана папка для экспорта: " + outputFolder);
 
             int exportedSheetCount = 0;
@@ -749,23 +773,13 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 if (docTitle != mainDocTitle)
                 {
-                    List<ViewSheet> linkSheets = new FilteredElementCollector(openedDoc)
-                        .OfClass(typeof(ViewSheet))
-                        .Cast<ViewSheet>()
-                        .ToList();
-                    List<MainEntity> tempSheets = new List<MainEntity>();
-                    foreach (MainEntity ms in mSheets)
+                    mSheets = mSheets.Select(entity =>
                     {
-                        foreach (ViewSheet vs in linkSheets)
-                        {
-                            if (ms.ViewId.Equals(vs.Id))
-                            {
-                                MainEntity newMs = new MainEntity(vs);
-                                tempSheets.Add(newMs);
-                            }
-                        }
-                    }
-                    mSheets = tempSheets;
+                        View view = openedDoc.GetElement(entity.ViewId) as View;
+                        if (view == null)
+                            throw new InvalidOperationException("Не найден лист/вид в открытой связи: " + entity.ViewId);
+                        return new MainEntity(view);
+                    }).ToList();
                 }
                 logger.Write("Листов для экспорта найдено в данном файле: " + mSheets.Count.ToString());
 
@@ -778,59 +792,50 @@ namespace KPLN_Publication.ExternalCommands.Print
                     ProcessTitle = "Экспорт в dwg видов/листов...",
                     MaxProgress = mSheets.Count
                 };
-                ProgressWindow window = null;
-                ManualResetEvent formReady = new ManualResetEvent(false);
-                Thread uiThread = new Thread(() =>
-                {
-                    window = new ProgressWindow(progressInfoViewModel);
-                    window.Show();
-                    formReady.Set();
-                    System.Windows.Threading.Dispatcher.Run();
-                });
-                uiThread.SetApartmentState(ApartmentState.STA);
-                uiThread.IsBackground = true;
-                uiThread.Start();
-                formReady.WaitOne();
+                ProgressWindow window = ProgressWindow.ShowInBackground(progressInfoViewModel, "KPLN: Пакетная выдача");
 
 
-                //экспортирую каждый лист
-                foreach (MainEntity msheet in mSheets)
+                try
                 {
-                    if (progressInfoViewModel.IsCancellationRequested)
+                    //экспортирую каждый лист
+                    foreach (MainEntity msheet in mSheets)
                     {
-                        logger.Write("Пользователь отменил процесс экспорта в dwg");
-                        break;
+                        if (progressInfoViewModel.IsCancellationRequested)
+                        {
+                            logger.Write("Пользователь отменил процесс экспорта в dwg");
+                            break;
+                        }
+
+                        logger.Write(" ");
+                        logger.Write("Экспортируется лист: " + msheet.MainView.Name);
+
+                        // Настраиваем параметры экспорта
+                        DWGExportOptions dwgOptions = form.PrintSettings.dwgExportSettingShell?.DWGExportSetting?.GetDWGExportOptions() ?? new DWGExportOptions();
+                        dwgOptions.MergedViews = true;
+                        dwgOptions.FileVersion = ACADVersion.R2013;
+
+                        // Экспортируем лист в DWG
+                        string fileName = FileNameTemplate.WithoutExtension(msheet.NameByConstructor(form.PrintSettings.dwgNameConstructor), ".dwg");
+                        CheckExportFilePath(Path.Combine(outputFolder, GetDwgFileName(fileName)));
+                        bool exportSuccess = openedDoc.Export(
+                            // Чтобы избежать формирования пути в формате "C:\\DWG_Print\\Test\\Проект1_20.02.2025 11 17 46\-КП_новая-3213719.jpg", нужно текстовый формат пропустить через Path
+                            Path.GetFullPath(outputFolder),
+                            fileName,
+                            new List<ElementId> { msheet.MainView.Id },
+                            dwgOptions);
+                        if (exportSuccess)
+                            exportedSheetCount++;
+
+                        ++progressInfoViewModel.CurrentProgress;
                     }
 
-                    logger.Write(" ");
-                    logger.Write("Экспортируется лист: " + msheet.MainView.Name);
-
-                    // Настраиваем параметры экспорта
-                    DWGExportOptions dwgOptions = form.PrintSettings.dwgExportSettingShell?.DWGExportSetting?.GetDWGExportOptions() ?? new DWGExportOptions();
-                    dwgOptions.MergedViews = true;
-                    dwgOptions.FileVersion = ACADVersion.R2013;
-
-                    // Экспортируем лист в DWG
-                    bool exportSuccess = openedDoc.Export(
-                        // Чтобы избежать формирования пути в формате "C:\\DWG_Print\\Test\\Проект1_20.02.2025 11 17 46\-КП_новая-3213719.jpg", нужно текстовый формат пропустить через Path
-                        Path.GetFullPath(outputFolder),
-                        msheet.NameByConstructor(form.PrintSettings.dwgNameConstructor),
-                        new List<ElementId> { msheet.MainView.Id },
-                        dwgOptions);
-                    if (exportSuccess)
-                        exportedSheetCount++;
-
-                    ++progressInfoViewModel.CurrentProgress;
-                    progressInfoViewModel.DoEvents();
-                }
-
-                if (!progressInfoViewModel.IsCancellationRequested)
-                {
-                    window.Dispatcher.Invoke(() =>
-                    {
+                    if (!progressInfoViewModel.IsCancellationRequested)
                         progressInfoViewModel.IsComplete = true;
-                        window.UpdateLayout();
-                    });
+                }
+                catch
+                {
+                    window.CloseSafely();
+                    throw;
                 }
 
                 if (rlt != null)
@@ -852,22 +857,120 @@ namespace KPLN_Publication.ExternalCommands.Print
             return exportedSheetCount;
         }
 
-        private string CreateFolderToEXport(Document doc, string outputFolder, string printerName = null)
+        private static string GetDwgFileName(string fileName)
         {
-            string folder2 = doc.Title + "_" + DateTime.Now.ToString();
-            folder2 = folder2.Replace(':', ' ');
+            return FileNameTemplate.WithExtension(fileName, ".dwg");
+        }
 
-            outputFolder = System.IO.Path.Combine(outputFolder, folder2);
+        private static List<string> GetExportFileNames(Document doc,
+            Dictionary<string, List<MainEntity>> allSheets, YayPrintSettings settings, bool isPdf)
+        {
+            List<string> fileNames = new List<string>();
+            foreach (List<MainEntity> sheets in allSheets.Values)
+            {
+                if (sheets.Count == 0)
+                    continue;
+
+                // Те же основные надписи, которые используются при подготовке печати.
+                ILookup<string, FamilyInstance> titleBlocks = isPdf && sheets.Any(entity => entity.MainView is ViewSheet)
+                    ? new FilteredElementCollector(sheets[0].MainView.Document)
+                        .WhereElementIsNotElementType()
+                        .OfCategory(BuiltInCategory.OST_TitleBlocks)
+                        .Cast<FamilyInstance>()
+                        .Where(t => t.get_Parameter(BuiltInParameter.SHEET_HEIGHT).AsDouble() > 0.6)
+                        .ToLookup(t => t.get_Parameter(BuiltInParameter.SHEET_NUMBER).AsString())
+                    : null;
+
+                foreach (MainEntity sheet in sheets)
+                {
+                    string fileName = sheet.NameByConstructor(isPdf
+                        ? settings.pdfNameConstructor
+                        : settings.dwgNameConstructor);
+                    fileName = FileNameTemplate.WithExtension(fileName, isPdf ? ".pdf" : ".dwg");
+                    if (!isPdf)
+                    {
+                        fileNames.Add(GetDwgFileName(fileName));
+                        continue;
+                    }
+
+                    int partCount = sheet.MainView is ViewSheet viewSheet
+                        ? titleBlocks[viewSheet.SheetNumber].Count()
+                        : 0;
+                    for (int i = 0; i < Math.Max(1, partCount); i++)
+                    {
+                        string partName = partCount > 1
+                            ? fileName.Replace(".pdf", "_" + i + ".pdf")
+                            : fileName;
+                        fileNames.Add(partName);
+                        if (sheet.MainView is ViewSheet && settings.isExcludeBorders)
+                            fileNames.Add(partName.Replace(".pdf", "_OUT_Border.pdf"));
+                        if (settings.colorsType == ColorType.MonochromeWithExcludes)
+                            fileNames.Add(partName.Replace(".pdf", "_OUT_Color.pdf"));
+                    }
+                }
+            }
+
+            if (isPdf && settings.isMergePdfs)
+                fileNames.Add(doc.Title + ".pdf");
+
+            return fileNames;
+        }
+
+        private static bool IsExportPathTooLong(string folder, IEnumerable<string> fileNames)
+        {
+            return folder.Length >= WindowsMaxDirectoryPath
+                || fileNames.Any(name => Path.Combine(folder, name).Length >= WindowsMaxPath);
+        }
+
+        private static void CheckExportFilePath(string filePath)
+        {
+            if (filePath.Length >= WindowsMaxPath || Path.GetFullPath(filePath).Length >= WindowsMaxPath)
+                throw new PathTooLongException("Полный путь должен быть короче 260 символов. " +
+                    "Сократите имя файла в конструкторе имён:\n" + filePath);
+        }
+
+        private string CreateFolderToEXport(Document doc, string outputFolder, string exportType,
+            List<string> fileNames, Logger logger, string printerName = null)
+        {
+            string folderName = doc.Title + "_" + DateTime.Now.ToString("dd.MM.yyyy HH mm ss");
+            string requestedFolder = Path.Combine(outputFolder, folderName);
+            bool redirect;
             try
             {
-                System.IO.Directory.CreateDirectory(outputFolder);
+                outputFolder = Path.GetFullPath(requestedFolder);
+                redirect = IsExportPathTooLong(outputFolder, fileNames);
             }
-            catch
+            catch (PathTooLongException)
             {
-                return "Невозможно сохранить файлы папку\n" + outputFolder + "\nВыберите другой путь.";
+                redirect = true;
             }
 
-            outputFolder = outputFolder.Replace("\\", "\\\\");
+            if (redirect)
+            {
+                string systemRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System));
+                // Короткая отдельная папка для запуска, без длинного названия модели.
+                string runFolder = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                outputFolder = Path.Combine(systemRoot, exportType, runFolder);
+                logger.Write("Превышена допустимая длина пути: " + requestedFolder);
+                logger.Write("Новая папка " + $"{exportType}_Print" + ": " + outputFolder);
+            }
+
+            // Даже короткий корень не поможет, если само имя файла слишком длинное.
+            foreach (string fileName in fileNames)
+                CheckExportFilePath(Path.Combine(outputFolder, fileName));
+
+            try
+            {
+                Directory.CreateDirectory(outputFolder);
+            }
+            catch (Exception ex)
+            {
+                throw new IOException("Не удалось создать папку экспорта:\n" + outputFolder +
+                    "\nПроверьте доступность диска и права записи.", ex);
+            }
+
+            if (redirect)
+                _redirectedExportFolders.Add(exportType + ":\n" + outputFolder);
 
             //пробуем настроить PDFCreator через реестр Windows, для автоматической печати в папку
             if (!string.IsNullOrEmpty(printerName) && printerName == "PDFCreator")

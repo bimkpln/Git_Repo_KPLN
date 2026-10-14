@@ -75,63 +75,46 @@ namespace KPLN_Publication
         /// <returns>Сформированное имя листа</returns>
         public string NameByConstructor(string constructor)
         {
-            string name = "";
-
-            string prefix = constructor.Split('<').First();
-            name = name + prefix;
-
-            string[] sa = constructor.Split('<');
-            for(int i = 0; i < sa.Length; i++)
-            {
-                string s = sa[i];
-                if (!s.Contains(">")) continue;
-
-                string paramName = s.Split('>').First();
-                string separator = s.Split('>').Last();
-
-                string val = this.GetParameterValueBySheetOrProject(MainView, paramName);
-
-                name = name + val;
-                name = name + separator;
-            }
-
-
-            char[] arr = name
-                .Where(c => 
-                    (char.IsLetterOrDigit(c) 
-                    || char.IsWhiteSpace(c) 
-                    || c == '-' 
-                    || c == '+'
-                    || c == '_' 
-                    || c == '.' 
-                    || c == ','))
-                .ToArray();
-
-            name = new string(arr);
-
-            return name;
+            return NameByConstructor(constructor, out _);
         }
 
-        /// <summary>
-        /// Получает значение параметра из листа и из "информации о проекте", по аналогии с "меткой" в семействе основной надписи.
-        /// </summary>
-        /// <param name="sheet">Элемент модели</param>
-        /// <param name="paramName">Имя параметра</param>
-        /// <returns></returns>
+        internal string NameByConstructor(string constructor, out List<string> errors)
+        {
+            return FileNameTemplate.Resolve(constructor,
+                name => GetParameterValueBySheetOrProject(MainView, name), out errors);
+        }
+
+        // Единый порядок поиска для конструктора, предпросмотра и фактического экспорта.
+        internal static IEnumerable<Element> GetNameParameterSources(Element sheet)
+        {
+            yield return sheet;
+            Element projectInfo = sheet.Document.ProjectInformation;
+            if (projectInfo != null)
+                yield return projectInfo;
+
+            // Сохраняем прежний приоритет экземпляра листа и информации о проекте.
+            Element sheetType = sheet.Document.GetElement(sheet.GetTypeId());
+            if (sheetType != null)
+                yield return sheetType;
+
+            if (projectInfo != null)
+            {
+                Element projectType = sheet.Document.GetElement(projectInfo.GetTypeId());
+                if (projectType != null)
+                    yield return projectType;
+            }
+        }
+
         private string GetParameterValueBySheetOrProject(Element sheet, string paramName)
         {
-            string value = "";
+            foreach (Element source in GetNameParameterSources(sheet))
+            {
+                Parameter param = source.LookupParameter(paramName);
+                if (param != null)
+                    return param.HasValue ? GetParameterValueAsString(param) ?? string.Empty : string.Empty;
+            }
 
-            Parameter param = sheet.LookupParameter(paramName);
-            if(param == null)
-            {
-                param = sheet.Document.ProjectInformation.LookupParameter(paramName);
-            }
-            if(param != null)
-            {
-                value = this.GetParameterValueAsString(param);
-            }
-            return value;
+            return null;
         }
 
         /// <summary>

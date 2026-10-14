@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -21,6 +21,22 @@ namespace KPLN_Publication
         /// </summary>
         public static object PrintAllSheets(Document doc, YayPrintSettings settings, bool dryRun, int timeoutSeconds)
         {
+            return PrintSheetsCore(doc, settings, dryRun, timeoutSeconds, null);
+        }
+
+        /// <summary>Печать только явно выбранных листов; пустой состав не означает весь проект.</summary>
+        public static object PrintSheets(Document doc, YayPrintSettings settings, bool dryRun, int timeoutSeconds, string[] sheetUniqueIds)
+        {
+            if (sheetUniqueIds == null || sheetUniqueIds.Length == 0 || sheetUniqueIds.Length > 200
+                || sheetUniqueIds.Any(string.IsNullOrWhiteSpace)
+                || sheetUniqueIds.Distinct(StringComparer.Ordinal).Count() != sheetUniqueIds.Length)
+                throw new ArgumentException("Нужны от 1 до 200 уникальных UniqueId листов.");
+
+            return PrintSheetsCore(doc, settings, dryRun, timeoutSeconds, sheetUniqueIds);
+        }
+
+        private static object PrintSheetsCore(Document doc, YayPrintSettings settings, bool dryRun, int timeoutSeconds, string[] sheetUniqueIds)
+        {
             if (doc == null || doc.IsFamilyDocument || doc.IsLinked || doc.IsReadOnly || doc.IsModifiable)
                 throw new InvalidOperationException("Нужен доступный для временных транзакций документ проекта, без открытой транзакции.");
             if (settings == null || settings.printerName != "PDFCreator" || !settings.isPDFExport || settings.isPrintToPaper || settings.isDWGExport)
@@ -41,14 +57,19 @@ namespace KPLN_Publication
                 throw new InvalidOperationException("Принтер PDFCreator не установлен.");
             PdfCreatorSettingsScope.Validate();
 
-            var sheets = new FilteredElementCollector(doc).OfClass(typeof(ViewSheet)).Cast<ViewSheet>()
-                .OrderBy(s => s.SheetNumber, new NaturalStringComparer()).ToArray();
+            var sheets = sheetUniqueIds == null
+                ? new FilteredElementCollector(doc).OfClass(typeof(ViewSheet)).Cast<ViewSheet>()
+                    .OrderBy(s => s.SheetNumber, new NaturalStringComparer()).ToArray()
+                : sheetUniqueIds.Select(id => doc.GetElement(id) as ViewSheet).ToArray();
+            if (sheets.Any(s => s == null))
+                throw new ArgumentException("Один из выбранных листов не найден в активном документе.");
             if (sheets.Length == 0 || sheets.Length > 200)
                 throw new InvalidOperationException("Для одного запуска требуется от 1 до 200 листов.");
 
             var entities = sheets.Select(s => new MainEntity(s)).ToList();
             var blocks = new FilteredElementCollector(doc).OfCategory(BuiltInCategory.OST_TitleBlocks)
                 .WhereElementIsNotElementType().Cast<FamilyInstance>()
+                .Where(b => sheets.Any(s => s.Id.Equals(b.OwnerViewId)))
                 .Where(b => (b.get_Parameter(BuiltInParameter.SHEET_HEIGHT)?.AsDouble() ?? 0) > 0.6).ToList();
             var logger = new Logger(_ => { });
             var files = new List<Dictionary<string, object>>();

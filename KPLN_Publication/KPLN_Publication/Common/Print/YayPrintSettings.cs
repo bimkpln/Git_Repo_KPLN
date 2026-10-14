@@ -29,7 +29,7 @@ namespace KPLN_Publication
         #region Настройки экспорта в PDF
         public string printerName = new System.Drawing.Printing.PrinterSettings().PrinterName;
         public string outputPDFFolder = "C:\\PDF_Print";
-        public string pdfNameConstructor = "<Номер листа>_<Имя листа>.pdf";
+        public string pdfNameConstructor = "<Номер листа>_<Имя листа>";
         public HiddenLineViewsType hiddenLineProcessing = HiddenLineViewsType.VectorProcessing;
         public ColorType colorsType = ColorType.Monochrome;
         public RasterQualityType rasterQuality = RasterQualityType.High;
@@ -82,21 +82,22 @@ namespace KPLN_Publication
                         if (ps == null)
                         {
                             TaskDialog.Show("Внимание", "Не удалось получить сохраненные настройки печати");
-                            ps = new YayPrintSettings();
+                            ps = new YayPrintSettings
+                            {
+                                pdfNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>" : "<Имя вида>",
+                                dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>" : "<Имя вида>"
+                            };
                         }
-                        // Корректировка для экспорта видов
-                        else if (ps.dwgNameConstructor.ToLower().Contains("лист") && !onlySheets)
-                            ps.dwgNameConstructor = "<Имя вида>.dwg";
-                        // Корректировка для экспорта листов
-                        else if (ps.dwgNameConstructor.ToLower().Contains("вид") && onlySheets)
-                            ps.dwgNameConstructor = "<Имя листа>.dwg";
+                        // Сохранённые шаблоны не подменяем: форма покажет ошибку параметров
+                        // и заблокирует выдачу, пока пользователь не исправит правила.
                     }
                     catch
                     {
                         ps = new YayPrintSettings
                         {
+                            pdfNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>" : "<Имя вида>",
                             // Корректировка для экспорта видов или листов
-                            dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>.dwg" : "<Имя вида>.dwg",
+                            dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>" : "<Имя вида>",
                             excludeColors = new List<PdfColor>
                             {
                                 new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),
@@ -111,8 +112,9 @@ namespace KPLN_Publication
             {
                 ps = new YayPrintSettings
                 {
+                    pdfNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>" : "<Имя вида>",
                     // Корректировка для экспорта видов или листов
-                    dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>.dwg" : "<Имя вида>.dwg",
+                    dwgNameConstructor = onlySheets ? "<Номер листа>_<Имя листа>" : "<Имя вида>",
                     excludeColors = new List<PdfColor>
                     {
                         new PdfColor(System.Drawing.Color.FromArgb(0,0,255)),

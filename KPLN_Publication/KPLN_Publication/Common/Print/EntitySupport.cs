@@ -85,6 +85,7 @@ namespace KPLN_Publication
                     .OfClass(typeof(View))
                     .Where(el => el is ViewPlan || el is ViewSection)
                     .Cast<View>()
+                    .Where(view => !view.IsTemplate && view.CanBePrinted)
                     .OrderBy(v => v.Name)
                     .Select(i => new MainEntity(i))
                     .ToList();

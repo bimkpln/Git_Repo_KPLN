@@ -56,7 +56,9 @@
             this.btnCancel = new System.Windows.Forms.Button();
             this.label4 = new System.Windows.Forms.Label();
             this.pluginVersion = new System.Windows.Forms.Label();
+            this.labelNameRulesError = new System.Windows.Forms.Label();
             this.treeView1 = new System.Windows.Forms.TreeView();
+            this.buttonPreview = new System.Windows.Forms.Button();
             this.buttonHelp = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.comboBoxDWGExportTypes = new System.Windows.Forms.ComboBox();
@@ -199,6 +201,7 @@
             this.textBox_PDFNameConstructor.Enabled = false;
             this.textBox_PDFNameConstructor.Location = new System.Drawing.Point(9, 161);
             this.textBox_PDFNameConstructor.Name = "textBox_PDFNameConstructor";
+            this.textBox_PDFNameConstructor.ReadOnly = true;
             this.textBox_PDFNameConstructor.Size = new System.Drawing.Size(223, 20);
             this.textBox_PDFNameConstructor.TabIndex = 8;
             // 
@@ -362,7 +365,7 @@
             // btnOk
             // 
             this.btnOk.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnOk.Location = new System.Drawing.Point(290, 585);
+            this.btnOk.Location = new System.Drawing.Point(174, 585);
             this.btnOk.Name = "btnOk";
             this.btnOk.Size = new System.Drawing.Size(75, 23);
             this.btnOk.TabIndex = 4;
@@ -373,7 +376,7 @@
             // btnCancel
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnCancel.Location = new System.Drawing.Point(371, 585);
+            this.btnCancel.Location = new System.Drawing.Point(255, 585);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 5;
@@ -409,13 +412,19 @@
             this.treeView1.Size = new System.Drawing.Size(232, 551);
             this.treeView1.TabIndex = 9;
             // 
-            // buttonHelp
-            // 
-            this.buttonHelp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            // buttonPreview
+            //
+            this.buttonPreview.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonPreview.Location = new System.Drawing.Point(336, 585);
+            this.buttonPreview.Name = "buttonPreview";
+            this.buttonPreview.Size = new System.Drawing.Size(110, 23);
+            this.buttonPreview.TabIndex = 5;
+            this.buttonPreview.Text = "Имена файлов";
+            this.buttonPreview.UseVisualStyleBackColor = true;
+            this.buttonPreview.Click += new System.EventHandler(this.buttonPreview_Click);
+            this.buttonHelp.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
             this.buttonHelp.Location = new System.Drawing.Point(452, 585);
-            this.buttonHelp.Name = "buttonHelp";
             this.buttonHelp.Size = new System.Drawing.Size(75, 23);
-            this.buttonHelp.TabIndex = 5;
             this.buttonHelp.Text = "Справка";
             this.buttonHelp.UseVisualStyleBackColor = true;
             this.buttonHelp.Click += new System.EventHandler(this.buttonHelp_Click);
@@ -484,6 +493,7 @@
             // 
             this.textBox_DWGNameConstructor.Location = new System.Drawing.Point(5, 125);
             this.textBox_DWGNameConstructor.Name = "textBox_DWGNameConstructor";
+            this.textBox_DWGNameConstructor.ReadOnly = true;
             this.textBox_DWGNameConstructor.Size = new System.Drawing.Size(227, 20);
             this.textBox_DWGNameConstructor.TabIndex = 8;
             // 
@@ -528,9 +538,16 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(539, 616);
+            this.labelNameRulesError.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.labelNameRulesError.Location = new System.Drawing.Point(12, 619);
+            this.labelNameRulesError.Size = new System.Drawing.Size(515, 20);
+            this.labelNameRulesError.ForeColor = System.Drawing.Color.Red;
+            this.labelNameRulesError.Visible = false;
+            this.ClientSize = new System.Drawing.Size(539, 646);
+            this.Controls.Add(this.labelNameRulesError);
             this.Controls.Add(this.treeView1);
             this.Controls.Add(this.label4);
+            this.Controls.Add(this.buttonPreview);
             this.Controls.Add(this.buttonHelp);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.pluginVersion);
@@ -581,8 +598,10 @@
         private System.Windows.Forms.RadioButton radioButtonPaper;
         private System.Windows.Forms.CheckBox checkBoxMergePdfs;
         private System.Windows.Forms.Label pluginVersion;
+        private System.Windows.Forms.Label labelNameRulesError;
         private System.Windows.Forms.TreeView treeView1;
         private System.Windows.Forms.CheckBox checkBoxOrientation;
+        private System.Windows.Forms.Button buttonPreview;
         private System.Windows.Forms.Button buttonHelp;
         private System.Windows.Forms.CheckBox checkBoxRefresh;
         private System.Windows.Forms.CheckBox checkBoxExcludeBorders;

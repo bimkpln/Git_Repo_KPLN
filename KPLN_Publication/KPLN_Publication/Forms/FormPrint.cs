@@ -27,6 +27,8 @@ namespace KPLN_Publication
     public partial class FormPrint : System.Windows.Forms.Form
     {
         private readonly YayPrintSettings _printSettings;
+        private readonly string _mainDocTitle;
+        private readonly bool _onlySheets;
 
         private readonly ToolTip _toolTip = new ToolTip();
 
@@ -44,6 +46,7 @@ namespace KPLN_Publication
         public FormPrint(Document doc, Dictionary<string, List<MainEntity>> mainEntites, YayPrintSettings printSettings)
         {
             InitializeComponent();
+            _mainDocTitle = doc.Title;
             this.AcceptButton = btnOk;
             this.CancelButton = btnCancel;
             this.pluginVersion.Text = $"v.{ModuleData.Version}";
@@ -61,6 +64,7 @@ namespace KPLN_Publication
             else
                 this.label4.Text = "Виды для выдачи";
 
+            _onlySheets = onlySheets;
             _entitiesBaseToPrint = mainEntites;
             //заполняю treeView
             foreach (var docWithSheets in _entitiesBaseToPrint)
@@ -72,6 +76,7 @@ namespace KPLN_Publication
                     string sheetTitle = sheet.ToString();
                     TreeNode sheetNode = new TreeNode(sheetTitle);
                     sheetNode.Checked = sheet.IsPrintable;
+                    sheetNode.Tag = sheet;
                     if (sheet.IsPrintable) haveChecked = true;
                     docNode.Nodes.Add(sheetNode);
                 }
@@ -80,37 +85,21 @@ namespace KPLN_Publication
             }
 
 
-            #region Заполняю параметры печати PDF (ТОЛЬКО ДЛЯ ЛИСТОВ)
+            #region Заполняю параметры печати PDF
             _printSettings = printSettings;
-            if (!onlySheets)
-            {
-                checkBox_isPDFExport.Enabled = false;
-                comboBoxPrinters.Enabled = false;
-                radioButtonPDF.Enabled = false;
-                radioButtonPaper.Enabled = false;
-                textBox_PDFPath.Enabled = false;
-                radioButtonRastr.Enabled = false;
-                radioButtonVector.Enabled = false;
-                checkBoxMergePdfs.Enabled = false;
-                checkBoxOrientation.Enabled = false;
-                checkBoxRefresh.Enabled = false;
-                checkBoxExcludeBorders.Enabled = false;
-                comboBoxColors.Enabled = false;
-                comboBoxRasterQuality.Enabled = false;
-                buttonExcludesColor.Enabled = false;
-            }
-            else
-            {
-                checkBox_isPDFExport.Checked = printSettings.isPDFExport;
-                textBox_PDFNameConstructor.Text = printSettings.pdfNameConstructor;
-                textBox_PDFPath.Text = printSettings.outputPDFFolder;
-                checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
-                checkBoxOrientation.Checked = printSettings.isUseOrientation;
-                checkBoxExcludeBorders.Checked = checkBoxExcludeBorders.Enabled && printSettings.isExcludeBorders;
-            }
+            checkBox_isPDFExport.Checked = printSettings.isPDFExport;
+            textBox_PDFNameConstructor.Text = FileNameTemplate.WithoutExtension(printSettings.pdfNameConstructor, ".pdf");
+            textBox_PDFPath.Text = printSettings.outputPDFFolder;
+            checkBoxMergePdfs.Checked = printSettings.isMergePdfs;
+            checkBoxOrientation.Enabled = onlySheets;
+            checkBoxOrientation.Checked = onlySheets && printSettings.isUseOrientation;
+            checkBoxRefresh.Enabled = onlySheets;
+            checkBoxRefresh.Checked = onlySheets && printSettings.isRefreshSchedules;
+            checkBoxExcludeBorders.Enabled = onlySheets && checkBoxExcludeBorders.Enabled;
+            checkBoxExcludeBorders.Checked = checkBoxExcludeBorders.Enabled && printSettings.isExcludeBorders;
 
             // Недоступное скрытие рамки сбрасываем и в конфиге, даже если форму закроют без печати.
-            if (!checkBoxExcludeBorders.Enabled && _printSettings.isExcludeBorders)
+            if (onlySheets && !checkBoxExcludeBorders.Enabled && _printSettings.isExcludeBorders)
             {
                 checkBoxExcludeBorders.Checked = false;
                 _printSettings.isExcludeBorders = false;
@@ -171,14 +160,8 @@ namespace KPLN_Publication
             #endregion
 
             #region Заполняю параметры печати DWG
-            if (!onlySheets)
-            {
-                checkBox_isDWGExport.Checked = true;
-                checkBox_isDWGExport.Enabled = false;
-            }
-            else
-                checkBox_isDWGExport.Checked = printSettings.isDWGExport;
-            textBox_DWGNameConstructor.Text = printSettings.dwgNameConstructor;
+            checkBox_isDWGExport.Checked = printSettings.isDWGExport;
+            textBox_DWGNameConstructor.Text = FileNameTemplate.WithoutExtension(printSettings.dwgNameConstructor, ".dwg");
             textBox_DWGPath.Text = printSettings.outputDWGFolder;
 
             List<ExportDWGSettingsShell> dwgSettings = new FilteredElementCollector(doc)
@@ -199,6 +182,15 @@ namespace KPLN_Publication
             #endregion
 
             checkBoxMergePdfs_CheckedChanged(null, null);
+
+            textBox_PDFNameConstructor.TextChanged += NameRulesChanged;
+            textBox_DWGNameConstructor.TextChanged += NameRulesChanged;
+            checkBox_isPDFExport.CheckedChanged += NameRulesChanged;
+            checkBox_isDWGExport.CheckedChanged += NameRulesChanged;
+            radioButtonPDF.CheckedChanged += NameRulesChanged;
+            radioButtonPaper.CheckedChanged += NameRulesChanged;
+            treeView1.AfterCheck += (sender, args) => UpdateNameRulesState();
+            UpdateNameRulesState();
         }
 
         private void cbx_Enter(object sender, EventArgs e)
@@ -214,47 +206,21 @@ namespace KPLN_Publication
 
         private void btnOk_Click(object sender, EventArgs e)
         {
-            this.DialogResult = DialogResult.OK;
+            UpdateNameRulesState();
+            if (!btnOk.Enabled)
+                return;
 
-            foreach (TreeNode docNode in treeView1.Nodes)
-            {
-                string docNodeTitle = docNode.Text;
-                //string revitDocTitle = sheetsBaseToPrint.Keys.Where(d => d == docNodeTitle).First();
-                List<MainEntity> selectedSheetsInDoc = new List<MainEntity>();
-                foreach (TreeNode sheetNode in docNode.Nodes)
-                {
-                    if (!sheetNode.Checked) continue;
-
-                    string sheetTitle = sheetNode.Text;
-
-                    var tempSheets = _entitiesBaseToPrint[docNodeTitle].Where(s => sheetTitle == s.ToString()).ToList();
-                    if (tempSheets.Count == 0) throw new Exception("Cant get sheets from TreeNode");
-
-                    MainEntity msheet = tempSheets.First();
-                    selectedSheetsInDoc.Add(msheet);
-                }
-                if (selectedSheetsInDoc.Count == 0) continue;
-
-                _entitiesSelected.Add(docNodeTitle, selectedSheetsInDoc);
-            }
+            _entitiesSelected = GetSelectedEntities();
 
             #region Обновление YayPrintSettings (изначально не реализован INotifyPrCh, продолжаю костыль)
             // Экспорт в PDF
-            _printSettings.isPDFExport = checkBox_isPDFExport.Checked;
+            _printSettings.isPDFExport = checkBox_isPDFExport.Enabled && checkBox_isPDFExport.Checked;
             if (_printSettings.isPDFExport)
             {
                 _printSettings.printerName = comboBoxPrinters.SelectedItem.ToString();
                 _printSettings.outputPDFFolder = textBox_PDFPath.Text;
 
-                bool checkConstructor = false;
-                string tempConstr = textBox_PDFNameConstructor.Text;
-                if (tempConstr.Split('<').Length > 1)
-                {
-                    if (tempConstr.Split('<')[1].Contains(">"))
-                        checkConstructor = true;
-                }
-                if (checkConstructor)
-                    _printSettings.pdfNameConstructor = textBox_PDFNameConstructor.Text;
+                _printSettings.pdfNameConstructor = textBox_PDFNameConstructor.Text;
 
                 if (radioButtonVector.Checked)
                     _printSettings.hiddenLineProcessing = Autodesk.Revit.DB.HiddenLineViewsType.VectorProcessing;
@@ -284,6 +250,16 @@ namespace KPLN_Publication
             #endregion
 
             this.printToFile = radioButtonPDF.Checked;
+            List<ExportNameRow> rows = FormExportNamePreview.BuildRows(
+                _mainDocTitle, _entitiesSelected, _printSettings, printToFile);
+            if (rows.Any(row => row.HasError))
+            {
+                using (FormExportNamePreview preview = new FormExportNamePreview(rows))
+                    preview.ShowDialog(this);
+                return;
+            }
+
+            this.DialogResult = DialogResult.OK;
             this.Close();
         }
 
@@ -327,11 +303,11 @@ namespace KPLN_Publication
 
         private void btnPDFOpenNameConstructor_Click(object sender, EventArgs e)
         {
-            formNameConstructor formName = new formNameConstructor(textBox_PDFNameConstructor.Text);
+            formNameConstructor formName = new formNameConstructor(textBox_PDFNameConstructor.Text, GetNameConstructorEntities());
 
             if (formName.ShowDialog(this) == DialogResult.OK)
             {
-                textBox_PDFNameConstructor.Text = formName.nameConstructor;
+                textBox_PDFNameConstructor.Text = FileNameTemplate.WithoutExtension(formName.nameConstructor, ".pdf");
             }
 
             formName.Dispose();
@@ -339,11 +315,11 @@ namespace KPLN_Publication
 
         private void btnDWGOpenNameConstructor_Click(object sender, EventArgs e)
         {
-            formNameConstructor formName = new formNameConstructor(textBox_PDFNameConstructor.Text);
+            formNameConstructor formName = new formNameConstructor(textBox_DWGNameConstructor.Text, GetNameConstructorEntities());
 
             if (formName.ShowDialog(this) == DialogResult.OK)
             {
-                textBox_DWGNameConstructor.Text = formName.nameConstructor;
+                textBox_DWGNameConstructor.Text = FileNameTemplate.WithoutExtension(formName.nameConstructor, ".dwg");
             }
 
             formName.Dispose();
@@ -360,7 +336,7 @@ namespace KPLN_Publication
                 label5.Enabled = true;
                 label6.Enabled = true;
                 checkBoxMergePdfs.Enabled = true;
-                checkBoxOrientation.Enabled = true;
+                checkBoxOrientation.Enabled = _onlySheets;
 
                 List<ColorType> colorTypes = Enum.GetValues(typeof(ColorType))
                     .Cast<ColorType>()
@@ -391,18 +367,11 @@ namespace KPLN_Publication
 
         private void checkBoxMergePdfs_CheckedChanged(object sender, EventArgs e)
         {
-            if (checkBoxMergePdfs.Checked == true)
-            {
-                textBox_PDFNameConstructor.Enabled = false;
-                btnPDFOpenNameConstructor.Enabled = false;
-                label6.Enabled = false;
-            }
-            else
-            {
-                textBox_PDFNameConstructor.Enabled = true;
-                btnPDFOpenNameConstructor.Enabled = true;
-                label6.Enabled = true;
-            }
+            // Шаблон нужен и при объединении: по нему создаются промежуточные PDF.
+            bool enabled = checkBox_isPDFExport.Checked && radioButtonPDF.Checked;
+            textBox_PDFNameConstructor.Enabled = enabled;
+            btnPDFOpenNameConstructor.Enabled = enabled;
+            label6.Enabled = enabled;
         }
 
         private void comboBoxColors_SelectedIndexChanged(object sender, EventArgs e)
@@ -426,6 +395,89 @@ namespace KPLN_Publication
         private void buttonHelp_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("http://moodle/mod/book/view.php?id=502&chapterid=667") { UseShellExecute = true });
+        }
+
+        private Dictionary<string, List<MainEntity>> GetSelectedEntities()
+        {
+            Dictionary<string, List<MainEntity>> result = new Dictionary<string, List<MainEntity>>();
+            foreach (TreeNode model in treeView1.Nodes)
+            {
+                List<MainEntity> selected = model.Nodes.Cast<TreeNode>()
+                    .Where(node => node.Checked).Select(node => (MainEntity)node.Tag).ToList();
+                if (selected.Count != 0)
+                    result.Add(model.Text, selected);
+            }
+            return result;
+        }
+
+        private IEnumerable<MainEntity> GetNameConstructorEntities()
+        {
+            List<MainEntity> selected = GetSelectedEntities().Values.SelectMany(items => items).ToList();
+            return selected.Count != 0 ? selected : _entitiesBaseToPrint.Values.SelectMany(items => items);
+        }
+
+        private void NameRulesChanged(object sender, EventArgs e)
+        {
+            checkBoxMergePdfs_CheckedChanged(sender, e);
+            UpdateNameRulesState();
+        }
+
+        private void UpdateNameRulesState()
+        {
+            List<MainEntity> selected = GetSelectedEntities().Values.SelectMany(items => items).ToList();
+            List<string> invalidFormats = GetInvalidNameFormats(selected,
+                checkBox_isPDFExport.Checked && radioButtonPDF.Checked, textBox_PDFNameConstructor.Text,
+                checkBox_isDWGExport.Checked, textBox_DWGNameConstructor.Text);
+
+            labelNameRulesError.Text = invalidFormats.Count == 0 ? string.Empty
+                : "Проверь правила построения имён для " + string.Join(" и ", invalidFormats);
+            labelNameRulesError.Visible = invalidFormats.Count != 0;
+            btnOk.Enabled = selected.Count != 0 && invalidFormats.Count == 0
+                && (checkBox_isPDFExport.Checked || checkBox_isDWGExport.Checked);
+        }
+
+        internal static List<string> GetInvalidNameFormats(IEnumerable<MainEntity> selected,
+            bool pdf, string pdfTemplate, bool dwg, string dwgTemplate)
+        {
+            List<string> result = new List<string>();
+            foreach (string format in new[] { "PDF", "DWG" })
+            {
+                if ((format == "PDF" && !pdf) || (format == "DWG" && !dwg))
+                    continue;
+
+                foreach (MainEntity entity in selected)
+                {
+                    string name = entity.NameByConstructor(format == "PDF" ? pdfTemplate : dwgTemplate,
+                        out List<string> errors);
+                    name = FileNameTemplate.WithExtension(name, format == "PDF" ? ".pdf" : ".dwg");
+                    if (errors.Count != 0 || FileNameTemplate.Validate(name, format == "PDF" ? ".pdf" : ".dwg") != string.Empty)
+                    {
+                        result.Add(format);
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
+        private void buttonPreview_Click(object sender, EventArgs e)
+        {
+            // Снимок текущих полей без сохранения настроек и изменения выбора.
+            YayPrintSettings settings = new YayPrintSettings
+            {
+                isPDFExport = checkBox_isPDFExport.Enabled && checkBox_isPDFExport.Checked,
+                isDWGExport = checkBox_isDWGExport.Checked,
+                pdfNameConstructor = textBox_PDFNameConstructor.Text,
+                dwgNameConstructor = textBox_DWGNameConstructor.Text,
+                outputPDFFolder = textBox_PDFPath.Text,
+                outputDWGFolder = textBox_DWGPath.Text,
+                printerName = comboBoxPrinters.SelectedItem as string,
+                isMergePdfs = checkBoxMergePdfs.Checked
+            };
+            List<ExportNameRow> rows = FormExportNamePreview.BuildRows(
+                _mainDocTitle, GetSelectedEntities(), settings, radioButtonPDF.Checked);
+            using (FormExportNamePreview preview = new FormExportNamePreview(rows))
+                preview.ShowDialog(this);
         }
 
         private void radioButtonRastr_CheckedChanged(object sender, EventArgs e)

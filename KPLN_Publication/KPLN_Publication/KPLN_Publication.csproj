@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Revit2026Build Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'">true</Revit2026Build>
@@ -288,6 +288,8 @@
   <ItemGroup>
     <Compile Include="Common\ExportDWGSettingsShell.cs" />
     <Compile Include="Common\Print\BatchPrintService.cs" />
+    <Compile Include="Common\Print\FileNameTemplate.cs" />
+    <Compile Include="Forms\FormExportNamePreview.cs" />
     <Compile Include="Common\Print\PdfCreatorSettingsScope.cs" />
     <Compile Include="ExternalCommands\BeforePublication\CommandOpenSetManager.cs" />
     <Compile Include="ExternalCommands\PublicationSet\CommandApplySet.cs" />
@@ -302,10 +304,6 @@
     <Compile Include="Common\ListBoxParameter.cs" />
     <Compile Include="Forms\EnterNameForm.xaml.cs">
       <DependentUpon>EnterNameForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\MVVMCore\ProgressInfoViewModel.cs" />
-    <Compile Include="Forms\ProgressWindow.xaml.cs">
-      <DependentUpon>ProgressWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\SetManager.xaml.cs">
       <DependentUpon>SetManager.xaml</DependentUpon>
@@ -408,10 +406,6 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="Forms\EnterNameForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\ProgressWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

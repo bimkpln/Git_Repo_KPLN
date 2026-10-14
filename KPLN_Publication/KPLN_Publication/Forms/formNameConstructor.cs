@@ -20,19 +20,62 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Autodesk.Revit.DB;
+using KPLN_Library_Forms.Common;
+using KPLN_Library_Forms.UI;
+using System.Windows.Interop;
 
 namespace KPLN_Publication
 {
-    public partial class formNameConstructor : Form
+    public partial class formNameConstructor : System.Windows.Forms.Form
     {
         public string nameConstructor;
+        private readonly IEnumerable<MainEntity> _entities;
 
-        public formNameConstructor(string NameConstructor)
+        public formNameConstructor(string NameConstructor, IEnumerable<MainEntity> entities)
         {
+            _entities = entities.ToList();
             InitializeComponent();
             this.AcceptButton = buttonOk;
             this.CancelButton = buttonCancel;
             textBoxNameConstructor.Text = NameConstructor;
+        }
+
+        private void buttonParameter_Click(object sender, EventArgs e)
+        {
+            int selectionStart = textBoxNameConstructor.SelectionStart;
+            int selectionLength = textBoxNameConstructor.SelectionLength;
+            Dictionary<string, HashSet<string>> parameters = new Dictionary<string, HashSet<string>>();
+            foreach (MainEntity entity in _entities)
+            {
+                foreach (Element source in MainEntity.GetNameParameterSources(entity.MainView))
+                {
+                    string origin = source is ElementType ? "Тип" : "Экземпляр";
+                    origin += ": " + source.Name + " (" + source.Document.Title + ")";
+                    foreach (Parameter parameter in source.Parameters)
+                    {
+                        if (parameter.StorageType == StorageType.None)
+                            continue;
+                        string name = parameter.Definition.Name;
+                        if (!parameters.ContainsKey(name))
+                            parameters.Add(name, new HashSet<string>());
+                        parameters[name].Add(origin);
+                    }
+                }
+            }
+
+            // Библиотечное окно с поиском. Берём объединение параметров всех источников,
+            // а не пересечение листа с информацией о проекте.
+            IEnumerable<ElementEntity> choices = parameters.OrderBy(pair => pair.Key)
+                .Select(pair => new ElementEntity(pair.Key, string.Join("\n", pair.Value)));
+            ElementSinglePick picker = new ElementSinglePick(null, choices, "Параметр имени файла");
+            new WindowInteropHelper(picker) { Owner = Handle };
+            if (picker.ShowDialog() != true || picker.SelectedElement == null)
+                return;
+
+            textBoxNameConstructor.Select(selectionStart, selectionLength);
+            textBoxNameConstructor.SelectedText = "<" + picker.SelectedElement.Name + ">";
+            textBoxNameConstructor.Focus();
         }
 
 

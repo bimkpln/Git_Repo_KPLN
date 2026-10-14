@@ -35,6 +35,7 @@
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
+            this.buttonParameter = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // textBoxNameConstructor
@@ -81,7 +82,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(22, 72);
+            this.label3.Location = new System.Drawing.Point(22, 105);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(323, 13);
             this.label3.TabIndex = 5;
@@ -90,7 +91,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(22, 90);
+            this.label2.Location = new System.Drawing.Point(22, 123);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(421, 13);
             this.label2.TabIndex = 5;
@@ -99,17 +100,26 @@
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(22, 108);
+            this.label4.Location = new System.Drawing.Point(22, 141);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(344, 13);
             this.label4.TabIndex = 5;
-            this.label4.Text = "Можно использовать параметры Листа и Информации о проекте.";
+            this.label4.Text = "Лист/вид и Информация о проекте: параметры экземпляра и типа.";
+            this.buttonParameter.Location = new System.Drawing.Point(25, 65);
+            this.buttonParameter.Size = new System.Drawing.Size(195, 26);
+            this.buttonParameter.Text = "Вставить параметр...";
+            this.buttonParameter.TabIndex = 1;
+            this.buttonParameter.UseVisualStyleBackColor = true;
+            this.buttonParameter.Click += new System.EventHandler(this.buttonParameter_Click);
             // 
             // formNameConstructor
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(457, 177);
+            this.ClientSize = new System.Drawing.Size(457, 210);
+            this.buttonOk.Location = new System.Drawing.Point(287, 175);
+            this.buttonCancel.Location = new System.Drawing.Point(368, 175);
+            this.Controls.Add(this.buttonParameter);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label3);
@@ -135,5 +145,6 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Button buttonParameter;
     }
 }
