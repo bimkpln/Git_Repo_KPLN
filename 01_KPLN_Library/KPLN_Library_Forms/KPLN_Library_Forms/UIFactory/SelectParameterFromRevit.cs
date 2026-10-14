@@ -36,47 +36,31 @@ namespace KPLN_Library_Forms.UIFactory
                 .GroupBy(x => x.GetTypeId())
                 .Select(gr => gr.FirstOrDefault());
 
-            // Основной блок
-            HashSet<Parameter> commonInstParameters = new HashSet<Parameter>(new ParameterComparer());
-            HashSet<Parameter> commonTypeParameters = new HashSet<Parameter>(new ParameterComparer());
-            Element firstElement = clearedElemsToFind.FirstOrDefault();
-
-            if (includeIsntParams)
-                AddParam(firstElement, storageType, commonInstParameters);
-
-            if (includeTypeParams)
-            {
-                Element typeElem = doc.GetElement(firstElement.GetTypeId());
-                AddParam(typeElem, storageType, commonTypeParameters);
-            }
-
+            // Объединяем разрешённые параметры экземпляра и типа до пересечения между элементами.
+            HashSet<Parameter> resultParamsColl = null;
             foreach (Element currentElement in clearedElemsToFind)
             {
-                // Игнорирую уже добавленный эл-т
-                if (firstElement.Id == currentElement.Id)
-                    continue;
-
-                HashSet<Parameter> currentInstParameters = new HashSet<Parameter>(new ParameterComparer());
-                HashSet<Parameter> currentTypeParameters = new HashSet<Parameter>(new ParameterComparer());
+                HashSet<Parameter> currentParameters = new HashSet<Parameter>(new ParameterComparer());
                 if (includeIsntParams)
-                {
-                    AddParam(currentElement, storageType, currentInstParameters);
-                    commonInstParameters.IntersectWith(currentInstParameters);
-                }
+                    AddParam(currentElement, storageType, currentParameters);
 
                 if (includeTypeParams)
                 {
                     Element typeElem = doc.GetElement(currentElement.GetTypeId());
-                    AddParam(typeElem, storageType, currentTypeParameters);
-                    commonTypeParameters.IntersectWith(currentTypeParameters);
+                    if (typeElem != null)
+                        AddParam(typeElem, storageType, currentParameters);
                 }
+
+                if (resultParamsColl == null)
+                    resultParamsColl = currentParameters;
+                else
+                    resultParamsColl.IntersectWith(currentParameters);
             }
 
-            if (commonInstParameters.Count == 0 && commonTypeParameters.Count == 0)
+            if (resultParamsColl == null || resultParamsColl.Count == 0)
                 throw new Exception("Ошибка в поиске парамтеров для элементов Revit");
 
             ObservableCollection<ElementEntity> paramsToChoose = new ObservableCollection<ElementEntity>();
-            HashSet<Parameter> resultParamsColl = new HashSet<Parameter>(commonInstParameters.Union(commonTypeParameters), new ParameterComparer());
             foreach (Parameter param in resultParamsColl)
             {
                 string toolTip = string.Empty;

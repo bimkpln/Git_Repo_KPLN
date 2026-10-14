@@ -292,6 +292,10 @@
     <Compile Include="UI\ButtonToRun.xaml.cs">
       <DependentUpon>ButtonToRun.xaml</DependentUpon>
     </Compile>
+    <Compile Include="UI\ViewModels\ProgressInfoViewModel.cs" />
+    <Compile Include="UI\ProgressWindow.xaml.cs">
+      <DependentUpon>ProgressWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="UI\ElementMultiPick.xaml.cs">
       <DependentUpon>ElementMultiPick.xaml</DependentUpon>
     </Compile>
@@ -324,6 +328,10 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="UI\ButtonToRun.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UI\ProgressWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
