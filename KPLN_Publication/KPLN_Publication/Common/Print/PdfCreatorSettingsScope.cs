@@ -1,4 +1,4 @@
-using Microsoft.Win32;
+﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,6 +67,8 @@ namespace KPLN_Publication
                 // Как в штатной пакетной печати, экранируем только новое значение, не резервную копию.
                 Set(Profile, "TargetDirectory", EncodeDirectory(folder));
                 Set(Profile, "OutputFormat", "Pdf");
+                Set(Profile, "SaveFileTemporary", "False");
+                Set(Profile + @"\OpenViewer", "OpenWithPdfArchitect", "False");
                 Set(Profile, "OpenViewer", "False");
                 Set(Profile, "OpenWithPdfArchitect", "False");
                 Set(Profile + @"\PdfSettings", "PageOrientation", useOrientation ? (portrait ? "Portrait" : "Landscape") : "Automatic");
