@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib;
@@ -198,7 +198,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             List<FilterRule> filtRules = new List<FilterRule>();
             foreach (string currentName in _exceptionFamilyAndTypeNameStartWithList)
             {
+#if Debug2026 || Revit2026
+                FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName);
+#else
                 FilterRule fRule = ParameterFilterRuleFactory.CreateNotBeginsWithRule(new ElementId(BuiltInParameter.ELEM_FAMILY_AND_TYPE_PARAM), currentName, true);
+#endif
                 filtRules.Add(fRule);
             }
             ElementParameterFilter eFilter = new ElementParameterFilter(filtRules);

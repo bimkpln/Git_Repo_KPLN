@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 
 namespace KPLN_ModelChecker_User.Common
 {
@@ -16,7 +16,7 @@ namespace KPLN_ModelChecker_User.Common
         internal static int ElIdInt(ElementId id) => (int)id.Value;
 #endif
 
-#if Debug2023 || Revit2023 || Debug2024 || Revit2024
+#if !Debug2020 && !Revit2020
         internal static FilterRule CreateContainsRule(ElementId parameterId, string value) =>
             ParameterFilterRuleFactory.CreateContainsRule(parameterId, value);
 #else
