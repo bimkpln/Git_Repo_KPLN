@@ -209,11 +209,16 @@ namespace KPLN_CoordiantorAI.Common
 
     public sealed class ExternalModelSettings
     {
+        public const string DefaultDatabaseLogFolder =
+            @"Z:\Отдел BIM\Тарчоков Мухамед\2. Плагины\1. Собственные плагины\0. Shared Plugins\Logs\BimHelper\1. Логи в форме БД";
+
         public string ApiKey { get; set; }
 
         public string OnlineServerUrl { get; set; }
 
         public string LogFolder { get; set; }
+
+        public string DatabaseLogFolder { get; set; } = DefaultDatabaseLogFolder;
 
         public string SystemPrompt { get; set; }
 
@@ -222,6 +227,8 @@ namespace KPLN_CoordiantorAI.Common
         public string LocalServerUrl { get; set; }
 
         public string TitleBlockParametersDescription { get; set; }
+
+        public DepartmentPromptSettings DepartmentPrompts { get; set; } = new DepartmentPromptSettings();
     }
 
     public sealed class SubDepartmentInfo

@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,9 +11,12 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.McpClient
 {
     internal sealed class InternalMcpClient : IDisposable
     {
+        private const string ProtocolVersion = "2025-06-18";
+
         private readonly HttpClient _httpClient;
         private readonly string _endpoint;
         private readonly string _requestScopeId;
+        private readonly bool _isLocalEndpoint;
         private int _nextRequestId = 1;
         private bool _disposed;
 
@@ -39,18 +43,28 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.McpClient
         }
 
         public InternalMcpClient(string endpoint, string requestScopeId)
+            : this(endpoint, requestScopeId, TimeSpan.FromMinutes(5))
+        {
+        }
+
+        internal InternalMcpClient(string endpoint, string requestScopeId, TimeSpan timeout)
         {
             _endpoint = endpoint;
             _requestScopeId = requestScopeId;
+            Uri endpointUri;
+            _isLocalEndpoint = Uri.TryCreate(endpoint, UriKind.Absolute, out endpointUri)
+                && endpointUri.IsLoopback;
             _httpClient = new HttpClient();
-            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+            _httpClient.Timeout = timeout > TimeSpan.Zero
+                ? timeout
+                : TimeSpan.FromMinutes(5);
         }
 
         public Task<JObject> InitializeAsync(CancellationToken cancellationToken)
         {
             JObject parameters = new JObject
             {
-                { "protocolVersion", "2025-06-18" },
+                { "protocolVersion", ProtocolVersion },
                 { "capabilities", new JObject() },
                 { "clientInfo", new JObject { { "name", "revit-wpf-chat" }, { "version", "0.1.0" } } }
             };
@@ -104,9 +118,15 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.McpClient
             using (HttpRequestMessage httpRequest = new HttpRequestMessage(HttpMethod.Post, _endpoint))
             {
                 httpRequest.Content = new StringContent(json, Encoding.UTF8, "application/json");
-                httpRequest.Headers.Add("X-Revit-MCP-Client", "wpf_window");
-                if (!string.IsNullOrWhiteSpace(_requestScopeId))
-                    httpRequest.Headers.Add("X-Revit-MCP-Request-Scope", _requestScopeId);
+                httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+                httpRequest.Headers.TryAddWithoutValidation("MCP-Protocol-Version", ProtocolVersion);
+                if (_isLocalEndpoint)
+                {
+                    httpRequest.Headers.Add("X-Revit-MCP-Client", "wpf_window");
+                    if (!string.IsNullOrWhiteSpace(_requestScopeId))
+                        httpRequest.Headers.Add("X-Revit-MCP-Request-Scope", _requestScopeId);
+                }
 
                 using (HttpResponseMessage httpResponse = await _httpClient.SendAsync(httpRequest, cancellationToken))
                 {
@@ -114,13 +134,72 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.McpClient
                     if (!httpResponse.IsSuccessStatusCode)
                         throw new InvalidOperationException("MCP HTTP error " + (int)httpResponse.StatusCode + ": " + responseJson);
 
-                    JObject response = JObject.Parse(responseJson);
+                    JObject response = ParseMcpResponse(responseJson);
                     JObject error = response["error"] as JObject;
                     if (error != null)
                         throw new InvalidOperationException(error["message"] == null ? "MCP error" : error["message"].ToString());
 
                     return response["result"] as JObject ?? new JObject();
                 }
+            }
+        }
+
+        private static JObject ParseMcpResponse(string responseText)
+        {
+            if (string.IsNullOrWhiteSpace(responseText))
+                throw new InvalidOperationException("MCP server returned an empty response.");
+
+            string trimmed = responseText.Trim();
+            if (trimmed.StartsWith("{", StringComparison.Ordinal))
+                return JObject.Parse(trimmed);
+
+            JObject lastMessage = null;
+            StringBuilder eventData = new StringBuilder();
+            string[] lines = responseText.Replace("\r\n", "\n").Split('\n');
+            foreach (string line in lines)
+            {
+                if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (eventData.Length > 0)
+                        eventData.Append('\n');
+                    eventData.Append(line.Substring(5).TrimStart());
+                    continue;
+                }
+
+                if (line.Length == 0 && eventData.Length > 0)
+                {
+                    JObject parsed = TryParseEventData(eventData.ToString());
+                    if (parsed != null)
+                        lastMessage = parsed;
+                    eventData.Clear();
+                }
+            }
+
+            if (eventData.Length > 0)
+            {
+                JObject parsed = TryParseEventData(eventData.ToString());
+                if (parsed != null)
+                    lastMessage = parsed;
+            }
+
+            if (lastMessage == null)
+                throw new InvalidOperationException("MCP server returned an unsupported Streamable HTTP response.");
+
+            return lastMessage;
+        }
+
+        private static JObject TryParseEventData(string eventData)
+        {
+            if (string.IsNullOrWhiteSpace(eventData) || string.Equals(eventData.Trim(), "[DONE]", StringComparison.Ordinal))
+                return null;
+
+            try
+            {
+                return JObject.Parse(eventData);
+            }
+            catch (JsonException)
+            {
+                return null;
             }
         }
     }

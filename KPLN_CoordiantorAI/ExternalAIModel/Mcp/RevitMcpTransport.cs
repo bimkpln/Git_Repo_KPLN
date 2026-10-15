@@ -18,6 +18,8 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
         private readonly RevitMcpExternalEventHandler _externalEventHandler;
         private readonly string _instanceId;
         private readonly int _revitVersion;
+        private readonly RevitFailureStore _failureStore;
+        private int _activeRequests;
         private HttpListener _listener;
         private CancellationTokenSource _cancellation;
         private Task _listenTask;
@@ -26,12 +28,14 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             string prefix,
             RevitMcpExternalEventHandler externalEventHandler,
             string instanceId,
-            int revitVersion)
+            int revitVersion,
+            RevitFailureStore failureStore = null)
         {
             _prefix = prefix;
             _externalEventHandler = externalEventHandler;
             _instanceId = instanceId;
             _revitVersion = revitVersion;
+            _failureStore = failureStore;
         }
 
         public bool IsRunning
@@ -128,7 +132,26 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 try
                 {
                     context = await _listener.GetContextAsync();
-                    await HandleContextAsync(context, cancellationToken);
+                    if (Interlocked.Increment(ref _activeRequests) > 32)
+                    {
+                        Interlocked.Decrement(ref _activeRequests);
+                        await TryWriteJsonAsync(context.Response,
+                            CreateError(null, -32000, "Too many concurrent MCP requests. Retry shortly."), 503);
+                        context.Response.Close();
+                        continue;
+                    }
+
+                    // Waiting for Revit must not block reads of already captured failures.
+                    HttpListenerContext acceptedContext = context;
+                    _ = Task.Run(async () =>
+                    {
+                        try { await HandleContextAsync(acceptedContext, cancellationToken); }
+                        catch (Exception ex)
+                        {
+                            RevitMcpDiagnosticLogger.LogException("MCP request worker failed", ex);
+                        }
+                        finally { Interlocked.Decrement(ref _activeRequests); }
+                    });
                 }
                 catch (ObjectDisposedException)
                 {
@@ -341,7 +364,13 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             RevitMcpToolCallResponse toolResponse;
             try
             {
-                if (RevitMcpFileAttachmentService.IsFileTool(toolName))
+                if (toolName == RevitFailureStore.ToolName)
+                {
+                    toolResponse = _failureStore == null
+                        ? RevitFailureStore.Error("failure_capture_unavailable", "Revit failure capture is not running.")
+                        : _failureStore.Execute(arguments, linkedCancellation.Token);
+                }
+                else if (RevitMcpFileAttachmentService.IsFileTool(toolName))
                 {
                     toolResponse = isInternalWpf
                         ? RevitMcpFileAttachmentService.ExecuteTool(

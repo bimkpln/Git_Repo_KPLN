@@ -4,6 +4,7 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using KPLN_CoordiantorAI.Common;
 using KPLN_CoordiantorAI.ExternalAIModel.Mcp;
 
 namespace KPLN_CoordiantorAI.ExternalModel
@@ -92,16 +93,21 @@ namespace KPLN_CoordiantorAI.ExternalModel
             public long CompletionTokens { get; set; }
         }
 
-        private const string DatabaseFolder =
-            @"Z:\Отдел BIM\Тарчоков Мухамед\2. Плагины\1. Собственные плагины\0. Shared Plugins\Logs\BimHelper\1. Логи в форме БД";
         private static readonly object SyncRoot = new object();
         private static readonly TimeZoneInfo MoscowTimeZone = ResolveMoscowTimeZone();
+        private readonly string _databaseFolder;
         private readonly string _databaseFilePath;
 
         public ModelChatHistoryRepository()
+            : this(null)
         {
+        }
+
+        public ModelChatHistoryRepository(string databaseFolder)
+        {
+            _databaseFolder = ResolveDatabaseFolder(databaseFolder);
             _databaseFilePath = Path.Combine(
-                DatabaseFolder,
+                _databaseFolder,
                 "CoordinatorAI_History_" + SanitizeFileName(Environment.UserName) + ".db");
         }
 
@@ -406,11 +412,26 @@ namespace KPLN_CoordiantorAI.ExternalModel
             if (properties == null || properties["limit"] == null || properties["offset"] == null)
                 return false;
 
-            if (string.Equals(tool.Name, "get_journal_entries_since", StringComparison.Ordinal)
+            if (string.Equals(tool.Name, "get_recent_revit_failures", StringComparison.Ordinal))
+            {
+                paginationUnit = "Items";
+                defaultPageSize = 10;
+            }
+            else if (string.Equals(tool.Name, "get_journal_entries_since", StringComparison.Ordinal)
                 || string.Equals(tool.Name, "read_attached_file", StringComparison.Ordinal))
             {
                 paginationUnit = "Characters";
                 defaultPageSize = 204800;
+            }
+            else if (string.Equals(tool.Name, "get_schedule_rows_and_values", StringComparison.Ordinal))
+            {
+                paginationUnit = "Rows";
+                defaultPageSize = 200;
+            }
+            else if (string.Equals(tool.Name, "get_project_view_items", StringComparison.Ordinal))
+            {
+                paginationUnit = "ViewItems";
+                defaultPageSize = 200;
             }
             else if (string.Equals(tool.Name, "get_viewports_and_schedules_on_sheets", StringComparison.Ordinal))
             {
@@ -797,10 +818,18 @@ namespace KPLN_CoordiantorAI.ExternalModel
             return result;
         }
 
-        private static void EnsureFolder()
+        private static string ResolveDatabaseFolder(string databaseFolder)
         {
-            if (!Directory.Exists(DatabaseFolder))
-                Directory.CreateDirectory(DatabaseFolder);
+            string resolved = string.IsNullOrWhiteSpace(databaseFolder)
+                ? ExternalModelSettings.DefaultDatabaseLogFolder
+                : databaseFolder.Trim();
+            return Environment.ExpandEnvironmentVariables(resolved);
+        }
+
+        private void EnsureFolder()
+        {
+            if (!Directory.Exists(_databaseFolder))
+                Directory.CreateDirectory(_databaseFolder);
         }
     }
 

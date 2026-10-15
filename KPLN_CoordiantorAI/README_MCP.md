@@ -15,6 +15,59 @@ Claude/Cursor/VS Code/Codex -> MCP stdio proxy -> selected Revit MCP Server -> R
 
 MCP is the source of truth for Revit tool discovery and execution. If the internal LLM still needs OpenAI-compatible `tools`, that format is only an adapter for the model, not a separate Revit tool architecture.
 
+## Дополнительные инструкции отделов в WPF
+
+В настройках, на вкладке «Внешняя модель», под общим системным промптом
+находится редактор «Дополнительная инструкция отдела». Выберите АР, КР или
+ИОС, введите соответствующий текст и нажмите общую кнопку сохранения настроек.
+Переключение отдела сохраняет черновик в окне; запись в БД выполняется только
+при сохранении. Первоначально все три инструкции пустые.
+
+Тексты хранятся в таблице `Settings` той же БД настроек, что и
+`ExternalModel.SystemPrompt` и описания команд, а не в пользовательских БД логов:
+
+| Ключ | Назначение |
+| --- | --- |
+| `ExternalModel.DepartmentPrompt.AR` | АР |
+| `ExternalModel.DepartmentPrompt.KR` | КР |
+| `ExternalModel.DepartmentPrompt.IOS` | Все подразделения ИОС |
+
+Отдел определяется автоматически через существующий корпоративный механизм
+`CurrentUserContextService` / `SQLiteMainService`. Профили: АР (ID 2),
+КР (ID 3), ИОС (ID 4, 5, 6, 7, 41, 51, 71, 72: ОВиК, ВК, ЭОМ, СС, ИТП,
+ПТ, АВ, СПС). Для новых подразделений проверяется цепочка
+`DependentSubDepId` до известного отдела, с защитой от циклов.
+Для BIM, ALL или неопределенного отдела дополнительная инструкция не добавляется.
+
+Перед каждым новым пользовательским вопросом инструкции перечитываются из БД
+в фоновом потоке. Общий промпт дополняется только текстом выбранного отдела.
+Этот снимок используется во всех промежуточных tool-раундах вопроса, без
+дублирования в истории. Сохраненные изменения инструкций отделов применяются
+со следующего вопроса, без повторного открытия чата. Пустое поле отключает
+инструкцию соответствующего отдела; общий промпт остается без изменений.
+
+Ожидание чтения ограничено 5 секундами и поддерживает отмену запроса.
+При ошибке БД используются ранее загруженные настройки окна, если отдел удалось
+определить. При превышении ожидания или смене пути БД во время чтения вопрос
+выполняется без дополнительной инструкции. Зависшее сетевое чтение нельзя
+принудительно остановить средствами SQLite: оно остается в фоне, но в этом окне
+не создаются дополнительные параллельные чтения до его завершения.
+
+В DiagnosticLogger событие `DEPARTMENT_PROMPT.SELECTED` показывает отдел,
+профиль, признак применения и источник настроек (`database`,
+`cached_settings`, `timeout` или `database_changed`). Полный текст
+дополнительной инструкции в этом событии не записывается.
+
+Механизм относится только к чату «Работа с моделью». Системные промпты внешних
+MCP-хостов не изменяются. Логика вкладки «Поиск по регламентам» не меняется.
+При использовании общей БД сохраненные инструкции общие для всех ее пользователей.
+
+Автономная проверка: после сборки Debug2023 запустите
+`Tests\RunDepartmentPromptTests.ps1`. Тесты используют отдельную БД в
+`obj\DepartmentPromptTests`, не изменяя рабочую БД и файл выбора ее пути.
+При необходимости укажите пути `-PluginAssembly` и `-NativeSqliteAssembly`
+(существующая x64-библиотека `e_sqlite3.dll` из комплекта загрузчика KPLN).
+
 ## Current State
 
 Implemented:
@@ -34,6 +87,61 @@ Implemented:
 - structured per-user SQLite history for the WPF "Work with model" tab;
 - user-facing WPF progress statuses that do not expose model chain-of-thought.
 - explicit file attachments in the WPF chat, including DOCX, with local text extraction, search and paged reading.
+- official Autodesk Product Help MCP tools in the WPF "Work with model" agent.
+
+## Autodesk Product Help MCP
+
+The WPF "Work with model" agent combines two independent MCP sources before each
+request is sent to the configured AI model:
+
+```text
+Local Revit MCP -> model and Revit API tools
+Autodesk Product Help MCP -> official Autodesk documentation search
+```
+
+The official remote endpoint is:
+
+```text
+https://developer.api.autodesk.com/knowledge/public/v1/mcp
+```
+
+It uses MCP Streamable HTTP, is read-only, and currently requires neither an
+Autodesk account nor an API key. Its tools are discovered dynamically and added to
+the OpenAI-compatible tool list used by the WPF agent:
+
+- `get_available_products` validates Autodesk product and release codes;
+- `search_help_content` searches official Autodesk Help and Support content.
+
+For Revit searches, the wrapper supplies safe defaults when the model omits them:
+
+```text
+product_code = RVT
+release_code = current Revit major version
+locale = en_US
+max_results = 3 (maximum 5)
+```
+
+The system prompt tells the model to translate Russian search terms into English,
+use the documentation tools for reference questions, and cite article titles and
+the direct URLs returned by Autodesk. These tools do not inspect the open model;
+model data must still be obtained through the local Revit MCP tools.
+
+Only the documentation search arguments are sent to Autodesk. The plugin does not
+send the Revit model, API key, attached files, complete chat history, or local MCP
+request headers to the remote documentation endpoint.
+
+If Autodesk Product Help or the internet is unavailable, its tools are omitted for
+that request, `AUTODESK_HELP.TOOLS_ERROR` is written to `DiagnosticLogger`, and all
+local Revit tools continue to work. Remote discovery and search calls have a
+90-second upper timeout and also honor the WPF request cancellation button.
+Successful discovery is logged as
+`AUTODESK_HELP.TOOLS_LOADED`; tool calls use the normal `TOOL.START`, `TOOL.END`,
+and `TOOL.ERROR` records with `toolArea=AutodeskHelp` and
+`executionPath=autodesk_product_help_mcp`.
+
+External agents such as Codex, Claude, or Cursor should connect to Autodesk Product
+Help directly as a second MCP server. The local Revit endpoint intentionally
+continues to expose only the tools owned by the selected Revit process.
 
 Endpoint allocation:
 
@@ -410,6 +518,7 @@ If rebuilding fails because `RevitMcpStdioProxy.exe` is locked, close the extern
 Currently registered tools:
 
 - `get_active_view_in_revit`
+- `get_project_view_items`
 - `get_all_elements_shown_in_view`
 - `get_category_by_keyword`
 - `get_elements_by_category`
@@ -456,6 +565,7 @@ Currently registered tools:
 - `get_if_elements_pass_filter`
 - `get_viewports_and_schedules_on_sheets`
 - `get_schedules_info_and_columns`
+- `get_schedule_rows_and_values`
 - `get_schedule_sorting_info`
 - `get_journal_entries_since`
 - `get_revit_links_in_model`
@@ -493,8 +603,8 @@ Expected response:
   "instance_id": "a24b...",
   "process_id": 3132,
   "revit_version": 2024,
-  "tools": 55,
-  "wpf_tools": 58
+  "tools": 57,
+  "wpf_tools": 60
 }
 ```
 
@@ -531,6 +641,54 @@ Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json" -B
   ConvertTo-Json -Depth 20
 ```
 
+## Project Views, Schedules And Sheets
+
+`get_project_view_items` returns user-facing project views by default. It does
+not include view templates or Revit internal/browser views unless requested.
+
+Current use case - return all ordinary project views, 200 at a time:
+
+```json
+{
+  "name": "get_project_view_items",
+  "arguments": {
+    "itemTypes": ["view"],
+    "limit": 200,
+    "offset": 0
+  }
+}
+```
+
+Future combined use case:
+
+```json
+{
+  "name": "get_project_view_items",
+  "arguments": {
+    "itemTypes": ["view", "schedule", "sheet", "view_template"],
+    "limit": 200,
+    "offset": 0
+  }
+}
+```
+
+Optional `nameContains` performs a case-insensitive name search. Optional
+`viewTypes` accepts Revit API `ViewType` names such as `FloorPlan`, `ThreeD`,
+`Section`, `Elevation`, `DrawingSheet`, or `Schedule`. Set `includeInternal` to
+true only when Revit internal and browser views are deliberately required.
+
+Every item contains `id`, `name`, `itemType`, `viewType`, `isTemplate`, and
+`canBePrinted`. Ordinary views and templates also report level, discipline,
+phase, phase filter, and assigned view template where available. Sheets report
+sheet number and placeholder status. Schedules report schedule type, category,
+key-schedule status, and material-takeoff status. If an optional property cannot
+be read, that item remains in the result and contains `metadataErrors`.
+
+The result uses `items`, `total_count`, `returned_count`, `limit`, `offset`,
+`has_more`, and `next_offset`. Keep all filters unchanged and continue with
+`next_offset` until `has_more` is false. Ordering is deterministic: item kind,
+then name, then element ID.
+
 ## Phase Visibility Tool Check
 
 The command below reads the active view discipline, phase, assigned phase filter and all phase filters in the model. Add Revit element ids to `list_elementIds` to calculate their phase status and whether the assigned phase filter allows that status.
@@ -558,6 +716,83 @@ Invoke-RestMethod -Uri $endpoint -Method Post -ContentType "application/json; ch
 The `allowed_by_phase_filter` field evaluates phase rules only. Other view settings can still hide an element.
 
 Revit API 2020/2023/2024 does not expose the phase-status graphic overrides configured on the Graphic Overrides tab of the Phasing dialog. Colors, line settings, patterns, halftone and materials must be inspected manually in Revit when they may affect the diagnosis.
+
+## Schedule Cell Values
+
+`get_schedule_rows_and_values` reads displayed text from the Body section of one
+`ViewSchedule`, including calculated formula/percentage fields and totals. It uses
+`ViewSchedule.GetCellText`, not element parameters or `TableSectionData.GetCellText`.
+No transaction, view activation, or model changes are needed.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 30,
+  "method": "tools/call",
+  "params": {
+    "name": "get_schedule_rows_and_values",
+    "arguments": {
+      "scheduleId": 123456,
+      "limit": 200,
+      "offset": 0
+    }
+  }
+}
+```
+
+Replace `123456` with the schedule view ID, not its placement ID on a sheet.
+The `columns` array describes visible Body columns. Optional `columnIndexes`
+selects these physical table indices, not field IDs or field-order indices that
+include hidden fields; omitted or empty means all visible columns.
+Hidden fields are excluded from the mapping. If embedded schedules or another
+table structure prevents a reliable mapping, `field_mapping_available` is false,
+field metadata is null, and `warnings` explains this; cell text is still read by
+its actual coordinates.
+
+The `items` array contains rows of this form (example values):
+
+```json
+{
+  "rowIndex": 2,
+  "cells": [
+    { "columnIndex": 0, "text": "Beam" },
+    { "columnIndex": 1, "text": "12,50 m2" },
+    { "columnIndex": 2, "text": "25%" }
+  ]
+}
+```
+
+Values are strings with the units, rounding and language displayed by Revit,
+not unrounded numbers or formula expressions. Empty/group/total rows are
+preserved: a row is not necessarily one element, and no row-to-element ID mapping
+is inferred. `firstRowIndex` and `firstColumnIndex` give the actual API bounds.
+
+Pagination uses `total_count`, `limit`, `offset`, `returned_count`, `has_more` and
+`next_offset`. A page contains at most 200 complete Body rows and 204800 UTF-8
+bytes of the result JSON, including column metadata. The MCP response envelope
+and its text representation add transport overhead. Follow `next_offset` exactly;
+a size/time limit may produce fewer rows than requested. Keep the schedule and
+column selection unchanged between pages; results are not a persistent snapshot.
+
+A failed cell has `text: null` and an `error`; other cells remain available.
+`cell_error_count` counts these failures. `stop_reason` is `end`, `row_limit`,
+`size_limit`, or `time_limit`. Cancellation and a five-second cooperative budget
+are checked between cell reads; a single synchronous Revit API call cannot be
+interrupted. If even one complete row or column metadata cannot fit, the command
+returns an explicit error and asks for fewer `columnIndexes`, without silently
+truncating values or advancing the offset past an unread row.
+
+Run the pagination/error/cancellation tests without Revit:
+
+```powershell
+& ".\Tests\RunScheduleCellPageReaderTests.ps1"
+```
+
+Live verification after rebuilding and restarting Revit: read a schedule with a
+formula, a percentage, a hidden field before visible fields, and enabled totals.
+Compare cell text with the schedule and follow all pages using `next_offset`.
+These API checks must be performed in the target Revit version; the standalone
+tests exercise only the pagination reader.
 
 ## Paginated Tool Results
 
@@ -832,7 +1067,7 @@ then Revit loaded a different `Newtonsoft.Json` version than the one used during
 
 The WPF "Work with model" tab writes structured request history to SQLite in parallel with the existing text `ChatLogger`. The text log has not been removed. External MCP hosts continue to use the existing MCP diagnostics and grouped `ChatLogger` records; they do not create `ModelChatRequests` rows.
 
-Each Windows user receives a separate database:
+Each Windows user receives a separate database. Its folder is configured in Settings -> External model -> Chat history database folder. If the field is empty, the default folder is:
 
 ```text
 Z:\Отдел BIM\Тарчоков Мухамед\2. Плагины\1. Собственные плагины\0. Shared Plugins\Logs\BimHelper\1. Логи в форме БД\CoordinatorAI_History_<UserName>.db
@@ -869,7 +1104,7 @@ Only attachment metadata is stored. File contents, image bytes, Base64 data, and
 
 ### ToolDefinitions
 
-This reference table is synchronized from `RevitMcpToolRegistry` when the WPF tab opens. It contains `ToolId`, `ToolName`, `Description`, `OperationType`, `IsReadOnly`, `SupportsPagination`, `PaginationUnit`, and `DefaultPageSize`.
+This reference table is synchronized from `RevitMcpToolRegistry` when the WPF tab opens and also includes the two read-only Autodesk Product Help tools under `OperationType=AutodeskHelp`. It contains `ToolId`, `ToolName`, `Description`, `OperationType`, `IsReadOnly`, `SupportsPagination`, `PaginationUnit`, and `DefaultPageSize`.
 
 `OperationType` uses the registry area, for example `ViewContext`, `Visibility`, `Categories`, `Families`, `Parameters`, `Geometry`, `ModelInfo`, `Files`, `Worksets`, `Selection`, `Schedules`, `Journal`, or `Links`. Pagination metadata describes the unit and default page size used by each tool; unsupported values remain `NULL`.
 
@@ -932,3 +1167,145 @@ Current risk handling:
 The migration to one shared MCP architecture is complete. The WPF tab and external MCP hosts use the same registry, executor, Revit `ExternalEvent` path, result contracts, pagination rules, and diagnostics.
 
 No mandatory MCP architecture changes remain. Before distributing a release, build the supported Revit configurations and run the endpoint, WPF, stdio proxy, pagination, UI-changing tool, restart, and diagnostics checks documented above.
+
+## Recent Revit Operation Errors
+
+The read-only MCP tool `get_recent_revit_failures` reads transient operation failures
+(for example, "Cannot make type") captured by `FailuresProcessing`.
+Use it when a user reports a failed operation or an error dialog.
+`get_all_warnings_in_the_model` remains the tool for persistent model warnings.
+
+Capture starts when the plugin loads. The observer copies detached values during
+the event; it does not resolve failures, delete elements, change transaction
+results, or dismiss Revit dialogs. Only failures reaching this event are observable:
+this is not a universal reader for all Revit/Windows dialogs. An error that occurred
+before capture started cannot be recovered by this tool.
+
+### Session Storage and Cleanup
+
+Local snapshots are stored in:
+
+```text
+%LOCALAPPDATA%\KPLN\CoordinatorAI\RevitFailures\
+failures_<RevitVersion>_<PID>_<ProcessStartUtcTicks>_<SessionGuid>.jsonl
+```
+
+- One file belongs to one plugin capture session in one Revit process. Under normal
+  operation this is one file per Revit launch, created only after the first failure.
+- Each line is a JSON record. Documents in the same process share the file but have
+  distinct session-local `document_id` values, even when their names are identical.
+- The fast query source is memory. A background writer updates a bounded JSONL
+  snapshot; this file is not a permanent error history.
+- The file and memory records are removed on application closing/module shutdown.
+  Writer and deletion are synchronized so a late write cannot recreate the file.
+- After a crash, the next plugin launch removes orphan files. Both PID and process
+  start time are checked. Files belonging to live processes, or whose ownership
+  cannot be established, are preserved.
+- Disk errors do not stop capture in memory. `file_write_error` explains failed
+  writes; write/delete/capture problems also go to the existing DiagnosticLogger.
+  No network drive or chat-history database is required.
+- Retention is at most 200 records per document, 2000 records per process, and
+  4 MiB of serialized records. A single event captures at most 200 failure messages.
+  Identical messages within one callback are merged using `occurrences_in_event`;
+  later callbacks are separate observations, not a count of distinct user actions.
+- Text descriptions are limited to 8192 characters and each related-element list
+  to 200 ids. Truncation is explicit in the returned record.
+  `buffer_incomplete` and `dropped_count` report discarded records.
+
+### Query Arguments and Results
+
+Defaults: latest 10 observations for the active document, newest first.
+The tool returns `failures`, `total_count`, `returned_count`, `limit`,
+`offset`, `has_more`, `next_offset`, and `snapshot_sequence`.
+The maximum page is 200 records and 200 KiB of compact UTF-8 result JSON
+(the MCP envelope also includes the text representation).
+
+Optional arguments:
+
+- `document_id`: choose a document id returned in an earlier failure record.
+- `all_documents: true`: query all captured documents in the selected Revit
+  process. Cannot be combined with `document_id`.
+- `dateTime`, `endDateTime`: inclusive time bounds; accepted forms include
+  `2026-10-15 11:00:00`, `2026-10-15T11:00:00`, and ISO with `Z` or a UTC
+  offset. Values without an offset mean Moscow time (UTC+03:00).
+- `severity`: `Warning`, `Error`, or `DocumentCorruption`.
+- `limit`: 1-200, default 10; `offset`: non-negative integer.
+- `snapshot_sequence`: keep the value returned by the first page, together
+  with the same scope/time filters, while following `next_offset`. This excludes
+  newly arriving records from the paged selection. Buffer evictions can still
+  change the retained selection; check `buffer_incomplete`.
+
+Each record includes time in UTC and Moscow, document id/name/path, Revit version,
+process/session identifiers, transaction name, failure-definition id, severity,
+description and associated element ids. If an optional API property cannot be
+read, the other fields remain available and `capture_incomplete`/`read_errors`
+describe the missing data.
+
+A recorded failure is historical evidence, not proof that a dialog is still open
+or that the problem still exists. IDs may refer to elements removed by rollback.
+An empty result does not prove there was no error: check document scope, capture
+start, retention limits, and whether the message belongs to Revit's failure system.
+
+### Modal Dialogs and Multiple Revit Processes
+
+Reading this tool uses no Revit API calls or ExternalEvent. The HTTP listener
+handles up to 32 simultaneous requests so an ordinary call waiting for Revit
+does not block a separate HTTP query for captured failures. Other model-reading
+tools still require Revit API context and may wait for the dialog to close.
+
+The existing stdio bridge processes requests sequentially: if a previous request
+is already waiting inside that bridge, a later request through the same bridge
+will wait too. In that case query the selected process's HTTP endpoint separately
+or close the dialog to finish the earlier request. The WPF window itself may also
+be inaccessible while Revit is showing a modal dialog; recorded errors remain
+available after it closes. This change does not alter the stdio bridge.
+
+For multiple Revit processes, select the required instance in the external host.
+A tool call reads only the process receiving it; `all_documents` does not mean
+all running Revit versions. Active-document identity is cached on ViewActivated
+and Idling. If it is unavailable (for example, during model opening), use
+`all_documents: true`.
+
+### Verification
+
+1. Restart Revit after deploying the matching Debug2020/Debug2023/Debug2024 DLL.
+2. Refresh/reconnect the external MCP host so its tools list includes the new tool.
+3. Reproduce a known family error in a test model. Leave the dialog open to test
+   independent HTTP access, or cancel the operation and query from the WPF chat:
+   "Read the last Revit operation error and explain its message."
+4. Query the endpoint for that Revit process (48731 is the first/default port;
+   additional processes can use other ports from their instance registration):
+
+```powershell
+$endpoint = 'http://127.0.0.1:48731/mcp/'
+$body = @{
+    jsonrpc = '2.0'
+    id = 1
+    method = 'tools/call'
+    params = @{
+        name = 'get_recent_revit_failures'
+        arguments = @{ all_documents = $true; limit = 10 }
+    }
+} | ConvertTo-Json -Depth 10
+$bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+Invoke-RestMethod -Uri $endpoint -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes |
+    ConvertTo-Json -Depth 20
+```
+
+5. Confirm the message, document and IDs match the reproduced error. Test the same
+   model name in two documents/processes to check isolation.
+6. Confirm the file appears only after an error and disappears on closing its
+   Revit process; files of other running processes must remain.
+7. Run `Tests\RunRevitFailureStoreTests.ps1` for automated retention, pagination,
+   time filtering, invalid arguments, file lifecycle and HTTP concurrency checks.
+   The HTTP test uses the production transport and a simulated blocked Revit
+   handler. It does not replace reproducing the actual failure in Revit.
+
+Json.NET runtime compatibility: Revit 2023/2024 can load Newtonsoft.Json 13.0.1,
+although the project compiles against 13.0.4 (both have assembly version 13.0.0.0).
+Failure snapshots use JsonConvert.SerializeObject instead of the newer
+JToken.ToString(Formatting) overload. To test against the actual host library:
+
+```powershell
+.\Tests\RunRevitFailureStoreTests.ps1 -RuntimeJsonAssembly 'C:\Program Files\Autodesk\Revit 2024\Newtonsoft.Json.dll'
+```

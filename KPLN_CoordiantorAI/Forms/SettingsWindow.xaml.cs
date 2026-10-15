@@ -15,6 +15,8 @@ namespace KPLN_CoordiantorAI.Forms
         private Bitrix24Settings _bitrix24Settings;
         private string _articleAliasesJson;
         private string _titleBlockParametersDescription;
+        private DepartmentPromptSettings _departmentPrompts = new DepartmentPromptSettings();
+        private string _selectedDepartmentPromptProfile;
 
 
         public SettingsWindow()
@@ -64,10 +66,33 @@ namespace KPLN_CoordiantorAI.Forms
             ExternalModelApiKeyPasswordBox.Password = settings.ApiKey;
             ExternalModelOnlineUrlTextBox.Text = settings.OnlineServerUrl;
             ExternalModelLogFolderTextBox.Text = settings.LogFolder;
+            ExternalModelDatabaseLogFolderTextBox.Text =
+                string.IsNullOrWhiteSpace(settings.DatabaseLogFolder)
+                    ? ExternalModelSettings.DefaultDatabaseLogFolder
+                    : settings.DatabaseLogFolder;
             ExternalModelSystemPromptTextBox.Text = settings.SystemPrompt;
             ExternalModelLocalUrlTextBox.Text = settings.LocalServerUrl;
             _titleBlockParametersDescription = settings.TitleBlockParametersDescription ?? string.Empty;
+            _selectedDepartmentPromptProfile = null;
+            _departmentPrompts = (settings.DepartmentPrompts ?? new DepartmentPromptSettings()).Clone();
+            DepartmentPromptComboBox.SelectedIndex = 0;
+            OnDepartmentPromptSelectionChanged(DepartmentPromptComboBox, null);
             SelectExternalModelConnectionType(settings.ConnectionTypeName);
+        }
+
+        private void SaveDepartmentPromptDraft()
+        {
+            if (_selectedDepartmentPromptProfile != null && DepartmentPromptTextBox != null)
+                _departmentPrompts.SetText(_selectedDepartmentPromptProfile, DepartmentPromptTextBox.Text);
+        }
+
+        private void OnDepartmentPromptSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (DepartmentPromptTextBox == null) return;
+            SaveDepartmentPromptDraft();
+            var item = DepartmentPromptComboBox.SelectedItem as ComboBoxItem;
+            _selectedDepartmentPromptProfile = item == null ? null : item.Tag as string;
+            DepartmentPromptTextBox.Text = _departmentPrompts.GetText(_selectedDepartmentPromptProfile);
         }
 
         private void LoadBitrix24Settings()
@@ -123,10 +148,14 @@ namespace KPLN_CoordiantorAI.Forms
                 (!string.IsNullOrWhiteSpace(settings.ApiKey) ||
                  !string.IsNullOrWhiteSpace(settings.OnlineServerUrl) ||
                  !string.IsNullOrWhiteSpace(settings.LogFolder) ||
+                 !string.IsNullOrWhiteSpace(settings.DatabaseLogFolder) ||
                  !string.IsNullOrWhiteSpace(settings.SystemPrompt) ||
                  !string.IsNullOrWhiteSpace(settings.ConnectionTypeName) ||
                  !string.IsNullOrWhiteSpace(settings.LocalServerUrl) ||
-                 !string.IsNullOrWhiteSpace(settings.TitleBlockParametersDescription));
+                 !string.IsNullOrWhiteSpace(settings.TitleBlockParametersDescription) ||
+                 !string.IsNullOrWhiteSpace(settings.DepartmentPrompts?.Architecture) ||
+                 !string.IsNullOrWhiteSpace(settings.DepartmentPrompts?.Structure) ||
+                 !string.IsNullOrWhiteSpace(settings.DepartmentPrompts?.Engineering));
         }
 
         private void OnCreateDatabaseClick(object sender, RoutedEventArgs e)
@@ -172,15 +201,18 @@ namespace KPLN_CoordiantorAI.Forms
                     ArticleAliasesJson = _articleAliasesJson
                 });
 
+                SaveDepartmentPromptDraft();
                 ExternalModelSettings externalModelSettings = new ExternalModelSettings
                 {
                     ApiKey = ExternalModelApiKeyPasswordBox.Password,
                     OnlineServerUrl = ExternalModelOnlineUrlTextBox.Text,
                     LogFolder = ExternalModelLogFolderTextBox.Text,
+                    DatabaseLogFolder = ExternalModelDatabaseLogFolderTextBox.Text,
                     SystemPrompt = ExternalModelSystemPromptTextBox.Text,
                     ConnectionTypeName = GetSelectedExternalModelConnectionType(),
                     LocalServerUrl = ExternalModelLocalUrlTextBox.Text,
-                    TitleBlockParametersDescription = _titleBlockParametersDescription
+                    TitleBlockParametersDescription = _titleBlockParametersDescription,
+                    DepartmentPrompts = _departmentPrompts.Clone()
                 };
                 if (HasExternalModelSettingsValue(externalModelSettings) || _repository.HasExternalModelSettings())
                     _repository.SaveExternalModelSettings(externalModelSettings);
@@ -283,6 +315,22 @@ namespace KPLN_CoordiantorAI.Forms
             }
         }
 
+        private void OnBrowseExternalModelDatabaseLogFolderClick(object sender, RoutedEventArgs e)
+        {
+            using (WinForms.FolderBrowserDialog dialog = new WinForms.FolderBrowserDialog())
+            {
+                dialog.Description = "Выберите папку для БД истории чата";
+                dialog.ShowNewFolderButton = true;
+
+                string currentPath = (ExternalModelDatabaseLogFolderTextBox.Text ?? string.Empty).Trim();
+                if (Directory.Exists(currentPath))
+                    dialog.SelectedPath = currentPath;
+
+                if (dialog.ShowDialog() == WinForms.DialogResult.OK)
+                    ExternalModelDatabaseLogFolderTextBox.Text = dialog.SelectedPath;
+            }
+        }
+
         private void OnOpenDatabaseFolderClick(object sender, RoutedEventArgs e)
         {
             OpenDirectory(_repository.DatabaseFolder);
@@ -296,6 +344,14 @@ namespace KPLN_CoordiantorAI.Forms
         private void OnOpenExternalModelLogFolderClick(object sender, RoutedEventArgs e)
         {
             OpenDirectory(ExternalModelLogFolderTextBox.Text);
+        }
+
+        private void OnOpenExternalModelDatabaseLogFolderClick(object sender, RoutedEventArgs e)
+        {
+            string path = (ExternalModelDatabaseLogFolderTextBox.Text ?? string.Empty).Trim();
+            OpenDirectory(string.IsNullOrWhiteSpace(path)
+                ? ExternalModelSettings.DefaultDatabaseLogFolder
+                : path);
         }
 
         private void OnOpenCertificateFolderClick(object sender, RoutedEventArgs e)

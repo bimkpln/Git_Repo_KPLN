@@ -128,6 +128,18 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 case "get_active_view_in_revit":
                     return Commands.GetActiveViewInfo(_document);
 
+                case "get_project_view_items":
+                    return Commands.GetProjectViewItems(
+                        _document,
+                        GetStringList(arguments, "itemTypes"),
+                        GetBool(arguments, "includeTemplates"),
+                        GetBool(arguments, "includeInternal"),
+                        GetString(arguments, "nameContains", null),
+                        GetStringList(arguments, "viewTypes"),
+                        NormalizeItemLimit(GetInt(arguments, "limit", 200)),
+                        NormalizeOffset(GetInt(arguments, "offset")),
+                        cancellationToken);
+
                 case "get_model_categories":
                     return Commands.GetModelCategories(_document);
 
@@ -344,6 +356,15 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                     return Commands.GetSchedulesInfoAndColumns(
                         _document,
                         GetIntList(arguments, "list_elementIds"));
+
+                case "get_schedule_rows_and_values":
+                    return Commands.GetScheduleRowsAndValues(
+                        _document,
+                        GetInt(arguments, "scheduleId"),
+                        GetIntList(arguments, "columnIndexes"),
+                        GetInt(arguments, "limit", 200),
+                        GetInt(arguments, "offset"),
+                        cancellationToken);
 
                 case "get_schedule_sorting_info":
                     return Commands.GetScheduleSortingInfo(

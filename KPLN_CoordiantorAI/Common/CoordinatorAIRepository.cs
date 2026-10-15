@@ -119,10 +119,15 @@ namespace KPLN_CoordiantorAI.Common
                 settings.ApiKey = GetSetting(connection, "ExternalModel.ApiKey", string.Empty);
                 settings.OnlineServerUrl = GetSetting(connection, "ExternalModel.OnlineServerUrl", string.Empty);
                 settings.LogFolder = GetSetting(connection, "ExternalModel.LogFolder", string.Empty);
+                settings.DatabaseLogFolder = GetSetting(
+                    connection,
+                    "ExternalModel.DatabaseLogFolder",
+                    ExternalModelSettings.DefaultDatabaseLogFolder);
                 settings.SystemPrompt = GetSetting(connection, "ExternalModel.SystemPrompt", string.Empty);
                 settings.ConnectionTypeName = GetSetting(connection, "ExternalModel.ConnectionTypeName", string.Empty);
                 settings.LocalServerUrl = GetSetting(connection, "ExternalModel.LocalServerUrl", string.Empty);
                 settings.TitleBlockParametersDescription = GetSetting(connection, "ExternalModel.TitleBlockParametersDescription", string.Empty);
+                settings.DepartmentPrompts = ReadDepartmentPrompts(connection);
             }
 
             return settings;
@@ -142,10 +147,15 @@ namespace KPLN_CoordiantorAI.Common
                     SetSetting(connection, transaction, "ExternalModel.ApiKey", settings.ApiKey);
                     SetSetting(connection, transaction, "ExternalModel.OnlineServerUrl", settings.OnlineServerUrl);
                     SetSetting(connection, transaction, "ExternalModel.LogFolder", settings.LogFolder);
+                    SetSetting(connection, transaction, "ExternalModel.DatabaseLogFolder", settings.DatabaseLogFolder);
                     SetSetting(connection, transaction, "ExternalModel.SystemPrompt", settings.SystemPrompt);
                     SetSetting(connection, transaction, "ExternalModel.ConnectionTypeName", settings.ConnectionTypeName);
                     SetSetting(connection, transaction, "ExternalModel.LocalServerUrl", settings.LocalServerUrl);
                     SetSetting(connection, transaction, "ExternalModel.TitleBlockParametersDescription", settings.TitleBlockParametersDescription);
+                    DepartmentPromptSettings prompts = settings.DepartmentPrompts ?? new DepartmentPromptSettings();
+                    SetSetting(connection, transaction, DepartmentPromptSettings.ArchitectureKey, prompts.Architecture);
+                    SetSetting(connection, transaction, DepartmentPromptSettings.StructureKey, prompts.Structure);
+                    SetSetting(connection, transaction, DepartmentPromptSettings.EngineeringKey, prompts.Engineering);
                     transaction.Commit();
                 }
             }
@@ -164,7 +174,11 @@ namespace KPLN_CoordiantorAI.Common
                     "'ExternalModel.ApiKey', " +
                     "'ExternalModel.OnlineServerUrl', " +
                     "'ExternalModel.LogFolder', " +
+                    "'ExternalModel.DatabaseLogFolder', " +
                     "'ExternalModel.SystemPrompt', " +
+                    "'ExternalModel.DepartmentPrompt.AR', " +
+                    "'ExternalModel.DepartmentPrompt.KR', " +
+                    "'ExternalModel.DepartmentPrompt.IOS', " +
                     "'ExternalModel.ConnectionTypeName', " +
                     "'ExternalModel.LocalServerUrl');",
                     SettingsTableName),
@@ -340,6 +354,47 @@ namespace KPLN_CoordiantorAI.Common
             {
                 command.ExecuteNonQuery();
             }
+        }
+
+        public DepartmentPromptSettings LoadDepartmentPrompts(string databaseFilePath = null)
+        {
+            string path = databaseFilePath ?? DatabaseFilePath;
+            if (!File.Exists(path))
+                throw new FileNotFoundException("Department prompt settings database is unavailable.", path);
+            var builder = new SQLiteConnectionStringBuilder
+            {
+                DataSource = path, Version = 3, ReadOnly = true, FailIfMissing = true, DefaultTimeout = 3
+            };
+            using (var connection = new SQLiteConnection(builder.ConnectionString))
+            {
+                connection.Open();
+                return ReadDepartmentPrompts(connection);
+            }
+        }
+
+        private static DepartmentPromptSettings ReadDepartmentPrompts(SQLiteConnection connection)
+        {
+            var prompts = new DepartmentPromptSettings();
+            // A single SELECT sees a consistent set of all three profiles.
+            using (var command = new SQLiteCommand(
+                "SELECT Key, Value FROM Settings WHERE Key IN (@ar, @kr, @ios);", connection))
+            {
+                command.Parameters.AddWithValue("@ar", DepartmentPromptSettings.ArchitectureKey);
+                command.Parameters.AddWithValue("@kr", DepartmentPromptSettings.StructureKey);
+                command.Parameters.AddWithValue("@ios", DepartmentPromptSettings.EngineeringKey);
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string key = reader.GetString(0);
+                        string value = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+                        if (key == DepartmentPromptSettings.ArchitectureKey) prompts.Architecture = value;
+                        else if (key == DepartmentPromptSettings.StructureKey) prompts.Structure = value;
+                        else if (key == DepartmentPromptSettings.EngineeringKey) prompts.Engineering = value;
+                    }
+                }
+            }
+            return prompts;
         }
 
         private static string GetSetting(SQLiteConnection connection, string key, string defaultValue)

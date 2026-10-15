@@ -135,6 +135,7 @@
     <Compile Include="Common\CoordinatorAIModels.cs" />
     <Compile Include="Common\CoordinatorAIRepository.cs" />
     <Compile Include="Common\CurrentUserContextService.cs" />
+    <Compile Include="Common\DepartmentPromptSettings.cs" />
     <Compile Include="Common\GigaChatClient.cs" />
     <Compile Include="Common\IAIChatClient.cs" />
     <Compile Include="Common\IDHelper.cs" />
@@ -144,11 +145,14 @@
     <Compile Include="Common\SubDepartmentNameResolver.cs" />
     <Compile Include="ExternalAIModel\ChatLogger.cs" />
     <Compile Include="ExternalAIModel\Commands.cs" />
+    <Compile Include="ExternalAIModel\ScheduleCellPageReader.cs" />
     <Compile Include="ExternalAIModel\Connection.cs" />
     <Compile Include="ExternalAIModel\DiagnosticLogger.cs" />
     <Compile Include="ExternalAIModel\ModelChatLegacyLogReader.cs" />
     <Compile Include="ExternalAIModel\ModelChatHistoryRepository.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpContracts.cs" />
+    <Compile Include="ExternalAIModel\Mcp\RevitFailureStore.cs" />
+    <Compile Include="ExternalAIModel\Mcp\RevitFailureMonitor.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpDiagnosticLogger.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpExternalEventHandler.cs" />
     <Compile Include="ExternalAIModel\Mcp\RevitMcpFileAttachmentService.cs" />
@@ -163,6 +167,7 @@
     <Compile Include="ExternalAIModel\Mcp\RevitMcpTransport.cs" />
     <Compile Include="ExternalAIModel\McpClient\InternalMcpClient.cs" />
     <Compile Include="ExternalAIModel\McpClient\InternalMcpToolProvider.cs" />
+    <Compile Include="ExternalAIModel\McpClient\AutodeskProductHelpMcpClient.cs" />
     <Compile Include="ExternalCommands\SettingsAI.cs" />
     <Compile Include="ExternalCommands\StartAI.cs" />
     <Compile Include="Forms\ArticleAliasesWindow.xaml.cs">
@@ -181,6 +186,7 @@
       <DependentUpon>ExternalModelWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Forms\ModelChatHistoryWindow.cs" />
+    <Compile Include="Forms\ModelChatMarkdownRenderer.cs" />
     <Compile Include="Forms\SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>

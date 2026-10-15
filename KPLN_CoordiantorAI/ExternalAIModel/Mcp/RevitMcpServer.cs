@@ -11,6 +11,7 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
 
         private readonly RevitMcpExternalEventHandler _externalEventHandler;
         private readonly int _revitVersion;
+        private readonly RevitFailureStore _failureStore;
         private RevitMcpTransport _transport;
         private bool _registered;
         private bool _disposed;
@@ -20,9 +21,10 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
         {
         }
 
-        public RevitMcpServer(int revitVersion)
+        public RevitMcpServer(int revitVersion, RevitFailureStore failureStore = null)
         {
             _revitVersion = revitVersion;
+            _failureStore = failureStore;
             InstanceId = Guid.NewGuid().ToString("N");
             _externalEventHandler = new RevitMcpExternalEventHandler();
         }
@@ -54,7 +56,8 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                     endpoint,
                     _externalEventHandler,
                     InstanceId,
-                    _revitVersion);
+                    _revitVersion,
+                    _failureStore);
 
                 try
                 {
