@@ -133,6 +133,328 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
         #endregion
 
+        #region get_project_view_items
+
+        public static object GetProjectViewItems(
+            Document doc,
+            List<string> itemTypes,
+            bool includeTemplates,
+            bool includeInternal,
+            string nameContains,
+            List<string> viewTypes,
+            int limit = 200,
+            int offset = 0,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (doc == null)
+                return new { error = "No active Revit document." };
+
+            string[] allowedItemTypes = { "view", "schedule", "sheet", "view_template" };
+            HashSet<string> requestedItemTypes = new HashSet<string>(
+                (itemTypes ?? new List<string>())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(value => value.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+            if (requestedItemTypes.Count == 0)
+                requestedItemTypes.Add("view");
+
+            List<string> invalidItemTypes = requestedItemTypes
+                .Where(value => !allowedItemTypes.Contains(value, StringComparer.OrdinalIgnoreCase))
+                .OrderBy(value => value)
+                .ToList();
+            if (invalidItemTypes.Count > 0)
+            {
+                return new
+                {
+                    error = "Unsupported itemTypes: " + string.Join(", ", invalidItemTypes),
+                    allowed_item_types = allowedItemTypes
+                };
+            }
+            if (includeTemplates)
+                requestedItemTypes.Add("view_template");
+
+            HashSet<string> requestedViewTypes = new HashSet<string>(
+                (viewTypes ?? new List<string>())
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Select(value => value.Trim()),
+                StringComparer.OrdinalIgnoreCase);
+            HashSet<string> allowedViewTypes = new HashSet<string>(
+                Enum.GetNames(typeof(ViewType)),
+                StringComparer.OrdinalIgnoreCase);
+            List<string> invalidViewTypes = requestedViewTypes
+                .Where(value => !allowedViewTypes.Contains(value))
+                .OrderBy(value => value)
+                .ToList();
+            if (invalidViewTypes.Count > 0)
+            {
+                return new
+                {
+                    error = "Unsupported viewTypes: " + string.Join(", ", invalidViewTypes),
+                    allowed_view_types = allowedViewTypes.OrderBy(value => value).ToArray()
+                };
+            }
+
+            int normalizedLimit = Math.Min(Math.Max(limit, 1), 200);
+            int normalizedOffset = Math.Max(offset, 0);
+            string normalizedNameFilter = string.IsNullOrWhiteSpace(nameContains)
+                ? null
+                : nameContains.Trim();
+
+            try
+            {
+                List<View> matchingViews = new FilteredElementCollector(doc)
+                    .OfClass(typeof(View))
+                    .Cast<View>()
+                    .Where(view =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        string itemType = GetProjectViewItemType(view);
+                        if (!requestedItemTypes.Contains(itemType))
+                            return false;
+                        if (!includeInternal && IsInternalProjectView(view))
+                            return false;
+                        if (requestedViewTypes.Count > 0 && !requestedViewTypes.Contains(view.ViewType.ToString()))
+                            return false;
+                        return normalizedNameFilter == null
+                            || GetSafeViewName(view).IndexOf(normalizedNameFilter, StringComparison.OrdinalIgnoreCase) >= 0;
+                    })
+                    .OrderBy(view => GetProjectViewItemTypeSortOrder(GetProjectViewItemType(view)))
+                    .ThenBy(GetSafeViewName, StringComparer.CurrentCultureIgnoreCase)
+                    .ThenBy(view => IDHelper.ElIdInt(view.Id))
+                    .ToList();
+
+                List<JObject> pageItems = new List<JObject>();
+                foreach (View view in matchingViews.Skip(normalizedOffset).Take(normalizedLimit))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    pageItems.Add(BuildProjectViewItem(doc, view));
+                }
+
+                int nextOffsetValue = normalizedOffset + pageItems.Count;
+                bool hasMore = nextOffsetValue < matchingViews.Count;
+                return new
+                {
+                    items = pageItems,
+                    total_count = matchingViews.Count,
+                    returned_count = pageItems.Count,
+                    limit = normalizedLimit,
+                    offset = normalizedOffset,
+                    has_more = hasMore,
+                    next_offset = hasMore ? (int?)nextOffsetValue : null,
+                    requested_item_types = requestedItemTypes
+                        .OrderBy(GetProjectViewItemTypeSortOrder)
+                        .ToArray(),
+                    available_item_types = allowedItemTypes,
+                    filters = new
+                    {
+                        include_templates = requestedItemTypes.Contains("view_template"),
+                        include_internal = includeInternal,
+                        name_contains = normalizedNameFilter,
+                        view_types = requestedViewTypes.OrderBy(value => value).ToArray()
+                    }
+                };
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                return new { error = "Cannot read project views: " + ex.Message };
+            }
+        }
+
+        private static JObject BuildProjectViewItem(Document doc, View view)
+        {
+            string itemType = GetProjectViewItemType(view);
+            JObject item = new JObject
+            {
+                { "id", IDHelper.ElIdInt(view.Id) },
+                { "name", GetSafeViewName(view) },
+                { "itemType", itemType },
+                { "viewType", view.ViewType.ToString() },
+                { "isTemplate", view.IsTemplate }
+            };
+            JArray metadataErrors = new JArray();
+
+            try
+            {
+                item["canBePrinted"] = view.CanBePrinted;
+            }
+            catch (Exception ex)
+            {
+                metadataErrors.Add("CanBePrinted: " + ex.Message);
+            }
+
+            if (itemType == "sheet")
+            {
+                ViewSheet sheet = view as ViewSheet;
+                try
+                {
+                    item["sheetNumber"] = sheet.SheetNumber ?? string.Empty;
+                    item["isPlaceholder"] = sheet.IsPlaceholder;
+                }
+                catch (Exception ex)
+                {
+                    metadataErrors.Add("Sheet metadata: " + ex.Message);
+                }
+            }
+            else if (itemType == "schedule")
+            {
+                ViewSchedule schedule = view as ViewSchedule;
+                item["scheduleType"] = schedule == null ? "PanelSchedule" : "ViewSchedule";
+                if (schedule != null)
+                {
+                    try
+                    {
+                        ScheduleDefinition definition = schedule.Definition;
+                        item["isKeySchedule"] = definition.IsKeySchedule;
+                        item["isMaterialTakeoff"] = definition.IsMaterialTakeoff;
+                        ElementId categoryId = definition.CategoryId;
+                        Category category = IsUsableElementId(categoryId)
+                            ? Category.GetCategory(doc, categoryId)
+                            : null;
+                        item["category"] = category == null
+                            ? (JToken)JValue.CreateNull()
+                            : (JToken)new JObject
+                            {
+                                { "id", IDHelper.ElIdInt(category.Id) },
+                                { "name", category.Name }
+                            };
+                    }
+                    catch (Exception ex)
+                    {
+                        metadataErrors.Add("Schedule metadata: " + ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                try
+                {
+                    Level level = view.GenLevel;
+                    item["level"] = level == null
+                        ? (JToken)JValue.CreateNull()
+                        : (JToken)new JObject
+                        {
+                            { "id", IDHelper.ElIdInt(level.Id) },
+                            { "name", level.Name }
+                        };
+                }
+                catch (Exception ex)
+                {
+                    metadataErrors.Add("Level: " + ex.Message);
+                }
+
+                try
+                {
+                    Parameter discipline = view.get_Parameter(BuiltInParameter.VIEW_DISCIPLINE);
+                    item["discipline"] = GetParameterDisplayValue(discipline);
+                    item["disciplineValue"] = GetParameterIntegerValue(discipline);
+                }
+                catch (Exception ex)
+                {
+                    metadataErrors.Add("Discipline: " + ex.Message);
+                }
+
+                AddViewElementReference(doc, view, BuiltInParameter.VIEW_PHASE, "phase", item, metadataErrors);
+                AddViewElementReference(doc, view, BuiltInParameter.VIEW_PHASE_FILTER, "phaseFilter", item, metadataErrors);
+
+                try
+                {
+                    ElementId templateId = view.ViewTemplateId;
+                    Element template = IsUsableElementId(templateId) ? doc.GetElement(templateId) : null;
+                    item["viewTemplate"] = template == null
+                        ? (JToken)JValue.CreateNull()
+                        : (JToken)new JObject
+                        {
+                            { "id", IDHelper.ElIdInt(template.Id) },
+                            { "name", template.Name }
+                        };
+                }
+                catch (Exception ex)
+                {
+                    metadataErrors.Add("ViewTemplate: " + ex.Message);
+                }
+            }
+
+            if (metadataErrors.Count > 0)
+                item["metadataErrors"] = metadataErrors;
+            return item;
+        }
+
+        private static void AddViewElementReference(
+            Document doc,
+            View view,
+            BuiltInParameter parameter,
+            string propertyName,
+            JObject item,
+            JArray metadataErrors)
+        {
+            try
+            {
+                ElementId elementId = GetElementIdParameterValue(view, parameter);
+                Element element = IsUsableElementId(elementId) ? doc.GetElement(elementId) : null;
+                item[propertyName] = element == null
+                    ? (JToken)JValue.CreateNull()
+                    : (JToken)new JObject
+                    {
+                        { "id", IDHelper.ElIdInt(element.Id) },
+                        { "name", element.Name }
+                    };
+            }
+            catch (Exception ex)
+            {
+                metadataErrors.Add(propertyName + ": " + ex.Message);
+            }
+        }
+
+        private static string GetProjectViewItemType(View view)
+        {
+            if (view.IsTemplate)
+                return "view_template";
+            if (view is ViewSheet)
+                return "sheet";
+            if (view is ViewSchedule || view.ViewType == ViewType.PanelSchedule)
+                return "schedule";
+            return "view";
+        }
+
+        private static int GetProjectViewItemTypeSortOrder(string itemType)
+        {
+            switch (itemType)
+            {
+                case "view": return 0;
+                case "schedule": return 1;
+                case "sheet": return 2;
+                case "view_template": return 3;
+                default: return 4;
+            }
+        }
+
+        private static bool IsInternalProjectView(View view)
+        {
+            return view.ViewType == ViewType.Internal
+                || view.ViewType == ViewType.ProjectBrowser
+                || view.ViewType == ViewType.SystemBrowser
+                || view.ViewType == ViewType.Undefined;
+        }
+
+        private static string GetSafeViewName(View view)
+        {
+            try
+            {
+                return view.Name ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        #endregion
+
         #region 2_get_all_elements_shown_in_view
 
         public class ViewElementsResult
@@ -7411,6 +7733,20 @@ namespace KPLN_CoordiantorAI.ExternalModel
                             //тип параметра (фомрула, процент и т.п.)
                             string fieldTypeDescription = GetFieldTypeDescription(field.FieldType);
 
+                            string displayType = "Unavailable";
+                            bool calculateTotals = false;
+                            try
+                            {
+                                ScheduleFieldDisplayType scheduleFieldDisplayType = field.DisplayType;
+                                displayType = scheduleFieldDisplayType.ToString();
+                                calculateTotals = scheduleFieldDisplayType == ScheduleFieldDisplayType.Totals;
+                            }
+                            catch
+                            {
+                                displayType = "Unavailable";
+                                calculateTotals = false;
+                            }
+
                             // Информация о вычисляемых полях
                             string calculatedType = null;
                             string percentageOfField = null;
@@ -7534,6 +7870,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
                                 isCombinedParameter = field.IsCombinedParameterField,
                                 fieldType = field.FieldType.ToString(),
                                 fieldTypeDescription = fieldTypeDescription,
+                                displayType = displayType,
+                                calculateTotals = calculateTotals,
                                 calculatedType = calculatedType,
                                 percentageOfField = percentageOfField,
                                 percentageByField = percentageByField,
@@ -7935,6 +8273,148 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     return "По убыванию (Я → А, 9 → 0)";
                 default:
                     return sortOrder.ToString();
+            }
+        }
+
+        #endregion
+
+        #region get_schedule_rows_and_values
+
+        public static object GetScheduleRowsAndValues(
+            Document doc,
+            int scheduleId,
+            List<int> columnIndexes,
+            int limit = 200,
+            int offset = 0,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (doc == null)
+                return new { error = "No active Revit document." };
+            if (scheduleId <= 0 || limit <= 0 || offset < 0)
+                return new { error = "scheduleId and limit must be positive; offset must be non-negative." };
+
+            try
+            {
+                ViewSchedule schedule = doc.GetElement(IDHelper.ToElementId(scheduleId)) as ViewSchedule;
+                if (schedule == null)
+                    return new { error = "The element does not exist or is not a ViewSchedule.", scheduleId };
+                if (schedule.IsTemplate)
+                    return new { error = "A schedule template has no data rows. Specify a schedule instance.", scheduleId };
+
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                using (TableData table = schedule.GetTableData())
+                using (TableSectionData body = table.GetSectionData(SectionType.Body))
+                {
+                    if (body == null)
+                        return new { error = "The schedule has no Body section.", scheduleId };
+
+                    int firstColumn = body.FirstColumnNumber;
+                    int columnCount = body.NumberOfColumns;
+                    List<int> selectedColumns = columnIndexes == null || columnIndexes.Count == 0
+                        ? Enumerable.Range(firstColumn, columnCount).ToList()
+                        : columnIndexes.Distinct().OrderBy(index => index).ToList();
+                    if (selectedColumns.Any(index => index < firstColumn || (long)index - firstColumn >= columnCount))
+                        return new
+                        {
+                            error = "columnIndexes must contain visible Body column indices, not field IDs.",
+                            firstColumnIndex = firstColumn,
+                            column_count = columnCount
+                        };
+
+                    ScheduleDefinition definition = schedule.Definition;
+                    List<ScheduleField> visibleFields = new List<ScheduleField>();
+                    JArray warnings = new JArray();
+                    bool fieldMappingAvailable = false;
+                    JToken isItemized = JValue.CreateNull();
+                    try
+                    {
+                        isItemized = new JValue(definition.IsItemized);
+                        foreach (ScheduleFieldId fieldId in definition.GetFieldOrder())
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            ScheduleField field = definition.GetField(fieldId);
+                            if (!field.IsHidden)
+                                visibleFields.Add(field);
+                        }
+                        // Hidden fields have no Body column; embedded schedules need their own mapping.
+                        fieldMappingAvailable = !definition.HasEmbeddedSchedule && visibleFields.Count == columnCount;
+                    }
+                    catch (OperationCanceledException) { throw; }
+                    catch (Exception ex)
+                    {
+                        warnings.Add("Schedule field metadata is unavailable: " + ex.Message);
+                    }
+                    if (!fieldMappingAvailable)
+                        warnings.Add("Body columns could not be reliably mapped to schedule fields. Use columnIndex; field metadata is null.");
+
+                    JArray columns = new JArray();
+                    foreach (int columnIndex in selectedColumns)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        JObject column = new JObject
+                        {
+                            { "columnIndex", columnIndex },
+                            { "header", JValue.CreateNull() },
+                            { "fieldId", JValue.CreateNull() },
+                            { "isCalculated", JValue.CreateNull() },
+                            { "fieldType", JValue.CreateNull() },
+                            { "displayType", JValue.CreateNull() },
+                            { "calculateTotals", JValue.CreateNull() }
+                        };
+                        if (fieldMappingAvailable)
+                        {
+                            ScheduleField field = visibleFields[columnIndex - firstColumn];
+                            try
+                            {
+                                column["fieldId"] = field.FieldId.IntegerValue;
+                                column["header"] = field.ColumnHeading ?? string.Empty;
+                                column["isCalculated"] = field.IsCalculatedField;
+                                column["fieldType"] = field.FieldType.ToString();
+                            }
+                            catch (Exception ex)
+                            {
+                                column["metadataError"] = ex.Message;
+                            }
+                            try
+                            {
+                                ScheduleFieldDisplayType displayType = field.DisplayType;
+                                column["displayType"] = displayType.ToString();
+                                column["calculateTotals"] = displayType == ScheduleFieldDisplayType.Totals;
+                            }
+                            catch (Exception ex)
+                            {
+                                column["displayTypeError"] = ex.Message;
+                            }
+                        }
+                        columns.Add(column);
+                    }
+
+                    JObject metadata = new JObject
+                    {
+                        { "scheduleId", scheduleId },
+                        { "scheduleName", schedule.Name },
+                        { "section", "Body" },
+                        { "isItemized", isItemized },
+                        { "firstRowIndex", body.FirstRowNumber },
+                        { "firstColumnIndex", firstColumn },
+                        { "column_count", columnCount },
+                        { "field_mapping_available", fieldMappingAvailable },
+                        { "columns", columns },
+                        { "warnings", warnings }
+                    };
+                    int remainingMilliseconds = (int)Math.Max(0L,
+                        ScheduleCellPageReader.TimeBudgetMilliseconds - stopwatch.ElapsedMilliseconds);
+                    return ScheduleCellPageReader.Read(
+                        metadata, body.FirstRowNumber, body.NumberOfRows, selectedColumns, limit, offset,
+                        (row, column) => schedule.GetCellText(SectionType.Body, row, column),
+                        cancellationToken, remainingMilliseconds);
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                return new { error = "Cannot read schedule cells: " + ex.Message, scheduleId };
             }
         }
 

@@ -9,6 +9,14 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
         private static readonly List<RevitMcpToolDefinition> Tools = new List<RevitMcpToolDefinition>
         {
             Tool("get_active_view_in_revit", "ViewContext", "Returns the current active Revit view or sheet information."),
+            Tool("get_project_view_items", "ViewContext", "Returns project views, schedules, sheets and view templates from the current model. By default returns user-facing views only. Use itemTypes to request one or more kinds, and follow next_offset until has_more is false. Results are read-only, deterministically ordered and paginated at a maximum of 200 items.", PagedProps(new[]
+            {
+                new JProperty("itemTypes", EnumStrArray("Kinds to return. Omit or pass [] for view only.", "view", "schedule", "sheet", "view_template")),
+                new JProperty("includeTemplates", Bool("Also include view_template items. Default false; explicit itemTypes=view_template works independently.")),
+                new JProperty("includeInternal", Bool("Include Revit internal, project browser, system browser and undefined views. Default false.")),
+                new JProperty("nameContains", Str("Optional case-insensitive substring of the item name.")),
+                new JProperty("viewTypes", StrArray("Optional Revit ViewType names, for example FloorPlan, ThreeD, Section, Elevation, DrawingSheet or Schedule."))
+            })),
             Tool("get_all_elements_shown_in_view", "Visibility", "Returns element ids visible in a view, sheet or schedule with pagination.", PagedProps(new JProperty("viewOrSheetId", Int("View, sheet or schedule element id. Optional.")))),
 
             Tool("get_category_by_keyword", "Categories", "Finds Revit categories by keyword.", Props(new JProperty("keyword", Str("Category keyword.")), "keyword")),
@@ -42,6 +50,17 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
             Tool("get_model_file_info", "ModelInfo", "Returns current model file information."),
             Tool("get_all_project_units", "ModelInfo", "Returns project units."),
             Tool("get_all_warnings_in_the_model", "ModelInfo", "Returns all warnings in the current Revit model with pagination.", PagedProps()),
+            Tool("get_recent_revit_failures", "ModelInfo", "Reads recently captured Revit operation errors and warnings, including failed family type creation and canceled operations. Use when the user reports an error dialog or a failed operation. Reads memory without ExternalEvent, including while a modal error dialog is open. Default: latest 10 records for the active document, newest first. These are historical observations, not proof an error is still active; element ids may no longer exist after rollback. Only this Revit process/session and failures observed since plugin startup are included. Pass all_documents=true if no active document is known. Preserve snapshot_sequence and filters when following next_offset; records can be evicted from the bounded buffer. Does not dismiss or fix errors.", Props(new[]
+            {
+                new JProperty("document_id", Str("Optional session-local document id returned by this tool. Overrides active document selection.")),
+                new JProperty("all_documents", Bool("Read all documents in this process. Default false. Cannot be combined with document_id.")),
+                new JProperty("dateTime", Str("Optional inclusive start, yyyy-MM-dd HH:mm:ss or ISO date/time. No timezone means Moscow time.")),
+                new JProperty("endDateTime", Str("Optional inclusive end, same formats/timezone as dateTime.")),
+                new JProperty("severity", Str("Optional Warning, Error or DocumentCorruption.")),
+                new JProperty("limit", new JObject { { "type", "integer" }, { "default", 10 }, { "minimum", 1 }, { "maximum", 200 }, { "description", "Maximum records per page. Default 10; also capped at 200 KiB." } }),
+                new JProperty("offset", Int("Offset. Default 0.")),
+                new JProperty("snapshot_sequence", Int("Upper sequence returned on the first page. Reuse on subsequent pages."))
+            })),
 
             Tool("get_attached_files", "Files", "WPF-only. Lists supported files explicitly attached by the user in the Revit chat, including DOCX documents. Returns metadata and file_id values, never filesystem paths.",
                 Props(new JProperty("scope_id", Str("Attachment scope id provided in the WPF system context.")), "scope_id")),
@@ -87,6 +106,13 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 new JProperty("offset", Int("Sheet offset. Default 0; use next_offset for the next page."))
             }, "list_elementIds")),
             Tool("get_schedules_info_and_columns", "Schedules", "Returns schedule structure, fields, filters and columns with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Schedule element ids.")), "list_elementIds")),
+            Tool("get_schedule_rows_and_values", "Schedules", "Reads displayed text from schedule Body cells, including calculated formula/percentage fields and totals. Read-only; preserves Revit formatting, units, blank/group/total rows. Returns items with rowIndex and cells (columnIndex, text), plus visible column metadata. Rows are not mapped to element IDs. Pages contain at most 200 rows and 204800 UTF-8 bytes of result JSON. Follow next_offset while has_more is true, keeping scheduleId and columnIndexes unchanged. Cell errors are reported individually; an oversized row requires fewer columnIndexes. Does not return formula expressions or unrounded numeric values.", Props(new[]
+            {
+                new JProperty("scheduleId", Int("ViewSchedule element ID in the current document, not a sheet placement ID.")),
+                new JProperty("columnIndexes", IntArray("Optional visible Body column indices from this tool's columns, not field IDs or indices including hidden fields. Omit or pass [] to read all visible columns.")),
+                new JProperty("limit", Int("Maximum rows per page. Positive integer; default and maximum 200.")),
+                new JProperty("offset", Int("Number of Body rows to skip. Default 0; use next_offset from the previous page."))
+            }, "scheduleId")),
             Tool("get_schedule_sorting_info", "Schedules", "Returns schedule sorting and grouping information with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Schedule element ids.")), "list_elementIds")),
 
             Tool("get_journal_entries_since", "Journal", "Returns Revit journal entries for a date/time range with pagination. When analyzing the result, focus first on user actions and use technical startup, shutdown and add-in events as supporting context.", Props(new[] { new JProperty("dateTime", Str("Start date/time.")), new JProperty("endDateTime", Str("Optional end date/time.")), new JProperty("limit", Int("Maximum page size in characters. Default and maximum 204800.")), new JProperty("offset", Int("Character offset for the next page. Default 0.")) }, "dateTime")),
@@ -237,6 +263,23 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 { "type", "array" },
                 { "description", description },
                 { "items", new JObject { { "type", "string" } } }
+            };
+        }
+
+        private static JObject EnumStrArray(string description, params string[] values)
+        {
+            return new JObject
+            {
+                { "type", "array" },
+                { "description", description },
+                {
+                    "items",
+                    new JObject
+                    {
+                        { "type", "string" },
+                        { "enum", new JArray(values ?? new string[0]) }
+                    }
+                }
             };
         }
     }

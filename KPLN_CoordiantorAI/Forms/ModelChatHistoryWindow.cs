@@ -307,8 +307,8 @@ namespace KPLN_CoordiantorAI.Forms
                 Foreground = Brush(138, 148, 165),
                 Margin = new Thickness(2, 0, 2, 4)
             });
-            block.Children.Add(CreateMessage("Вы", entry.UserQuestion, Brush(44, 107, 237), HorizontalAlignment.Right));
-            block.Children.Add(CreateMessage("ИИ", entry.FinalAnswer, Brush(48, 54, 66), HorizontalAlignment.Left));
+            block.Children.Add(CreateMessage("Вы", entry.UserQuestion, Brush(44, 107, 237), HorizontalAlignment.Right, false));
+            block.Children.Add(CreateMessage("ИИ", entry.FinalAnswer, Brush(48, 54, 66), HorizontalAlignment.Left, true));
             return block;
         }
 
@@ -316,7 +316,8 @@ namespace KPLN_CoordiantorAI.Forms
             string author,
             string text,
             Brush background,
-            HorizontalAlignment alignment)
+            HorizontalAlignment alignment,
+            bool renderMarkdown)
         {
             StackPanel content = new StackPanel();
             content.Children.Add(new TextBlock
@@ -327,13 +328,40 @@ namespace KPLN_CoordiantorAI.Forms
                 Foreground = Brush(205, 211, 221),
                 Margin = new Thickness(0, 0, 0, 3)
             });
-            content.Children.Add(new TextBlock
+            if (renderMarkdown)
             {
-                Text = text ?? string.Empty,
-                FontSize = 13,
-                Foreground = Brushes.White,
-                TextWrapping = TextWrapping.Wrap
-            });
+                RichTextBox richTextBox = new RichTextBox
+                {
+                    IsReadOnly = true,
+                    IsDocumentEnabled = true,
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Padding = new Thickness(0),
+                    Margin = new Thickness(0),
+                    FontFamily = new FontFamily("Segoe UI"),
+                    FontSize = 13,
+                    Foreground = Brushes.White,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+                };
+                ModelChatMarkdownRenderer.Render(
+                    richTextBox,
+                    text,
+                    Brushes.White,
+                    Brush(111, 190, 255),
+                    Brush(62, 70, 84));
+                content.Children.Add(richTextBox);
+            }
+            else
+            {
+                content.Children.Add(new TextBlock
+                {
+                    Text = text ?? string.Empty,
+                    FontSize = 13,
+                    Foreground = Brushes.White,
+                    TextWrapping = TextWrapping.Wrap
+                });
+            }
 
             return new Border
             {

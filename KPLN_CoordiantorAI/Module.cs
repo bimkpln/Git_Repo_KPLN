@@ -14,9 +14,15 @@ namespace KPLN_CoordiantorAI
     {
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
         private RevitMcpServer _mcpServer;
+        private RevitFailureMonitor _failureMonitor;
 
         public Result Close()
         {
+            if (_failureMonitor != null)
+            {
+                _failureMonitor.Dispose();
+                _failureMonitor = null;
+            }
             if (_mcpServer != null)
             {
                 _mcpServer.Dispose();
@@ -34,6 +40,14 @@ namespace KPLN_CoordiantorAI
             // Установка основных полей модуля
             ModuleData.RevitMainWindowHandle = application.MainWindowHandle;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
+            if (_failureMonitor == null)
+            {
+                try { _failureMonitor = new RevitFailureMonitor(application); }
+                catch (System.Exception ex)
+                {
+                    RevitMcpDiagnosticLogger.LogException("Revit failure capture startup failed", ex);
+                }
+            }
             StartMcpServer();
 
             //Добавляю панель
@@ -90,7 +104,8 @@ namespace KPLN_CoordiantorAI
             try
             {
                 RevitMcpDiagnosticLogger.Log("Module.StartMcpServer begin.");
-                _mcpServer = new RevitMcpServer(ModuleData.RevitVersion);
+                _mcpServer = new RevitMcpServer(ModuleData.RevitVersion,
+                    _failureMonitor == null ? null : _failureMonitor.Store);
                 _mcpServer.Start();
                 ModuleData.McpEndpoint = _mcpServer.Endpoint;
                 ModuleData.McpInstanceId = _mcpServer.InstanceId;

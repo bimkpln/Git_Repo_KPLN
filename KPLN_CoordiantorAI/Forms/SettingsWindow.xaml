@@ -423,6 +423,24 @@
                                     Click="OnOpenExternalModelLogFolderClick"/>
                         </Grid>
 
+                        <TextBlock Style="{StaticResource LabelText}" Text="Папка для БД истории чата"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="ExternalModelDatabaseLogFolderTextBox" Grid.Column="0"/>
+                            <Button Grid.Column="1"
+                                    Content="Обзор"
+                                    Click="OnBrowseExternalModelDatabaseLogFolderClick"/>
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource PathActionButton}"
+                                    Content="📂"
+                                    ToolTip="Открыть папку с БД истории чата"
+                                    Click="OnOpenExternalModelDatabaseLogFolderClick"/>
+                        </Grid>
+
                         <TextBlock Style="{StaticResource LabelText}" Text="Системный промпт (systemPrompt)"/>
                         <TextBox x:Name="ExternalModelSystemPromptTextBox"
                                  MinHeight="180"
@@ -431,6 +449,17 @@
                                  TextWrapping="Wrap"
                                  VerticalScrollBarVisibility="Auto"
                                  Margin="0,0,0,18"/>
+                        <TextBlock Style="{StaticResource LabelText}" Text="Дополнительная инструкция отдела"/>
+                        <ComboBox x:Name="DepartmentPromptComboBox"
+                                  SelectionChanged="OnDepartmentPromptSelectionChanged"
+                                  Margin="0,0,0,8">
+                            <ComboBoxItem Content="АР" Tag="AR"/>
+                            <ComboBoxItem Content="КР" Tag="KR"/>
+                            <ComboBoxItem Content="ИОС" Tag="IOS" ToolTip="Общая инструкция для всех подразделений ИОС"/>
+                        </ComboBox>
+                        <TextBox x:Name="DepartmentPromptTextBox"
+                                 Height="180" AcceptsReturn="True" TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" Margin="0,0,0,18"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
                             <Button Content="Настроить описания команд"
                                     Margin="0"
