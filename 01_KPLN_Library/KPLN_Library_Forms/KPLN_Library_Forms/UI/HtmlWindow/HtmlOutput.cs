@@ -3,10 +3,12 @@ using Autodesk.Revit.UI;
 using HtmlAgilityPack;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace KPLN_Library_Forms.UI.HtmlWindow
@@ -24,12 +26,14 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
         /// <summary>
         /// Путь для сохранения файлов
         /// </summary>
-        private static readonly string _outputPath = Path.Combine(_fileDirectory,  $"{_fileNameMask}_{DateTime.Now:dd/MM/yyyy_HH/mm/ss}.html");
+        // Имя не зависит от разделителя даты Windows; параллельные сеансы получают разные файлы.
+        private static readonly string _outputPath = Path.Combine(_fileDirectory,
+            $"{_fileNameMask}_{DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss-fff", CultureInfo.InvariantCulture)}_{Guid.NewGuid():N}.html");
         private static readonly string HTML_Output_DocType = "<!DOCTYPE HTML PUBLIC '-//W3C//DTD HTML 4.01 Transitional//EN' 'http://www.w3.org/TR/html4/loose.dtd'>";
         /// <summary>
         /// Флаг для индикации запуска чистки предыдущих версий документов в текущей сессии
         /// </summary>
-        private static bool _isCleared = false;
+        private static int _cleanupStarted;
         private static string _html_Output_Head ;
         private static HtmlDocument _htmlDocument = new HtmlDocument();
 
@@ -171,10 +175,8 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
         private static void OutputPrint(string value, string cssclass)
         {
             // Предварительная чистка старых файлов
-            if (!_isCleared)
-            {
-                Task clearingTask = Task.Run(() => ClearOldFiles());
-            }
+            if (Interlocked.CompareExchange(ref _cleanupStarted, 1, 0) == 0)
+                Task.Run(() => ClearOldFiles());
             
             // Печать
             string insertablevalue = string.Join("<b>«", value.Split('«'));
@@ -232,32 +234,28 @@ namespace KPLN_Library_Forms.UI.HtmlWindow
         /// </summary>
         private static void ClearOldFiles()
         {
-            // Перевожу в сигнальное состояние, чтобы больше чистку не запускать
-            _isCleared = true;
-
-            // Провожу чистку
-            string[] htmlOutputFilesFullPath = Directory.GetFiles(_fileDirectory).Where(s => s.Contains(_fileNameMask)).ToArray();
-            foreach (string fullPath in htmlOutputFilesFullPath)
+            try
             {
-                FileInfo file = new FileInfo(fullPath);
-                if (file.CreationTime.Date < DateTime.Now.AddDays(-3))
+                string[] htmlOutputFilesFullPath = Directory.GetFiles(_fileDirectory, _fileNameMask + "_*.html");
+                foreach (string fullPath in htmlOutputFilesFullPath)
                 {
-                    try
+                    FileInfo file = new FileInfo(fullPath);
+                    if (file.CreationTime.Date < DateTime.Now.AddDays(-3))
                     {
-                        file.Delete();
-                    }
-                    // Ошибка будет только если файл занят
-                    catch (UnauthorizedAccessException) { }
-                    catch (Exception ex)
-                    {
-                        TaskDialog td = new TaskDialog("KPLN")
+                        try
                         {
-                            MainInstruction = "Скинь скрин ошибки в BIM-отдел",
-                            MainContent = $"При очистке старых файлов - произошла ошика: {ex.Message}"
-                        };
-                        td.Show();
+                            file.Delete();
+                        }
+                        // Отчёт может быть открыт другим сеансом Revit.
+                        catch (UnauthorizedAccessException) { }
+                        catch (IOException) { }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Очистка работает в фоне: Revit API и окна сообщений здесь недоступны.
+                System.Diagnostics.Trace.WriteLine("Не удалось очистить старые HTML-отчёты KPLN: " + ex);
             }
         }
     }
