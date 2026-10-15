@@ -152,6 +152,7 @@
     <Compile Include="Common\OVVK_System\OVVK_MergeSystem.cs" />
     <Compile Include="Common\OVVK_System\SystemNameResolver.cs" />
     <Compile Include="Common\OVVK_System\SystemNameValidation.cs" />
+    <Compile Include="Common\OVVK_System\SystemAbbreviationValidation.cs" />
     <Compile Include="Common\OVVK_System\SystemNameFillService.cs" />
     <Compile Include="Common\OVVK_System\SystemRefreshService.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />

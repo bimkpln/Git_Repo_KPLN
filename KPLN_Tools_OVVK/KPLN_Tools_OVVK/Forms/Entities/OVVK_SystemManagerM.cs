@@ -46,6 +46,10 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         private string _operationMessage = string.Empty;
         private readonly Dictionary<string, List<ElementId>> _systemElementIds = new Dictionary<string, List<ElementId>>();
         private readonly Dictionary<OVVK_SystemManagerRowKind, List<ElementId>> _errorElementIds = new Dictionary<OVVK_SystemManagerRowKind, List<ElementId>>();
+        private readonly HashSet<string> _invalidSystemNames = new HashSet<string>();
+        private OVVK_SystemManagerRowM[] _systemTypeIssueRows = new OVVK_SystemManagerRowM[0];
+        private int _selectionUpdateDepth;
+        private int _issueElementCount;
         private bool _isBusy;
         private bool _isDocumentActive = true;
 
@@ -78,6 +82,8 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         [JsonIgnore]
         public Document CurrentDoc { get; private set; }
 
+        internal long RefreshRevision { get; private set; }
+
         public string DocumentKey { get; set; }
 
         [JsonIgnore]
@@ -101,6 +107,29 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         [JsonIgnore]
         public bool HasParameterErrors { get; private set; }
 
+        [JsonIgnore]
+        public string[] SystemAbbreviationErrors { get; private set; } = new string[0];
+
+        [JsonIgnore]
+        public bool HasSystemAbbreviationErrors => SystemAbbreviationErrors.Length > 0;
+
+        [JsonIgnore]
+        public string[] ForbiddenSystemTypeErrors { get; private set; } = new string[0];
+
+        [JsonIgnore]
+        public bool HasSystemValidationErrors => HasSystemAbbreviationErrors || ForbiddenSystemTypeErrors.Length > 0;
+
+        [JsonIgnore]
+        public string SystemAbbreviationErrorMessage => HasSystemValidationErrors
+            ? "«Заполнить параметр» и «Создать 3D-виды» недоступны."
+                + (HasSystemAbbreviationErrors
+                    ? "\nИсправь параметр «Сокращение» у типов систем:\n" + string.Join("\n", SystemAbbreviationErrors)
+                        + "\nВ конце сокращения должно быть полное имя типа системы; завершающий «_» обязателен."
+                    : string.Empty)
+                + (ForbiddenSystemTypeErrors.Length > 0
+                    ? "\nЗапрещённые системные типы показаны красными строками в списке. Выбери строку и нажми «Выделить элементы»."
+                    : string.Empty)
+            : string.Empty;
         [JsonIgnore]
         public bool IsClosed { get; internal set; }
 
@@ -138,9 +167,21 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         internal void SetSelectedRows(IEnumerable<OVVK_SystemManagerRowM> selectedRows)
         {
             var selected = new HashSet<OVVK_SystemManagerRowM>(selectedRows);
-            foreach (OVVK_SystemManagerRowM row in SystemRows)
-                row.IsSelected = selected.Contains(row);
-            NotifySelection();
+            BeginSelectionUpdate();
+            try
+            {
+                foreach (OVVK_SystemManagerRowM row in SystemRows)
+                    row.IsSelected = selected.Contains(row);
+            }
+            finally { EndSelectionUpdate(); }
+        }
+
+        internal void BeginSelectionUpdate() { _selectionUpdateDepth++; }
+
+        internal void EndSelectionUpdate()
+        {
+            if (--_selectionUpdateDepth == 0)
+                NotifySelection();
         }
 
         [JsonIgnore]
@@ -200,7 +241,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool CanSelectParameter => CanRefresh && ElementColl.Count > 0;
 
         [JsonIgnore]
-        public bool CanFillSystemName => CanRefresh && !string.IsNullOrWhiteSpace(ParameterName);
+        public bool CanFillSystemName => CanRefresh && !HasSystemValidationErrors && !string.IsNullOrWhiteSpace(ParameterName);
 
         [JsonIgnore]
         public bool CanRun => CanSelectParameter && !HasParameterErrors && !HasTypeParameters && !string.IsNullOrWhiteSpace(ParameterName);
@@ -209,7 +250,38 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool CanMergeSystems => CanRun && SystemSumParameters.Count > 1;
 
         [JsonIgnore]
-        public bool CanCreateViews => CanRefresh && !string.IsNullOrWhiteSpace(ParameterName) && SelectedSystemNames.Length > 0;
+        public bool CanCreateViews => CanRefresh && !HasParameterErrors && !HasSystemValidationErrors
+            && !string.IsNullOrWhiteSpace(ParameterName) && SelectedSystemNames.Length > 0;
+
+        [JsonIgnore]
+        public string CreateViewsToolTip
+        {
+            get
+            {
+                var reasons = new List<string>();
+                if (IsClosed)
+                    reasons.Add("Окно менеджера закрыто. Открой его заново.");
+                if (!IsDocumentActive)
+                    reasons.Add($"Переключись в модель «{DocumentTitle}».");
+                if (IsBusy)
+                    reasons.Add("Дождись завершения текущей операции.");
+                if (HasParameterErrors)
+                    reasons.Add("Исправь все красные ошибки параметра системы, даже если выбраны только корректные системы:\n"
+                        + string.Join("\n", SystemRows.Where(row => row.IsError).Select(row => row.DisplayName)));
+                if (HasSystemAbbreviationErrors)
+                    reasons.Add($"Исправь сокращения используемых типов систем: {SystemAbbreviationErrors.Length}. Подробности — внизу окна.");
+                if (ForbiddenSystemTypeErrors.Length > 0)
+                    reasons.Add($"Замени запрещённые системные типы на пользовательские: {ForbiddenSystemTypeErrors.Length}. Подробности — в красных строках списка.");
+                if (string.IsNullOrWhiteSpace(ParameterName))
+                    reasons.Add("Выбери параметр в строке «Группировать по».");
+                if (SelectedSystemNames.Length == 0)
+                    reasons.Add("Выбери хотя бы одну обычную строку системы. Строки замечаний для создания видов не используются.");
+
+                return reasons.Count > 0
+                    ? "Создание 3D-видов недоступно:\n\n" + string.Join("\n\n", reasons)
+                    : "Создать 3D-виды для выбранных систем. Оранжевые предупреждения не блокируют создание. Открой исходный 3D-вид; управление фильтрами в его шаблоне должно быть отключено.";
+            }
+        }
 
         [JsonIgnore]
         public bool CanSelectSystem => CanRefresh && SelectedSystemRows.Length > 0;
@@ -230,7 +302,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             : string.Empty;
 
         [JsonIgnore]
-        public string UserMainStatus => $"Элементов: {ElementColl.Count}   Систем: {SystemSumParameters.Count}   С замечаниями: {WarningsElementColl.Count}"
+        public string UserMainStatus => $"Элементов: {ElementColl.Count}   Систем: {SystemSumParameters.Count}   С замечаниями: {_issueElementCount}"
             + (HasTypeParameters ? $"   Параметр типа: {TypeParameterElementColl.Count}" : string.Empty);
 
         [JsonIgnore]
@@ -262,8 +334,28 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public void Refresh()
         {
             _operationMessage = string.Empty;
+            ValidateSystemAbbreviations(false);
             ElementColl = CollectElements(CurrentDoc).ToList();
             UpdateSystemParamData();
+            RefreshRevision++;
+            NotifyPropertyChanged(nameof(RefreshRevision));
+        }
+
+        internal bool ValidateSystemAbbreviations(bool updateRows = true)
+        {
+            SystemAbbreviationErrors = SystemAbbreviationValidation.GetErrors(CurrentDoc, out string[] forbiddenTypeErrors, out _systemTypeIssueRows);
+            ForbiddenSystemTypeErrors = forbiddenTypeErrors;
+            if (updateRows)
+                RebuildSystemRows();
+            NotifyPropertyChanged(nameof(ForbiddenSystemTypeErrors));
+            NotifyPropertyChanged(nameof(HasSystemValidationErrors));
+            NotifyPropertyChanged(nameof(SystemAbbreviationErrors));
+            NotifyPropertyChanged(nameof(HasSystemAbbreviationErrors));
+            NotifyPropertyChanged(nameof(CanCreateViews));
+            NotifyPropertyChanged(nameof(CreateViewsToolTip));
+            NotifyPropertyChanged(nameof(SystemAbbreviationErrorMessage));
+            NotifyPropertyChanged(nameof(CanFillSystemName));
+            return !HasSystemValidationErrors;
         }
 
         /// <summary>
@@ -276,48 +368,33 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                 throw new InvalidOperationException("На текущем виде нельзя собрать элементы. Открой план или 3D-вид либо выбери всю модель.");
 
             var elements = new List<Element>();
-            int processedCategories = 0;
-            int categoryCount = _familyCategories.Length + _curveCategories.Length;
-
-            foreach (BuiltInCategory category in _familyCategories)
+            reportProgress?.Invoke(0, 2);
+            using (var filter = new ElementMulticategoryFilter(_familyCategories))
+            using (var collector = viewId == null ? new FilteredElementCollector(doc) : new FilteredElementCollector(doc, viewId))
             {
-                reportProgress?.Invoke(processedCategories, categoryCount);
-                using (var collector = viewId == null ? new FilteredElementCollector(doc) : new FilteredElementCollector(doc, viewId))
-                {
-                    elements.AddRange(collector
-                        .OfClass(typeof(FamilyInstance))
-                        .OfCategory(category)
-                        .WhereElementIsNotElementType()
-                        .Cast<FamilyInstance>()
-                        .Where(instance => !_excludedFamilyPrefixes.Any(prefix => instance.Symbol.FamilyName.StartsWith(prefix))));
-                }
-
-                processedCategories++;
+                elements.AddRange(collector.OfClass(typeof(FamilyInstance)).WherePasses(filter)
+                    .WhereElementIsNotElementType().Cast<FamilyInstance>()
+                    .Where(instance => !_excludedFamilyPrefixes.Any(prefix =>
+                        instance.Symbol.FamilyName.StartsWith(prefix, StringComparison.Ordinal))));
             }
 
-            foreach (BuiltInCategory category in _curveCategories)
+            reportProgress?.Invoke(1, 2);
+            using (var filter = new ElementMulticategoryFilter(_curveCategories))
+            using (var collector = viewId == null ? new FilteredElementCollector(doc) : new FilteredElementCollector(doc, viewId))
             {
-                reportProgress?.Invoke(processedCategories, categoryCount);
-                using (var collector = viewId == null ? new FilteredElementCollector(doc) : new FilteredElementCollector(doc, viewId))
-                {
-                    elements.AddRange(collector
-                        .OfCategory(category)
-                        .WhereElementIsNotElementType());
-                }
-
-                processedCategories++;
+                elements.AddRange(collector.WherePasses(filter).WhereElementIsNotElementType());
             }
 
-            reportProgress?.Invoke(categoryCount, categoryCount);
+            reportProgress?.Invoke(2, 2);
             return elements.ToArray();
         }
 
         public void UpdateSystemParamData()
         {
-            var selectedKeys = SelectedSystemRows.Select(row => new { row.Kind, row.SystemName }).ToArray();
             var systemNames = new HashSet<string>();
             var typeParameters = new Dictionary<ElementId, Parameter>();
-            var invalidNames = new HashSet<string>();
+            var serviceNames = new Dictionary<string, bool>(StringComparer.Ordinal);
+            _invalidSystemNames.Clear();
             _systemElementIds.Clear();
             _errorElementIds.Clear();
             WarningsElementColl.Clear();
@@ -363,10 +440,15 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                         continue;
                     }
 
-                    if (SystemNameValidation.IsServiceValue(systemName))
+                    if (!serviceNames.TryGetValue(systemName, out bool isServiceValue))
+                    {
+                        isServiceValue = SystemNameValidation.IsServiceValue(systemName);
+                        serviceNames.Add(systemName, isServiceValue);
+                    }
+                    if (isServiceValue)
                     {
                         AddError(element, OVVK_SystemManagerRowKind.SystemNameError);
-                        invalidNames.Add(systemName);
+                        _invalidSystemNames.Add(systemName);
                         continue;
                     }
 
@@ -386,11 +468,18 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             }
 
             SystemSumParameters = new ObservableCollection<string>(systemNames.OrderBy(name => name));
-            var rows = new List<OVVK_SystemManagerRowM>();
+            RebuildSystemRows();
+        }
+
+        private void RebuildSystemRows()
+        {
+            var selectedKeys = new HashSet<Tuple<OVVK_SystemManagerRowKind, string, ElementId>>(
+                SelectedSystemRows.Select(row => Tuple.Create(row.Kind, row.SystemName, row.SystemTypeId)));
+            var rows = new List<OVVK_SystemManagerRowM>(_systemTypeIssueRows);
             foreach (var error in _errorElementIds.OrderBy(pair => pair.Key))
             {
                 string details = error.Key == OVVK_SystemManagerRowKind.SystemNameError
-                    ? "Значения: " + string.Join("; ", invalidNames.OrderBy(name => name).Take(10))
+                    ? "Значения: " + string.Join("; ", _invalidSystemNames.OrderBy(name => name).Take(10))
                     : null;
                 rows.Add(new OVVK_SystemManagerRowM(error.Key, error.Value.Count, details));
             }
@@ -402,10 +491,12 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                 oldRow.PropertyChanged -= OnRowPropertyChanged;
             foreach (OVVK_SystemManagerRowM row in rows)
             {
-                row.IsSelected = selectedKeys.Any(key => key.Kind == row.Kind && key.SystemName == row.SystemName);
+                row.IsSelected = selectedKeys.Contains(Tuple.Create(row.Kind, row.SystemName, row.SystemTypeId));
                 row.PropertyChanged += OnRowPropertyChanged;
             }
             SystemRows = new ObservableCollection<OVVK_SystemManagerRowM>(rows);
+            _issueElementCount = WarningsElementColl.Concat(TypeParameterElementColl).Select(element => element.Id)
+                .Concat(_systemTypeIssueRows.SelectMany(row => row.ElementIds)).Distinct().Count();
             NotifyPropertyChanged(nameof(ElementColl));
             NotifyPropertyChanged(nameof(WarningsElementColl));
             NotifyPropertyChanged(nameof(TypeParameterElementColl));
@@ -413,12 +504,16 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             NotifyPropertyChanged(nameof(SystemRows));
 
             // Восстанавливаем выбор после уведомлений WPF о замене коллекции.
-            SetSelectedRows(SystemRows.Where(row => selectedKeys.Any(key => key.Kind == row.Kind && key.SystemName == row.SystemName)));
+            SetSelectedRows(SystemRows.Where(row => selectedKeys.Contains(Tuple.Create(row.Kind, row.SystemName, row.SystemTypeId))));
             NotifyState();
         }
 
         internal ElementId[] GetSystemElementIds(OVVK_SystemManagerRowM row)
         {
+            if (row?.SystemTypeId != null)
+                return _systemTypeIssueRows.FirstOrDefault(issue => issue.Kind == row.Kind
+                    && issue.SystemTypeId.Equals(row.SystemTypeId))?.ElementIds ?? new ElementId[0];
+
             if (row?.IsError == true)
                 return _errorElementIds.TryGetValue(row.Kind, out List<ElementId> errorIds)
                     ? errorIds.ToArray()
@@ -447,7 +542,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
 
         private void OnRowPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(OVVK_SystemManagerRowM.IsSelected))
+            if (_selectionUpdateDepth == 0 && e.PropertyName == nameof(OVVK_SystemManagerRowM.IsSelected))
                 NotifySelection();
         }
 
@@ -463,6 +558,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             NotifyPropertyChanged(nameof(SelectionSummary));
             NotifyPropertyChanged(nameof(CanSelectSystem));
             NotifyPropertyChanged(nameof(CanCreateViews));
+            NotifyPropertyChanged(nameof(CreateViewsToolTip));
         }
 
         private void NotifyState()
@@ -473,6 +569,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             NotifyPropertyChanged(nameof(CanRun));
             NotifyPropertyChanged(nameof(CanMergeSystems));
             NotifyPropertyChanged(nameof(CanCreateViews));
+            NotifyPropertyChanged(nameof(CreateViewsToolTip));
             NotifyPropertyChanged(nameof(CanSelectSystem));
             NotifyPropertyChanged(nameof(HasTypeParameters));
             NotifyPropertyChanged(nameof(TypeParameterWarning));

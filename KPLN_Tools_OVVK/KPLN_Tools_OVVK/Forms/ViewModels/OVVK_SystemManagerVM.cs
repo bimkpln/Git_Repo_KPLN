@@ -116,6 +116,9 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
 
         private void FillSystemName(UIApplication app)
         {
+            if (!CurrentOVVK_SystemManagerM.ValidateSystemAbbreviations())
+                return;
+
             string parameterName = CurrentOVVK_SystemManagerM.ParameterName;
             if (string.IsNullOrWhiteSpace(parameterName))
                 return;
@@ -157,6 +160,12 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
         private void CreateViews(UIApplication app, string[] selectedNames)
         {
             CurrentOVVK_SystemManagerM.Refresh();
+            if (CurrentOVVK_SystemManagerM.HasParameterErrors || CurrentOVVK_SystemManagerM.HasSystemValidationErrors)
+            {
+                CurrentOVVK_SystemManagerM.SetOperationMessage("Создание 3D-видов недоступно: исправь все критические ошибки, отмеченные красным.");
+                return;
+            }
+
             string[] systemNames = selectedNames.Where(name => CurrentOVVK_SystemManagerM.SystemSumParameters.Contains(name)).ToArray();
             if (systemNames.Length == 0)
             {
@@ -180,7 +189,7 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
 
 
             Result result = new ExcCmd_SystemManager_ViewCreator(CurrentOVVK_SystemManagerM,
-                systemNames).Execute(app);
+                systemNames, dataIsCurrent: true).Execute(app);
             if (result == Result.Succeeded)
                 _mainWindow.Close();
         }

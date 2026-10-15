@@ -23,6 +23,11 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                 return abbreviation;
 
             string normalized = abbreviation.EndsWith("_", StringComparison.Ordinal) ? abbreviation : abbreviation + "_";
+            // Имя типа само может содержать "_": корректное окончание нельзя разбирать на отдельные части.
+            if (string.Equals(normalized, typeName + "_", StringComparison.Ordinal)
+                || normalized.EndsWith("_" + typeName + "_", StringComparison.Ordinal))
+                return normalized;
+
             string[] parts = normalized.Split('_');
             string prefix = string.Join("_", parts.Take(parts.Length - 2));
             return (parts.Length > 2 ? prefix + "_" : string.Empty) + typeName + "_";

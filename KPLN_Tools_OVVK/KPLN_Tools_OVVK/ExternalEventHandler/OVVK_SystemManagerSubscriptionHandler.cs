@@ -4,6 +4,7 @@ using Autodesk.Revit.UI.Events;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Tools_OVVK.Forms.Entities;
 using System;
+using System.ComponentModel;
 
 namespace KPLN_Tools_OVVK.ExternalEventHandler
 {
@@ -14,6 +15,7 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
         private readonly Action _closeWindow;
         private bool _refreshPending;
         private bool _stopRequested;
+        private bool _isTracking;
 
         internal OVVK_SystemManagerSubscriptionHandler(UIApplication application, OVVK_SystemManagerM model, Action closeWindow)
         {
@@ -25,8 +27,21 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
 
         internal void StartTracking()
         {
+            if (_isTracking || _stopRequested)
+                return;
+
             _application.Idling += OnIdling;
-            _application.Application.DocumentChanged += OnDocumentChanged;
+            try
+            {
+                _application.Application.DocumentChanged += OnDocumentChanged;
+                _model.PropertyChanged += OnModelPropertyChanged;
+                _isTracking = true;
+            }
+            catch
+            {
+                _application.Idling -= OnIdling;
+                throw;
+            }
         }
 
         internal void RequestStopTracking()
@@ -36,8 +51,15 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
 
         private void OnDocumentChanged(object sender, DocumentChangedEventArgs args)
         {
-            if (!_stopRequested && _model.CurrentDoc.Equals(args.GetDocument()))
+            if (!_stopRequested && _model.CurrentDoc.IsValidObject && _model.CurrentDoc.Equals(args.GetDocument()))
                 _refreshPending = true;
+        }
+
+        private void OnModelPropertyChanged(object sender, PropertyChangedEventArgs args)
+        {
+            // Команды сами обновляют модель после транзакции: повторный обход на Idling не нужен.
+            if (args.PropertyName == nameof(OVVK_SystemManagerM.RefreshRevision))
+                _refreshPending = false;
         }
 
         private void OnIdling(object sender, IdlingEventArgs args)
@@ -45,14 +67,15 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
             // Closed вызывается из WPF: снимаем подписки на следующем событии Revit.
             if (_stopRequested)
             {
-                _application.Idling -= OnIdling;
-                _application.Application.DocumentChanged -= OnDocumentChanged;
-                _application = null;
+                StopTracking();
                 return;
             }
 
             if (!_model.CurrentDoc.IsValidObject)
             {
+                // Документ уже закрыт; отписываемся здесь, пока есть контекст Revit API.
+                _stopRequested = true;
+                StopTracking();
                 _closeWindow();
                 return;
             }
@@ -73,6 +96,18 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
                 _model.SetOperationMessage("Не удалось обновить список систем: " + ex.Message);
                 HtmlOutput.PrintError(ex);
             }
+        }
+
+        private void StopTracking()
+        {
+            if (!_isTracking)
+                return;
+
+            _application.Idling -= OnIdling;
+            _application.Application.DocumentChanged -= OnDocumentChanged;
+            _model.PropertyChanged -= OnModelPropertyChanged;
+            _application = null;
+            _isTracking = false;
         }
     }
 }

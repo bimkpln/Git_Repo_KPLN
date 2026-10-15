@@ -5,6 +5,7 @@ using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.ExternalCommands;
 using KPLN_Tools_OVVK.Forms.Entities;
+using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 
@@ -18,10 +19,6 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         /// <summary>
         /// Словарь элементов, где ключ - текст ошибки, значения - список элементов
         /// </summary>
-        private readonly Dictionary<string, List<ElementId>> _errorDict = new Dictionary<string, List<ElementId>>();
-        /// <summary>
-        /// Словарь элементов, где ключ - текст ошибки, значения - список элементов
-        /// </summary>
         private readonly Dictionary<string, List<ElementId>> _warningDict = new Dictionary<string, List<ElementId>>();
 
         public ExcCmd_SystemManager_MergeSystem(OVVK_SystemManagerM viewModel, OVVK_MergeSystem[] sysDataToMerge)
@@ -32,40 +29,71 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
         public Result Execute(UIApplication app)
         {
+            // Одна исходная система может входить только в одну группу за запуск.
+            var replacementNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            var availableNames = new HashSet<string>(_model.SystemSumParameters, StringComparer.Ordinal);
+            foreach (OVVK_MergeSystem group in _sysDataToMerge)
+            {
+                if (group == null || string.IsNullOrWhiteSpace(group.FirstParamName)
+                    || string.IsNullOrWhiteSpace(group.LastParamName)
+                    || group.FirstParamName == group.LastParamName
+                    || !availableNames.Contains(group.FirstParamName) || !availableNames.Contains(group.LastParamName)
+                    || replacementNames.ContainsKey(group.FirstParamName) || replacementNames.ContainsKey(group.LastParamName))
+                {
+                    _model.SetOperationMessage("Объединение отменено: проверь группы. Системы должны существовать и не повторяться.");
+                    return Result.Cancelled;
+                }
+
+                string newName = group.FirstParamName + _model.SysNameSeparator + group.LastParamName;
+                replacementNames.Add(group.FirstParamName, newName);
+                replacementNames.Add(group.LastParamName, newName);
+            }
+            if (replacementNames.Count == 0)
+                return Result.Cancelled;
+
+
+            var readOnlyElements = new List<Element>();
             using (Transaction t = new Transaction(_model.CurrentDoc, $"KPLN: Объединение систем"))
             {
-                t.Start();
+                if (t.Start() != TransactionStatus.Started)
+                    return Result.Cancelled;
 
                 foreach (Element elem in _model.ElementColl)
                 {
                     Parameter elemSysParam = elem.LookupParameter(_model.ParameterName);
-                    if (elemSysParam == null)
-                    {
-                        AddToErrorDict(_warningDict, $"У элемента нет параметра \"{_model.ParameterName}\"", elem.Id);
+                    if (elemSysParam == null || elemSysParam.StorageType != StorageType.String)
                         continue;
-                    }
+
+                    string elemSysParamData = elemSysParam.AsString();
+                    if (string.IsNullOrEmpty(elemSysParamData)
+                        || !replacementNames.TryGetValue(elemSysParamData, out string newSysName))
+                        continue;
 
                     if (elemSysParam.IsReadOnly)
                     {
-                        if (elem is FamilyInstance fi && fi.SuperComponent == null)
-                            AddToErrorDict(_warningDict, $"У элемента параметра \"{_model.ParameterName}\" - ТОЛЬКО для чтения. Нужно исправить семейство", elem.Id);
-                        
+                        readOnlyElements.Add(elem);
                         continue;
                     }
 
-                    string elemSysParamData = elemSysParam.AsString();
-                    if (string.IsNullOrEmpty(elemSysParamData))
-                        continue;
-                    
-                    foreach (OVVK_MergeSystem dataToMerge in _sysDataToMerge)
-                    {
-                        string newSysName = $"{dataToMerge.FirstParamName}{_model.SysNameSeparator}{dataToMerge.LastParamName}";
-                        if (elemSysParamData.Equals(dataToMerge.FirstParamName) || elemSysParamData.Equals(dataToMerge.LastParamName))
-                            elemSysParam.Set(newSysName);
-                    }
+                    if (!elemSysParam.Set(newSysName))
+                        throw new InvalidOperationException("Не удалось изменить параметр «" + _model.ParameterName
+                            + "» элемента " + elem.Id + ". Объединение отменено.");
                 }
 
-                t.Commit();
+                if (t.Commit() != TransactionStatus.Committed)
+                {
+                    _model.SetOperationMessage("Объединение систем отменено: Revit не подтвердил изменения.");
+                    return Result.Cancelled;
+                }
+            }
+
+            // Вложенные элементы могут получить новое значение от родителя при регенерации.
+            // Сообщаем только о тех параметрах, которые действительно остались без изменения.
+            foreach (Element element in readOnlyElements)
+            {
+                string value = element.LookupParameter(_model.ParameterName)?.AsString();
+                if (value != null && replacementNames.ContainsKey(value))
+                    AddToErrorDict(_warningDict, $"Параметр \"{_model.ParameterName}\" доступен только для чтения; система элемента не объединена", element.Id);
             }
 
             if (_warningDict.Keys.Count != 0)

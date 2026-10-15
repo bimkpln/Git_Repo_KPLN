@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
+using Autodesk.Revit.DB.Mechanical;
+using Autodesk.Revit.DB.Plumbing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +20,9 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
         private readonly Dictionary<ElementId, Element> _elements;
         private readonly Dictionary<ElementId, FillItem> _items = new Dictionary<ElementId, FillItem>();
         private readonly List<KeyValuePair<string, string>> _systemTypes;
+        private readonly Dictionary<string, string> _resolvedNames = new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _resolutionErrors = new Dictionary<string, string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _blockedTypeParameters = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<ElementId, string> _errors = new Dictionary<ElementId, string>();
         private readonly Action _checkCancellation;
 
@@ -28,12 +33,23 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             _useAbbreviation = doc.Title.Contains("МТРС_") && doc.Title.Contains("_ВК_");
             _elements = elements.ToDictionary(element => element.Id);
             _checkCancellation = checkCancellation;
-            _systemTypes = new[] { BuiltInCategory.OST_PipingSystem, BuiltInCategory.OST_DuctSystem }
-                .SelectMany(category => new FilteredElementCollector(doc).OfCategory(category).WhereElementIsElementType())
-                .Select(type => new KeyValuePair<string, string>(
-                    type.get_Parameter(BuiltInParameter.RBS_SYSTEM_ABBREVIATION_PARAM)?.AsString() ?? string.Empty,
-                    type.Name))
-                .ToList();
+            HashSet<ElementId> usedTypeIds = GetUsedSystemTypeIds();
+            _systemTypes = new List<KeyValuePair<string, string>>();
+            foreach (BuiltInCategory category in new[] { BuiltInCategory.OST_PipingSystem, BuiltInCategory.OST_DuctSystem })
+            {
+                using (var types = new FilteredElementCollector(doc).OfCategory(category).WhereElementIsElementType())
+                {
+                    foreach (Element type in types)
+                    {
+                        _checkCancellation?.Invoke();
+                        if (!usedTypeIds.Contains(type.Id))
+                            continue;
+                        _systemTypes.Add(new KeyValuePair<string, string>(
+                            type.get_Parameter(BuiltInParameter.RBS_SYSTEM_ABBREVIATION_PARAM)?.AsString() ?? string.Empty,
+                            type.Name));
+                    }
+                }
+            }
         }
 
 
@@ -42,6 +58,35 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
         internal int UnchangedCount { get; private set; }
         internal int TypeParameterCount { get; private set; }
         internal string LogWarning { get; private set; }
+
+        private HashSet<ElementId> GetUsedSystemTypeIds()
+        {
+            // Неиспользуемый дубликат сокращения не должен подмешивать имя постороннего типа.
+            var usedIds = new HashSet<ElementId>();
+            using (var systems = new FilteredElementCollector(_doc).OfClass(typeof(MechanicalSystem)))
+            {
+                foreach (MechanicalSystem system in systems)
+                {
+                    _checkCancellation?.Invoke();
+                    ElementId typeId = system.GetTypeId();
+                    if (!usedIds.Contains(typeId) && (system.Elements.Size > 0 || system.BaseEquipment != null
+                        || system.DuctNetwork?.Size > 0))
+                        usedIds.Add(typeId);
+                }
+            }
+            using (var systems = new FilteredElementCollector(_doc).OfClass(typeof(PipingSystem)))
+            {
+                foreach (PipingSystem system in systems)
+                {
+                    _checkCancellation?.Invoke();
+                    ElementId typeId = system.GetTypeId();
+                    if (!usedIds.Contains(typeId) && (system.Elements.Size > 0 || system.BaseEquipment != null
+                        || system.PipingNetwork?.Size > 0))
+                        usedIds.Add(typeId);
+                }
+            }
+            return usedIds;
+        }
 
         internal void Prepare(Action<int, int, string> reportProgress = null)
         {
@@ -56,10 +101,16 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
 
             // Один параметр типа общий для всех экземпляров: неоднозначные записи пропускаем.
             reportProgress?.Invoke(0, 1, "Проверяю параметры типов и вложенные семейства");
-            foreach (IGrouping<string, FillItem> group in _items.Values.Where(item => item != null).GroupBy(item => item.Key))
+            var parameterGroups = _items.Values.Where(item => item != null).ToLookup(item => item.Key);
+            foreach (IGrouping<string, FillItem> group in parameterGroups)
             {
                 _checkCancellation?.Invoke();
-                if (group.Select(item => item.Value).Distinct(StringComparer.Ordinal).Skip(1).Any())
+                if (_blockedTypeParameters.Contains(group.Key))
+                {
+                    foreach (FillItem item in group)
+                        _errors[item.Element.Id] = "Не удалось определить систему другого экземпляра с тем же параметром типа. Используй параметр экземпляра или исправь замечания.";
+                }
+                else if (group.Select(item => item.Value).Distinct(StringComparer.Ordinal).Skip(1).Any())
                 {
                     foreach (FillItem item in group)
                         _errors[item.Element.Id] = "Один параметр типа требует разных имён систем. Используй параметр экземпляра.";
@@ -67,20 +118,35 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             }
 
             // Не переносим вычисленное значение родителя, если сам родитель не будет заполнен.
-            bool changed;
-            do
+            var children = _items.Values.Where(item => item != null && item.ParentId != null)
+                .ToLookup(item => item.ParentId);
+            var failedParents = new Queue<ElementId>(_errors.Keys);
+            var checkedTypeParameters = new HashSet<string>(StringComparer.Ordinal);
+            while (failedParents.Count > 0)
             {
-                changed = false;
-                foreach (FillItem item in _items.Values.Where(item => item != null))
+                _checkCancellation?.Invoke();
+                ElementId parentId = failedParents.Dequeue();
+                if (_items.TryGetValue(parentId, out FillItem failedItem) && failedItem?.Parameter.Element is ElementType
+                    && checkedTypeParameters.Add(failedItem.Key))
                 {
-                    _checkCancellation?.Invoke();
-                    if (!_errors.ContainsKey(item.Element.Id) && item.ParentId != null && _errors.ContainsKey(item.ParentId))
+                    foreach (FillItem item in parameterGroups[failedItem.Key])
                     {
-                        _errors[item.Element.Id] = "Не удалось заполнить выбранный родительский элемент " + item.ParentId;
-                        changed = true;
+                        if (!_errors.ContainsKey(item.Element.Id))
+                        {
+                            _errors[item.Element.Id] = "Не удалось заполнить другой экземпляр с тем же параметром типа. Используй параметр экземпляра или исправь замечания.";
+                            failedParents.Enqueue(item.Element.Id);
+                        }
                     }
                 }
-            } while (changed);
+                foreach (FillItem item in children[parentId])
+                {
+                    if (!_errors.ContainsKey(item.Element.Id))
+                    {
+                        _errors[item.Element.Id] = "Не удалось заполнить выбранный родительский элемент " + item.ParentId;
+                        failedParents.Enqueue(item.Element.Id);
+                    }
+                }
+            }
 
             reportProgress?.Invoke(1, 1, "Проверяю параметры типов и вложенные семейства");
         }
@@ -134,12 +200,13 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             if (_items.TryGetValue(element.Id, out FillItem cached))
                 return cached;
 
+            Parameter target = null;
             try
             {
                 if (!resolving.Add(element.Id))
                     throw new InvalidOperationException("Обнаружен цикл вложенности семейств.");
 
-                Parameter target = GetParameter(element);
+                target = GetParameter(element);
                 if (target == null)
                     throw new InvalidOperationException($"Отсутствует параметр «{_parameterName}» у экземпляра и типа.");
                 if (target.StorageType != StorageType.String)
@@ -185,6 +252,8 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             }
             catch (Exception ex)
             {
+                if (target?.Element is ElementType)
+                    _blockedTypeParameters.Add(FillItem.GetKey(target));
                 _errors[element.Id] = ex.Message;
                 _items[element.Id] = null;
                 return null;
@@ -219,7 +288,7 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             {
                 string abbreviation = source.AsString();
                 // Особое правило исходного скрипта МТРС ВК; параметр назначения остаётся выбранным в окне.
-                return _useAbbreviation ? abbreviation ?? string.Empty : SystemNameResolver.Resolve(abbreviation, _systemTypes);
+                return _useAbbreviation ? abbreviation ?? string.Empty : ResolveAbbreviation(abbreviation);
             }
 
             Parameter typeParameter = element.get_Parameter(BuiltInParameter.RBS_DUCT_SYSTEM_TYPE_PARAM)
@@ -236,6 +305,29 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             }
 
             throw new InvalidOperationException("Нет исходного параметра сокращения или типа системы.");
+        }
+
+        private string ResolveAbbreviation(string abbreviation)
+        {
+            // На больших моделях тысячи элементов имеют одинаковое сокращение.
+            // Сопоставляем каждый набор сокращений с типами только один раз за запуск.
+            string key = abbreviation ?? string.Empty;
+            if (_resolvedNames.TryGetValue(key, out string value))
+                return value;
+            if (_resolutionErrors.TryGetValue(key, out string error))
+                throw new InvalidOperationException(error);
+
+            try
+            {
+                value = SystemNameResolver.Resolve(abbreviation, _systemTypes);
+                _resolvedNames.Add(key, value);
+                return value;
+            }
+            catch (InvalidOperationException ex)
+            {
+                _resolutionErrors.Add(key, ex.Message);
+                throw;
+            }
         }
 
         private void WriteLog()
@@ -274,8 +366,10 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                 Parameter = parameter;
                 Value = value;
                 ParentId = parentId;
-                Key = parameter.Element.Id + ":" + parameter.Id;
+                Key = GetKey(parameter);
             }
+
+            internal static string GetKey(Parameter parameter) => parameter.Element.Id + ":" + parameter.Id;
 
             internal Element Element { get; }
             internal Parameter Parameter { get; }

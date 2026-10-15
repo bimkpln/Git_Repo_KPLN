@@ -83,6 +83,7 @@ namespace KPLN_Tools_OVVK.Forms
             var model = CurrentOVVK_SystemManagerVM.CurrentOVVK_SystemManagerM;
             OVVK_SystemManagerRowM[] selected = model.SelectedSystemRows;
             _syncingSelection = true;
+            model.BeginSelectionUpdate();
             try
             {
                 // SelectedItems учитывает и строки вне видимой области при Ctrl+A / Shift.
@@ -92,7 +93,11 @@ namespace KPLN_Tools_OVVK.Forms
                     SystemsList.SelectedItems.Add(row);
                 model.SetSelectedRows(selected);
             }
-            finally { _syncingSelection = false; }
+            finally
+            {
+                _syncingSelection = false;
+                model.EndSelectionUpdate();
+            }
         }
 
         private void OnClosed(object sender, EventArgs e)

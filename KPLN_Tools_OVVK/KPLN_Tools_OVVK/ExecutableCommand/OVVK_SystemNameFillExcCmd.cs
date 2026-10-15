@@ -37,6 +37,10 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             if (doc.IsReadOnly)
                 throw new InvalidOperationException("Документ доступен только для чтения.");
 
+            // Повторная проверка перед записью: настройки типов могли измениться после открытия менеджера.
+            if (!_model.ValidateSystemAbbreviations())
+                return Result.Cancelled;
+
             var progress = new ProgressInfoViewModel
             {
                 ProcessTitle = $"Заполнение «{_parameterName}»",

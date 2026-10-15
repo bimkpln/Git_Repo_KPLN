@@ -36,7 +36,7 @@ namespace KPLN_Tools_OVVK.ExternalCommands
 
 
                 form = new OVVK_SystemManagerForm(doc);
-                WindowHandleSearch.MainWindowHandle.SetAsOwner(form);
+                new WindowHandleSearch(app.MainWindowHandle).SetAsOwner(form);
                 if (form.CurrentOVVK_SystemManagerVM.CurrentOVVK_SystemManagerM.ElementColl.Count == 0)
                 {
                     MessageBox.Show("В модели отсутствуют элементы ОВВК для анализа.", "KPLN: Внимание", MessageBoxButton.OK);

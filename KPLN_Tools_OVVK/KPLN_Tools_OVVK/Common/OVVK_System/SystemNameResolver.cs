@@ -14,6 +14,7 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             var requested = new HashSet<string>(abbreviations.Split(',')
                 .Select(value => value.Trim()).Where(value => value.Length > 0), StringComparer.Ordinal);
             var matched = new HashSet<string>(StringComparer.Ordinal);
+            var matchedNames = new Dictionary<string, string>(StringComparer.Ordinal);
             var names = new List<string>();
 
             foreach (KeyValuePair<string, string> systemType in systemTypes)
@@ -21,6 +22,13 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                 if (!requested.Contains(systemType.Key) || string.IsNullOrWhiteSpace(systemType.Value))
                     continue;
 
+                if (matchedNames.TryGetValue(systemType.Key, out string previousName)
+                    && !string.Equals(previousName, systemType.Value, StringComparison.Ordinal))
+                    throw new InvalidOperationException("Сокращение «" + systemType.Key
+                        + "» задано у разных типов систем: «" + previousName + "» и «" + systemType.Value
+                        + "». Исправь сокращения типов, чтобы однозначно определить систему элемента.");
+
+                matchedNames[systemType.Key] = systemType.Value;
                 matched.Add(systemType.Key);
                 if (!names.Contains(systemType.Value))
                     names.Add(systemType.Value);

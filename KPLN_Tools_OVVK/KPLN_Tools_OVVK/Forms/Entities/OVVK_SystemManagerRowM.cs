@@ -7,6 +7,8 @@
         InvalidParameterError,
         EmptyParameterError,
         SystemNameError,
+        ForbiddenSystemTypeError,
+        SystemAbbreviationError,
     }
 
     public sealed class OVVK_SystemManagerRowM : System.ComponentModel.INotifyPropertyChanged
@@ -69,13 +71,28 @@
 
 
         public string SystemName { get; }
+        internal Autodesk.Revit.DB.ElementId SystemTypeId { get; }
+        internal Autodesk.Revit.DB.ElementId[] ElementIds { get; }
+
+        internal OVVK_SystemManagerRowM(OVVK_SystemManagerRowKind kind, Autodesk.Revit.DB.ElementId typeId,
+            string typeName, string details, Autodesk.Revit.DB.ElementId[] elementIds)
+        {
+            Kind = kind;
+            SystemTypeId = typeId;
+            ElementIds = elementIds;
+            string title = kind == OVVK_SystemManagerRowKind.ForbiddenSystemTypeError
+                ? "нельзя использовать системные системы" : "неверное сокращение системы";
+            DisplayName = $"Ошибка: {title} «{typeName}» — элементов: {elementIds.Length}";
+            Description = details + "\nНажми «Выделить элементы», чтобы найти элементы этого типа системы.";
+        }
         public string DisplayName { get; }
         public string Description { get; }
         public OVVK_SystemManagerRowKind Kind { get; }
         public bool IsTypeParameterWarning => Kind == OVVK_SystemManagerRowKind.TypeParameterWarning;
         public bool IsWarning => IsTypeParameterWarning;
         public bool IsError => Kind == OVVK_SystemManagerRowKind.InvalidParameterError
-            || Kind == OVVK_SystemManagerRowKind.EmptyParameterError || Kind == OVVK_SystemManagerRowKind.SystemNameError;
+            || Kind == OVVK_SystemManagerRowKind.EmptyParameterError || Kind == OVVK_SystemManagerRowKind.SystemNameError
+            || Kind == OVVK_SystemManagerRowKind.ForbiddenSystemTypeError || Kind == OVVK_SystemManagerRowKind.SystemAbbreviationError;
         public bool IsIssue => IsError || IsWarning;
     }
 }
