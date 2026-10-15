@@ -109,6 +109,7 @@
     <Compile Include="ExternalCommands\Views\ExtCmdDeleteUnusedViews.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdViewTemplateCopy.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdCutCopy.cs" />
+    <Compile Include="Common\Views\ViewCropCopyService.cs" />
     <Compile Include="ExternalCommands\Views\ExtCmdViewTemplateCopySolo.cs" />
     <Compile Include="Forms\CopyViewForm.xaml.cs">
       <DependentUpon>CopyViewForm.xaml</DependentUpon>

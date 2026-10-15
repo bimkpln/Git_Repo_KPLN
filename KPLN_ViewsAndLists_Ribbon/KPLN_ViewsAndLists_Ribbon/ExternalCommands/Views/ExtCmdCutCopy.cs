@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
+using KPLN_ViewsAndLists_Ribbon.Common.Views;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
 using System.Collections.Generic;
@@ -57,12 +58,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
             }
 
 
-            ViewCropRegionShapeManager vcrsManager = actGraphView.GetCropRegionShapeManager();
-
-            // Настройки подрезки вида 
             bool actViewCrop = actGraphView.CropBoxActive;
-            bool actViewCropBoxVisible = actGraphView.CropBoxVisible;
-            IList<CurveLoop> actViewCropCurves = vcrsManager.GetCropShape();
             if (!actViewCrop)
             {
                 MessageBox.Show(
@@ -74,24 +70,6 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
                 return Result.Failed;
             }
-
-            // Подрезка не может содержать несколько CurveLoop
-            CurveLoop actViewCropCurveLoop = actViewCropCurves.FirstOrDefault();
-
-            // Настройки подрезки аннотаций
-            int actViewAnnCropParamData = actGraphView.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE).AsInteger();
-            double bottomAnnCropOffset = 0;
-            double leftAnnCropOffset = 0;
-            double rightAnnCropOffset = 0;
-            double topAnnCropOffset = 0;
-            if (vcrsManager.CanHaveAnnotationCrop)
-            {
-                bottomAnnCropOffset = vcrsManager.BottomAnnotationCropOffset;
-                leftAnnCropOffset = vcrsManager.LeftAnnotationCropOffset;
-                rightAnnCropOffset = vcrsManager.RightAnnotationCropOffset;
-                topAnnCropOffset = vcrsManager.TopAnnotationCropOffset;
-            }
-
 
             // Собираю планы для анализа
             // 1. Юзер выбрал их в модели
@@ -163,23 +141,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Views
 
                 foreach (View currentView in selectedViews)
                 {
-                    ViewCropRegionShapeManager currentVCRSManager = currentView.GetCropRegionShapeManager();
-
-
-                    // Подрезка вида
-                    currentView.CropBoxActive = true;
-                    currentView.CropBoxVisible = actViewCropBoxVisible;
-                    currentVCRSManager.SetCropShape(actViewCropCurveLoop);
-
-                    // Подрезка аннотаций
-                    currentView.get_Parameter(BuiltInParameter.VIEWER_ANNOTATION_CROP_ACTIVE).Set(actViewAnnCropParamData);
-                    if (currentVCRSManager.CanHaveAnnotationCrop)
-                    {
-                        currentVCRSManager.BottomAnnotationCropOffset = bottomAnnCropOffset;
-                        currentVCRSManager.LeftAnnotationCropOffset = leftAnnCropOffset;
-                        currentVCRSManager.RightAnnotationCropOffset = rightAnnCropOffset;
-                        currentVCRSManager.TopAnnotationCropOffset = topAnnCropOffset;
-                    }
+                    ViewCropCopyService.Copy(actGraphView, currentView);
                 }
 
                 trans.Commit();
