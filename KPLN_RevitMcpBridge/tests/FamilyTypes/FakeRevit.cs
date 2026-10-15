@@ -9,11 +9,16 @@ namespace Autodesk.Revit.DB
     public enum FailureProcessingResult { Continue, ProceedWithRollBack }
     public class ElementId { public long Value; public ElementId(long value) { Value = value; } }
     public class Definition { public string Name; public Definition(string name) { Name = name; } }
-    public class Element { public ElementId Id; }
+    public class Element { public ElementId Id; public string UniqueId; public string Name; }
+    public class ElementType : Element { public string FamilyName; }
+    public class FamilySymbol : ElementType { }
+    public class FamilyInstance : Element { public FamilySymbol Symbol; }
+    public class Parameter { public ElementId Id; public Definition Definition; public StorageType StorageType; public Element Element; }
     public class FamilyParameter
     {
         public ElementId Id; public Definition Definition; public StorageType StorageType;
-        public bool IsReadOnly; public string Formula;
+        public bool IsReadOnly, IsInstance; public string Formula;
+        public List<Parameter> AssociatedParameters = new List<Parameter>();
     }
     public class FamilyType
     {
@@ -102,5 +107,10 @@ namespace KPLN_RevitMcpBridge.Services
     {
         public static long IdValue(Autodesk.Revit.DB.ElementId id) => id.Value;
         public static Autodesk.Revit.DB.ElementId Id(long value) => new Autodesk.Revit.DB.ElementId(value);
+        public static object ElementInfo(Autodesk.Revit.DB.Element e) => new
+        {
+            id = e.Id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            unique_id = e.UniqueId, name = e.Name, is_type = e is Autodesk.Revit.DB.ElementType
+        };
     }
 }

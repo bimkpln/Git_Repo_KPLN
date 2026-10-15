@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.10.12224.181 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KPLN_RevitMcpBridge", "KPLN_RevitMcpBridge.csproj", "{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}"
 EndProject
@@ -21,16 +21,22 @@ Global
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2023|x64.ActiveCfg = Debug2023|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2023|x64.Build.0 = Debug2023|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2024|x64.ActiveCfg = Debug2024|x64
-		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2026|x64.ActiveCfg = Debug2026|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2024|x64.Build.0 = Debug2024|x64
+		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2026|x64.ActiveCfg = Debug2026|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Debug2026|x64.Build.0 = Debug2026|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2020|x64.ActiveCfg = Revit2020|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2020|x64.Build.0 = Revit2020|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2023|x64.ActiveCfg = Revit2023|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2023|x64.Build.0 = Revit2023|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2024|x64.ActiveCfg = Revit2024|x64
-		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2026|x64.ActiveCfg = Revit2026|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2024|x64.Build.0 = Revit2024|x64
+		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2026|x64.ActiveCfg = Revit2026|x64
 		{CC2C92C7-EA16-491D-BE9E-6635DF2A2304}.Revit2026|x64.Build.0 = Revit2026|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7EE282F0-CDF4-44BA-A3B7-31FA8EEB0AC6}
 	EndGlobalSection
 EndGlobal

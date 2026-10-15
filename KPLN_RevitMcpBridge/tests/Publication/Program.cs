@@ -3,7 +3,13 @@ using System.Collections.Generic;
 using KPLN_RevitMcpBridge.Services;
 using KPLN_RevitMcpBridge.Server;
 
-namespace Autodesk.Revit.DB { public class Document { public string Title => "Fixture"; } }
+namespace Autodesk.Revit.DB {
+ public class ViewSheet { public string UniqueId; public bool IsPlaceholder; public bool CanBePrinted = true; }
+ public class Document {
+  public string Title => "Fixture";
+  public object GetElement(string id) => id == "sheet" ? new ViewSheet { UniqueId = id } : id == "placeholder" ? new ViewSheet { UniqueId = id, IsPlaceholder = true } : null;
+ }
+}
 namespace KPLN_Publication
 {
     public enum Processing { VectorProcessing, RasterProcessing }
@@ -21,10 +27,10 @@ namespace KPLN_Publication
     {
         public const int ContractVersion = 1;
         public static bool Fail;
-        public static object PrintAllSheets(Autodesk.Revit.DB.Document doc, YayPrintSettings settings, bool dryRun, int timeout)
+        public static object PrintSheets(Autodesk.Revit.DB.Document doc, YayPrintSettings settings, bool dryRun, int timeout, string[] ids)
         {
             if (Fail) throw new InvalidOperationException("simulated printer error");
-            return new Dictionary<string, object> { { "settings", settings }, { "dry_run", dryRun }, { "timeout", timeout } };
+            return new Dictionary<string, object> { { "ids", ids }, { "settings", settings }, { "dry_run", dryRun }, { "timeout", timeout } };
         }
     }
 }
@@ -32,7 +38,7 @@ class Program
 {
     static int checks;
     static void Check(bool value) { checks++; if (!value) throw new Exception("Check " + checks + " failed"); }
-    static Dictionary<string, object> Input() => new Dictionary<string, object> { { "document_id", "doc" }, { "expected_revision", 7 } };
+    static Dictionary<string, object> Input() => new Dictionary<string, object> { { "sheet_unique_ids", new[] { "sheet" } }, { "document_id", "doc" }, { "expected_revision", 7 } };
     static void Main()
     {
         var doc = new Autodesk.Revit.DB.Document();
@@ -57,6 +63,13 @@ class Program
             var input = Input(); input["settings"] = invalid;
             try { PublicationPrintService.Print(doc, input); throw new Exception("Invalid setting accepted"); }
             catch (BridgeException ex) { Check(ex.Message.Length > 0); }
+        }
+        Check(((string[])result["ids"])[0] == "sheet");
+        foreach (var invalid in new object[] { null, new string[0], new[] { "sheet", "sheet" }, new[] { "missing" }, new[] { "placeholder" }, new[] { " " }, new string[201] })
+        {
+            var input = Input(); input["sheet_unique_ids"] = invalid;
+            try { PublicationPrintService.Print(doc, input); throw new Exception("Invalid selection accepted"); }
+            catch (BridgeException) { Check(true); }
         }
         KPLN_Publication.BatchPrintService.Fail = true;
         try { PublicationPrintService.Print(doc, Input()); throw new Exception("Failure swallowed"); }

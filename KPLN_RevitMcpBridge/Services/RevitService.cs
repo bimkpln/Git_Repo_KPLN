@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using KPLN_RevitMcpBridge.Server;
@@ -119,17 +119,46 @@ namespace KPLN_RevitMcpBridge.Services
                     result = Resolve(doc, input).Select(e => new { element = ElementInfo(e), bounding_box = Box(e), parameters = ParameterService.Read(e), location = ElementLocationService.Read(e) }).ToArray(); break;
                 case "get_group_members": result = ModelInspectionService.GroupMembers(doc, input); break;
                 case "get_sheet_contents": result = ModelInspectionService.SheetContents(doc, input); break;
+                case "get_documentation_catalog": result = DocumentationReadService.Catalog(doc, input); break;
+                case "get_sheet_layout": result = DocumentationReadService.Layout(doc, input); break;
+                case "check_sheet_layout": result = SheetLayoutService.Check(doc, input); break;
+                case "get_project_levels": result = DocumentationReadService.Levels(doc, input); break;
+                case "get_view_annotations": result = DocumentationReadService.Annotations(doc, input); break;
+                case "get_plan_range": result = PlanRoutingService.ReadRange(doc, input); break;
+                case "get_mep_connections": result = PlanRoutingService.Connections(doc, input); break;
+                case "get_space_annotation_context": result = AnnotationReviewService.Spaces(doc, input); break;
+                case "get_dimension_references": result = DocumentationReadService.References(doc, input); break;
+                case "create_sheets":
+                case "place_views":
+                case "move_sheet_items":
+                case "update_viewport_labels":
+                case "create_tags":
+                case "tag_linked_rooms":
+                case "update_tags":
+                case "delete_tags":
+                case "clone_room_schedule":
+                case "create_dimensions":
+                case "create_plan_views":
+                case "create_sections":
+                case "copy_plan_range":
+                case "set_plan_range":
+                case "copy_plan_crop":
+                    if (Json.Integer(input.Get("expected_revision"), "expected_revision") != state.Revision)
+                        throw new BridgeException("stale_document", "Модель изменилась. Перечитайте контекст перед оформлением.", 409);
+
+                    result = DocumentationWriteService.Execute(doc, input);
+                    break;
                 case "get_view_elements": result = ModelInspectionService.ViewElements(doc, input); break;
                 case "get_view_visibility": result = ModelInspectionService.ViewVisibility(doc, input); break;
                 case "get_schedule_data": result = ModelInspectionService.ScheduleData(doc, input); break;
                 case "check_intersections": result = InterferenceService.Check(doc, input); break;
-                case "export_sheets_pdf":
+                case "export_selected_sheets_pdf":
                     if (Json.Integer(input.Get("expected_revision"), "expected_revision") != state.Revision)
                         throw new BridgeException("stale_document", "Модель изменилась; получите контекст заново перед экспортом.", 409);
 
                     result = SheetPdfExportService.Export(doc, input);
                     break;
-                case "print_sheets_pdf":
+                case "print_selected_sheets_pdf":
                     if (Json.Integer(input.Get("expected_revision"), "expected_revision") != state.Revision)
                         throw new BridgeException("stale_document", "Модель изменилась; получите контекст заново перед печатью.", 409);
 
@@ -206,7 +235,7 @@ namespace KPLN_RevitMcpBridge.Services
             var parameters = manager.Parameters.Cast<FamilyParameter>().ToArray();
             var types = manager.Types.Cast<FamilyType>().Skip(offset).Take(limit + 1).ToArray();
             return new { family = ElementInfo(doc.OwnerFamily), current_type = manager.CurrentType?.Name,
-                parameters = parameters.Select(p => new { id = IdValue(p.Id).ToString(CultureInfo.InvariantCulture), name = p.Definition.Name, storage_type = p.StorageType.ToString(), is_instance = p.IsInstance, is_read_only = p.IsReadOnly, formula = p.Formula }).ToArray(),
+                parameters = parameters.Select(FamilyTypeService.DescribeParameter).ToArray(),
                 types = types.Take(limit).Select(t => new { name = t.Name, values = parameters.Select(p => new { parameter_id = IdValue(p.Id).ToString(CultureInfo.InvariantCulture), value = FamilyValue(t, p) }).ToArray() }).ToArray(),
                 next_offset = types.Length > limit ? (int?)(offset + limit) : null };
         }

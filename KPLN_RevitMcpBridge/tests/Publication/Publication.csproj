@@ -5,6 +5,7 @@
   <ItemGroup>
     <Compile Include="..\..\Services\PublicationPrintService.cs" Link="PublicationPrintService.cs" />
     <Compile Include="..\..\Server\Protocol.cs" Link="Protocol.cs" />
+    <Compile Include="..\..\Services\SheetSelection.cs" Link="SheetSelection.cs" />
     <Compile Include="Program.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

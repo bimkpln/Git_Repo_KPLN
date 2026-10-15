@@ -21,6 +21,8 @@ internal static class Program
 
     private static void Main()
     {
+        CheckAssociations();
+
         var text = new FamilyParameter { Id = new ElementId(1), Definition = new Definition("Mark"), StorageType = StorageType.String };
         var length = new FamilyParameter { Id = new ElementId(2), Definition = new Definition("Length"), StorageType = StorageType.Double };
         var nested = new FamilyParameter { Id = new ElementId(3), Definition = new Definition("Nested"), StorageType = StorageType.ElementId };
@@ -87,5 +89,40 @@ internal static class Program
         Fails(() => FamilyTypeService.Update(doc, UpdateRequest(false, Type("A", ValueSet(1, "A updated", "rolled back")))), "transaction_rolled_back");
         Assert(doc.FamilyManager.TypeList.Single(t => t.Name == "A").AsString(text) == "A updated", "warning did not roll back updated value");
         Console.WriteLine("PASS: family type preview, atomic creation and update, stale checks, values, validation and warning rollback (API doubles).");
+    }
+
+    private static void CheckAssociations()
+    {
+        var glass = new FamilyParameter { Id = new ElementId(2865054), Definition = new Definition("Остекление_Материал"), StorageType = StorageType.ElementId };
+        var typo = new FamilyParameter { Id = new ElementId(2958061), Definition = new Definition("Остекление_Матераил"), StorageType = StorageType.ElementId };
+        var symbol = new FamilySymbol { Id = new ElementId(3000000001), UniqueId = "leaf-type", Name = "Glazed", FamilyName = "Nested leaf" };
+        var first = new FamilyInstance { Id = new ElementId(301), UniqueId = "first-leaf", Name = "Glazed", Symbol = symbol };
+        var second = new FamilyInstance { Id = new ElementId(302), UniqueId = "second-leaf", Name = "Glazed", Symbol = symbol };
+        glass.AssociatedParameters.Add(new Parameter { Id = new ElementId(50), Definition = new Definition("Glass"), StorageType = StorageType.ElementId, Element = second });
+        glass.AssociatedParameters.Add(new Parameter { Id = new ElementId(50), Definition = new Definition("Glass"), StorageType = StorageType.ElementId, Element = first });
+        typo.AssociatedParameters.Add(new Parameter { Id = new ElementId(51), Definition = new Definition("Material"), StorageType = StorageType.ElementId, Element = symbol });
+
+        var result = Json.Parse(Json.Serialize(FamilyTypeService.DescribeParameter(glass)));
+        var rows = result.List("associated_parameters");
+        Assert(rows.Count == 2 && Json.Integer(result.Get("associated_parameters_count"), "count") == 2, "association count");
+        var row = (Dictionary<string, object>)rows[0];
+        Assert(((Dictionary<string, object>)row["element"]).Text("unique_id") == "first-leaf", "association owner/order");
+        Assert(row.Text("parameter_name") == "Glass" && row.Text("family_name") == "Nested leaf", "association names");
+        Assert(!result.Flag("associated_parameters_truncated"), "unexpected truncation");
+
+        result = Json.Parse(Json.Serialize(FamilyTypeService.DescribeParameter(typo)));
+        row = (Dictionary<string, object>)result.List("associated_parameters")[0];
+        var element = (Dictionary<string, object>)row["element"];
+        Assert(element.Text("id") == "3000000001" && element.Flag("is_type"), "type owner / 64-bit id");
+        Assert(result.Text("name") == "Остекление_Матераил", "similarly named parameters merged");
+
+        typo.AssociatedParameters.Clear();
+        result = Json.Parse(Json.Serialize(FamilyTypeService.DescribeParameter(typo)));
+        Assert(((System.Collections.IList)result["associated_parameters"]).Count == 0, "unbound parameter");
+        for (int i = 0; i < 201; i++) typo.AssociatedParameters.Add(glass.AssociatedParameters[0]);
+        result = Json.Parse(Json.Serialize(FamilyTypeService.DescribeParameter(typo)));
+        Assert(result.List("associated_parameters").Count == 200 && result.Flag("associated_parameters_truncated"), "bounded associations");
+        Assert(Json.Integer(result.Get("associated_parameters_count"), "count") == 201, "full association count");
+        Console.WriteLine("PASS: family parameter associations, nested instances/types, distinct spellings, 64-bit IDs, empty and truncated results.");
     }
 }

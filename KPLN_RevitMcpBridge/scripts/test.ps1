@@ -4,11 +4,13 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 & $Python -B -m unittest discover -s (Join-Path $root 'tests') -v
 if ($LASTEXITCODE -ne 0) { throw 'MCP tests failed' }
-foreach ($suite in @('Dispatcher','Transport','Parameters','FamilyTypes','Lifecycle','Inspection','Publication')) {
+foreach ($suite in @('Dispatcher','Transport','Parameters','FamilyTypes','Lifecycle','Inspection','Publication','LinkedRooms','SheetLayout')) {
     & dotnet msbuild (Join-Path $root "tests\$suite\$suite.csproj") /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "Build failed: $suite" }
     $exe = switch ($suite) { 'Dispatcher' { 'DispatcherTests.exe' }; 'Transport' { 'TransportTests.exe' }; 'Parameters' { 'ParameterTests.exe' }; 'FamilyTypes' { 'FamilyTypeTests.exe' }; 'Lifecycle' { 'LifecycleTests.exe' }; 'Inspection' { 'InspectionTests.exe' } }
     if ($suite -eq 'Publication') { $exe = 'KPLN_Publication.exe' }
+    if ($suite -eq 'LinkedRooms') { $exe = 'LinkedRoomsTests.exe' }
+    if ($suite -eq 'SheetLayout') { $exe = 'SheetLayoutTests.exe' }
     & (Join-Path $root "tests\$suite\bin\$exe")
     if ($LASTEXITCODE -ne 0) { throw "Test failed: $suite" }
 

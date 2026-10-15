@@ -122,7 +122,7 @@ class BridgeTests(unittest.TestCase):
 
     def test_tool_schemas_and_annotations(self):
         tools = asyncio.run(server.mcp.list_tools())
-        self.assertEqual(len(tools), 26)
+        self.assertEqual(len(tools), 50)
         for tool in tools:
             self.assertIsNotNone(tool.annotations)
             self.assertFalse(tool.annotations.openWorldHint)
@@ -144,7 +144,7 @@ class BridgeTests(unittest.TestCase):
             (server.get_revit_view_visibility, {"view_unique_id": "view", "unique_ids": ["wall"]}, "get_view_visibility"),
             (server.get_revit_schedule_data, {"schedule_unique_id": "schedule", "column_offset": 50}, "get_schedule_data"),
             (server.check_revit_intersections, {"time_budget_seconds": 30}, "check_intersections"),
-            (server.export_revit_sheets_pdf, {"expected_revision": 2}, "export_sheets_pdf"),
+            (server.export_revit_sheets_pdf, {"expected_revision": 2, "sheet_unique_ids": ["sheet"]}, "export_selected_sheets_pdf"),
         )
         for function, args, command_name in cases:
             with self.subTest(command=command_name), patch.object(server.client, "command", return_value={}) as command:
@@ -154,16 +154,29 @@ class BridgeTests(unittest.TestCase):
                 for key, value in args.items():
                     self.assertEqual(command.call_args.kwargs[key], value)
 
+    def test_pdf_selection_is_required_and_never_expands(self):
+        for function in (server.export_revit_sheets_pdf, server.print_revit_sheets_pdf):
+            with patch.object(server.client, "command", return_value={}) as command:
+                for ids in (None, [], [""], [" "], ["a", "a"], [1], ["a"] * 201):
+                    with self.subTest(function=function.__name__, ids=ids), self.assertRaises(ValueError):
+                        function("doc", 42, ids)
+                command.assert_not_called()
+                with self.assertRaises(TypeError):
+                    function("doc", 42)
+                function("doc", 42, ["created-sheet"], dry_run=False)
+                self.assertEqual(command.call_args.kwargs["sheet_unique_ids"], ["created-sheet"])
+                self.assertIn("selected_sheets_pdf", command.call_args.args[0])
+
     def test_pdf_export_defaults_to_preview_and_preserves_revision(self):
         with patch.object(server.client, "command", return_value={}) as command:
-            server.export_revit_sheets_pdf("doc", 42, session_id="session")
+            server.export_revit_sheets_pdf("doc", 42, ["sheet"], session_id="session")
         self.assertTrue(command.call_args.kwargs["dry_run"])
         self.assertEqual(command.call_args.kwargs["expected_revision"], 42)
 
     def test_publication_print_defaults_match_requested_setup(self):
         with patch.object(server.client, "command", return_value={}) as command:
-            server.print_revit_sheets_pdf("doc", 42, session_id="session")
-        self.assertEqual(command.call_args.args, ("print_sheets_pdf", "session"))
+            server.print_revit_sheets_pdf("doc", 42, ["sheet"], session_id="session")
+        self.assertEqual(command.call_args.args, ("print_selected_sheets_pdf", "session"))
         self.assertTrue(command.call_args.kwargs["dry_run"])
         self.assertEqual(command.call_args.kwargs["expected_revision"], 42)
         settings = command.call_args.kwargs["settings"]
@@ -184,3 +197,5 @@ class BridgeTests(unittest.TestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+

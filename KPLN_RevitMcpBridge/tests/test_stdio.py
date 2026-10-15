@@ -14,9 +14,14 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
                 info = await session.initialize()
                 self.assertEqual(info.serverInfo.name, "KPLN_RevitMcpBridge")
                 tools = await session.list_tools()
-                self.assertEqual(len(tools.tools), 26)
+                self.assertEqual(len(tools.tools), 50)
                 by_name = {tool.name: tool for tool in tools.tools}
-                for name in ("get_revit_group_members", "get_revit_sheet_contents", "get_revit_view_elements", "get_revit_view_visibility", "get_revit_schedule_data", "check_revit_intersections"):
+                for name in ("update_revit_viewport_labels", "create_revit_sheets", "place_revit_views", "move_revit_sheet_items", "create_revit_tags", "tag_revit_linked_rooms", "create_revit_dimensions", "create_revit_plan_views", "create_revit_sections", "set_revit_plan_range"):
+                    self.assertFalse(by_name[name].annotations.readOnlyHint)
+                    self.assertFalse(by_name[name].annotations.idempotentHint)
+                    self.assertTrue(by_name[name].inputSchema["properties"]["dry_run"]["default"])
+                    self.assertIn("expected_revision", by_name[name].inputSchema["required"])
+                for name in ("get_revit_group_members", "get_revit_sheet_contents", "get_revit_view_elements", "get_revit_view_visibility", "get_revit_schedule_data", "check_revit_intersections", "check_revit_sheet_layout"):
                     self.assertTrue(by_name[name].annotations.readOnlyHint)
                 self.assertNotIn("open_revit_interference_check", by_name)
                 self.assertFalse(by_name["export_revit_sheets_pdf"].annotations.readOnlyHint)
@@ -38,6 +43,12 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
                 bad = await session.call_tool("find_revit_elements", {"document_id": "fake", "limit": 201})
                 self.assertTrue(bad.isError)
                 for name, args in (
+                    ("update_revit_viewport_labels", {"document_id": "fake", "expected_revision": 0, "items": []}),
+                    ("move_revit_sheet_items", {"document_id": "fake", "expected_revision": 0, "items": []}),
+                    ("check_revit_sheet_layout", {"document_id": "fake", "sheet_unique_id": "s", "minimum_gap_mm": -1}),
+                    ("tag_revit_linked_rooms", {"document_id": "fake", "expected_revision": 0, "items": []}),
+                    ("tag_revit_linked_rooms", {"document_id": "fake", "expected_revision": -1, "items": [{"view_unique_id": "v", "link_instance_unique_id": "l", "tag_type_unique_id": "t"}]}),
+                    ("tag_revit_linked_rooms", {"document_id": "fake", "expected_revision": 0, "items": [{"view_unique_id": "v", "tag_type_unique_id": "t"}]}),
                     ("get_revit_schedule_data", {"document_id": "fake", "schedule_unique_id": "fake", "column_limit": 51}),
                     ("get_revit_schedule_data", {"document_id": "fake", "schedule_unique_id": "fake", "section": "invalid"}),
                     ("check_revit_intersections", {"document_id": "fake", "time_budget_seconds": 61}),
@@ -53,3 +64,4 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
 
 
 if __name__ == "__main__": unittest.main()
+

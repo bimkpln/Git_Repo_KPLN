@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using KPLN_RevitMcpBridge.Server;
 using System;
 using System.Collections.Generic;
@@ -22,15 +22,7 @@ namespace KPLN_RevitMcpBridge.Services
                 throw new BridgeException("not_project_document", "Экспорт требует открытого документа проекта.");
 
             bool dryRun = input.Flag("dry_run", true);
-            ViewSheet[] sheets;
-            using (var collector = new FilteredElementCollector(doc).OfClass(typeof(ViewSheet)))
-                sheets = collector.Cast<ViewSheet>().OrderBy(s => s.SheetNumber, StringComparer.Ordinal)
-                    .ThenBy(s => RevitService.IdValue(s.Id)).ToArray();
-
-            if (sheets.Length == 0)
-                throw new BridgeException("no_sheets", "В документе нет листов.");
-            if (sheets.Length > 200)
-                throw new BridgeException("scope_too_large", "За один вызов допускается до 200 листов; экспорт не запускался.");
+            var sheets = SheetSelection.Resolve(doc, input);
 
             var printable = sheets.Where(s => !s.IsPlaceholder && s.CanBePrinted).ToArray();
             var skipped = sheets.Except(printable).Select(s => new

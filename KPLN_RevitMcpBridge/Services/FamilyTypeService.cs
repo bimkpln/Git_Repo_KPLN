@@ -9,6 +9,37 @@ namespace KPLN_RevitMcpBridge.Services
 {
     internal static class FamilyTypeService
     {
+        internal static object DescribeParameter(FamilyParameter parameter)
+        {
+            // Читаем явные привязки API без транзакции и переключения типоразмеров.
+            var associated = parameter.AssociatedParameters.Cast<Parameter>().ToArray();
+
+            return new
+            {
+                id = RevitService.IdValue(parameter.Id).ToString(CultureInfo.InvariantCulture),
+                name = parameter.Definition.Name,
+                storage_type = parameter.StorageType.ToString(),
+                is_instance = parameter.IsInstance,
+                is_read_only = parameter.IsReadOnly,
+                formula = parameter.Formula,
+                associated_parameters_count = associated.Length,
+                associated_parameters_truncated = associated.Length > 200,
+                associated_parameters = associated
+                    .OrderBy(p => RevitService.IdValue(p.Element.Id))
+                    .ThenBy(p => RevitService.IdValue(p.Id))
+                    .Take(200)
+                    .Select(p => new
+                    {
+                        element = RevitService.ElementInfo(p.Element),
+                        family_name = (p.Element as FamilyInstance)?.Symbol?.FamilyName
+                            ?? (p.Element as ElementType)?.FamilyName,
+                        parameter_id = RevitService.IdValue(p.Id).ToString(CultureInfo.InvariantCulture),
+                        parameter_name = p.Definition.Name,
+                        storage_type = p.StorageType.ToString()
+                    }).ToArray()
+            };
+        }
+
         private sealed class ValueUpdate
         {
             public FamilyParameter Parameter;

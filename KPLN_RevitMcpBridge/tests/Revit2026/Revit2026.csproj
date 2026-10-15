@@ -20,6 +20,9 @@
     <Compile Include="..\..\Server\HttpBridgeServer.cs" Condition="'$(Suite)' == 'Transport'" />
     <Compile Include="..\..\Services\ParameterService.cs" Condition="'$(Suite)' == 'Parameters'" />
     <Compile Include="..\..\Services\FamilyTypeService.cs" Condition="'$(Suite)' == 'FamilyTypes'" />
+    <Compile Include="..\..\Services\LinkedRoomTagService.cs" Condition="'$(Suite)' == 'LinkedRooms'" />
+    <Compile Include="..\..\Services\SheetLayoutService.cs" Condition="'$(Suite)' == 'SheetLayout'" />
+    <Compile Include="..\..\Services\AnnotationPlane.cs" Condition="'$(Suite)' == 'SheetLayout'" />
     <Compile Include="..\..\Services\PublicationPrintService.cs" Condition="'$(Suite)' == 'Publication'" />
   </ItemGroup>
   <ItemGroup Condition="'$(Suite)' == 'Inspection'">
@@ -34,6 +37,6 @@
     <Compile Include="..\..\ExternalCommands\BridgeStatusExtCmd.cs" />
   </ItemGroup>
   <Target Name="ValidateSuite" BeforeTargets="PrepareForBuild">
-    <Error Condition="'$(Suite)' != 'Parameters' AND '$(Suite)' != 'FamilyTypes' AND '$(Suite)' != 'Transport' AND '$(Suite)' != 'Dispatcher' AND '$(Suite)' != 'Inspection' AND '$(Suite)' != 'Lifecycle' AND '$(Suite)' != 'Publication'" Text="Unknown test suite: $(Suite)" />
+    <Error Condition="'$(Suite)' != 'Parameters' AND '$(Suite)' != 'FamilyTypes' AND '$(Suite)' != 'Transport' AND '$(Suite)' != 'Dispatcher' AND '$(Suite)' != 'Inspection' AND '$(Suite)' != 'Lifecycle' AND '$(Suite)' != 'Publication' AND '$(Suite)' != 'LinkedRooms' AND '$(Suite)' != 'SheetLayout'" Text="Unknown test suite: $(Suite)" />
   </Target>
 </Project>

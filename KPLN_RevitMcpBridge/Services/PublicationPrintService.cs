@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using KPLN_RevitMcpBridge.Server;
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,8 @@ namespace KPLN_RevitMcpBridge.Services
     {
         internal static object Print(Document doc, IDictionary<string, object> input)
         {
+            var sheets = SheetSelection.Resolve(doc, input);
+
             var assembly = AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(a => a.GetName().Name == "KPLN_Publication");
             var service = assembly?.GetType("KPLN_Publication.BatchPrintService");
             var settingsType = assembly?.GetType("KPLN_Publication.YayPrintSettings");
@@ -55,10 +57,14 @@ namespace KPLN_RevitMcpBridge.Services
                 field.SetValue(settings, value);
             }
 
+            var method = service.GetMethod("PrintSheets");
+            if (method == null)
+                throw new BridgeException("publication_update_required", "Для выбранных листов требуется обновлённая KPLN_Publication. Перезапустите Revit.");
+
             try
             {
-                var result = (Dictionary<string, object>)service.GetMethod("PrintAllSheets").Invoke(null,
-                    new[] { (object)doc, settings, input.Flag("dry_run", true), input.Range("timeout_seconds", 30, 5, 60) });
+                var result = (Dictionary<string, object>)method.Invoke(null,
+                    new[] { (object)doc, settings, input.Flag("dry_run", true), input.Range("timeout_seconds", 30, 5, 60), sheets.Select(s => s.UniqueId).ToArray() });
                 result["document_id"] = input.Text("document_id", true);
                 result["revision_at_request"] = Json.Integer(input.Get("expected_revision"), "expected_revision");
                 result["publication_version"] = assembly.GetName().Version.ToString();
