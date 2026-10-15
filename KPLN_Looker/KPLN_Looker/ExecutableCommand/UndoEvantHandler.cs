@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 
 namespace KPLN_Looker.ExecutableCommand
@@ -14,7 +14,7 @@ namespace KPLN_Looker.ExecutableCommand
             catch (Autodesk.Revit.Exceptions.InvalidOperationException ioe)
             {
                 if (!ioe.Message.Contains("Revit does not support more than one command are posted."))
-                    throw ioe;
+                    throw;
             }
 
             return Result.Succeeded;

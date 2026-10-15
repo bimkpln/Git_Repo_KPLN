@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
@@ -20,6 +20,8 @@ using System.Windows.Forms;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 using KPLN_Library_DBWorker.Core;
 using KPLN_Tools.ExternalCommands;
+using TaskDialog = Autodesk.Revit.UI.TaskDialog;
+using TaskDialogIcon = Autodesk.Revit.UI.TaskDialogIcon;
 
 namespace KPLN_Looker
 {
@@ -1016,7 +1018,7 @@ namespace KPLN_Looker
                 BitrixMessageSender.SendMsg_ToBIMChat(
                     $"Сотрудник: {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name} " +
                     $"из отдела {SQLiteMainService.CurrentUserDBSubDepartment.Code}\n" +
-                    $"Действие: Произвёл синхронизацию проекта с [b]созданными/удаленными помещениями[/b] в модели {doc.Title}.\n" +
+                    $"Действие: Произвёл синхронизацию проекта с [b]созданными/удаленными помещениями[/b] в модели {fileFullName}.\n" +
                     $"Инфо: Пересоздание помещений влияет на работу смежных разделов, а также на проверку соответствия ТЭПов между стадией П и Р.\n" +
                     $"Список id помещений из {changedRooms.Count()} шт.: {string.Join(",", changedRooms.Select(el => el.Id))}");
             }
