@@ -36,14 +36,18 @@
             this.checkBoxMergePdfs = new System.Windows.Forms.CheckBox();
             this.radioButtonPDF = new System.Windows.Forms.RadioButton();
             this.radioButtonPaper = new System.Windows.Forms.RadioButton();
-            this.btnPDFOpenNameConstructor = new System.Windows.Forms.Button();
-            this.textBox_PDFNameConstructor = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
             this.buttonPDFBrowse = new System.Windows.Forms.Button();
             this.textBox_PDFPath = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.comboBoxPrinters = new System.Windows.Forms.ComboBox();
+            this.groupBoxNameRules = new System.Windows.Forms.GroupBox();
+            this.btnSheetOpenNameConstructor = new System.Windows.Forms.Button();
+            this.textBox_SheetNameConstructor = new System.Windows.Forms.TextBox();
+            this.labelSheetName = new System.Windows.Forms.Label();
+            this.labelViewName = new System.Windows.Forms.Label();
+            this.textBox_ViewNameConstructor = new System.Windows.Forms.TextBox();
+            this.btnViewOpenNameConstructor = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.radioButtonRastr = new System.Windows.Forms.RadioButton();
             this.radioButtonVector = new System.Windows.Forms.RadioButton();
@@ -63,14 +67,12 @@
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.comboBoxDWGExportTypes = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
-            this.label8 = new System.Windows.Forms.Label();
             this.checkBox_isDWGExport = new System.Windows.Forms.CheckBox();
-            this.textBox_DWGNameConstructor = new System.Windows.Forms.TextBox();
-            this.btnDWGOpenNameConstructor = new System.Windows.Forms.Button();
             this.label9 = new System.Windows.Forms.Label();
             this.textBox_DWGPath = new System.Windows.Forms.TextBox();
             this.buttonDWGBrowse = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
+            this.groupBoxNameRules.SuspendLayout();
             this.groupBox2.SuspendLayout();
             this.groupBox3.SuspendLayout();
             this.groupBox4.SuspendLayout();
@@ -85,9 +87,6 @@
             this.groupBox1.Controls.Add(this.checkBoxMergePdfs);
             this.groupBox1.Controls.Add(this.radioButtonPDF);
             this.groupBox1.Controls.Add(this.radioButtonPaper);
-            this.groupBox1.Controls.Add(this.btnPDFOpenNameConstructor);
-            this.groupBox1.Controls.Add(this.textBox_PDFNameConstructor);
-            this.groupBox1.Controls.Add(this.label6);
             this.groupBox1.Controls.Add(this.buttonPDFBrowse);
             this.groupBox1.Controls.Add(this.textBox_PDFPath);
             this.groupBox1.Controls.Add(this.label5);
@@ -95,7 +94,7 @@
             this.groupBox1.Controls.Add(this.comboBoxPrinters);
             this.groupBox1.Location = new System.Drawing.Point(250, 12);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(277, 270);
+            this.groupBox1.Size = new System.Drawing.Size(277, 225);
             this.groupBox1.TabIndex = 0;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Экспорт в PDF/печать";
@@ -104,7 +103,7 @@
             // 
             this.checkBoxExcludeBorders.AutoSize = true;
             this.checkBoxExcludeBorders.Enabled = false;
-            this.checkBoxExcludeBorders.Location = new System.Drawing.Point(9, 249);
+            this.checkBoxExcludeBorders.Location = new System.Drawing.Point(9, 204);
             this.checkBoxExcludeBorders.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxExcludeBorders.Name = "checkBoxExcludeBorders";
             this.checkBoxExcludeBorders.Size = new System.Drawing.Size(250, 17);
@@ -118,7 +117,7 @@
             this.checkBoxRefresh.AutoSize = true;
             this.checkBoxRefresh.Checked = true;
             this.checkBoxRefresh.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.checkBoxRefresh.Location = new System.Drawing.Point(9, 228);
+            this.checkBoxRefresh.Location = new System.Drawing.Point(9, 183);
             this.checkBoxRefresh.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxRefresh.Name = "checkBoxRefresh";
             this.checkBoxRefresh.Size = new System.Drawing.Size(152, 17);
@@ -129,7 +128,7 @@
             // checkBoxOrientation
             // 
             this.checkBoxOrientation.AutoSize = true;
-            this.checkBoxOrientation.Location = new System.Drawing.Point(9, 207);
+            this.checkBoxOrientation.Location = new System.Drawing.Point(9, 162);
             this.checkBoxOrientation.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxOrientation.Name = "checkBoxOrientation";
             this.checkBoxOrientation.Size = new System.Drawing.Size(219, 17);
@@ -152,7 +151,7 @@
             // checkBoxMergePdfs
             // 
             this.checkBoxMergePdfs.AutoSize = true;
-            this.checkBoxMergePdfs.Location = new System.Drawing.Point(9, 186);
+            this.checkBoxMergePdfs.Location = new System.Drawing.Point(9, 141);
             this.checkBoxMergePdfs.Margin = new System.Windows.Forms.Padding(2);
             this.checkBoxMergePdfs.Name = "checkBoxMergePdfs";
             this.checkBoxMergePdfs.Size = new System.Drawing.Size(153, 17);
@@ -184,36 +183,6 @@
             this.radioButtonPaper.Text = "На бумагу";
             this.radioButtonPaper.UseVisualStyleBackColor = true;
             this.radioButtonPaper.CheckedChanged += new System.EventHandler(this.radioButtonPaper_CheckedChanged);
-            // 
-            // btnPDFOpenNameConstructor
-            // 
-            this.btnPDFOpenNameConstructor.Enabled = false;
-            this.btnPDFOpenNameConstructor.Location = new System.Drawing.Point(238, 161);
-            this.btnPDFOpenNameConstructor.Name = "btnPDFOpenNameConstructor";
-            this.btnPDFOpenNameConstructor.Size = new System.Drawing.Size(27, 21);
-            this.btnPDFOpenNameConstructor.TabIndex = 9;
-            this.btnPDFOpenNameConstructor.Text = "...";
-            this.btnPDFOpenNameConstructor.UseVisualStyleBackColor = true;
-            this.btnPDFOpenNameConstructor.Click += new System.EventHandler(this.btnPDFOpenNameConstructor_Click);
-            // 
-            // textBox_PDFNameConstructor
-            // 
-            this.textBox_PDFNameConstructor.Enabled = false;
-            this.textBox_PDFNameConstructor.Location = new System.Drawing.Point(9, 161);
-            this.textBox_PDFNameConstructor.Name = "textBox_PDFNameConstructor";
-            this.textBox_PDFNameConstructor.ReadOnly = true;
-            this.textBox_PDFNameConstructor.Size = new System.Drawing.Size(223, 20);
-            this.textBox_PDFNameConstructor.TabIndex = 8;
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Enabled = false;
-            this.label6.Location = new System.Drawing.Point(6, 145);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(168, 13);
-            this.label6.TabIndex = 7;
-            this.label6.Text = "Конструктор имени файла PDF:";
             // 
             // buttonPDFBrowse
             // 
@@ -263,13 +232,84 @@
             this.comboBoxPrinters.Text = "PDFCreator";
             this.comboBoxPrinters.SelectedIndexChanged += new System.EventHandler(this.comboBoxPrinters_SelectedIndexChanged);
             // 
+            // groupBoxNameRules
+            // 
+            this.groupBoxNameRules.Controls.Add(this.btnSheetOpenNameConstructor);
+            this.groupBoxNameRules.Controls.Add(this.textBox_SheetNameConstructor);
+            this.groupBoxNameRules.Controls.Add(this.labelSheetName);
+            this.groupBoxNameRules.Controls.Add(this.labelViewName);
+            this.groupBoxNameRules.Controls.Add(this.textBox_ViewNameConstructor);
+            this.groupBoxNameRules.Controls.Add(this.btnViewOpenNameConstructor);
+            this.groupBoxNameRules.Location = new System.Drawing.Point(250, 496);
+            this.groupBoxNameRules.Name = "groupBoxNameRules";
+            this.groupBoxNameRules.Size = new System.Drawing.Size(278, 112);
+            this.groupBoxNameRules.TabIndex = 3;
+            this.groupBoxNameRules.TabStop = false;
+            this.groupBoxNameRules.Text = "Имена файлов для PDF и DWG";
+            // 
+            // btnSheetOpenNameConstructor
+            // 
+            this.btnSheetOpenNameConstructor.Location = new System.Drawing.Point(238, 34);
+            this.btnSheetOpenNameConstructor.Name = "btnSheetOpenNameConstructor";
+            this.btnSheetOpenNameConstructor.Size = new System.Drawing.Size(27, 21);
+            this.btnSheetOpenNameConstructor.TabIndex = 9;
+            this.btnSheetOpenNameConstructor.Text = "...";
+            this.btnSheetOpenNameConstructor.UseVisualStyleBackColor = true;
+            this.btnSheetOpenNameConstructor.Click += new System.EventHandler(this.btnSheetOpenNameConstructor_Click);
+            // 
+            // textBox_SheetNameConstructor
+            // 
+            this.textBox_SheetNameConstructor.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBox_SheetNameConstructor.Location = new System.Drawing.Point(9, 34);
+            this.textBox_SheetNameConstructor.Name = "textBox_SheetNameConstructor";
+            this.textBox_SheetNameConstructor.ReadOnly = true;
+            this.textBox_SheetNameConstructor.Size = new System.Drawing.Size(223, 20);
+            this.textBox_SheetNameConstructor.TabIndex = 8;
+            // 
+            // labelSheetName
+            // 
+            this.labelSheetName.AutoSize = true;
+            this.labelSheetName.Location = new System.Drawing.Point(6, 18);
+            this.labelSheetName.Name = "labelSheetName";
+            this.labelSheetName.Size = new System.Drawing.Size(43, 13);
+            this.labelSheetName.TabIndex = 7;
+            this.labelSheetName.Text = "Листы:";
+            // 
+            // labelViewName
+            // 
+            this.labelViewName.AutoSize = true;
+            this.labelViewName.Location = new System.Drawing.Point(6, 61);
+            this.labelViewName.Name = "labelViewName";
+            this.labelViewName.Size = new System.Drawing.Size(37, 13);
+            this.labelViewName.TabIndex = 7;
+            this.labelViewName.Text = "Виды:";
+            // 
+            // textBox_ViewNameConstructor
+            // 
+            this.textBox_ViewNameConstructor.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.textBox_ViewNameConstructor.Location = new System.Drawing.Point(9, 77);
+            this.textBox_ViewNameConstructor.Name = "textBox_ViewNameConstructor";
+            this.textBox_ViewNameConstructor.ReadOnly = true;
+            this.textBox_ViewNameConstructor.Size = new System.Drawing.Size(223, 20);
+            this.textBox_ViewNameConstructor.TabIndex = 10;
+            // 
+            // btnViewOpenNameConstructor
+            // 
+            this.btnViewOpenNameConstructor.Location = new System.Drawing.Point(238, 77);
+            this.btnViewOpenNameConstructor.Name = "btnViewOpenNameConstructor";
+            this.btnViewOpenNameConstructor.Size = new System.Drawing.Size(27, 21);
+            this.btnViewOpenNameConstructor.TabIndex = 11;
+            this.btnViewOpenNameConstructor.Text = "...";
+            this.btnViewOpenNameConstructor.UseVisualStyleBackColor = true;
+            this.btnViewOpenNameConstructor.Click += new System.EventHandler(this.btnViewOpenNameConstructor_Click);
+            // 
             // groupBox2
             // 
             this.groupBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBox2.Controls.Add(this.radioButtonRastr);
             this.groupBox2.Controls.Add(this.radioButtonVector);
             this.groupBox2.Controls.Add(this.comboBoxRasterQuality);
-            this.groupBox2.Location = new System.Drawing.Point(250, 288);
+            this.groupBox2.Location = new System.Drawing.Point(250, 243);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(278, 50);
             this.groupBox2.TabIndex = 0;
@@ -322,7 +362,7 @@
             this.groupBox3.Controls.Add(this.buttonExcludesColor);
             this.groupBox3.Controls.Add(this.comboBoxColors);
             this.groupBox3.Controls.Add(this.label2);
-            this.groupBox3.Location = new System.Drawing.Point(250, 344);
+            this.groupBox3.Location = new System.Drawing.Point(250, 299);
             this.groupBox3.Name = "groupBox3";
             this.groupBox3.Size = new System.Drawing.Size(278, 72);
             this.groupBox3.TabIndex = 1;
@@ -365,7 +405,7 @@
             // btnOk
             // 
             this.btnOk.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnOk.Location = new System.Drawing.Point(174, 585);
+            this.btnOk.Location = new System.Drawing.Point(174, 620);
             this.btnOk.Name = "btnOk";
             this.btnOk.Size = new System.Drawing.Size(75, 23);
             this.btnOk.TabIndex = 4;
@@ -376,7 +416,7 @@
             // btnCancel
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnCancel.Location = new System.Drawing.Point(255, 585);
+            this.btnCancel.Location = new System.Drawing.Point(255, 620);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 5;
@@ -397,34 +437,52 @@
             // 
             this.pluginVersion.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.pluginVersion.AutoSize = true;
-            this.pluginVersion.Location = new System.Drawing.Point(12, 595);
+            this.pluginVersion.Location = new System.Drawing.Point(12, 630);
             this.pluginVersion.Name = "pluginVersion";
             this.pluginVersion.Size = new System.Drawing.Size(67, 13);
             this.pluginVersion.TabIndex = 0;
             this.pluginVersion.Text = "v2020.09.09";
             // 
+            // labelNameRulesError
+            // 
+            this.labelNameRulesError.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.labelNameRulesError.ForeColor = System.Drawing.Color.Red;
+            this.labelNameRulesError.Location = new System.Drawing.Point(12, 654);
+            this.labelNameRulesError.Name = "labelNameRulesError";
+            this.labelNameRulesError.Size = new System.Drawing.Size(515, 20);
+            this.labelNameRulesError.TabIndex = 4;
+            this.labelNameRulesError.Visible = false;
+            // 
             // treeView1
             // 
+            this.treeView1.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
             this.treeView1.CheckBoxes = true;
             this.treeView1.FullRowSelect = true;
             this.treeView1.Location = new System.Drawing.Point(12, 28);
             this.treeView1.Name = "treeView1";
-            this.treeView1.Size = new System.Drawing.Size(232, 551);
+            this.treeView1.Size = new System.Drawing.Size(232, 580);
             this.treeView1.TabIndex = 9;
             // 
             // buttonPreview
-            //
+            // 
             this.buttonPreview.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonPreview.Location = new System.Drawing.Point(336, 585);
+            this.buttonPreview.Location = new System.Drawing.Point(336, 620);
             this.buttonPreview.Name = "buttonPreview";
             this.buttonPreview.Size = new System.Drawing.Size(110, 23);
             this.buttonPreview.TabIndex = 5;
             this.buttonPreview.Text = "Имена файлов";
             this.buttonPreview.UseVisualStyleBackColor = true;
             this.buttonPreview.Click += new System.EventHandler(this.buttonPreview_Click);
-            this.buttonHelp.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
-            this.buttonHelp.Location = new System.Drawing.Point(452, 585);
+            // 
+            // buttonHelp
+            // 
+            this.buttonHelp.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.buttonHelp.Location = new System.Drawing.Point(452, 620);
+            this.buttonHelp.Name = "buttonHelp";
             this.buttonHelp.Size = new System.Drawing.Size(75, 23);
+            this.buttonHelp.TabIndex = 10;
             this.buttonHelp.Text = "Справка";
             this.buttonHelp.UseVisualStyleBackColor = true;
             this.buttonHelp.Click += new System.EventHandler(this.buttonHelp_Click);
@@ -434,16 +492,13 @@
             this.groupBox4.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBox4.Controls.Add(this.comboBoxDWGExportTypes);
             this.groupBox4.Controls.Add(this.label1);
-            this.groupBox4.Controls.Add(this.label8);
             this.groupBox4.Controls.Add(this.checkBox_isDWGExport);
-            this.groupBox4.Controls.Add(this.textBox_DWGNameConstructor);
-            this.groupBox4.Controls.Add(this.btnDWGOpenNameConstructor);
             this.groupBox4.Controls.Add(this.label9);
             this.groupBox4.Controls.Add(this.textBox_DWGPath);
             this.groupBox4.Controls.Add(this.buttonDWGBrowse);
-            this.groupBox4.Location = new System.Drawing.Point(250, 422);
+            this.groupBox4.Location = new System.Drawing.Point(250, 377);
             this.groupBox4.Name = "groupBox4";
-            this.groupBox4.Size = new System.Drawing.Size(278, 157);
+            this.groupBox4.Size = new System.Drawing.Size(278, 113);
             this.groupBox4.TabIndex = 1;
             this.groupBox4.TabStop = false;
             this.groupBox4.Text = "Экспорт в DWG";
@@ -468,16 +523,6 @@
             this.label1.TabIndex = 2;
             this.label1.Text = "Настройки экспорта:";
             // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Enabled = false;
-            this.label8.Location = new System.Drawing.Point(4, 107);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(174, 13);
-            this.label8.TabIndex = 7;
-            this.label8.Text = "Конструктор имени файла DWG:";
-            // 
             // checkBox_isDWGExport
             // 
             this.checkBox_isDWGExport.AutoSize = true;
@@ -488,24 +533,6 @@
             this.checkBox_isDWGExport.TabIndex = 13;
             this.checkBox_isDWGExport.Text = "Выполнить экспорт в DWG?";
             this.checkBox_isDWGExport.UseVisualStyleBackColor = true;
-            // 
-            // textBox_DWGNameConstructor
-            // 
-            this.textBox_DWGNameConstructor.Location = new System.Drawing.Point(5, 125);
-            this.textBox_DWGNameConstructor.Name = "textBox_DWGNameConstructor";
-            this.textBox_DWGNameConstructor.ReadOnly = true;
-            this.textBox_DWGNameConstructor.Size = new System.Drawing.Size(227, 20);
-            this.textBox_DWGNameConstructor.TabIndex = 8;
-            // 
-            // btnDWGOpenNameConstructor
-            // 
-            this.btnDWGOpenNameConstructor.Location = new System.Drawing.Point(238, 125);
-            this.btnDWGOpenNameConstructor.Name = "btnDWGOpenNameConstructor";
-            this.btnDWGOpenNameConstructor.Size = new System.Drawing.Size(27, 21);
-            this.btnDWGOpenNameConstructor.TabIndex = 9;
-            this.btnDWGOpenNameConstructor.Text = "...";
-            this.btnDWGOpenNameConstructor.UseVisualStyleBackColor = true;
-            this.btnDWGOpenNameConstructor.Click += new System.EventHandler(this.btnDWGOpenNameConstructor_Click);
             // 
             // label9
             // 
@@ -538,12 +565,8 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.labelNameRulesError.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
-            this.labelNameRulesError.Location = new System.Drawing.Point(12, 619);
-            this.labelNameRulesError.Size = new System.Drawing.Size(515, 20);
-            this.labelNameRulesError.ForeColor = System.Drawing.Color.Red;
-            this.labelNameRulesError.Visible = false;
-            this.ClientSize = new System.Drawing.Size(539, 646);
+            this.ClientSize = new System.Drawing.Size(539, 681);
+            this.Controls.Add(this.groupBoxNameRules);
             this.Controls.Add(this.labelNameRulesError);
             this.Controls.Add(this.treeView1);
             this.Controls.Add(this.label4);
@@ -562,6 +585,8 @@
             this.Text = "KPLN: Пакетная выдача";
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.groupBoxNameRules.ResumeLayout(false);
+            this.groupBoxNameRules.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
             this.groupBox3.ResumeLayout(false);
@@ -576,6 +601,7 @@
         #endregion
 
         private System.Windows.Forms.GroupBox groupBox1;
+        private System.Windows.Forms.GroupBox groupBoxNameRules;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.ComboBox comboBoxPrinters;
         private System.Windows.Forms.GroupBox groupBox2;
@@ -591,9 +617,9 @@
         private System.Windows.Forms.Button buttonPDFBrowse;
         private System.Windows.Forms.TextBox textBox_PDFPath;
         private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Button btnPDFOpenNameConstructor;
-        private System.Windows.Forms.TextBox textBox_PDFNameConstructor;
-        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Button btnSheetOpenNameConstructor;
+        private System.Windows.Forms.TextBox textBox_SheetNameConstructor;
+        private System.Windows.Forms.Label labelSheetName;
         private System.Windows.Forms.RadioButton radioButtonPDF;
         private System.Windows.Forms.RadioButton radioButtonPaper;
         private System.Windows.Forms.CheckBox checkBoxMergePdfs;
@@ -609,9 +635,9 @@
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.ComboBox comboBoxDWGExportTypes;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.TextBox textBox_DWGNameConstructor;
-        private System.Windows.Forms.Button btnDWGOpenNameConstructor;
+        private System.Windows.Forms.Label labelViewName;
+        private System.Windows.Forms.TextBox textBox_ViewNameConstructor;
+        private System.Windows.Forms.Button btnViewOpenNameConstructor;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.TextBox textBox_DWGPath;
         private System.Windows.Forms.Button buttonDWGBrowse;

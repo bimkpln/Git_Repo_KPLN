@@ -29,7 +29,8 @@ namespace KPLN_Publication
         #region Настройки экспорта в PDF
         public string printerName = new System.Drawing.Printing.PrinterSettings().PrinterName;
         public string outputPDFFolder = "C:\\PDF_Print";
-        public string pdfNameConstructor = "<Номер листа>_<Имя листа>";
+        // Старые поля оставлены для чтения конфигураций предыдущих версий и внешних вызовов.
+        public string pdfNameConstructor;
         public HiddenLineViewsType hiddenLineProcessing = HiddenLineViewsType.VectorProcessing;
         public ColorType colorsType = ColorType.Monochrome;
         public RasterQualityType rasterQuality = RasterQualityType.High;
@@ -51,6 +52,57 @@ namespace KPLN_Publication
         public ExportDWGSettingsShell dwgExportSettingShell;
         public string outputDWGFolder = "C:\\DWG_Print";
         public string dwgNameConstructor;
+        #endregion
+
+        #region Общие правила имени по типу элемента
+        public string sheetNameConstructor;
+        public string viewNameConstructor;
+
+        // Один запуск использует одну папку в предпросмотре и при фактической выдаче.
+        // В XML эти служебные поля не сохраняются.
+        internal string ExportRunFolderName;
+        internal string ExportFallbackFolderName;
+
+        internal string GetExportFolderName(string documentTitle)
+        {
+            return ExportRunFolderName ?? (ExportRunFolderName = documentTitle + "_" + DateTime.Now.ToString("dd.MM.yyyy HH mm ss"));
+        }
+
+        internal string GetExportFallbackFolderName()
+        {
+            return ExportFallbackFolderName ?? (ExportFallbackFolderName = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff")
+                + "_" + Guid.NewGuid().ToString("N").Substring(0, 8));
+        }
+
+        public void InitializeNameConstructors()
+        {
+            // При разных старых правилах приоритет у включённого формата (PDF при обоих).
+            string[] legacy = isDWGExport && (!isPDFExport || isPrintToPaper)
+                ? new[] { dwgNameConstructor, pdfNameConstructor }
+                : new[] { pdfNameConstructor, dwgNameConstructor };
+            foreach (string rule in legacy)
+            {
+                if (rule == null)
+                    continue;
+
+                if (rule.Contains("<Имя вида>"))
+                {
+                    if (viewNameConstructor == null)
+                        viewNameConstructor = rule;
+                }
+                else if (sheetNameConstructor == null)
+                    sheetNameConstructor = rule;
+            }
+
+            sheetNameConstructor = FileNameTemplate.WithoutExportExtension(sheetNameConstructor ?? "<Номер листа>_<Имя листа>");
+            viewNameConstructor = FileNameTemplate.WithoutExportExtension(viewNameConstructor ?? "<Имя вида>");
+        }
+
+        public string GetNameConstructor(View view)
+        {
+            InitializeNameConstructors();
+            return view is ViewSheet ? sheetNameConstructor : viewNameConstructor;
+        }
         #endregion
 
         /// <summary>
@@ -130,6 +182,7 @@ namespace KPLN_Publication
                 new PdfColor(System.Drawing.Color.FromArgb(3,2,51))
             };
 
+            ps.InitializeNameConstructors();
             return ps;
         }
 

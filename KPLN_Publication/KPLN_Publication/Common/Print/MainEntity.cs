@@ -111,7 +111,17 @@ namespace KPLN_Publication
             {
                 Parameter param = source.LookupParameter(paramName);
                 if (param != null)
-                    return param.HasValue ? GetParameterValueAsString(param) ?? string.Empty : string.Empty;
+                {
+                    string value = param.HasValue ? GetParameterValueAsString(param) ?? string.Empty : string.Empty;
+                    // У неразмещённого вида Revit возвращает "---" вместо номера листа.
+                    if (!(sheet is ViewSheet) && source == sheet
+                        && (param.Id.Equals(new ElementId(BuiltInParameter.VIEWER_SHEET_NUMBER))
+                            || param.Id.Equals(new ElementId(BuiltInParameter.VIEWPORT_SHEET_NUMBER)))
+                        && value.Trim() == "---")
+                        return string.Empty;
+
+                    return value;
+                }
             }
 
             return null;

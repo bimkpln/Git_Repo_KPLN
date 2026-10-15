@@ -93,8 +93,8 @@ namespace KPLN_Publication
                 if (PrinterUtility.GetPaperSize(settings.printerName, width, height, logger) == null)
                     throw new InvalidOperationException("В PDFCreator отсутствует формат " + width + "x" + height + " для " + entity);
 
-                string name = entity.NameByConstructor(settings.pdfNameConstructor ?? "");
-                if (!name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || name.Length <= 4 || name.Length > 150
+                string name = FileNameTemplate.WithExtension(entity.NameByConstructor(settings.GetNameConstructor(entity.MainView), out List<string> nameErrors), ".pdf");
+                if (nameErrors.Count != 0 || !name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || name.Length <= 4 || name.Length > 150
                     || name != Path.GetFileName(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || !names.Add(name))
                     throw new InvalidOperationException("Недопустимое или повторяющееся имя PDF: " + name);
                 files.Add(new Dictionary<string, object>
@@ -110,7 +110,7 @@ namespace KPLN_Publication
                 { "contract_version", ContractVersion }, { "dry_run", dryRun }, { "method", "kpln_publication_pdfcreator" },
                 { "complete", false }, { "total_sheet_count", sheets.Length }, { "exported_count", 0 },
                 { "output_root", root }, { "files", files }, { "settings", new {
-                    printer = settings.printerName, name_template = settings.pdfNameConstructor,
+                    printer = settings.printerName, name_template = settings.sheetNameConstructor,
                     color = settings.colorsType.ToString(), processing = settings.hiddenLineProcessing.ToString(),
                     raster_quality = settings.rasterQuality.ToString(), refresh_schedules = settings.isRefreshSchedules,
                     use_orientation = settings.isUseOrientation, merge = false, exclude_borders = false, dwg = false } }
@@ -132,6 +132,16 @@ namespace KPLN_Publication
                 {
                     string folder = Path.Combine(root, DateTime.UtcNow.ToString("yyyyMMddTHHmmssZ") + "-" + Guid.NewGuid().ToString("N"));
                     Directory.CreateDirectory(folder);
+                    var reservedNames = new HashSet<string>(files.Select(file => (string)file["file_name"]), StringComparer.OrdinalIgnoreCase);
+                    foreach (var file in files)
+                    {
+                        string requestedName = (string)file["file_name"];
+                        reservedNames.Remove(requestedName);
+                        string availableName = FileNameTemplate.GetAvailableFileName(folder, requestedName, reservedNames);
+                        if (availableName.Length > 150 || Path.Combine(folder, availableName).Length >= 260)
+                            throw new PathTooLongException("Слишком длинное имя PDF после добавления номера: " + availableName);
+                        file["file_name"] = availableName;
+                    }
                     result["output_directory"] = folder;
                     result["model_modified_before"] = doc.IsModified;
                     var errors = new List<string>();

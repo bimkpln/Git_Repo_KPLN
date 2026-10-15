@@ -26,12 +26,15 @@ namespace KPLN_Publication.ExternalCommands.Print
 
         // Классический MAX_PATH: последний символ зарезервирован под завершающий ноль.
         private const int WindowsMaxPath = 260;
-        private const int WindowsMaxDirectoryPath = 248;
         private readonly List<string> _redirectedExportFolders = new List<string>();
+        private ExportFilePlan _pdfExportPlan;
+        private ExportFilePlan _dwgExportPlan;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             _redirectedExportFolders.Clear();
+            _pdfExportPlan = null;
+            _dwgExportPlan = null;
             string exportResult = "Экспорт прерван. В указанных папках могут находиться уже выданные файлы.";
 
             try
@@ -61,20 +64,14 @@ namespace KPLN_Publication.ExternalCommands.Print
                     .Where(view => !view.IsTemplate && view.CanBePrinted)
                     .ToArray();
 
-                if (selSheets.Any() && selViews.Any())
+                if (!selSheets.Any() && !selViews.Any())
                 {
-                    message = "Выбраны и листы и виды. Выберите ЛИБО листы, ЛИБО виды в Диспетчере проекта через Shift.";
-                    logger.Write("Эксопорт остановлен, выбраны и листы и виды");
-                    return Result.Failed;
-                }
-                else if (!selSheets.Any() && !selViews.Any())
-                {
-                    message = "Вы не выбрали виды для экспорта. Выберите ЛИБО листы, ЛИБО виды в Диспетчере проекта через Shift.";
+                    message = "Вы не выбрали листы или виды для экспорта. Выберите их в Диспетчере проекта через Shift.";
                     logger.Write("Эксопорт остановлен, ничего для экспорта не выбрано");
                     return Result.Failed;
                 }
 
-                View[] resultViews = selSheets.Any() ? selSheets : selViews;
+                View[] resultViews = selSheets.Concat(selViews).ToArray();
 
                 //Листы/виды из всех открытых файлов, ключ - имя файла, значение - список видов
                 List<string> listErrors = new List<string>();
@@ -196,6 +193,16 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 logger.Write("В окне печати нажат ОК, переход к экспорту");
 
+                // Повторная проверка всего набора до первого задания PDF или DWG.
+                List<ExportNameRow> nameRows = FormExportNamePreview.BuildRows(mainDoc.Title,
+                    form._entitiesSelected, printSettings, form.printToFile);
+                if (nameRows.Any(row => row.HasError))
+                    throw new InvalidOperationException("Экспорт заблокирован: исправьте ошибки имён файлов.\n" +
+                        string.Join("\n", nameRows.Where(row => row.HasError)
+                            .Select(row => row.Format + ": " + row.FileName + " — " + row.Status)));
+                _pdfExportPlan = nameRows.FirstOrDefault(row => row.Format == "PDF")?.Plan;
+                _dwgExportPlan = nameRows.FirstOrDefault(row => row.Format == "DWG")?.Plan;
+
                 string msg = string.Empty;
                 if (printSettings.isPDFExport && printSettings.isDWGExport)
                 {
@@ -298,8 +305,7 @@ namespace KPLN_Publication.ExternalCommands.Print
             bool printToFile = form.printToFile;
             if (printToFile)
             {
-                outputFolder = CreateFolderToEXport(mainDoc, outputFolder, "PDF",
-                    GetExportFileNames(mainDoc, allSheets, printSettings, true), logger, printerName);
+                outputFolder = CreateFolderToEXport(_pdfExportPlan, "PDF", logger, printerName);
                 logger.Write("Создана папка для печати: " + outputFolder);
             }
 
@@ -307,6 +313,7 @@ namespace KPLN_Publication.ExternalCommands.Print
 
             //печатаю листы из каждого выбранного revit-файла
             List<string> pdfFileNames = new List<string>();
+            Dictionary<string, string> sourcePdfNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             // Данные для обработки PDF сохраняем до закрытия связанных документов.
             List<Tuple<string, bool, bool, string>> printedFiles = new List<Tuple<string, bool, bool, string>>();
             foreach (string docTitle in allSheets.Keys)
@@ -427,6 +434,10 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 logger.Write("Проверка форматов листов выполнена успешно, переход к печати");
 
+                // Настройки видов фиксируем до создания и отката временных профилей листов.
+                Action<PrintManager, PrintParameters> restoreViewPageSettings = mSheets.Any(entity => !(entity.MainView is ViewSheet))
+                    ? PrintSupport.CaptureViewPageSettings(pManager) : null;
+
 
                 // Открываю окно статуса
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel
@@ -462,7 +473,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                         {
                             t.Start("Профили печати");
 
-                            string fileName = FileNameTemplate.WithExtension(msheet.NameByConstructor(printSettings.pdfNameConstructor), ".pdf");
+                            string fileName = FileNameTemplate.WithExtension(msheet.NameByConstructor(printSettings.GetNameConstructor(msheet.MainView)), ".pdf");
 
                             if (msheet.MainView is ViewSheet && printerName == "PDFCreator" && printSettings.isUseOrientation)
                             {
@@ -495,17 +506,20 @@ namespace KPLN_Publication.ExternalCommands.Print
                                     tempFilename = fileName;
                                 }
 
-                                string fullFilename = System.IO.Path.Combine(outputFolder, tempFilename);
+                                string fullFilename = printToFile ? _pdfExportPlan.GetPath(tempFilename, true)
+                                    : Path.Combine(outputFolder, tempFilename);
                                 if (printToFile)
                                     CheckExportFilePath(fullFilename);
                                 logger.Write("Печать в файл " + fullFilename);
                                 pdfFileNames.Add(fullFilename);
+                                sourcePdfNames[fullFilename] = tempFilename;
 
                                 //смещаю область для печати многолистовых спецификаций
                                 double offsetX = isSheet ? -i * msheet.WidthMm / 25.4 : 0; //смещение задается в футах!
                                 logger.Write("Смещение печати по X: " + offsetX.ToString("F3"));
 
-                                PrintSetting ps = PrintSupport.CreatePrintSetting(openedDoc, pManager, msheet, printSettings, offsetX, 0);
+                                PrintSetting ps = PrintSupport.CreatePrintSetting(openedDoc, pManager, msheet, printSettings, offsetX, 0,
+                                    restoreViewPageSettings: restoreViewPageSettings);
 
                                 pManager.PrintSetup.CurrentPrintSetting = ps;
                                 pManager.PrintToFileName = fullFilename;
@@ -564,9 +578,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                 int watchTimer = 0;
                 while (printToFile)
                 {
-                    int filescount = System.IO.Directory.GetFiles(outputFolder).Length;
+                    int filescount = pdfFileNames.Count(File.Exists);
                     logger.Write("Итерация №" + watchTimer + ", файлов напечатано " + filescount);
-                    if (filescount == printedSheetCount)
+                    if (filescount == pdfFileNames.Count)
                     {
                         break;
                     }
@@ -603,7 +617,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 foreach (var printedFile in printedFiles.Where(file => file.Item2))
                 {
                     string file = printedFile.Item1;
-                    string outFile = file.Replace(".pdf", "_OUT_Border.pdf");
+                    string outFile = _pdfExportPlan.GetPath(FileNameTemplate.AppendSuffix(sourcePdfNames[file], "_OUT_Border"), true);
                     logger.Write("Файл будет преобразован из " + file + " в " + outFile);
 
                     PdfWorker.PdfWorker.SetHideColors(printSettings.excludeBorderColors);
@@ -628,7 +642,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     }
 
                     string file = printedFile.Item1;
-                    string outFile = file.Replace(".pdf", "_OUT_Color.pdf");
+                    string outFile = _pdfExportPlan.GetPath(FileNameTemplate.AppendSuffix(sourcePdfNames[file], "_OUT_Color"), true);
                     logger.Write("Файл будет преобразован из " + file + " в " + outFile);
 
                     PdfWorker.PdfWorker.SetExcludeColors(printSettings.excludeColors);
@@ -648,9 +662,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 logger.Write(" ");
                 logger.Write("\nОбъединение PDF файлов");
                 System.Threading.Thread.Sleep(500);
-                string combinedFile = Path.Combine(outputFolder, mainDoc.Title + ".pdf");
-
-                string[] pdfFileNamesFromPath = Directory.GetFiles(outputFolder, "*.pdf");
+                string combinedFile = _pdfExportPlan.GetPath(mainDoc.Title + ".pdf", true);
 
                 PdfWorker.PdfWorker.CombineMultiplyPDFs(pdfFileNames, combinedFile, logger);
 
@@ -688,8 +700,7 @@ namespace KPLN_Publication.ExternalCommands.Print
             YayPrintSettings.SaveSettings(printSettings);
             logger.Write("Настройки экспорта сохранены");
 
-            outputFolder = CreateFolderToEXport(mainDoc, outputFolder, "DWG",
-                GetExportFileNames(mainDoc, allSheets, printSettings, false), logger);
+            outputFolder = CreateFolderToEXport(_dwgExportPlan, "DWG", logger);
             logger.Write("Создана папка для экспорта: " + outputFolder);
 
             int exportedSheetCount = 0;
@@ -815,8 +826,10 @@ namespace KPLN_Publication.ExternalCommands.Print
                         dwgOptions.FileVersion = ACADVersion.R2013;
 
                         // Экспортируем лист в DWG
-                        string fileName = FileNameTemplate.WithoutExtension(msheet.NameByConstructor(form.PrintSettings.dwgNameConstructor), ".dwg");
-                        CheckExportFilePath(Path.Combine(outputFolder, GetDwgFileName(fileName)));
+                        string fileName = FileNameTemplate.WithoutExtension(msheet.NameByConstructor(form.PrintSettings.GetNameConstructor(msheet.MainView)), ".dwg");
+                        string fullFileName = _dwgExportPlan.GetPath(GetDwgFileName(fileName), true);
+                        CheckExportFilePath(fullFileName);
+                        fileName = Path.GetFileNameWithoutExtension(fullFileName);
                         bool exportSuccess = openedDoc.Export(
                             // Чтобы избежать формирования пути в формате "C:\\DWG_Print\\Test\\Проект1_20.02.2025 11 17 46\-КП_новая-3213719.jpg", нужно текстовый формат пропустить через Path
                             Path.GetFullPath(outputFolder),
@@ -862,66 +875,6 @@ namespace KPLN_Publication.ExternalCommands.Print
             return FileNameTemplate.WithExtension(fileName, ".dwg");
         }
 
-        private static List<string> GetExportFileNames(Document doc,
-            Dictionary<string, List<MainEntity>> allSheets, YayPrintSettings settings, bool isPdf)
-        {
-            List<string> fileNames = new List<string>();
-            foreach (List<MainEntity> sheets in allSheets.Values)
-            {
-                if (sheets.Count == 0)
-                    continue;
-
-                // Те же основные надписи, которые используются при подготовке печати.
-                ILookup<string, FamilyInstance> titleBlocks = isPdf && sheets.Any(entity => entity.MainView is ViewSheet)
-                    ? new FilteredElementCollector(sheets[0].MainView.Document)
-                        .WhereElementIsNotElementType()
-                        .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                        .Cast<FamilyInstance>()
-                        .Where(t => t.get_Parameter(BuiltInParameter.SHEET_HEIGHT).AsDouble() > 0.6)
-                        .ToLookup(t => t.get_Parameter(BuiltInParameter.SHEET_NUMBER).AsString())
-                    : null;
-
-                foreach (MainEntity sheet in sheets)
-                {
-                    string fileName = sheet.NameByConstructor(isPdf
-                        ? settings.pdfNameConstructor
-                        : settings.dwgNameConstructor);
-                    fileName = FileNameTemplate.WithExtension(fileName, isPdf ? ".pdf" : ".dwg");
-                    if (!isPdf)
-                    {
-                        fileNames.Add(GetDwgFileName(fileName));
-                        continue;
-                    }
-
-                    int partCount = sheet.MainView is ViewSheet viewSheet
-                        ? titleBlocks[viewSheet.SheetNumber].Count()
-                        : 0;
-                    for (int i = 0; i < Math.Max(1, partCount); i++)
-                    {
-                        string partName = partCount > 1
-                            ? fileName.Replace(".pdf", "_" + i + ".pdf")
-                            : fileName;
-                        fileNames.Add(partName);
-                        if (sheet.MainView is ViewSheet && settings.isExcludeBorders)
-                            fileNames.Add(partName.Replace(".pdf", "_OUT_Border.pdf"));
-                        if (settings.colorsType == ColorType.MonochromeWithExcludes)
-                            fileNames.Add(partName.Replace(".pdf", "_OUT_Color.pdf"));
-                    }
-                }
-            }
-
-            if (isPdf && settings.isMergePdfs)
-                fileNames.Add(doc.Title + ".pdf");
-
-            return fileNames;
-        }
-
-        private static bool IsExportPathTooLong(string folder, IEnumerable<string> fileNames)
-        {
-            return folder.Length >= WindowsMaxDirectoryPath
-                || fileNames.Any(name => Path.Combine(folder, name).Length >= WindowsMaxPath);
-        }
-
         private static void CheckExportFilePath(string filePath)
         {
             if (filePath.Length >= WindowsMaxPath || Path.GetFullPath(filePath).Length >= WindowsMaxPath)
@@ -929,36 +882,18 @@ namespace KPLN_Publication.ExternalCommands.Print
                     "Сократите имя файла в конструкторе имён:\n" + filePath);
         }
 
-        private string CreateFolderToEXport(Document doc, string outputFolder, string exportType,
-            List<string> fileNames, Logger logger, string printerName = null)
+        private string CreateFolderToEXport(ExportFilePlan plan, string exportType,
+            Logger logger, string printerName = null)
         {
-            string folderName = doc.Title + "_" + DateTime.Now.ToString("dd.MM.yyyy HH mm ss");
-            string requestedFolder = Path.Combine(outputFolder, folderName);
-            bool redirect;
-            try
-            {
-                outputFolder = Path.GetFullPath(requestedFolder);
-                redirect = IsExportPathTooLong(outputFolder, fileNames);
-            }
-            catch (PathTooLongException)
-            {
-                redirect = true;
-            }
-
+            if (plan == null)
+                throw new InvalidOperationException("Отсутствует проверенный план имён для " + exportType);
+            string outputFolder = plan.Folder;
+            bool redirect = plan.Redirected;
             if (redirect)
             {
-                string systemRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.System));
-                // Короткая отдельная папка для запуска, без длинного названия модели.
-                string runFolder = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                outputFolder = Path.Combine(systemRoot, exportType, runFolder);
-                logger.Write("Превышена допустимая длина пути: " + requestedFolder);
-                logger.Write("Новая папка " + $"{exportType}_Print" + ": " + outputFolder);
+                logger.Write("Превышена допустимая длина пути: " + plan.RequestedFolder);
+                logger.Write("Новая папка " + exportType + ": " + outputFolder);
             }
-
-            // Даже короткий корень не поможет, если само имя файла слишком длинное.
-            foreach (string fileName in fileNames)
-                CheckExportFilePath(Path.Combine(outputFolder, fileName));
-
             try
             {
                 Directory.CreateDirectory(outputFolder);

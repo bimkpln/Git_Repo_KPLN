@@ -16,6 +16,10 @@ namespace KPLN_Publication
         public string FileName { get; set; }
         public string Status { get; set; }
         internal bool HasError { get; set; }
+        internal string RequestedFileName { get; set; }
+        internal bool NeedsBorderFile { get; set; }
+        internal bool NeedsColorFile { get; set; }
+        internal ExportFilePlan Plan { get; set; }
 
         internal void AddError(string text)
         {
@@ -113,12 +117,14 @@ namespace KPLN_Publication
                 {
                     if (pdf)
                     {
-                        string name = FileNameTemplate.WithExtension(entity.NameByConstructor(settings.pdfNameConstructor, out List<string> errors), ".pdf");
+                        string name = FileNameTemplate.WithExtension(entity.NameByConstructor(settings.GetNameConstructor(entity.MainView), out List<string> errors), ".pdf");
                         int count = entity.MainView is ViewSheet sheet ? blocks[sheet.SheetNumber].Count() : 0;
                         for (int i = 0; i < Math.Max(1, count); i++)
                         {
                             string partName = count > 1 ? name.Replace(".pdf", "_" + i + ".pdf") : name;
                             ExportNameRow row = AddRow(rows, "PDF", model.Key, entity.ToString(), partName, errors);
+                            row.NeedsBorderFile = settings.isExcludeBorders && entity.MainView is ViewSheet;
+                            row.NeedsColorFile = settings.colorsType == ColorType.MonochromeWithExcludes && !entity.ForceColored;
                             if (entity.MainView is ViewSheet && count == 0)
                                 row.AddError("Нет основной надписи для печати PDF");
                             if (!entity.MainView.CanBePrinted)
@@ -129,7 +135,7 @@ namespace KPLN_Publication
                     }
                     if (settings.isDWGExport)
                     {
-                        string name = entity.NameByConstructor(settings.dwgNameConstructor, out List<string> errors);
+                        string name = entity.NameByConstructor(settings.GetNameConstructor(entity.MainView), out List<string> errors);
                         name = FileNameTemplate.WithExtension(name, ".dwg");
                         AddRow(rows, "DWG", model.Key, entity.ToString(), name, errors);
                     }
@@ -145,29 +151,45 @@ namespace KPLN_Publication
                     foreach (ExportNameRow row in group)
                         row.AddError("Совпадение имён: " + group.Count() + " файла/-ов");
 
-            foreach (ExportNameRow row in rows)
+            foreach (var formatRows in rows.GroupBy(row => row.Format))
             {
-                string root = row.Format == "PDF" ? settings.outputPDFFolder : settings.outputDWGFolder;
-                if (string.IsNullOrWhiteSpace(root))
-                    row.AddError("Не задана папка сохранения");
-                else
+                if (formatRows.Any(row => row.HasError))
+                    continue;
+
+                try
                 {
-                    try
+                    List<string> names = new List<string>();
+                    foreach (ExportNameRow row in formatRows)
                     {
-                        string folder = Path.GetFullPath(Path.Combine(root, mainDocTitle + "_" + DateTime.Now.ToString("dd.MM.yyyy HH mm ss")));
-                        if (folder.Length >= 248 || Path.Combine(folder, row.FileName).Length >= 260)
+                        names.Add(row.RequestedFileName);
+                        if (row.NeedsBorderFile)
+                            names.Add(FileNameTemplate.AppendSuffix(row.RequestedFileName, "_OUT_Border"));
+                        if (row.NeedsColorFile)
+                            names.Add(FileNameTemplate.AppendSuffix(row.RequestedFileName, "_OUT_Color"));
+                    }
+
+                    string root = formatRows.Key == "PDF" ? settings.outputPDFFolder : settings.outputDWGFolder;
+                    ExportFilePlan plan = ExportFilePlan.Create(root, mainDocTitle, settings, formatRows.Key, names);
+                    foreach (ExportNameRow row in formatRows)
+                    {
+                        row.Plan = plan;
+                        row.FileName = plan.Names[row.RequestedFileName];
+                        if (row.FileName != row.RequestedFileName)
+                            row.Status = "Имя занято: добавлен порядковый номер";
+                        if (plan.Redirected)
                             row.Status += (string.IsNullOrEmpty(row.Status) ? "" : "; ") +
                                 "Длинный путь: выдача формата будет перенесена на системный диск";
                     }
-                    catch (PathTooLongException)
-                    {
-                        row.Status += "; Длинный путь: выдача будет перенесена на системный диск";
-                    }
-                    catch (Exception ex)
-                    {
-                        row.AddError("Некорректная папка: " + ex.Message);
-                    }
                 }
+                catch (Exception ex)
+                {
+                    foreach (ExportNameRow row in formatRows)
+                        row.AddError("Не удалось подготовить имена файлов: " + ex.Message);
+                }
+            }
+
+            foreach (ExportNameRow row in rows)
+            {
                 if (string.IsNullOrEmpty(row.Status))
                     row.Status = "ОК";
             }
@@ -184,7 +206,7 @@ namespace KPLN_Publication
         private static ExportNameRow AddRow(List<ExportNameRow> rows, string format, string model,
             string sheet, string name, List<string> errors)
         {
-            ExportNameRow row = new ExportNameRow { Format = format, Model = model, Sheet = sheet, FileName = name };
+            ExportNameRow row = new ExportNameRow { Format = format, Model = model, Sheet = sheet, FileName = name, RequestedFileName = name };
             foreach (string error in errors)
                 row.AddError(error);
             row.AddError(FileNameTemplate.Validate(name, format == "PDF" ? ".pdf" : ".dwg"));

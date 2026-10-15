@@ -178,14 +178,65 @@ namespace KPLN_Publication
         }
 
 
-        public static PrintSetting CreatePrintSetting(Document doc, PrintManager pManager, MainEntity mEntity, YayPrintSettings printSettings, double offsetX, double offsetY, bool showDialogs = true)
+        internal static Action<PrintManager, PrintParameters> CaptureViewPageSettings(PrintManager manager)
+        {
+            // Через откат транзакции переносим только значения, а не объекты Revit API.
+            PrintParameters source = manager.PrintSetup.CurrentPrintSetting.PrintParameters;
+            string paperName = source.PaperSize.Name;
+            PageOrientationType orientation = source.PageOrientation;
+            ZoomType zoomType = source.ZoomType;
+            int? zoom = zoomType == ZoomType.Zoom ? (int?)source.Zoom : null;
+            PaperPlacementType placement = source.PaperPlacement;
+            MarginType? margin = placement == PaperPlacementType.Margins ? (MarginType?)source.MarginType : null;
+            bool hasOffsets = margin == MarginType.UserDefined;
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+            double x = hasOffsets ? source.UserDefinedMarginX : 0;
+            double y = hasOffsets ? source.UserDefinedMarginY : 0;
+#else
+            double x = hasOffsets ? source.OriginOffsetX : 0;
+            double y = hasOffsets ? source.OriginOffsetY : 0;
+#endif
+
+            return (targetManager, target) =>
+            {
+                PaperSize paper = SearchRevitPaperSizeByName(targetManager, paperName);
+                if (paper == null)
+                    throw new InvalidOperationException("Не найден исходный формат бумаги для видов: " + paperName);
+
+                target.PaperSize = paper;
+                target.PageOrientation = orientation;
+                target.ZoomType = zoomType;
+                if (zoom.HasValue)
+                    target.Zoom = zoom.Value;
+                target.PaperPlacement = placement;
+                if (margin.HasValue)
+                    target.MarginType = margin.Value;
+                if (hasOffsets)
+                {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
+                    target.UserDefinedMarginX = x;
+                    target.UserDefinedMarginY = y;
+#else
+                    target.OriginOffsetX = x;
+                    target.OriginOffsetY = y;
+#endif
+                }
+            };
+        }
+
+
+        public static PrintSetting CreatePrintSetting(Document doc, PrintManager pManager, MainEntity mEntity, YayPrintSettings printSettings, double offsetX, double offsetY, bool showDialogs = true, Action<PrintManager, PrintParameters> restoreViewPageSettings = null)
         {
             PrintSetup pSetup = pManager.PrintSetup;
 
             bool isSheet = mEntity.MainView is ViewSheet;
-            // У вида нет штампа: сохраняем размер, ориентацию и масштаб текущего профиля Revit.
-            IPrintSetting ps = isSheet ? pSetup.InSession : pSetup.CurrentPrintSetting;
+            // CurrentPrintSetting может ссылаться на профиль, удалённый откатом предыдущей печати.
+            // Для обоих типов элементов используем заново полученный профиль InSession.
+            IPrintSetting ps = pSetup.InSession;
             PrintParameters pps = ps.PrintParameters;
+
+            if (!isSheet && restoreViewPageSettings != null)
+                restoreViewPageSettings(pManager, pps);
 
             pps.HideCropBoundaries = true;
             pps.HideReforWorkPlanes = true;

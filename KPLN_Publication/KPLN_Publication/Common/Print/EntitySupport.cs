@@ -68,7 +68,7 @@ namespace KPLN_Publication
         private static List<MainEntity> GetEntitiesFromDocument(Document doc, View[] selViews)
         {
             List <MainEntity> result = new List <MainEntity>();
-            if (selViews.All(sv => sv is ViewSheet))
+            if (selViews.Any(sv => sv is ViewSheet))
             {
                 result = new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
@@ -78,9 +78,9 @@ namespace KPLN_Publication
                     .Select(i => new MainEntity(i))
                     .ToList();
             }
-            else
+            if (selViews.Any(sv => !(sv is ViewSheet)))
             {
-                result = new FilteredElementCollector(doc)
+                result.AddRange(new FilteredElementCollector(doc)
                     .WhereElementIsNotElementType()
                     .OfClass(typeof(View))
                     .Where(el => el is ViewPlan || el is ViewSection)
@@ -88,7 +88,7 @@ namespace KPLN_Publication
                     .Where(view => !view.IsTemplate && view.CanBePrinted)
                     .OrderBy(v => v.Name)
                     .Select(i => new MainEntity(i))
-                    .ToList();
+                    .ToList());
             }
 
             return result;
