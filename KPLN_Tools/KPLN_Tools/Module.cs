@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
@@ -460,8 +460,15 @@ namespace KPLN_Tools
         /// </summary>
         private static void SetRIShowText(RibbonItem ri, bool showName)
         {
+#if Debug2026 || Revit2026
+            // В Revit 2026 UIFramework.dll отсутствует; лента доступна через AdWindows.
+            var revitRibbonItem = Autodesk.Windows.ComponentManager.Ribbon?.FindItem(ri.GetId(), true);
+            if (revitRibbonItem != null)
+                revitRibbonItem.ShowText = showName;
+#else
             var revitRibbonItem = UIFramework.RevitRibbonControl.RibbonControl.findRibbonItemById(ri.GetId());
             revitRibbonItem.ShowText = showName;
+#endif
         }
     }
 }
