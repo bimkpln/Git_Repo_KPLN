@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Electrical;
 using System;
 using System.Collections.Generic;
@@ -105,7 +105,6 @@ namespace KPLN_ModelChecker_Lib.Services
                     }
                     // Могут быть проблемы с тем, что нельзя выполнить операцию. Игнорим, остальных солидов должно хватить
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException) { continue; }
-                    catch (Exception ex) { throw ex; }
                 }
 
                 if (unionSolid == null)
@@ -270,7 +269,6 @@ namespace KPLN_ModelChecker_Lib.Services
                     }
                     // Могут быть проблемы с тем, что нельзя выполнить операцию. Игнорим, остальных солидов должно хватить
                     catch (Autodesk.Revit.Exceptions.InvalidOperationException) { continue; }
-                    catch (Exception ex) { throw ex; }
                 }
 
                 if (unionSolid == null)

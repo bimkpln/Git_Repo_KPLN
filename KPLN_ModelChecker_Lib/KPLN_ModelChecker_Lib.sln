@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.0.11222.15 d18.0
@@ -13,6 +13,8 @@ Global
 		Revit2020|x64 = Revit2020|x64
 		Revit2023|x64 = Revit2023|x64
 		Revit2024|x64 = Revit2024|x64
+		Debug2026|x64 = Debug2026|x64
+		Revit2026|x64 = Revit2026|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2020|x64.ActiveCfg = Debug2020|x64
@@ -27,6 +29,10 @@ Global
 		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2023|x64.Build.0 = Revit2023|x64
 		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2024|x64.ActiveCfg = Revit2024|x64
 		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2024|x64.Build.0 = Revit2024|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2026|x64.ActiveCfg = Debug2026|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Debug2026|x64.Build.0 = Debug2026|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2026|x64.ActiveCfg = Revit2026|x64
+		{57CAEFFD-5880-4A89-A882-127729008CB1}.Revit2026|x64.Build.0 = Revit2026|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_Library_DBWorker;
 using KPLN_ModelChecker_Lib.Common;
 using KPLN_ModelChecker_Lib.Core;
@@ -77,11 +77,6 @@ namespace KPLN_ModelChecker_Lib.Commands
                         }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                // Дополнительная обертка из дополнительного try/cath ради отписки от события FailuresProcessor. Ошибку словит try/cath из метода ExecuteCheck
-                throw ex;
             }
             finally
             {
