@@ -155,6 +155,11 @@
     <Compile Include="Common\OVVK_System\SystemAbbreviationValidation.cs" />
     <Compile Include="Common\OVVK_System\SystemNameFillService.cs" />
     <Compile Include="Common\OVVK_System\SystemRefreshService.cs" />
+    <Compile Include="Common\OVVK_System\SystemUsageCollector.cs" />
+    <Compile Include="Common\OVVK_System\ViewOrientationService.cs" />
+    <Compile Include="ExecutableCommand\OVVK_OrientViewsExcCmd.cs" />
+    <Compile Include="Common\OVVK_System\SystemNameRefreshState.cs" />
+    <Compile Include="Common\OVVK_System\SystemProjectConfig.cs" />
     <Compile Include="Common\OVVK_System\OZKDuctAccessoryEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeThicknessEntity.cs" />
     <Compile Include="Common\OVVK_System\PipeTypeDiamAndThickness.cs" />

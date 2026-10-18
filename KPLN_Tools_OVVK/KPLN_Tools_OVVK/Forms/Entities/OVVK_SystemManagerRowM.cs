@@ -9,6 +9,7 @@
         SystemNameError,
         ForbiddenSystemTypeError,
         SystemAbbreviationError,
+        DuplicateSystemNameError,
     }
 
     public sealed class OVVK_SystemManagerRowM : System.ComponentModel.INotifyPropertyChanged
@@ -33,6 +34,18 @@
             SystemName = systemName;
             DisplayName = systemName;
             Description = "Выделить элементы системы «" + systemName + "».";
+        }
+
+        internal OVVK_SystemManagerRowM(string systemName, string[] duplicateNames)
+        {
+            Kind = OVVK_SystemManagerRowKind.DuplicateSystemNameError;
+            SystemName = systemName;
+            string commonName = duplicateNames[0].Trim();
+            DisplayName = systemName + " — ошибка: дубликат системы «" + commonName + "»";
+            Description = "Дубликаты системы «" + commonName + "»: " + string.Join("; ", duplicateNames)
+                + ".\nПриведи значения выбранного параметра к одному виду на всех элементах группы."
+                + " До исправления всех дубликатов создание 3D-видов недоступно."
+                + "\nНажми «Выделить элементы», чтобы найти элементы с этим значением.";
         }
 
         public OVVK_SystemManagerRowM(int typeParameterElementCount)
@@ -92,7 +105,8 @@
         public bool IsWarning => IsTypeParameterWarning;
         public bool IsError => Kind == OVVK_SystemManagerRowKind.InvalidParameterError
             || Kind == OVVK_SystemManagerRowKind.EmptyParameterError || Kind == OVVK_SystemManagerRowKind.SystemNameError
-            || Kind == OVVK_SystemManagerRowKind.ForbiddenSystemTypeError || Kind == OVVK_SystemManagerRowKind.SystemAbbreviationError;
+            || Kind == OVVK_SystemManagerRowKind.ForbiddenSystemTypeError || Kind == OVVK_SystemManagerRowKind.SystemAbbreviationError
+            || Kind == OVVK_SystemManagerRowKind.DuplicateSystemNameError;
         public bool IsIssue => IsError || IsWarning;
     }
 }

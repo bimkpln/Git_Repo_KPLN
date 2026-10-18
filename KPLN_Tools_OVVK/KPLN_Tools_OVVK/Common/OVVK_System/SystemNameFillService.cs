@@ -54,6 +54,29 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
 
 
         internal IReadOnlyDictionary<ElementId, string> Errors => _errors;
+
+        internal IReadOnlyDictionary<ElementId, string> GetReportErrors()
+        {
+            // Вызывается после фиксации транзакции: зависимый параметр мог заполниться от родителя.
+            // Внутренние ошибки сохраняем для безопасной обработки общих параметров и вложенности.
+            var result = new Dictionary<ElementId, string>();
+            foreach (var error in _errors)
+            {
+                Element element = _doc.GetElement(error.Key);
+                Parameter parameter = null;
+                if (element != null)
+                {
+                    try { parameter = GetParameter(element); }
+                    catch (InvalidOperationException) { } // Не скрываем неоднозначный параметр.
+                }
+                if (parameter != null && parameter.StorageType == StorageType.String
+                    && parameter.IsReadOnly && !string.IsNullOrWhiteSpace(parameter.AsString()))
+                    continue;
+
+                result.Add(error.Key, error.Value);
+            }
+            return result;
+        }
         internal int ChangedCount { get; private set; }
         internal int UnchangedCount { get; private set; }
         internal int TypeParameterCount { get; private set; }
@@ -238,6 +261,10 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                 }
                 else
                     value = ResolveSystemName(element);
+
+                // Одинаковый порядок для собственных систем и значения, полученного от родителя.
+                if (!_useAbbreviation)
+                    value = SystemNameResolver.Normalize(value);
 
                 if (target.IsReadOnly && !string.Equals(target.AsString(), value, StringComparison.Ordinal))
                     throw new InvalidOperationException($"Параметр «{_parameterName}» доступен только для чтения.");

@@ -33,7 +33,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
         {
             if (!_dataIsCurrent)
                 _model.Refresh();
-            if (_model.HasParameterErrors || _model.HasSystemValidationErrors)
+            if (_model.HasParameterErrors || _model.HasSystemValidationErrors || _model.HasDuplicateSystemNames)
             {
                 _model.SetOperationMessage("Создание 3D-видов недоступно: исправь все критические ошибки, отмеченные красным.");
                 return Result.Cancelled;

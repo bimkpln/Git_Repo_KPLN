@@ -116,16 +116,17 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
 
             _model.Refresh();
-            foreach (var group in service.Errors.GroupBy(error => error.Value))
+            var reportErrors = service.GetReportErrors();
+            foreach (var group in reportErrors.GroupBy(error => error.Value))
                 HtmlOutput.Print(group.Key + " Элементы: " + string.Join(", ", group.Select(error => error.Key)), MessageType.Warning);
             if (!string.IsNullOrEmpty(service.LogWarning))
                 HtmlOutput.Print(service.LogWarning, MessageType.Warning);
 
             string message = $"Параметр: {_parameterName}\nИзменено элементов: {service.ChangedCount}\n"
-                + $"Уже заполнено: {service.UnchangedCount}\nПропущено с замечаниями: {service.Errors.Count}";
+                + $"Уже заполнено: {service.UnchangedCount}\nПропущено с замечаниями: {reportErrors.Count}";
             if (service.TypeParameterCount > 0)
                 message += $"\nИзменено параметров типа: {service.TypeParameterCount}. Значения общие для всех экземпляров этих типов.";
-            bool hasWarnings = service.Errors.Count > 0 || !string.IsNullOrEmpty(service.LogWarning);
+            bool hasWarnings = reportErrors.Count > 0 || !string.IsNullOrEmpty(service.LogWarning);
             if (hasWarnings)
                 message += "\nПодробности выведены в отчёт.";
 

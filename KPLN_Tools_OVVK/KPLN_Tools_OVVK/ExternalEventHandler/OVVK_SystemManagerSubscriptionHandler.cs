@@ -30,6 +30,7 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
             if (_isTracking || _stopRequested)
                 return;
 
+            _model.UpdateSelectedRevitViews(_application.ActiveUIDocument);
             _application.Idling += OnIdling;
             try
             {
@@ -82,6 +83,9 @@ namespace KPLN_Tools_OVVK.ExternalEventHandler
 
             _model.IsDocumentActive = _application.ActiveUIDocument != null
                 && _model.CurrentDoc.Equals(_application.ActiveUIDocument.Document);
+            // Выбор в диспетчере проекта отслеживается и в Revit 2020, без SelectionChanged.
+            if (!_model.IsBusy)
+                _model.UpdateSelectedRevitViews(_application.ActiveUIDocument, _refreshPending);
             if (!_refreshPending || !_model.CanRefresh)
                 return;
 

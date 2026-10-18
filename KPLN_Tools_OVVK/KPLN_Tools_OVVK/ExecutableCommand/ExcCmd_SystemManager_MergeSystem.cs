@@ -7,6 +7,7 @@ using KPLN_Tools_OVVK.ExternalCommands;
 using KPLN_Tools_OVVK.Forms.Entities;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
@@ -34,19 +35,18 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             var availableNames = new HashSet<string>(_model.SystemSumParameters, StringComparer.Ordinal);
             foreach (OVVK_MergeSystem group in _sysDataToMerge)
             {
-                if (group == null || string.IsNullOrWhiteSpace(group.FirstParamName)
-                    || string.IsNullOrWhiteSpace(group.LastParamName)
-                    || group.FirstParamName == group.LastParamName
-                    || !availableNames.Contains(group.FirstParamName) || !availableNames.Contains(group.LastParamName)
-                    || replacementNames.ContainsKey(group.FirstParamName) || replacementNames.ContainsKey(group.LastParamName))
+                string[] names = group?.SelectedSystemNames ?? new string[0];
+                if (!OVVK_MergeSystem.IsAllowedCount(names.Length) || names.Distinct().Count() != names.Length
+                    || names.Any(name => string.IsNullOrWhiteSpace(name) || !availableNames.Contains(name) || replacementNames.ContainsKey(name)))
                 {
                     _model.SetOperationMessage("Объединение отменено: проверь группы. Системы должны существовать и не повторяться.");
                     return Result.Cancelled;
                 }
 
-                string newName = group.FirstParamName + _model.SysNameSeparator + group.LastParamName;
-                replacementNames.Add(group.FirstParamName, newName);
-                replacementNames.Add(group.LastParamName, newName);
+                string newName = SystemNameResolver.Normalize(
+                    string.Join(_model.SysNameSeparator, names), _model.SysNameSeparator);
+                foreach (string name in names)
+                    replacementNames.Add(name, newName);
             }
             if (replacementNames.Count == 0)
                 return Result.Cancelled;

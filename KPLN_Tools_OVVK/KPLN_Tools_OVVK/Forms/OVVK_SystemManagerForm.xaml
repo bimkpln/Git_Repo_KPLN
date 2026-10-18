@@ -158,10 +158,21 @@
                                        Text="Записать имена типов систем в параметр из строки «Группировать по» на текущем виде или во всей модели. Применяются категории и исключения менеджера. Вложенные семейства получают значение родителя. Существующие значения будут обновлены."/>
                         </Button.ToolTip>
                     </Button>
-                    <Button Content="Объединить системы" Command="{Binding MergeSystemsCmd}"
-                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanMergeSystems}"
-                            ToolTip="Объединить значения выбранного параметра. Нужны минимум две системы и параметр экземпляра у всех элементов."
-                            Style="{StaticResource ManagerAction}"/>
+                    <TextBlock Text="Объединить системы" Style="{StaticResource ManagerText}" Margin="0,0,0,5"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="6"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <Button Command="{Binding MergeSystemsCmd}" IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanMergeSystems}"
+                                Style="{StaticResource ManagerAction}" Padding="3,6"
+                                ToolTip="Настроить группы систем для объединения и сохранить конфиг.">
+                            <TextBlock Text="По группам" TextWrapping="Wrap" TextAlignment="Center"/>
+                        </Button>
+                        <Button Grid.Column="2" Command="{Binding MergeSelectedSystemsCmd}"
+                                IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanMergeSelectedSystems}"
+                                Style="{StaticResource ManagerAction}" Padding="3,6"
+                                ToolTip="{Binding CurrentOVVK_SystemManagerM.MergeSelectedToolTip}">
+                            <TextBlock Text="По выбранным элементам" TextWrapping="Wrap" TextAlignment="Center"/>
+                        </Button>
+                    </Grid>
                     <Button Content="{Binding CurrentOVVK_SystemManagerM.CreateViewsButtonText}" Command="{Binding CreateViewsCmd}"
                             ToolTipService.ShowOnDisabled="True" ToolTipService.ShowDuration="30000"
                             IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanCreateViews}" Style="{StaticResource ManagerAction}">
@@ -170,6 +181,10 @@
                                        Text="{Binding CurrentOVVK_SystemManagerM.CreateViewsToolTip}"/>
                         </Button.ToolTip>
                     </Button>
+                    <Button Content="{Binding CurrentOVVK_SystemManagerM.OrientViewsButtonText}" Command="{Binding OrientViewsCmd}"
+                            IsEnabled="{Binding CurrentOVVK_SystemManagerM.CanOrientViews}" Style="{StaticResource ManagerAction}"
+                            ToolTipService.ShowOnDisabled="True"
+                            ToolTip="Выдели 3D-виды в диспетчере проекта Revit. Выбери ориентацию и укажи, блокировать ли виды после поворота. Выбор систем в списке менеджера не используется."/>
                 </StackPanel>
             </ScrollViewer>
         </Grid>

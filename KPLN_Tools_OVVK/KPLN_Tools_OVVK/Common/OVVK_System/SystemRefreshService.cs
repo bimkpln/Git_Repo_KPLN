@@ -35,24 +35,32 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
 
         internal void Execute(Action<int, int, string> report, Action checkCancellation, Action beforeCommit)
         {
-            MEPSystemType[] types = new FilteredElementCollector(_doc).OfClass(typeof(MechanicalSystemType))
-                .Cast<MEPSystemType>().Concat(new FilteredElementCollector(_doc).OfClass(typeof(PipingSystemType))
-                    .Cast<MEPSystemType>()).ToArray();
-            var originalAbbreviations = types.ToDictionary(type => type.Id, type => type.Abbreviation);
+            ChangedTypeCount = 0;
+            RefreshedSystemCount = 0;
+            Warnings.Clear();
+            report(0, 1, "Определяю используемые системы по элементам модели");
+            var usedSystems = SystemUsageCollector.Collect(_doc, checkCancellation);
+            if (usedSystems.Count == 0)
+                return;
 
-            // По одному жёсткому участку на фактическую систему, без поиска по части имени.
-            var representatives = new Dictionary<ElementId, ElementId>();
-            var curves = new FilteredElementCollector(_doc).OfClass(typeof(Duct)).Cast<MEPCurve>()
-                .Concat(new FilteredElementCollector(_doc).OfClass(typeof(Pipe)).Cast<MEPCurve>());
-            foreach (MEPCurve curve in curves)
+            // Неиспользуемые системы и их типы вообще не участвуют в обновлении и отчёте.
+            MEPSystemType[] types = usedSystems.Values.Select(usage => usage.System.GetTypeId()).Distinct()
+                .Select(id => (MEPSystemType)_doc.GetElement(id)).ToArray();
+            var originalAbbreviations = types.ToDictionary(type => type.Id, type => type.Abbreviation);
+            var curveTypes = new Dictionary<ElementId, ElementId>();
+            foreach (SystemUsageCollector.Usage usage in usedSystems.Values)
             {
                 checkCancellation();
-                MEPSystem system = curve.MEPSystem;
-                if (system != null && !representatives.ContainsKey(system.Id))
-                    representatives.Add(system.Id, curve.Id);
+                if (usage.RefreshCurveId != null)
+                    curveTypes.Add(usage.RefreshCurveId, usage.System.GetTypeId());
+                else
+                {
+                    MEPSystem system = usage.System;
+                    Warnings.Add($"Система «{system.Name}» (Id {system.Id}) не обновлена: нет доступной трубы или воздуховода для перестроения имени.\n"
+                        + "Элементы модели с этой системой (ID): " + string.Join(", ", usage.ElementIds) + ".");
+                }
             }
 
-            var curveTypes = representatives.Values.ToDictionary(id => id, id => ((MEPCurve)_doc.GetElement(id)).MEPSystem.GetTypeId());
             var temporaryTypes = new Dictionary<ElementId, ElementId>();
             using (var group = new TransactionGroup(_doc, "KPLN: Обновление имени системы"))
             {
@@ -103,6 +111,9 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                     foreach (var item in curveTypes)
                     {
                         report(completed++, curveTypes.Count, "Обновляю системы элементов");
+                        string systemName = "не определена";
+                        string typeName = _doc.GetElement(item.Value)?.Name ?? "не определён";
+                        string failureReason = "Не удалось начать обновление системы.";
                         try
                         {
                             using (var change = new SubTransaction(_doc))
@@ -111,12 +122,19 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                                 var curve = _doc.GetElement(item.Key) as MEPCurve;
                                 if (curve == null)
                                     throw new InvalidOperationException("Участок системы больше не существует.");
+                                systemName = curve.MEPSystem?.Name ?? systemName;
+                                failureReason = "Revit не смог переключить тип системы у элемента.";
                                 SetSystemType(curve, temporaryTypes[item.Value]);
+                                failureReason = "Revit не смог пересчитать систему после смены типа.";
                                 _doc.Regenerate();
+                                failureReason = "Revit не смог переключить элемент обратно на исходный тип системы.";
                                 SetSystemType(curve, item.Value);
+                                failureReason = "Revit не смог пересчитать систему после восстановления исходного типа.";
                                 _doc.Regenerate();
+                                failureReason = "Не удалось подтвердить восстановление исходного типа системы.";
                                 if (curve.MEPSystem == null || !curve.MEPSystem.GetTypeId().Equals(item.Value))
                                     throw new InvalidOperationException("Исходный тип системы не восстановлен.");
+                                failureReason = "Revit не смог сохранить обновление системы.";
                                 if (change.Commit() != TransactionStatus.Committed)
                                     throw new InvalidOperationException("Обновление системы отменено.");
                             }
@@ -126,7 +144,9 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                         catch (OperationCanceledException) { throw; }
                         catch (Exception ex)
                         {
-                            Warnings.Add("Элемент " + item.Key + ": " + ex.Message);
+                            Warnings.Add($"Система «{systemName}», тип «{typeName}», элемент Id {item.Key}: {failureReason} "
+                                + "Обновление этой системы отменено. Проверь соединения элемента и корректность моделирования системы, "
+                                + "затем повтори «Обновить имя системы».\nТехнические сведения Revit: " + ex.Message);
                         }
                     }
 

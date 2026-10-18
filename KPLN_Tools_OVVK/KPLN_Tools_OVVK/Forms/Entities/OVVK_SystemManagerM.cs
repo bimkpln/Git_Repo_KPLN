@@ -1,4 +1,5 @@
 ﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker.Core;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using Newtonsoft.Json;
@@ -47,9 +48,14 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         private readonly Dictionary<string, List<ElementId>> _systemElementIds = new Dictionary<string, List<ElementId>>();
         private readonly Dictionary<OVVK_SystemManagerRowKind, List<ElementId>> _errorElementIds = new Dictionary<OVVK_SystemManagerRowKind, List<ElementId>>();
         private readonly HashSet<string> _invalidSystemNames = new HashSet<string>();
+        private readonly Dictionary<string, string[]> _duplicateSystemNames = new Dictionary<string, string[]>();
         private OVVK_SystemManagerRowM[] _systemTypeIssueRows = new OVVK_SystemManagerRowM[0];
         private int _selectionUpdateDepth;
         private int _issueElementCount;
+        private readonly SystemNameRefreshState _systemNameRefreshState;
+        private int _selectedRevitViewCount;
+        private int _selectedRevitElementCount;
+        private HashSet<ElementId> _lastRevitSelection = new HashSet<ElementId>();
         private bool _isBusy;
         private bool _isDocumentActive = true;
 
@@ -62,16 +68,8 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public OVVK_SystemManagerM(Document doc)
         {
             CurrentDoc = doc;
+            _systemNameRefreshState = SystemNameRefreshState.ForDocument(doc);
             DocumentTitle = doc.Title;
-
-            // Настройки другого проекта не должны подменять выбор параметра.
-            ModelPath centralPath = doc.IsWorkshared ? doc.GetWorksharingCentralModelPath() : null;
-            string documentPath = centralPath == null
-                ? doc.PathName
-                : ModelPathUtils.ConvertModelPathToUserVisiblePath(centralPath);
-            DocumentKey = string.IsNullOrEmpty(documentPath)
-                ? Guid.NewGuid().ToString()
-                : doc.Application.VersionNumber + "|" + documentPath;
 
             Refresh();
         }
@@ -83,8 +81,6 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public Document CurrentDoc { get; private set; }
 
         internal long RefreshRevision { get; private set; }
-
-        public string DocumentKey { get; set; }
 
         [JsonIgnore]
         public string DocumentTitle { get; private set; }
@@ -108,6 +104,9 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool HasParameterErrors { get; private set; }
 
         [JsonIgnore]
+        public bool HasDuplicateSystemNames => _duplicateSystemNames.Count > 0;
+
+        [JsonIgnore]
         public string[] SystemAbbreviationErrors { get; private set; } = new string[0];
 
         [JsonIgnore]
@@ -117,11 +116,23 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public string[] ForbiddenSystemTypeErrors { get; private set; } = new string[0];
 
         [JsonIgnore]
-        public bool HasSystemValidationErrors => HasSystemAbbreviationErrors || ForbiddenSystemTypeErrors.Length > 0;
+        public bool RequiresSystemNameRefresh => _systemNameRefreshState?.IsRequired == true;
+
+        [JsonIgnore]
+        public string SystemNameRefreshStorageError => _systemNameRefreshState?.StorageError;
+
+        [JsonIgnore]
+        public bool HasSystemValidationErrors => HasSystemAbbreviationErrors || ForbiddenSystemTypeErrors.Length > 0
+            || RequiresSystemNameRefresh || !string.IsNullOrEmpty(SystemNameRefreshStorageError);
 
         [JsonIgnore]
         public string SystemAbbreviationErrorMessage => HasSystemValidationErrors
             ? "«Заполнить параметр» и «Создать 3D-виды» недоступны."
+                + (RequiresSystemNameRefresh
+                    ? "\nВ проекте обнаруживались ошибки сокращений. После их исправления обязательно нажми «Обновить имя системы». "
+                        + "Метка снимется только после успешного обновления всех систем без ошибок сокращений."
+                    : string.Empty)
+                + (string.IsNullOrEmpty(SystemNameRefreshStorageError) ? string.Empty : "\n" + SystemNameRefreshStorageError)
                 + (HasSystemAbbreviationErrors
                     ? "\nИсправь параметр «Сокращение» у типов систем:\n" + string.Join("\n", SystemAbbreviationErrors)
                         + "\nВ конце сокращения должно быть полное имя типа системы; завершающий «_» обязателен."
@@ -151,7 +162,15 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public string SysNameSeparator
         {
             get => _sysNameSeparator;
-            set => _sysNameSeparator = string.IsNullOrEmpty(value) ? "/" : value;
+            set
+            {
+                string separator = string.IsNullOrEmpty(value) ? "/" : value;
+                if (_sysNameSeparator == separator)
+                    return;
+
+                _sysNameSeparator = separator;
+                RebuildSystemRows();
+            }
         }
 
         [JsonIgnore]
@@ -250,7 +269,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         public bool CanMergeSystems => CanRun && SystemSumParameters.Count > 1;
 
         [JsonIgnore]
-        public bool CanCreateViews => CanRefresh && !HasParameterErrors && !HasSystemValidationErrors
+        public bool CanCreateViews => CanRefresh && !HasParameterErrors && !HasSystemValidationErrors && !HasDuplicateSystemNames
             && !string.IsNullOrWhiteSpace(ParameterName) && SelectedSystemNames.Length > 0;
 
         [JsonIgnore]
@@ -265,9 +284,15 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                     reasons.Add($"Переключись в модель «{DocumentTitle}».");
                 if (IsBusy)
                     reasons.Add("Дождись завершения текущей операции.");
+                if (HasDuplicateSystemNames)
+                    reasons.Add("Приведи дубликаты групп систем к одному виду на всех элементах. Создание 3D-видов заблокировано для всей модели.");
                 if (HasParameterErrors)
                     reasons.Add("Исправь все красные ошибки параметра системы, даже если выбраны только корректные системы:\n"
                         + string.Join("\n", SystemRows.Where(row => row.IsError).Select(row => row.DisplayName)));
+                if (RequiresSystemNameRefresh)
+                    reasons.Add("После исправления сокращений обязательно выполни «Обновить имя системы»: имена элементов ещё не подтверждены.");
+                if (!string.IsNullOrEmpty(SystemNameRefreshStorageError))
+                    reasons.Add(SystemNameRefreshStorageError);
                 if (HasSystemAbbreviationErrors)
                     reasons.Add($"Исправь сокращения используемых типов систем: {SystemAbbreviationErrors.Length}. Подробности — внизу окна.");
                 if (ForbiddenSystemTypeErrors.Length > 0)
@@ -281,6 +306,45 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                     ? "Создание 3D-видов недоступно:\n\n" + string.Join("\n\n", reasons)
                     : "Создать 3D-виды для выбранных систем. Оранжевые предупреждения не блокируют создание. Открой исходный 3D-вид; управление фильтрами в его шаблоне должно быть отключено.";
             }
+        }
+
+        [JsonIgnore]
+        public int SelectedRevitViewCount => _selectedRevitViewCount;
+
+        [JsonIgnore]
+        public bool CanMergeSelectedSystems => CanMergeSystems && OVVK_MergeSystem.IsAllowedCount(_selectedRevitElementCount);
+
+        [JsonIgnore]
+        public string MergeSelectedToolTip => $"Выдели от {OVVK_MergeSystem.MinSystemCount} до {OVVK_MergeSystem.MaxSystemCount} элементов ОВВК в Revit. "
+            + "Их системы из параметра «Группировать по» будут объединены во всей модели. Выбор строк менеджера не используется.";
+
+        [JsonIgnore]
+        public bool CanOrientViews => CanRefresh && SelectedRevitViewCount > 0;
+
+        [JsonIgnore]
+        public string OrientViewsButtonText => $"Ориентировать виды ({SelectedRevitViewCount})";
+
+        internal void UpdateSelectedRevitViews(UIDocument uiDocument, bool force = false)
+        {
+            var ids = uiDocument != null && CurrentDoc.Equals(uiDocument.Document)
+                ? new HashSet<ElementId>(uiDocument.Selection.GetElementIds()) : new HashSet<ElementId>();
+            // Выделение тысяч элементов не должно вызывать повторные GetElement на каждом Idling.
+            if (!force && _lastRevitSelection.SetEquals(ids))
+                return;
+            _lastRevitSelection = ids;
+            int selectedCount = ids.Count;
+            if (_selectedRevitElementCount != selectedCount)
+            {
+                _selectedRevitElementCount = selectedCount;
+                NotifyPropertyChanged(nameof(CanMergeSelectedSystems));
+            }
+            int count = ViewOrientationService.GetSelectedViews(CurrentDoc, uiDocument).Length;
+            if (_selectedRevitViewCount == count)
+                return;
+            _selectedRevitViewCount = count;
+            NotifyPropertyChanged(nameof(SelectedRevitViewCount));
+            NotifyPropertyChanged(nameof(CanOrientViews));
+            NotifyPropertyChanged(nameof(OrientViewsButtonText));
         }
 
         [JsonIgnore]
@@ -322,6 +386,8 @@ namespace KPLN_Tools_OVVK.Forms.Entities
                     return "ВАЖНО: Выбери текстовый параметр для группирования элементов по системам.";
                 if (HasParameterErrors)
                     return "ВАЖНО: Выбери красную строку и нажми «Выделить элементы», чтобы проверить ошибки параметра системы.";
+                if (HasDuplicateSystemNames)
+                    return "ВАЖНО: Приведи дубликаты групп систем к одному виду. До исправления всех дубликатов создание 3D-видов недоступно.";
 
                 return string.Empty;
             }
@@ -345,8 +411,11 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         {
             SystemAbbreviationErrors = SystemAbbreviationValidation.GetErrors(CurrentDoc, out string[] forbiddenTypeErrors, out _systemTypeIssueRows);
             ForbiddenSystemTypeErrors = forbiddenTypeErrors;
+            _systemNameRefreshState?.Observe(HasSystemAbbreviationErrors);
             if (updateRows)
                 RebuildSystemRows();
+            NotifyPropertyChanged(nameof(RequiresSystemNameRefresh));
+            NotifyPropertyChanged(nameof(SystemNameRefreshStorageError));
             NotifyPropertyChanged(nameof(ForbiddenSystemTypeErrors));
             NotifyPropertyChanged(nameof(HasSystemValidationErrors));
             NotifyPropertyChanged(nameof(SystemAbbreviationErrors));
@@ -356,6 +425,20 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             NotifyPropertyChanged(nameof(SystemAbbreviationErrorMessage));
             NotifyPropertyChanged(nameof(CanFillSystemName));
             return !HasSystemValidationErrors;
+        }
+
+        internal string BeginSystemNameRefresh()
+        {
+            ValidateSystemAbbreviations();
+            return _systemNameRefreshState?.Token;
+        }
+
+        internal void CompleteSystemNameRefresh(string token, bool refreshSucceeded)
+        {
+            // Повторная проверка выполняется после фиксации всех транзакций обновления.
+            Refresh();
+            _systemNameRefreshState?.Complete(token, HasSystemAbbreviationErrors, refreshSucceeded);
+            ValidateSystemAbbreviations(false);
         }
 
         /// <summary>
@@ -473,6 +556,11 @@ namespace KPLN_Tools_OVVK.Forms.Entities
 
         private void RebuildSystemRows()
         {
+            _duplicateSystemNames.Clear();
+            foreach (string[] group in SystemNameValidation.FindDuplicateNames(SystemSumParameters, SysNameSeparator))
+                foreach (string name in group)
+                    _duplicateSystemNames.Add(name, group);
+
             var selectedKeys = new HashSet<Tuple<OVVK_SystemManagerRowKind, string, ElementId>>(
                 SelectedSystemRows.Select(row => Tuple.Create(row.Kind, row.SystemName, row.SystemTypeId)));
             var rows = new List<OVVK_SystemManagerRowM>(_systemTypeIssueRows);
@@ -485,7 +573,9 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             }
             if (HasTypeParameters)
                 rows.Add(new OVVK_SystemManagerRowM(TypeParameterElementColl.Count));
-            rows.AddRange(SystemSumParameters.Select(name => new OVVK_SystemManagerRowM(name)));
+            rows.AddRange(SystemSumParameters.Select(name => _duplicateSystemNames.TryGetValue(name, out string[] duplicates)
+                ? new OVVK_SystemManagerRowM(name, duplicates)
+                : new OVVK_SystemManagerRowM(name)));
 
             foreach (OVVK_SystemManagerRowM oldRow in SystemRows)
                 oldRow.PropertyChanged -= OnRowPropertyChanged;
@@ -496,7 +586,9 @@ namespace KPLN_Tools_OVVK.Forms.Entities
             }
             SystemRows = new ObservableCollection<OVVK_SystemManagerRowM>(rows);
             _issueElementCount = WarningsElementColl.Concat(TypeParameterElementColl).Select(element => element.Id)
-                .Concat(_systemTypeIssueRows.SelectMany(row => row.ElementIds)).Distinct().Count();
+                .Concat(_systemTypeIssueRows.SelectMany(row => row.ElementIds))
+                .Concat(_duplicateSystemNames.Keys.SelectMany(name => _systemElementIds[name])).Distinct().Count();
+            NotifyPropertyChanged(nameof(HasDuplicateSystemNames));
             NotifyPropertyChanged(nameof(ElementColl));
             NotifyPropertyChanged(nameof(WarningsElementColl));
             NotifyPropertyChanged(nameof(TypeParameterElementColl));
@@ -510,6 +602,10 @@ namespace KPLN_Tools_OVVK.Forms.Entities
 
         internal ElementId[] GetSystemElementIds(OVVK_SystemManagerRowM row)
         {
+            if (row?.Kind == OVVK_SystemManagerRowKind.DuplicateSystemNameError)
+                return _systemElementIds.TryGetValue(row.SystemName, out List<ElementId> duplicateIds)
+                    ? duplicateIds.ToArray() : new ElementId[0];
+
             if (row?.SystemTypeId != null)
                 return _systemTypeIssueRows.FirstOrDefault(issue => issue.Kind == row.Kind
                     && issue.SystemTypeId.Equals(row.SystemTypeId))?.ElementIds ?? new ElementId[0];
@@ -536,7 +632,7 @@ namespace KPLN_Tools_OVVK.Forms.Entities
 
         public object ToJson()
         {
-            return new { DocumentKey, ParameterName, SysNameSeparator };
+            return new { ParameterName, SysNameSeparator };
         }
 
 
@@ -564,10 +660,12 @@ namespace KPLN_Tools_OVVK.Forms.Entities
         private void NotifyState()
         {
             NotifyPropertyChanged(nameof(CanRefresh));
+            NotifyPropertyChanged(nameof(CanOrientViews));
             NotifyPropertyChanged(nameof(CanSelectParameter));
             NotifyPropertyChanged(nameof(CanFillSystemName));
             NotifyPropertyChanged(nameof(CanRun));
             NotifyPropertyChanged(nameof(CanMergeSystems));
+            NotifyPropertyChanged(nameof(CanMergeSelectedSystems));
             NotifyPropertyChanged(nameof(CanCreateViews));
             NotifyPropertyChanged(nameof(CreateViewsToolTip));
             NotifyPropertyChanged(nameof(CanSelectSystem));

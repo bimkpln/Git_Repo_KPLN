@@ -6,6 +6,19 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
 {
     internal static class SystemNameValidation
     {
+        internal static string[][] FindDuplicateNames(System.Collections.Generic.IEnumerable<string> names, string separator)
+        {
+            // Сравниваем состав группы без учёта порядка и пробелов вокруг имён.
+            // Длина каждой части сохраняет однозначность ключа даже для нестандартных разделителей.
+            string delimiter = string.IsNullOrEmpty(separator) ? "/" : separator;
+            return names.Distinct(StringComparer.Ordinal)
+                .GroupBy(name => string.Concat(name.Split(new[] { delimiter }, StringSplitOptions.None)
+                    .Select(part => part.Trim()).OrderBy(part => part, StringComparer.Ordinal)
+                    .Select(part => part.Length + ":" + part)), StringComparer.Ordinal)
+                .Select(group => group.OrderBy(name => name, StringComparer.Ordinal).ToArray())
+                .Where(group => group.Length > 1).ToArray();
+        }
+
         internal static bool IsServiceValue(string value)
         {
             if (string.IsNullOrWhiteSpace(value))

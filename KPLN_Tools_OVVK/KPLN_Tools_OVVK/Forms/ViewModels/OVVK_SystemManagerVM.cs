@@ -6,6 +6,7 @@ using KPLN_Library_Forms.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Tools_OVVK.ExecutableCommand;
+using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.Forms.Entities;
 using KPLN_Tools_OVVK.Forms.Models.Core;
 using System;
@@ -17,7 +18,7 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
 {
     public sealed class OVVK_SystemManagerVM
     {
-        private const string ConfigName = "OVVK_SystemManager";
+
         private readonly Window _mainWindow;
 
         public OVVK_SystemManagerVM(Window mainWindow, Document doc)
@@ -33,11 +34,15 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
             FillSystemNameCmd = new RelayCommand<object>(_ => QueueAction(FillSystemName), _ => CurrentOVVK_SystemManagerM.CanFillSystemName);
             SelectSystemCmd = new RelayCommand<object>(_ => SelectSystem(), _ => CurrentOVVK_SystemManagerM.CanSelectSystem);
             MergeSystemsCmd = new RelayCommand<object>(_ => QueueAction(MergeSystems), _ => CurrentOVVK_SystemManagerM.CanMergeSystems);
+            MergeSelectedSystemsCmd = new RelayCommand<object>(_ => QueueAction(MergeSelectedSystems), _ => CurrentOVVK_SystemManagerM.CanMergeSelectedSystems);
             CreateViewsCmd = new RelayCommand<object>(_ =>
             {
                 string[] selectedNames = CurrentOVVK_SystemManagerM.SelectedSystemNames;
                 QueueAction(app => CreateViews(app, selectedNames));
             }, _ => CurrentOVVK_SystemManagerM.CanCreateViews);
+            OrientViewsCmd = new RelayCommand<object>(_ => QueueAction(app =>
+                new OVVK_OrientViewsExcCmd(CurrentOVVK_SystemManagerM, _mainWindow).Execute(app)),
+                _ => CurrentOVVK_SystemManagerM.CanOrientViews);
             CloseWindowCmd = new RelayCommand<object>(_ => _mainWindow.Close());
 
             CurrentOVVK_SystemManagerM.PropertyChanged += OnModelPropertyChanged;
@@ -52,7 +57,9 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
         public ICommand FillSystemNameCmd { get; }
         public ICommand SelectSystemCmd { get; }
         public ICommand MergeSystemsCmd { get; }
+        public ICommand MergeSelectedSystemsCmd { get; }
         public ICommand CreateViewsCmd { get; }
+        public ICommand OrientViewsCmd { get; }
         public ICommand CloseWindowCmd { get; }
 
 
@@ -157,10 +164,58 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
             CurrentOVVK_SystemManagerM.Refresh();
         }
 
+        private void MergeSelectedSystems(UIApplication app)
+        {
+            var model = CurrentOVVK_SystemManagerM;
+            ElementId[] ids = app.ActiveUIDocument.Selection.GetElementIds().ToArray();
+            if (!OVVK_MergeSystem.IsAllowedCount(ids.Length))
+            {
+                model.SetOperationMessage($"Выдели от {OVVK_MergeSystem.MinSystemCount} до {OVVK_MergeSystem.MaxSystemCount} элементов ОВВК.");
+                return;
+            }
+
+            model.Refresh();
+            if (model.HasParameterErrors || model.HasTypeParameters || string.IsNullOrWhiteSpace(model.ParameterName))
+            {
+                model.SetOperationMessage("Объединение недоступно: выбери параметр экземпляра и исправь ошибки его значений.");
+                return;
+            }
+
+            var allowed = model.ElementColl.ToDictionary(element => element.Id);
+            var names = new System.Collections.Generic.List<string>();
+            foreach (ElementId id in ids)
+            {
+                if (!allowed.TryGetValue(id, out Element element))
+                {
+                    model.SetOperationMessage("Выделение содержит элементы вне списка ОВВК менеджера. Выбери элементы нужных систем.");
+                    return;
+                }
+                string name = element.LookupParameter(model.ParameterName)?.AsString();
+                if (string.IsNullOrWhiteSpace(name) || !model.SystemSumParameters.Contains(name))
+                {
+                    model.SetOperationMessage($"У элемента {id} не определена корректная система в параметре «{model.ParameterName}».");
+                    return;
+                }
+                if (!names.Contains(name))
+                    names.Add(name);
+            }
+            if (!OVVK_MergeSystem.IsAllowedCount(names.Count))
+            {
+                model.SetOperationMessage("Выбранные элементы относятся к одной системе. Выбери элементы минимум двух разных систем.");
+                return;
+            }
+
+            var group = new OVVK_MergeSystem(model.SystemSumParameters.ToArray());
+            group.SetSystemNames(names);
+            new ExcCmd_SystemManager_MergeSystem(model, new[] { group }).Execute(app);
+            model.Refresh();
+        }
+
         private void CreateViews(UIApplication app, string[] selectedNames)
         {
             CurrentOVVK_SystemManagerM.Refresh();
-            if (CurrentOVVK_SystemManagerM.HasParameterErrors || CurrentOVVK_SystemManagerM.HasSystemValidationErrors)
+            if (CurrentOVVK_SystemManagerM.HasParameterErrors || CurrentOVVK_SystemManagerM.HasSystemValidationErrors
+                || CurrentOVVK_SystemManagerM.HasDuplicateSystemNames)
             {
                 CurrentOVVK_SystemManagerM.SetOperationMessage("Создание 3D-видов недоступно: исправь все критические ошибки, отмеченные красным.");
                 return;
@@ -198,8 +253,14 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
         {
             try
             {
-                var saved = ConfigService.ReadConfigFile<OVVK_SystemManagerM>(ConfigType.Local, ConfigName) as OVVK_SystemManagerM;
-                if (saved == null || !string.Equals(saved.DocumentKey, CurrentOVVK_SystemManagerM.DocumentKey, StringComparison.OrdinalIgnoreCase))
+                Document doc = CurrentOVVK_SystemManagerM.CurrentDoc;
+                OVVK_SystemManagerM saved = null;
+                SystemProjectConfig.Access(doc, root =>
+                {
+                    saved = root["Settings"].ToObject<OVVK_SystemManagerM>();
+                    return false;
+                });
+                if (saved == null)
                     return;
 
                 CurrentOVVK_SystemManagerM.ParameterName = saved.ParameterName;
@@ -220,7 +281,12 @@ namespace KPLN_Tools_OVVK.Forms.ViewModels
 
             try
             {
-                ConfigService.SaveConfig<OVVK_SystemManagerM>(ConfigType.Local, CurrentOVVK_SystemManagerM, ConfigName);
+                Document doc = CurrentOVVK_SystemManagerM.CurrentDoc;
+                SystemProjectConfig.Access(doc, root =>
+                {
+                    root["Settings"] = Newtonsoft.Json.Linq.JObject.FromObject(CurrentOVVK_SystemManagerM.ToJson());
+                    return true;
+                });
             }
             catch (Exception ex)
             {

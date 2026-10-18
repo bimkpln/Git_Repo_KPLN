@@ -31,6 +31,8 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             if (doc.IsReadOnly)
                 throw new InvalidOperationException("Документ доступен только для чтения.");
 
+            string refreshToken = _model.BeginSystemNameRefresh();
+
             var progress = new ProgressInfoViewModel
             {
                 ProcessTitle = "Обновление имени системы",
@@ -79,9 +81,9 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                 window.CloseSafely();
             }
 
-            _model.Refresh();
+            _model.CompleteSystemNameRefresh(refreshToken, service.Warnings.Count == 0);
             foreach (string warning in service.Warnings)
-                HtmlOutput.Print(warning, MessageType.Warning);
+                HtmlOutput.Print(System.Net.WebUtility.HtmlEncode(warning).Replace("\n", "<br>"), MessageType.Warning);
             MessageBox.Show(_owner, $"Обновлено сокращений типов: {service.ChangedTypeCount}\n"
                 + $"Обновлено систем: {service.RefreshedSystemCount}\nПропущено с замечаниями: {service.Warnings.Count}",
                 "KPLN: Обновление имени системы", MessageBoxButton.OK,

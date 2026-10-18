@@ -53,22 +53,14 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
                     .OrderBy(type => type.Name, StringComparer.Ordinal).ToArray();
             }
 
-            // Сети корректных типов обходить не нужно: ID элементов нужны только для строк ошибок.
+            // Служебные зависимости, IsEmpty и старые ссылки BaseEquipment не подтверждают использование.
+            // Проверяем только типы систем, на которые ссылаются реальные элементы модели.
             var usedElements = invalidTypes.ToDictionary(type => type.Id, type => new HashSet<ElementId>());
             if (usedElements.Count > 0)
             {
-                using (var systems = new FilteredElementCollector(doc).OfClass(typeof(MechanicalSystem)))
-                {
-                    foreach (MechanicalSystem system in systems)
-                        if (usedElements.TryGetValue(system.GetTypeId(), out HashSet<ElementId> ids))
-                            CollectElements(system, system.DuctNetwork, ids);
-                }
-                using (var systems = new FilteredElementCollector(doc).OfClass(typeof(PipingSystem)))
-                {
-                    foreach (PipingSystem system in systems)
-                        if (usedElements.TryGetValue(system.GetTypeId(), out HashSet<ElementId> ids))
-                            CollectElements(system, system.PipingNetwork, ids);
-                }
+                foreach (SystemUsageCollector.Usage usage in SystemUsageCollector.Collect(doc).Values)
+                    if (usedElements.TryGetValue(usage.System.GetTypeId(), out HashSet<ElementId> ids))
+                        ids.UnionWith(usage.ElementIds);
             }
 
             foreach (MEPSystemType type in invalidTypes)
@@ -97,17 +89,6 @@ namespace KPLN_Tools_OVVK.Common.OVVK_System
             issueRows = rows.ToArray();
             return errors.ToArray();
         }
-        private static void CollectElements(MEPSystem system, ElementSet network, HashSet<ElementId> ids)
-        {
-            foreach (Element element in system.Elements)
-                ids.Add(element.Id);
-            if (network != null)
-                foreach (Element element in network)
-                    ids.Add(element.Id);
-            if (system.BaseEquipment != null)
-                ids.Add(system.BaseEquipment.Id);
-        }
-
         private static bool HasTypeSuffix(string value, string typeName)
         {
             return string.Equals(value, typeName, StringComparison.Ordinal)

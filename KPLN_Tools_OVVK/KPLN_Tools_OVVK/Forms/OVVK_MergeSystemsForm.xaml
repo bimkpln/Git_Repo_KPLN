@@ -5,11 +5,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
         xmlns:local="clr-namespace:KPLN_Tools_OVVK.Forms"
         mc:Ignorable="d" 
-        MinWidth="400"
+        MinWidth="560" MaxWidth="1250"
         MinHeight="150"
         MaxHeight="750"
         SizeToContent="WidthAndHeight"
-        ResizeMode="CanResizeWithGrip"
+        ResizeMode="CanMinimize"
+        SizeChanged="Window_SizeChanged"
         Topmost="True"
         Title="KPLN: ОВВК — Объединить системы"
         WindowStartupLocation="CenterOwner">
@@ -70,6 +71,15 @@
         </Grid.RowDefinitions>
 
         <StackPanel>
+            <StackPanel x:Name="ModelConfigPicker" Visibility="Collapsed" Margin="10,5" HorizontalAlignment="Center">
+                <TextBlock Text="Для этой модели настройки не сохранены. Можно загрузить группы другой модели:"
+                           TextWrapping="Wrap" MaxWidth="500" Margin="5"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <ComboBox x:Name="SavedModelNames" Width="340" DisplayMemberPath="ModelName" Margin="5"
+                              ToolTip="Выбери модель, настройки которой нужно загрузить"/>
+                    <Button Content="Загрузить" Click="LoadModelConfig_Click" Margin="5" Padding="10,3"/>
+                </StackPanel>
+            </StackPanel>
             <DockPanel
                 LastChildFill="False"
                 HorizontalAlignment="Center">
@@ -90,49 +100,57 @@
         
         <ScrollViewer 
             Grid.Row="1"
+            HorizontalScrollBarVisibility="Auto"
+            HorizontalContentAlignment="Center"
             VerticalScrollBarVisibility="Auto">
             <ItemsControl 
-                x:Name="SysIControll">
+                x:Name="SysIControll" HorizontalAlignment="Center" Margin="8,0">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Orientation="Vertical">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="0.5*"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="0.5*"/>
-                                    <ColumnDefinition Width="30"/>
-                                </Grid.ColumnDefinitions>
-                                
-                                <ComboBox 
-                                    ItemsSource="{Binding SystemParameters}"
-                                    SelectedValue="{Binding FirstParamName, UpdateSourceTrigger=PropertyChanged}"
-                                    Style="{StaticResource CBox}"/>
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Text="+"
-                                    Style="{StaticResource MainTBlock}"/>
-                                <ComboBox 
-                                    Grid.Column="2"
-                                    ItemsSource="{Binding SystemParameters}"
-                                    SelectedValue="{Binding LastParamName, UpdateSourceTrigger=PropertyChanged}"
-                                    Style="{StaticResource CBox}"/>
-                                <Button
-                                    Grid.Column="3"
-                                    Content="✖" 
-                                    Foreground="Red"
-                                    Margin="5"
-                                    VerticalAlignment="Center"
-                                    Click="Del_Click"/>
-                            </Grid>
-                        </StackPanel>
+                        <DockPanel LastChildFill="True" Margin="0,2" HorizontalAlignment="Center">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                                <Button Content="+" Width="26" Height="26" Margin="2,5" Click="AddSystem_Click"
+                                        IsEnabled="{Binding CanAddSystem}" ToolTip="{Binding AddSystemToolTip}" ToolTipService.ShowOnDisabled="True"/>
+                                <Button Content="✖" Foreground="Red" Width="26" Height="26" Margin="2,5"
+                                        Click="Del_Click" ToolTip="Удалить группу"/>
+                            </StackPanel>
+                            <ItemsControl ItemsSource="{Binding Systems}">
+                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="+" VerticalAlignment="Center" Margin="3,0">
+                                                <TextBlock.Style><Style TargetType="TextBlock">
+                                                    <Style.Triggers><DataTrigger Binding="{Binding IsFirst}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger></Style.Triggers>
+                                                </Style></TextBlock.Style>
+                                            </TextBlock>
+                                            <ComboBox Width="180" ItemsSource="{Binding SystemParameters}"
+                                                      SelectedValue="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                      Style="{StaticResource CBox}"
+                                                      ToolTip="При выборе первой системы вторая подбирается автоматически. Любую систему можно изменить вручную."/>
+                                            <Button Content="−" Width="20" Height="20" Margin="0,5,2,5" Click="RemoveSystem_Click"
+                                                    ToolTip="Убрать эту систему из группы">
+                                                <Button.Style><Style TargetType="Button">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers><DataTrigger Binding="{Binding CanRemove}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger></Style.Triggers>
+                                                </Style></Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DockPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
         <DockPanel Grid.Row="2" LastChildFill="False" HorizontalAlignment="Center" Margin="0,6,0,0">
             <Button Click="SaveConfig_Click" Content="Сохранить"
-                    ToolTip="Сохранить группы объединения для текущей модели и параметра"
+                    ToolTip="Сохранить общие группы объединения для проекта и выбранного параметра"
                     Style="{StaticResource MainButtons}"/>
             <Button Click="Clear_Click" Content="Очистить"
                     ToolTip="Удалить все группы из окна. Значения элементов Revit не изменяются."

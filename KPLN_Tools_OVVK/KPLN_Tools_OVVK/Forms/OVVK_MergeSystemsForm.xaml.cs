@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -16,11 +14,15 @@ namespace KPLN_Tools_OVVK.Forms
 {
     public partial class OVVK_MergeSystemsForm : Window
     {
+
         private readonly OVVK_SystemManagerM _model;
+        private readonly string _modelName;
 
         public OVVK_MergeSystemsForm(OVVK_SystemManagerM model)
         {
             _model = model;
+            // Тот же источник пути, что и в KPLN_Looker: для хранилища берём центральную модель.
+            _modelName = SystemProjectConfig.ModelName(model.CurrentDoc);
 
             InitializeComponent();
             SysIControll.ItemsSource = SysDataToMerge;
@@ -32,48 +34,37 @@ namespace KPLN_Tools_OVVK.Forms
 
         public ObservableCollection<OVVK_MergeSystem> SysDataToMerge { get; set; } = new ObservableCollection<OVVK_MergeSystem>();
 
-        private string GetConfigName()
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            // Разные модели и параметры хранят свои наборы групп.
-            string key = (_model.DocumentKey ?? string.Empty).ToUpperInvariant() + "\n" + _model.ParameterName;
-            using (var hash = SHA256.Create())
-                return "OVVK_MergeSystems_" + BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(key))).Replace("-", "");
+            // При добавлении систем окно растёт в обе стороны от своего центра.
+            if (IsLoaded && e.WidthChanged && e.PreviousSize.Width > 0)
+                Left -= (e.NewSize.Width - e.PreviousSize.Width) / 2;
         }
 
         private void LoadConfig()
         {
             try
             {
-                var saved = ConfigService.ReadConfigFile<OVVK_MergeSystemsConfigM>(ConfigType.Local, GetConfigName()) as OVVK_MergeSystemsConfigM;
-                if (saved == null
-                    || !string.Equals(saved.DocumentKey, _model.DocumentKey, StringComparison.OrdinalIgnoreCase)
-                    || saved.ParameterName != _model.ParameterName)
+                Document doc = _model.CurrentDoc;
+                var saved = SystemProjectConfig.ReadMerge(doc);
+                var models = saved?.Models?.Where(item => item != null && !string.IsNullOrWhiteSpace(item.ModelName)
+                    && item.ParameterName == _model.ParameterName).ToArray();
+                if (models == null || models.Length == 0)
                     return;
 
-                string[] systems = _model.SystemSumParameters.ToArray();
-                int skippedGroups = 0;
-                foreach (var group in saved.Groups ?? new List<OVVK_MergeSystemsConfigM.Group>())
+                var current = models.FirstOrDefault(item => string.Equals(item.ModelName, _modelName, StringComparison.OrdinalIgnoreCase));
+                if (current != null)
                 {
-                    if (group == null
-                        || string.IsNullOrWhiteSpace(group.FirstParamName)
-                        || string.IsNullOrWhiteSpace(group.LastParamName)
-                        || !systems.Contains(group.FirstParamName)
-                        || !systems.Contains(group.LastParamName))
-                    {
-                        skippedGroups++;
-                        continue;
-                    }
-
-                    SysDataToMerge.Add(new OVVK_MergeSystem(systems)
-                    {
-                        FirstParamName = group.FirstParamName,
-                        LastParamName = group.LastParamName,
-                    });
+                    RestoreGroups(current);
+                    return;
                 }
 
-                ConfigStatus.Text = skippedGroups > 0
-                    ? $"Настройки загружены. Пропущено групп: {skippedGroups} — системы отсутствуют в модели или не заданы."
-                    : "Настройки объединения загружены.";
+                var available = models.Where(item => item.Groups?.Count > 0).OrderBy(item => item.ModelName).ToArray();
+                if (available.Length == 0)
+                    return;
+
+                SavedModelNames.ItemsSource = available;
+                ModelConfigPicker.Visibility = System.Windows.Visibility.Visible;
             }
             catch (Exception ex)
             {
@@ -81,22 +72,65 @@ namespace KPLN_Tools_OVVK.Forms
             }
         }
 
+        private void LoadModelConfig_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = SavedModelNames.SelectedItem as OVVK_MergeSystemsConfigM.ModelSettings;
+            if (selected == null)
+                return;
+
+            RestoreGroups(selected);
+            ModelConfigPicker.Visibility = System.Windows.Visibility.Collapsed;
+        }
+
+        private void RestoreGroups(OVVK_MergeSystemsConfigM.ModelSettings saved)
+        {
+            SysDataToMerge.Clear();
+            if (saved.Groups == null || saved.Groups.Count == 0)
+                return;
+
+            string[] systems = _model.SystemSumParameters.ToArray();
+            int skippedGroups = 0;
+            foreach (var group in saved.Groups ?? new List<OVVK_MergeSystemsConfigM.Group>())
+            {
+                string[] names = group == null ? new string[0]
+                    : group.SystemNames?.ToArray() ?? new[] { group.FirstParamName, group.LastParamName };
+                if (!OVVK_MergeSystem.IsAllowedCount(names.Length)
+                    || names.Any(name => string.IsNullOrWhiteSpace(name) || !systems.Contains(name))
+                    || names.Distinct().Count() != names.Length)
+                {
+                    skippedGroups++;
+                    continue;
+                }
+
+                var restored = new OVVK_MergeSystem(systems);
+                restored.SetSystemNames(names);
+                SysDataToMerge.Add(restored);
+            }
+
+            ConfigStatus.Text = skippedGroups > 0
+                ? $"Настройки загружены. Пропущено групп: {skippedGroups} — системы отсутствуют, не заданы или группа некорректна."
+                : $"Загружены настройки модели «{saved.ModelName}».";
+        }
+
         private void SaveConfig_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var config = new OVVK_MergeSystemsConfigM
+                var settings = new OVVK_MergeSystemsConfigM.ModelSettings
                 {
-                    DocumentKey = _model.DocumentKey,
+                    ModelName = _modelName,
                     ParameterName = _model.ParameterName,
                     Groups = SysDataToMerge.Select(group => new OVVK_MergeSystemsConfigM.Group
                     {
+                        SystemNames = group.SelectedSystemNames.ToList(),
                         FirstParamName = group.FirstParamName,
                         LastParamName = group.LastParamName,
                     }).ToList(),
                 };
-                ConfigService.SaveConfig<OVVK_MergeSystemsConfigM>(ConfigType.Local, config, GetConfigName());
-                ConfigStatus.Text = "Настройки объединения сохранены.";
+                Document doc = _model.CurrentDoc;
+                SystemProjectConfig.SaveMerge(doc, settings);
+                ModelConfigPicker.Visibility = System.Windows.Visibility.Collapsed;
+                ConfigStatus.Text = $"Настройки модели «{_modelName}» сохранены.";
             }
             catch (Exception ex)
             {
@@ -127,16 +161,16 @@ namespace KPLN_Tools_OVVK.Forms
             if (!SysDataToMerge.Any())
                 return;
 
-            if (SysDataToMerge.Any(group => string.IsNullOrWhiteSpace(group.FirstParamName)
-                || string.IsNullOrWhiteSpace(group.LastParamName)
-                || group.FirstParamName == group.LastParamName))
+            if (SysDataToMerge.Any(group => !OVVK_MergeSystem.IsAllowedCount(group.Systems.Count)
+                || group.SelectedSystemNames.Any(string.IsNullOrWhiteSpace)
+                || group.SelectedSystemNames.Distinct().Count() != group.Systems.Count))
             {
-                MessageBox.Show(this, "В каждой группе выбери две разные системы.",
+                MessageBox.Show(this, $"В каждой группе выбери от {OVVK_MergeSystem.MinSystemCount} до {OVVK_MergeSystem.MaxSystemCount} разных систем.",
                     "KPLN: Внимание", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            string[] names = SysDataToMerge.SelectMany(group => new[] { group.FirstParamName, group.LastParamName }).ToArray();
+            string[] names = SysDataToMerge.SelectMany(group => group.SelectedSystemNames).ToArray();
             if (names.Distinct().Count() != names.Length)
             {
                 MessageBox.Show(this, "Одна система может участвовать только в одной группе объединения за запуск.",
@@ -145,6 +179,17 @@ namespace KPLN_Tools_OVVK.Forms
             }
 
             DialogResult = true;
+        }
+
+        private void AddSystem_Click(object sender, RoutedEventArgs e)
+        {
+            ((sender as Button)?.DataContext as OVVK_MergeSystem)?.AddSystem();
+        }
+
+        private void RemoveSystem_Click(object sender, RoutedEventArgs e)
+        {
+            var part = (sender as Button)?.DataContext as OVVK_MergeSystemPart;
+            SysDataToMerge.FirstOrDefault(group => group.Systems.Contains(part))?.RemoveSystem(part);
         }
 
         private void Del_Click(object sender, RoutedEventArgs e)
