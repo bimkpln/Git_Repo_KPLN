@@ -312,9 +312,8 @@ namespace KPLN_Clashes_Ribbon.Forms
 
                     if (result == System.Windows.Forms.DialogResult.OK)
                     {
-                        int taskCount = 0;
                         bool errorsWhenPosted = false;
-                        Task[] riWorkerTasks = new Task[dialog.FileNames.Length];
+                        List<Task> riWorkerTasks = new List<Task>();
                         foreach (string file_name in dialog.FileNames)
                         {
                             FileInfo file = new FileInfo(file_name);
@@ -338,7 +337,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                                         sqliteService_ReportItemsDB.CreateDbFile_ByReports();
                                         sqliteService_ReportItemsDB.PostNewItems_ByReports(reportInstances);
                                     });
-                                    riWorkerTasks[taskCount++] = fiWorkTask;
+                                    riWorkerTasks.Add(fiWorkTask);
                                 }
                                 else
                                 {
@@ -355,7 +354,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                                 }
                             }
                         }
-                        Task.WaitAll(riWorkerTasks);
+                        Task.WaitAll(riWorkerTasks.ToArray());
 
                         UpdateSelectedReportGroup(group);
 

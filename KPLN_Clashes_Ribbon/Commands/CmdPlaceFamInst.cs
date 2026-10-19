@@ -356,9 +356,39 @@ namespace KPLN_Clashes_Ribbon.Commands
                 .NewFamilyInstance(point, intersectFamSymb, level, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 
             instance.get_Parameter(BuiltInParameter.INSTANCE_ELEVATION_PARAM).Set(point.Z - level.Elevation);
+
+            // Раздел берём из имени открытой модели, в которой создаётся метка.
+            string discipline = GetModelDiscipline(doc.Title);
+            if (discipline != null)
+            {
+                Parameter monolithParameter = instance.LookupParameter("КП_О_Проверка монолита");
+                if (monolithParameter != null && !monolithParameter.IsReadOnly
+                    && monolithParameter.StorageType == StorageType.String)
+                {
+                    monolithParameter.Set(discipline);
+                }
+                else
+                {
+                    Print("У метки ClashPoint не удалось заполнить КП_О_Проверка монолита: "
+                        + "нужен доступный для записи текстовый параметр экземпляра.", MessageType.Error);
+                }
+            }
             doc.Regenerate();
 
             return instance;
+        }
+
+        private static string GetModelDiscipline(string modelName)
+        {
+            string[] parts = (modelName ?? string.Empty).Split(
+                new[] { '_', '-', ' ', '.', '(', ')', '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
+            bool isAR = parts.Any(part => string.Equals(part, "АР", StringComparison.OrdinalIgnoreCase));
+            bool isKR = parts.Any(part => string.Equals(part, "КР", StringComparison.OrdinalIgnoreCase));
+
+            if (isAR == isKR)
+                return null;
+
+            return isAR ? "АР" : "КР";
         }
 
         private static FamilySymbol GetFamilySymbol(Document doc)

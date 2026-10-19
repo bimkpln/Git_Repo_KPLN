@@ -177,7 +177,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
                 return _element_1_DocName;
             }
-            set => _element_1_DocName = value;
+            set => _element_1_DocName = NormalizeModelName(value);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
                 return _element_2_DocName;
             }
-            set => _element_2_DocName = value;
+            set => _element_2_DocName = NormalizeModelName(value);
         }
 
         public string Point { get; set; }
@@ -484,7 +484,19 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             // Спрабуем знайсці файл з пашырэннем .rvt, калі не знайшлося, то шукаем .nwc
             string fileName = ExtractFileName(".rvt") ?? ExtractFileName(".nwc");
 
-            return fileName ?? string.Empty;
+            return NormalizeModelName(fileName) ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Удалить технический суффикс экспорта монолита из имени модели.
+        /// </summary>
+        private static string NormalizeModelName(string modelName)
+        {
+            const string monolithSuffix = "_Монолит";
+            if (modelName != null && modelName.EndsWith(monolithSuffix, StringComparison.OrdinalIgnoreCase))
+                return modelName.Substring(0, modelName.Length - monolithSuffix.Length);
+
+            return modelName;
         }
 
         public static string GetCommentsString(ObservableCollection<ReportItemComment> comments)
