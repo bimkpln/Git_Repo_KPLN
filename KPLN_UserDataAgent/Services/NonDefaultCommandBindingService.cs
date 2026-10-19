@@ -283,12 +283,16 @@ namespace KPLN_UserDataAgent.Services
 
             NonDefaultCommandInfo info = new NonDefaultCommandInfo(id, Clean(tabName), Clean(panelName), commandName);
             _ribbonItems[item] = info;
-            if (registeredExternal && ShouldTrackCommand(info.PanelName, info.Id))
+            if (registeredExternal && ShouldTrackCommand(info.TabName, info.PanelName, info.Id))
                 commands[id] = info;
         }
 
-        internal static bool ShouldTrackCommand(string panelName, string commandId)
+        internal static bool ShouldTrackCommand(string tabName, string panelName, string commandId)
         {
+            // KPLN is the ribbon tab; its panels can have independent names.
+            if (string.Equals(Clean(tabName), "KPLN", StringComparison.OrdinalIgnoreCase))
+                return true;
+
             string id = CleanCommandId(commandId);
             if (id.StartsWith("ExtCmd", StringComparison.OrdinalIgnoreCase)
                 || id.StartsWith("MODPLUS_", StringComparison.OrdinalIgnoreCase))
@@ -383,7 +387,7 @@ namespace KPLN_UserDataAgent.Services
                         _ribbonItems[item] = info;
                     }
                 }
-                if (!ShouldTrackCommand(info.PanelName, info.Id)) return;
+                if (!ShouldTrackCommand(info.TabName, info.PanelName, info.Id)) return;
                 if (registeredExternal)
                 {
                     BeginExecution(info, true);
