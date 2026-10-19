@@ -7,7 +7,6 @@ using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.Forms.Entities;
 using System;
-using System.Diagnostics;
 using System.Windows;
 
 namespace KPLN_Tools_OVVK.ExecutableCommand
@@ -43,32 +42,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
             var service = new SystemRefreshService(doc);
             try
             {
-                Action checkCancellation = () =>
-                {
-                    if (progress.IsCancellationRequested)
-                        throw new OperationCanceledException();
-                };
-                var clock = Stopwatch.StartNew();
-                string lastStage = null;
-                service.Execute((completed, total, stage) =>
-                {
-                    checkCancellation();
-                    if (lastStage == stage && completed < total && clock.ElapsedMilliseconds < 75)
-                        return;
-
-                    clock.Restart();
-                    lastStage = stage;
-                    progress.MaintStatus = stage;
-                    progress.MaxProgress = Math.Max(1, total);
-                    progress.CurrentProgress = completed;
-                    progress.IsIndeterminate = false;
-                }, checkCancellation, () =>
-                {
-                    progress.IsCancellationEnabled = false;
-                    checkCancellation();
-                    progress.MaintStatus = "Сохраняю изменения";
-                    progress.IsIndeterminate = true;
-                });
+                service.Execute(progress.Report, progress.ThrowIfCancellationRequested, progress.BeginCommit);
                 progress.IsComplete = true;
             }
             catch (OperationCanceledException)

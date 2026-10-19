@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Revit": {
+      "commandName": "Executable",
+      "executablePath": "$(StartProgram)",
+      "workingDirectory": "$(StartWorkingDirectory)"
+    }
+  }
+}

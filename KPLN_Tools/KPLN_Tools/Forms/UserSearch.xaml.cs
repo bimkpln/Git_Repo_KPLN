@@ -1,8 +1,9 @@
-﻿using KPLN_Library_Bitrix24Worker;
+using KPLN_Library_Bitrix24Worker;
 using KPLN_Tools.Forms.Models;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows.Data;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,14 +13,38 @@ namespace KPLN_Tools.Forms
 {
     public partial class UserSearch : Window
     {
-        private readonly IEnumerable<VM_UserEntity> _collection;
+        private readonly VM_UserEntity[] _collection;
+        private readonly ListCollectionView _usersView;
+        private bool _isOpeningProfile;
 
-        public UserSearch(IEnumerable<VM_UserEntity> collection)
+        public UserSearch(IEnumerable<VM_UserEntity> collection,
+            Dictionary<string, List<string>> selectionRoles = null, string selectionInfo = null, int selectedElementCount = 0)
         {
-            _collection = collection;
+            // Материализация исключает повторные запросы отделов в БД при каждом вводе.
+            _collection = collection.ToArray();
             InitializeComponent();
 
-            Users.ItemsSource = _collection;
+            var rows = _collection.Select(user => new UserSearchRow(user, user.DBRevitUserName, selectionRoles)).ToList();
+            if (selectionRoles != null)
+            {
+                var knownNames = new HashSet<string>(_collection.Select(user => user.DBRevitUserName?.Trim()),
+                    StringComparer.OrdinalIgnoreCase);
+                foreach (string name in selectionRoles.Keys.Where(name => !knownNames.Contains(name)))
+                    rows.Add(new UserSearchRow(null, name, selectionRoles));
+
+                Width = 780;
+                MinWidth = 700;
+                SelectionPanel.Visibility = Visibility.Visible;
+                SelectionInfo.Text = selectionInfo;
+                OnlySelection.Content = selectedElementCount > 1
+                    ? "Только пользователи выбранных элементов"
+                    : "Только пользователи выбранного элемента";
+                OnlySelection.IsChecked = true;
+            }
+
+            _usersView = new ListCollectionView(rows);
+            ApplyFilter();
+            Users.ItemsSource = _usersView;
             PreviewKeyDown += new KeyEventHandler(HandlePressBtn);
         }
 
@@ -39,42 +64,98 @@ namespace KPLN_Tools.Forms
             Keyboard.Focus(UserInput);
         }
 
-        private void ScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            // Выполните здесь нужное вам поведение при прокрутке колесом мыши
-            ScrollViewer.ScrollToVerticalOffset(ScrollViewer.VerticalOffset - e.Delta);
-            // Пометьте событие как обработанное, чтобы оно не передалось другим элементам
-            e.Handled = true;
-        }
-
         private void UserInput_TextChanged(object sender, TextChangedEventArgs e)
         {
-            TextBox textBox = (TextBox)sender;
-            string _searchName = textBox.Text.ToLower();
+            ApplyFilter();
+        }
 
-            ObservableCollection<VM_UserEntity> filteredElement = new ObservableCollection<VM_UserEntity>();
+        private void IncludeFired_Changed(object sender, RoutedEventArgs e)
+        {
+            ApplyFilter();
+        }
 
-            foreach (VM_UserEntity user in Collection)
+        private void ApplyFilter()
+        {
+            // События XAML могут сработать до завершения InitializeComponent.
+            if (_usersView == null)
+                return;
+
+            string searchName = UserInput.Text.Trim();
+            bool includeFired = IncludeFired.IsChecked == true;
+            bool onlySelection = OnlySelection.IsChecked == true;
+
+            _usersView.Filter = item =>
             {
-                string revitUserName = user.DBUser.RevitUserName;
-                if (!string.IsNullOrEmpty(revitUserName) && revitUserName.ToLower().Contains(_searchName))
-                    filteredElement.Add(user);
-            }
+                UserSearchRow row = (UserSearchRow)item;
+                if (!includeFired && row.User != null && row.User.DBUser.IsFired)
+                    return false;
 
-            Users.ItemsSource = filteredElement;
+                if (onlySelection && string.IsNullOrEmpty(row.Roles))
+                    return false;
+
+                return searchName.Length == 0
+                    || (!string.IsNullOrEmpty(row.DBRevitUserName)
+                        && row.DBRevitUserName.IndexOf(searchName, StringComparison.OrdinalIgnoreCase) >= 0);
+            };
+            SearchStatus.Text = _usersView.Count == 0
+                ? "Совпадений нет. Измените имя или настройки поиска."
+                : string.Empty;
+            SearchStatus.Visibility = _usersView.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private async void Users_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            ListBox listBox = (ListBox)sender;
-            if (!(listBox.SelectedItem is VM_UserEntity vmUserEntity))
-                throw new Exception("\n[KPLN]: Ошибка получения пользователя из БД\n\n");
+            if (_isOpeningProfile
+                || !(e.OriginalSource is DependencyObject source)
+                || !(ItemsControl.ContainerFromElement(Users, source) is ListBoxItem item)
+                || !(item.DataContext is UserSearchRow row)
+                || row.User == null)
+                return;
 
-            int id = await BitrixMessageSender.GetDBUserBitrixId_ByDBUser(vmUserEntity.DBUser);
-            Process.Start(new ProcessStartInfo($@"https://kpln.bitrix24.ru/company/personal/user/{id}/")
+            VM_UserEntity vmUserEntity = row.User;
+
+            _isOpeningProfile = true;
+            try
             {
-                UseShellExecute = true
-            });
+                int id = await BitrixMessageSender.GetDBUserBitrixId_ByDBUser(vmUserEntity.DBUser);
+                if (id <= 0)
+                    throw new InvalidOperationException("Профиль пользователя в Bitrix24 не найден.");
+
+                Process.Start(new ProcessStartInfo($@"https://kpln.bitrix24.ru/company/personal/user/{id}/")
+                {
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, $"Не удалось открыть профиль Bitrix24.\n\n{ex.Message}",
+                    "KPLN: Поиск пользователя", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                _isOpeningProfile = false;
+            }
         }
     }
+
+    /// <summary>Строка поиска, включая логины выделения, отсутствующие в справочнике.</summary>
+    public sealed class UserSearchRow
+    {
+        public UserSearchRow(VM_UserEntity user, string revitName, Dictionary<string, List<string>> roles)
+        {
+            User = user;
+            DBRevitUserName = revitName;
+            ShowRoles = roles != null;
+            if (roles != null && revitName != null && roles.TryGetValue(revitName.Trim(), out List<string> labels))
+                Roles = string.Join("\n", labels);
+        }
+
+        public VM_UserEntity User { get; }
+        public string DBRevitUserName { get; }
+        public string DBSystemName => User?.DBSystemName;
+        public string UserDataView => User?.UserDataView ?? "Не найден в справочнике сотрудников";
+        public string Roles { get; }
+        public bool ShowRoles { get; }
+    }
 }
+

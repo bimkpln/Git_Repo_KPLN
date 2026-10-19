@@ -7,7 +7,6 @@ using KPLN_Loader.Common;
 using KPLN_Tools_OVVK.Common.OVVK_System;
 using KPLN_Tools_OVVK.Forms.Entities;
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 
@@ -53,27 +52,8 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
 
             try
             {
-                var progressClock = Stopwatch.StartNew();
-                string lastStage = null;
-                Action checkCancellation = () =>
-                {
-                    if (progress.IsCancellationRequested)
-                        throw new OperationCanceledException();
-                };
-                Action<int, int, string> reportProgress = (completed, total, stage) =>
-                {
-                    checkCancellation();
-                    // Частые записи параметров не должны переполнять очередь отдельного UI-потока.
-                    if (stage == lastStage && completed < total && progressClock.ElapsedMilliseconds < 75)
-                        return;
-
-                    lastStage = stage;
-                    progressClock.Restart();
-                    progress.MaintStatus = stage;
-                    progress.MaxProgress = Math.Max(1, total);
-                    progress.CurrentProgress = completed;
-                    progress.IsIndeterminate = false;
-                };
+                Action checkCancellation = progress.ThrowIfCancellationRequested;
+                Action<int, int, string> reportProgress = progress.Report;
 
                 Element[] elements = OVVK_SystemManagerM.CollectElements(doc, _viewId,
                     (completed, total) => reportProgress(completed, total, "Собираю элементы"));
@@ -93,10 +73,7 @@ namespace KPLN_Tools_OVVK.ExecutableCommand
                 {
                     transaction.Start();
                     service.Write(reportProgress);
-                    progress.IsCancellationEnabled = false;
-                    checkCancellation();
-                    progress.MaintStatus = "Сохраняю изменения";
-                    progress.IsIndeterminate = true;
+                    progress.BeginCommit();
                     if (transaction.Commit() != TransactionStatus.Committed)
                         throw new InvalidOperationException("Заполнение параметра не сохранено: транзакция отменена.");
                 }

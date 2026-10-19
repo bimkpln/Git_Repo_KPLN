@@ -549,4 +549,10 @@
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Restore"
              Properties="Configuration=$(Configuration);Platform=$(Platform);BuildingInsideVisualStudio=false" />
   </Target>
+  <!-- Запуск Revit соответствующего года при отладке. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2020' OR '$(Configuration)' == 'Debug2023' OR '$(Configuration)' == 'Debug2024' OR '$(Configuration)' == 'Debug2026'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\Revit $(RevitVer)\Revit.exe</StartProgram>
+    <StartWorkingDirectory>C:\Program Files\Autodesk\Revit $(RevitVer)</StartWorkingDirectory>
+  </PropertyGroup>
 </Project>
