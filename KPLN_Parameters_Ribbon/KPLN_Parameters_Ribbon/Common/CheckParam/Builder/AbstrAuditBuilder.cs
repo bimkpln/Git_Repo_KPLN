@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Parameters_Ribbon.Forms;
+using KPLN_Library_Forms.UI.ViewModels;
 using System.Collections.Generic;
 
 namespace KPLN_Parameters_Ribbon.Common.CheckParam.Builder
@@ -70,6 +70,6 @@ namespace KPLN_Parameters_Ribbon.Common.CheckParam.Builder
         /// </summary>
         /// <param name="pb">Прогресс-бар для визуализации процесса выполнения</param>
         /// <returns></returns>
-        public abstract bool ExecuteParamsAudit(Progress_Single pb);
+        public abstract bool ExecuteParamsAudit(ProgressInfoViewModel pb);
     }
 }

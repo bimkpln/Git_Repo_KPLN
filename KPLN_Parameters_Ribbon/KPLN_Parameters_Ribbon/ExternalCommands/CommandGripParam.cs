@@ -1,4 +1,4 @@
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_DBWorker;
@@ -142,6 +142,11 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
                 }
 
                 return Result.Succeeded;
+            }
+            catch (OperationCanceledException)
+            {
+                TaskDialog.Show("KPLN: Параметры захваток", "Заполнение отменено. Изменения не сохранены.");
+                return Result.Cancelled;
             }
             catch (GripParamExection gpe)
             {

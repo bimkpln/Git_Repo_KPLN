@@ -335,7 +335,11 @@ namespace KPLN_Parameters_Ribbon.Forms.Entities
         {
             try
             {
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023
                 return parameter.Id.IntegerValue.ToString(CultureInfo.InvariantCulture);
+#else
+                return parameter.Id.Value.ToString(CultureInfo.InvariantCulture);
+#endif
             }
             catch (Exception)
             {

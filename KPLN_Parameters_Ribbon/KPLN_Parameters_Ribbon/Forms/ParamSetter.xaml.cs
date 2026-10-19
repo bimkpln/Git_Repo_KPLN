@@ -1,4 +1,6 @@
-﻿using Autodesk.Revit.DB;
+﻿using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.ViewModels;
+using Autodesk.Revit.DB;
 using KPLN_Parameters_Ribbon.Command;
 using KPLN_Parameters_Ribbon.Common.CopyElemParamData;
 using System;
@@ -25,20 +27,21 @@ namespace KPLN_Parameters_Ribbon.Forms
         {
             _doc = doc;
             List<Category> categories = CategoriesList(_doc);
-            Array bics = Enum.GetValues(typeof(BuiltInCategory));
-
-            int max = categories.Count;
-            string format = "{0} из " + max.ToString() + " категорий проанализировано";
-
-            using (Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, false))
+            var progress = new ProgressInfoViewModel
             {
-                pb.SetProggresValues(max, 0);
-                pb.ShowProgress();
+                ProcessTitle = "Подготовка копирования параметров",
+                MaintStatus = "Анализирую категории и параметры",
+                IsIndeterminate = true,
+            };
+            var window = ProgressWindow.ShowInBackground(progress, "KPLN: Копирование параметров");
 
-                max = 0;
+            try
+            {
+                int completed = 0;
+                progress.Report(0, categories.Count, "Анализирую категории и параметры");
                 foreach (Category cat in categories)
                 {
-                    pb.Increment();
+                    progress.ThrowIfCancellationRequested();
                     try
                     {
                         HashSet<string> ids = new HashSet<string>();
@@ -56,6 +59,7 @@ namespace KPLN_Parameters_Ribbon.Forms
                         // Обрабатываю параметры
                         foreach (Element elem in catElemsColl)
                         {
+                            progress.ThrowIfCancellationRequested();
                             AddParamFromElement(elem, ids, heapElemParams);
                             if (elem is ElementType elemType)
                                 AddParamFromElement(elemType, ids, heapElemParams);
@@ -64,10 +68,24 @@ namespace KPLN_Parameters_Ribbon.Forms
                         lbElement.SubElements = new ObservableCollection<ListBoxElement>(heapElemParams.OrderBy(x => x.Name).ThenBy(x => x.ToolTip));
                         _heapElemCats.Add(lbElement);
                     }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
                     catch (Exception) { }
+                    finally
+                    {
+                        progress.Report(++completed, categories.Count, "Анализирую категории и параметры");
+                    }
                 }
 
                 _boxElemsList = new ObservableCollection<ListBoxElement>(_heapElemCats.OrderBy(x => x.Name));
+                progress.ThrowIfCancellationRequested();
+                progress.IsComplete = true;
+            }
+            finally
+            {
+                window.CloseSafely();
             }
 
             InitializeComponent();

@@ -1,11 +1,11 @@
-using Autodesk.Revit.DB;
-using KPLN_Parameters_Ribbon.Forms;
+﻿using Autodesk.Revit.DB;
+using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.ViewModels;
+using System;
 
 namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 {
-    /// <summary>
-    /// Распорядитель - создаёт объекты, используюя builder'ы
-    /// </summary>
+    /// <summary>Подготавливает элементы и выполняет запись параметров захваток.</summary>
     internal class GripDirector
     {
         private readonly AbstrGripBuilder _builder;
@@ -15,88 +15,70 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
             _builder = builder;
         }
 
-        /// <summary>
-        /// Создать builder и выполнить запись параметров в элементы Ревит
-        /// </summary>
         public void BuildWriter()
         {
-            Progress_Single pb = null;
+            var progress = new ProgressInfoViewModel
+            {
+                ProcessTitle = $"{_builder.DocMainTitle}: Параметры захваток",
+                MaintStatus = "Подготавливаю элементы и геометрию",
+                IsIndeterminate = true,
+                UpdateIntervalMilliseconds = 125,
+            };
+            ProgressWindow window = null;
 
             try
             {
+                window = ProgressWindow.ShowInBackground(progress, "KPLN: Параметры захваток");
                 _builder.Prepare();
+                progress.SetStage("Проверяю доступность элементов и параметров");
                 _builder.Check(_builder.Doc);
 
-                string format = "{0} из " + _builder.AllElementsCount + " элементов обработано";
+                int total = _builder.ElemsOnLevel.Count + _builder.ElemsUnderLevel.Count + _builder.ElemsByHost.Count;
+                Action<int, string> reportProgress = (completed, stage) => progress.Report(completed, total, stage);
 
-                // 1. Заполняю уровни с учетом секций по геометрии
-                using (Transaction t = new Transaction(_builder.Doc))
+                // Общая группа позволяет отменить оба этапа, сохранив отдельные транзакции для оснований.
+                using (var group = new TransactionGroup(_builder.Doc, "KPLN: Параметры захваток"))
                 {
-                    t.Start($"{_builder.DocMainTitle}: Параметры захваток_Geom");
-
-                    pb = new Progress_Single(
-                        $"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по геометрии",
-                        format,
-                        false) { UpdateIntervalMilliseconds = 125 };
-
-                    pb.SetProggresValues(_builder.AllElementsCount, 0);
-                    pb.ShowProgress();
-
-                    _builder.ExecuteGripParams_ByGeom(pb);
-
-                    t.Commit();
-                    pb.FlushProgress(_builder.PbCounter, "Поиск по геометрии");
-
-                    pb.Close();
-                    pb.Dispose();
-                    pb = null;
-                }
-
-                // 2. Заполняю уровни с учетом секций по основанию
-                using (Transaction t = new Transaction(_builder.Doc))
-                {
-                    t.Start($"{_builder.DocMainTitle}: Параметры захваток_Host");
-
-                    format = "{0} из " + _builder.AllElementsCount + " элементов обработано";
-
-                    pb = new Progress_Single(
-                        $"KPLN_{_builder.DocMainTitle}: Обработка пар-в захваток по основанию",
-                        format,
-                        false) { UpdateIntervalMilliseconds = 125 }; // ВАЖНО: OK не показываем во время процесса
-
-                    pb.SetProggresValues(_builder.AllElementsCount, _builder.PbCounter);
-                    pb.ShowProgress();
-
-                    _builder.ExecuteGripParams_ByHost(pb);
-
-                    t.Commit();
-                    pb.FlushProgress(_builder.PbCounter, "Анализ элементов на основе");
-
-                    pb.Close();
-                    pb.Dispose();
-                    pb = null;
-                }
-
-                _builder.CheckNotExecutedElems();
-            }
-            catch
-            {
-                if (pb != null)
-                {
-                    if (!pb.IsDisposed)
+                    group.Start();
+                    reportProgress(0, "Поиск по геометрии");
+                    using (var transaction = new Transaction(_builder.Doc, $"{_builder.DocMainTitle}: Параметры захваток_Geom"))
                     {
-                        pb.Close();
-                        pb.Dispose();
+                        transaction.Start();
+                        _builder.ExecuteGripParams_ByGeom(reportProgress);
+                        progress.SetStage("Сохраняю результаты анализа геометрии");
+                        if (transaction.Commit() != TransactionStatus.Committed)
+                            throw new InvalidOperationException("Не удалось сохранить параметры по геометрии.");
                     }
 
-                    pb = null;
+                    reportProgress(_builder.PbCounter, "Анализ элементов на основе");
+                    using (var transaction = new Transaction(_builder.Doc, $"{_builder.DocMainTitle}: Параметры захваток_Host"))
+                    {
+                        transaction.Start();
+                        _builder.ExecuteGripParams_ByHost(reportProgress);
+                        progress.SetStage("Сохраняю результаты анализа оснований");
+                        if (transaction.Commit() != TransactionStatus.Committed)
+                            throw new InvalidOperationException("Не удалось сохранить параметры по основанию.");
+                    }
+
+                    progress.SetStage("Проверяю необработанные элементы");
+                    _builder.CheckNotExecutedElems();
+                    progress.BeginCommit();
+                    if (group.Assimilate() != TransactionStatus.Committed)
+                        throw new InvalidOperationException("Заполнение параметров захваток не сохранено.");
                 }
 
-                throw; // ВАЖНО: не throw ex;
+                progress.IsComplete = true;
             }
             finally
             {
-                _builder.DisposeGeometryFilters();
+                try
+                {
+                    window?.CloseSafely();
+                }
+                finally
+                {
+                    _builder.DisposeGeometryFilters();
+                }
             }
         }
     }

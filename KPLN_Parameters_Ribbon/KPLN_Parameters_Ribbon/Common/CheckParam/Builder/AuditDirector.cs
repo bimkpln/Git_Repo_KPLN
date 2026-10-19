@@ -1,6 +1,7 @@
-﻿using Autodesk.Revit.DB;
+﻿using KPLN_Library_Forms.UI;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_Parameters_Ribbon.Forms;
+using KPLN_Library_Forms.UI.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,17 +37,24 @@ namespace KPLN_Parameters_Ribbon.Common.CheckParam.Builder
                 t.Start($"{_builder.DocMainTitle}: Проверка парамтеров");
 
                 int max = _builder.AllElementsCount;
-                string format = "{0} из " + max.ToString() + " элементов проверено";
-
-                using (Progress_Single pb = new Progress_Single("KPLN: Проверка факта заполнения парамтеров", format, false))
+                var progress = new ProgressInfoViewModel
                 {
-                    pb.SetProggresValues(max, 0);
-                    pb.ShowProgress();
-                    
-                    bool writeLevelParams = _builder.ExecuteParamsAudit(pb);
+                    ProcessTitle = "Проверка факта заполнения параметров",
+                    MaxProgress = max,
+                };
+                var window = ProgressWindow.ShowInBackground(progress, "KPLN: Проверка параметров");
+                try
+                {
+                    bool writeLevelParams = _builder.ExecuteParamsAudit(progress);
+                    progress.BeginCommit();
+                    if (t.Commit() != TransactionStatus.Committed)
+                        throw new InvalidOperationException("Проверка параметров не завершена: транзакция отменена.");
+                    progress.IsComplete = true;
                 }
-
-                t.Commit();
+                finally
+                {
+                    window.CloseSafely();
+                }
             }
 
             TaskDialog taskDialog = new TaskDialog("KPLN: Проверка параметров");

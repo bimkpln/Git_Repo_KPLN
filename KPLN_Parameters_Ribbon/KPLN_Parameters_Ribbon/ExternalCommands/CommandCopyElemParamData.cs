@@ -20,6 +20,10 @@ namespace KPLN_Parameters_Ribbon.ExternalCommands
 
                 return Result.Succeeded;
             }
+            catch (OperationCanceledException)
+            {
+                return Result.Cancelled;
+            }
             catch (Exception ex)
             {
                 PrintError(ex);

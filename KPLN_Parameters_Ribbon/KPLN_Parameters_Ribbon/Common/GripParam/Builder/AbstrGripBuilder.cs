@@ -1,6 +1,5 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
-using KPLN_Parameters_Ribbon.Forms;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -219,8 +218,8 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// <summary>
         /// Метод заполнения парамтеров захваток (секции и уровня) по анализу геометрии
         /// </summary>
-        /// <param name="pb">Прогресс-бар для визуализации процесса выполнения</param>
-        public void ExecuteGripParams_ByGeom(Progress_Single pb)
+        /// <param name="reportProgress">Прогресс-бар для визуализации процесса выполнения</param>
+        public void ExecuteGripParams_ByGeom(Action<int, string> reportProgress)
         {
             foreach (InstanceElemData instElemData in ElemsOnLevel)
             {
@@ -239,7 +238,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
                             "Блокировка параметра: у общего вложенного семейства параметр для секции или этажа заблокирован. Скорее всего, он передаётся из родителя, но нужно проверить"));
-                    pb.Update(++PbCounter, "Поиск по геометрии");
+                    reportProgress(++PbCounter, "Поиск по геометрии");
                     continue;
                 }
 
@@ -258,7 +257,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
                             "Геометрия: Элементу не удалось присвоить данные по геометрии"));
-                        pb.Update(++PbCounter, "Поиск по геометрии");
+                        reportProgress(++PbCounter, "Поиск по геометрии");
                         continue;
                     }
                 }
@@ -272,7 +271,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     instElemDataCorpsParam.Set(maxIntersectInstance.LSCorpsData);
                 instElemData.IsEmptyData = false;
 
-                pb.Update(++PbCounter, "Поиск по геометрии");
+                reportProgress(++PbCounter, "Поиск по геометрии");
             }
 
             foreach (InstanceElemData instElemData in ElemsUnderLevel)
@@ -291,6 +290,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                     ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
                             "Блокировка параметра: у общего вложенного семейства параметр для секции или этажа заблокирован. Скорее всего, он передаётся из родителя, но нужно проверить"));
+                    reportProgress(++PbCounter, "Поиск по геометрии");
                     continue;
                 }
 
@@ -308,6 +308,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                         ErrorElements.Add(new GripParamError(
                             instElemData.IEDElem,
                             "Геометрия: Элементу не удалось присвоить данные по геометрии"));
+                        reportProgress(++PbCounter, "Поиск по геометрии");
                         continue;
                     }
                 }
@@ -323,7 +324,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 instElemData.IsEmptyData = false;
 
 
-                pb.Update(++PbCounter, "Поиск по геометрии");
+                reportProgress(++PbCounter, "Поиск по геометрии");
             }
         }
 
@@ -331,12 +332,12 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
         /// Метод заполнения парамтеров захваток (секции и уровня) по анализу оснований. 
         /// ВАЖНО: запускать после анализа геометрии и в другой транзакции
         /// </summary>
-        /// <param name="pb">Прогресс-бар для визуализации процесса выполнения</param>
-        public void ExecuteGripParams_ByHost(Progress_Single pb)
+        /// <param name="reportProgress">Прогресс-бар для визуализации процесса выполнения</param>
+        public void ExecuteGripParams_ByHost(Action<int, string> reportProgress)
         {
             if (!ElemsByHost.Any())
             {
-                pb.Update(PbCounter, "Анализ элементов на основе");
+                reportProgress(PbCounter, "Анализ элементов на основе");
                 return;
             }
 
@@ -368,7 +369,7 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
 
                 instElemData.IsEmptyData = false;
 
-                pb.Update(++PbCounter, "Анализ элементов на основе");
+                reportProgress(++PbCounter, "Анализ элементов на основе");
             }
         }
 

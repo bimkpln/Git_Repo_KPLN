@@ -1,16 +1,14 @@
-﻿using Autodesk.Revit.DB;
+﻿using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.ViewModels;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_Parameters_Ribbon.Common.CopyElemParamData;
-using KPLN_Parameters_Ribbon.Forms;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
 using System.Linq;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
-using static System.Windows.Forms.AxHost;
 
 namespace KPLN_Parameters_Ribbon.Command
 {
@@ -27,254 +25,98 @@ namespace KPLN_Parameters_Ribbon.Command
 
         public Result Execute(UIApplication app)
         {
-            Document doc = app.ActiveUIDocument.Document;
-            int max = 0;
-            foreach (ParameterRuleElement rule in _rules)
+            Document doc = app.ActiveUIDocument?.Document;
+            if (doc == null)
+                return Result.Cancelled;
+
+            var progress = new ProgressInfoViewModel
             {
-                max += new FilteredElementCollector(doc)
-                    .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
-                    .WhereElementIsNotElementType()
-                    .ToElements()
-                    .Count;
-            }
-            string format = "{0} из " + max.ToString() + " параметров обработано";
-            Progress_Single pb = new Progress_Single("KPLN: Копирование параметров", format, true);
-            pb.SetProggresValues(max, 0);
-            pb.ShowProgress();
+                ProcessTitle = "Копирование параметров",
+                MaintStatus = "Собираю элементы",
+                IsIndeterminate = true,
+            };
+            var window = ProgressWindow.ShowInBackground(progress, "KPLN: Копирование параметров");
 
             try
             {
-                #region Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами, И они в группе
-                if (_isWriteInGroups)
+                var elementsByRule = new List<Element[]>();
+                foreach (ParameterRuleElement rule in _rules)
                 {
-                    #region Архивная наработка, которую не пустить в релиз - работает только с группами, которые не имеют пространственных разночтений с исходниокм (вращение)
-                    // Проблема НЕ решается (ручные правки в модели, или попытка эмитации в ревит не приносят результатов - группы вращаются в положение исходной)
-                    // Проблема должна быть решена расшиернием API, но все никак: https://forums.autodesk.com/t5/revit-ideas/group-edit-mode-in-api/idc-p/10293127
-
-                    //using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: анализ групп"))
-                    //{
-                    //    t.Start();
-
-                    //    GroupType[] groupTypeArr = new FilteredElementCollector(doc)
-                    //        .OfClass(typeof(GroupType))
-                    //        .Cast<GroupType>()
-                    //        .ToArray();
-                    //    HashSet<ElementId> delGroupsSet = new HashSet<ElementId>();
-                    //    foreach (GroupType groupType in groupTypeArr)
-                    //    {
-                    //        GroupSet groupSet = groupType.Groups;
-                    //        if (groupSet.Size != 0)
-                    //        {
-                    //            IEnumerator groupEnmu = groupSet.GetEnumerator();
-                    //            // Получаю новую группу
-                    //            int count = 0;
-                    //            while (groupEnmu.MoveNext())
-                    //            {
-                    //                Group currentNewGroup = null;
-                    //                count++;
-
-                    //                if (groupEnmu.Current is Group currentGroup)
-                    //                {
-                    //                    string currentGroupOldName = currentGroup.Name;
-                    //                    ElementId[] groupElemIDsArr = currentGroup.UngroupMembers().ToArray();
-                    //                    foreach (ParameterRuleElement rule in _rules)
-                    //                    {
-                    //                        Category selectedRuleCat = rule.SelectedCategory.Data as Category ?? throw new Exception($"Не удалось получить категрию элемнтов для одного из правил. Обратись к разработчику");
-
-                    //                        foreach (ElementId elemId in groupElemIDsArr)
-                    //                        {
-                    //                            Element elem = doc.GetElement(elemId);
-
-                    //                            if (elem is SketchPlane || elem is SketchBase)
-                    //                                continue;
-
-                    //                            Category elemCat = elem.Category;
-                    //                            if (elemCat == null)
-                    //                                Print($"Не удалось получить категрию элемнта с ID: {elemId} и именем {elem.Name}. Он пропущен в анализе, нужен ручной анализ со стороны пользователя", MessageType.Error);
-                    //                            else if (elemCat.Id == selectedRuleCat.Id)
-                    //                            {
-                    //                                Parameter sourceParameter = GetParameterByElement(elem, rule.SelectedSourceParameter);
-                    //                                Parameter targetParameter = GetParameterByElement(elem, rule.SelectedTargetParameter);
-
-                    //                                if (targetParameter.Definition is InternalDefinition intParamDef)
-                    //                                {
-                    //                                    // Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами (иной вариант устанавливается ниже)
-                    //                                    if (!intParamDef.VariesAcrossGroups)
-                    //                                    {
-                    //                                        SetElemParamByRule(sourceParameter, targetParameter, pb);
-                    //                                        pb.AddProgress(groupSet.Size - 1);
-                    //                                        delGroupsSet.Add(currentGroup.Id);
-                    //                                    }
-                    //                                }
-                    //                            }
-                    //                        }
-                    //                    }
-
-                    //                    string currentGroupNewName = $"{currentGroupOldName}_ZhvBlr{count}";
-                    //                    currentNewGroup = doc.Create.NewGroup(groupElemIDsArr);
-                    //                    currentNewGroup.GroupType.Name = currentGroupNewName;
-                    //                }
-                    //            }
-
-                    //        }
-                    //    }
-
-                    //    // Удаляю старую версию
-                    //    foreach(ElementId groupId in delGroupsSet)
-                    //    {
-                    //        doc.Delete(groupId);
-                    //    }
-
-                    //    t.Commit();
-                    //}
-
-                    //using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: очистка групп"))
-                    //{
-                    //    t.Start();
-
-                    //    GroupType[] groupTypeArr = new FilteredElementCollector(doc)
-                    //        .OfClass(typeof(GroupType))
-                    //        .Cast<GroupType>()
-                    //        .ToArray();
-
-                    //    foreach (GroupType groupType in groupTypeArr)
-                    //    {
-                    //        GroupType tempGroupType = groupType;
-                    //        string[] splitedNameArr = groupType.Name.Split(new string[] { "_ZhvBlr" }, StringSplitOptions.None);
-                    //        if (splitedNameArr.Length > 1)
-                    //        {
-                    //            string cleareadNewGroupName = splitedNameArr[0];
-                    //            GroupType[] groupClearedTypeNames = new FilteredElementCollector(doc)
-                    //                .OfClass(typeof(GroupType))
-                    //                .Cast<GroupType>()
-                    //                .Where(gt => gt.Name == cleareadNewGroupName)
-                    //                .ToArray();
-
-                    //            GroupSet groupSet = groupType.Groups;
-                    //            if (groupSet.Size != 0)
-                    //            {
-                    //                IEnumerator groupEnmu = groupSet.GetEnumerator();
-                    //                // Получаю новую группу
-                    //                bool isDeletable = false;
-                    //                while (groupEnmu.MoveNext())
-                    //                {
-                    //                    if (groupEnmu.Current is Group currentGroup)
-                    //                    {
-                    //                        if (!groupClearedTypeNames.Any())
-                    //                            groupType.Name = cleareadNewGroupName;
-                    //                        else
-                    //                        {
-                    //                            tempGroupType = groupClearedTypeNames.FirstOrDefault();
-                    //                            isDeletable = true;
-                    //                        }
-
-                    //                        LocationPoint oldLocation = currentGroup.Location as LocationPoint;
-                    //                        Line oldAxis = Line.CreateUnbound(oldLocation.Point, XYZ.BasisZ);
-                    //                        currentGroup.GroupType = tempGroupType;
-                    //                        doc.Regenerate();
-
-                    //                        LocationPoint newLocation = currentGroup.Location as LocationPoint;
-                    //                        Line newAxis = Line.CreateUnbound(newLocation.Point, XYZ.BasisZ);
-
-                    //                        XYZ translation = oldLocation.Point - newLocation.Point;
-                    //                        ElementTransformUtils.MoveElement(doc, currentGroup.Id, translation);
-
-
-                    //                    }
-                    //                }
-
-                    //                // Удаляю старую версию
-                    //                if (isDeletable)
-                    //                    doc.Delete(groupType.Id);
-                    //            }
-
-                    //        }
-                    //    }
-
-                    //    t.Commit();
-                    //}
-                    #endregion
-
-                    using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: ВСЕ"))
-                    {
-                        t.Start();
-
-                        foreach (ParameterRuleElement rule in _rules)
-                        {
-                            Element[] elemArr = new FilteredElementCollector(doc)
-                                .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
-                                .WhereElementIsNotElementType()
-                                .ToArray();
-
-                            foreach (Element element in elemArr)
-                            {
-                                Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter) 
-                                    ?? throw new Exception($"Не удалось получить парамтер {rule.SelectedSourceParameter.Name} для элемента с id: {element.Id}");
-                                
-                                Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter) 
-                                    ?? throw new Exception($"Не удалось получить парамтер {rule.SelectedTargetParameter.Name} для элемента с id: {element.Id}");
-                                
-                                if (targetParameter.Definition is InternalDefinition intParamDef)
-                                    SetElemParamByRule(sourceParameter, targetParameter, pb);
-                                else
-                                    throw new Exception($"Не удалось преобразовать в InternalDefinition для парамтера {targetParameter.Definition.Name}");
-                            }
-                        }
-
-                        t.Commit();
-                    }
-
+                    progress.ThrowIfCancellationRequested();
+                    elementsByRule.Add(new FilteredElementCollector(doc)
+                        .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
+                        .WhereElementIsNotElementType()
+                        .ToArray());
                 }
-                #endregion
 
-                #region Сеттинг параметров, для которых возможен вариант разных значений между группами, или параметр может отличаться между экземплярами групп 
-                using (Transaction t = new Transaction(doc, "KPLN: Коп пар-в: ВНЕ групп"))
+                // При отмене откатываем все этапы, включая уже завершённую запись в группах.
+                using (var group = new TransactionGroup(doc, "KPLN: Копирование параметров"))
                 {
-                    t.Start();
+                    group.Start();
+                    if (_isWriteInGroups)
+                        WriteRules(doc, elementsByRule, progress, true);
 
-                    foreach (ParameterRuleElement rule in _rules)
-                    {
-                        Element[] elemArr = new FilteredElementCollector(doc)
-                            .OfCategoryId((rule.SelectedCategory.Data as Category).Id)
-                            .WhereElementIsNotElementType()
-                            .ToArray();
-
-                        foreach (Element element in elemArr)
-                        {
-                            Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter);
-                            Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter);
-                            if (targetParameter.Definition is InternalDefinition intParamDef)
-                            {
-                                // Сеттинг параметров, для которых возможен вариант разных значений между группами
-                                if (intParamDef.VariesAcrossGroups)
-                                    SetElemParamByRule(sourceParameter, targetParameter, pb);
-                                // Сеттинг параметров, для которых НЕ возможен вариант разных значений между группами, НО они не в группе
-                                else if (element.GroupId.Equals(ElementId.InvalidElementId))
-                                    SetElemParamByRule(sourceParameter, targetParameter, pb);
-                            }
-                            else
-                                throw new Exception($"Не удалось преобразовать в InternalDefinition для парамтера {targetParameter.Definition.Name}");
-                        }
-
-                    }
-
-                    t.Commit();
+                    WriteRules(doc, elementsByRule, progress, false);
+                    progress.BeginCommit();
+                    if (group.Assimilate() != TransactionStatus.Committed)
+                        throw new InvalidOperationException("Копирование параметров не сохранено.");
                 }
-                #endregion
-                
+
+                progress.IsComplete = true;
                 return Result.Succeeded;
+            }
+            catch (OperationCanceledException)
+            {
+                TaskDialog.Show("KPLN: Копирование параметров", "Копирование отменено. Изменения не сохранены.");
+                return Result.Cancelled;
             }
             catch (Exception ex)
             {
-                pb.Update(0, "ОТКОЛНЕНО");
-
                 PrintError(ex);
-
-                return Result.Cancelled;
+                return Result.Failed;
             }
             finally
             {
-                pb.SetBtn_Ok_Enabled();
+                window.CloseSafely();
+            }
+        }
+
+        private void WriteRules(Document doc, List<Element[]> elementsByRule, ProgressInfoViewModel progress, bool writeAll)
+        {
+            string stage = writeAll ? "Заполняю параметры с учётом групп" : "Заполняю параметры вне групп и с разными значениями";
+            int total = elementsByRule.Sum(elements => elements.Length);
+            int completed = 0;
+            progress.Report(0, total, stage);
+
+            using (var transaction = new Transaction(doc, writeAll ? "KPLN: Коп пар-в: ВСЕ" : "KPLN: Коп пар-в: ВНЕ групп"))
+            {
+                transaction.Start();
+                for (int index = 0; index < _rules.Count; index++)
+                {
+                    ParameterRuleElement rule = _rules[index];
+                    foreach (Element element in elementsByRule[index])
+                    {
+                        progress.ThrowIfCancellationRequested();
+                        Parameter sourceParameter = GetParameterByElement(element, rule.SelectedSourceParameter);
+                        Parameter targetParameter = GetParameterByElement(element, rule.SelectedTargetParameter)
+                            ?? throw new InvalidOperationException($"Не удалось получить параметр {rule.SelectedTargetParameter.Name} для элемента с id: {element.Id}");
+                        if (writeAll && sourceParameter == null)
+                            throw new InvalidOperationException($"Не удалось получить параметр {rule.SelectedSourceParameter.Name} для элемента с id: {element.Id}");
+
+                        if (!(targetParameter.Definition is InternalDefinition definition))
+                            throw new InvalidOperationException($"Не удалось преобразовать в InternalDefinition для параметра {targetParameter.Definition.Name}");
+
+                        if (writeAll || definition.VariesAcrossGroups || element.GroupId.Equals(ElementId.InvalidElementId))
+                            SetElemParamByRule(sourceParameter, targetParameter);
+
+                        // Считаем каждый просмотренный элемент, в том числе пропущенный по условию группы.
+                        progress.Report(++completed, total, stage);
+                    }
+                }
+
+                progress.SetStage("Сохраняю результаты этапа");
+                if (transaction.Commit() != TransactionStatus.Committed)
+                    throw new InvalidOperationException("Не удалось сохранить этап копирования параметров.");
             }
         }
 
@@ -303,10 +145,8 @@ namespace KPLN_Parameters_Ribbon.Command
             return null;
         }
 
-        private static void SetElemParamByRule(Parameter sourceParameter, Parameter targetParameter, Progress_Single pb)
+        private static void SetElemParamByRule(Parameter sourceParameter, Parameter targetParameter)
         {
-            pb.Increment("Заполнение параметров");
-
             if (sourceParameter != null && targetParameter != null)
             {
                 switch (targetParameter.StorageType)

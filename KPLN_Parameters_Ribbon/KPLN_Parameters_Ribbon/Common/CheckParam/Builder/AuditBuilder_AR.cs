@@ -1,5 +1,5 @@
 ﻿using Autodesk.Revit.DB;
-using KPLN_Parameters_Ribbon.Forms;
+using KPLN_Library_Forms.UI.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +19,7 @@ namespace KPLN_Parameters_Ribbon.Common.CheckParam.Builder
             throw new NotImplementedException();
         }
 
-        public override bool ExecuteParamsAudit(Progress_Single pb)
+        public override bool ExecuteParamsAudit(ProgressInfoViewModel pb)
         {
             throw new NotImplementedException();
         }
