@@ -19,8 +19,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
         {
             if (parameter == null) throw new InvalidOperationException("Выберите параметр копирования.");
             if (!Supports(parameter)) throw new InvalidOperationException("Для этого вида поля чтение значений не поддерживается. Выберите параметр элементов или типов.");
-            if (source.Definition.IncludeLinkedFiles)
-                throw new InvalidOperationException("Копирование по значениям пока доступно для спецификаций текущего проекта. В исходной спецификации включены элементы связей.");
 
             var values = new Dictionary<string, ScheduleCopyValue>(StringComparer.OrdinalIgnoreCase);
             using (var transaction = new Transaction(doc, "KPLN: чтение значений спецификации"))
@@ -36,9 +34,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
                     if (!definition.CanFilterByValue(field.FieldId))
                         throw new InvalidOperationException("Параметр «" + parameter.Name + "» не поддерживает фильтр «Равно».");
 
-                    definition.SetFilters(definition.GetFilters().Where(filter =>
-                        ScheduleBatchService.ParameterKey(doc, definition.GetField(filter.FieldId)) != parameter.Key).ToList());
+                    // Значения для выбора не ограничиваются фильтрами эталона.
+                    // Очистка выполняется только на временной копии с последующим откатом.
+                    definition.SetFilters(new List<ScheduleFilter>());
                     doc.Regenerate();
+
+                    // Связанное помещение может поставлять значения пространству текущего
+                    // файла и при выключенном IncludeLinkedFiles. Текст таких полей читаем
+                    // из таблицы Revit: она уже учитывает связь, фазы и остальные фильтры.
+                    bool relatedText = parameter.SuggestedKind == "Текст"
+                        && (field.FieldType == ScheduleFieldType.Room
+                            || field.FieldType == ScheduleFieldType.FromRoom
+                            || field.FieldType == ScheduleFieldType.ToRoom
+                            || field.FieldType == ScheduleFieldType.Space);
+                    if (definition.IncludeLinkedFiles || relatedText)
+                        return ScheduleLinkedValuesService.Read(doc, probe, field, parameter);
 
                     Phase phase = doc.GetElement(probe.get_Parameter(BuiltInParameter.VIEW_PHASE)?.AsElementId() ?? ElementId.InvalidElementId) as Phase;
                     var types = new Dictionary<ElementId, Element>();
@@ -75,7 +85,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
                 .ThenBy(value => value.Display, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 
-        private static IEnumerable<Element> Owners(Document doc, Element element, ScheduleFieldType type, Phase phase)
+        internal static IEnumerable<Element> Owners(Document doc, Element element, ScheduleFieldType type, Phase phase)
         {
             var instance = element as FamilyInstance;
             switch (type)
@@ -97,7 +107,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
             }
         }
 
-        private static Parameter FindParameter(Document doc, Element owner, Func<Element, Parameter> getter, bool typeOnly, Dictionary<ElementId, Element> types)
+        internal static Parameter FindParameter(Document doc, Element owner, Func<Element, Parameter> getter, bool typeOnly, Dictionary<ElementId, Element> types)
         {
             if (owner == null) return null;
             Parameter parameter = typeOnly ? null : getter(owner);
@@ -109,7 +119,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
             return type == null ? null : getter(type);
         }
 
-        private static ScheduleCopyValue ReadValue(Document doc, Parameter parameter)
+        internal static ScheduleCopyValue ReadValue(Document doc, Parameter parameter)
         {
             var row = new ScheduleCopyValue { Storage = parameter.StorageType };
             switch (parameter.StorageType)
@@ -161,23 +171,55 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
             var filters = currentFilters.Where(filter =>
                 ScheduleBatchService.ParameterKey(doc, definition.GetField(filter.FieldId)) != operation.CopyParameter.Key).ToList();
             var value = operation.CopyValue;
-            ScheduleFilter automatic;
+            if (value.IsPrefix && !definition.CanFilterBySubstring(field.FieldId))
+                throw new InvalidOperationException("Параметр не поддерживает условие «Начинается с».");
+            filters.Add(CreateEquality(field.FieldId, value));
+            messages.Add(operation.CopyParameter.Name + " = «" + value.Display + "».");
+            return filters;
+        }
+
+        internal static ScheduleFilter CreateEquality(ScheduleFieldId fieldId, ScheduleCopyValue value)
+        {
             switch (value.Storage)
             {
-                case StorageType.String: automatic = new ScheduleFilter(field.FieldId, ScheduleFilterType.Equal, value.Text); break;
-                case StorageType.Integer: automatic = new ScheduleFilter(field.FieldId, ScheduleFilterType.Equal, value.Integer); break;
-                case StorageType.Double: automatic = new ScheduleFilter(field.FieldId, ScheduleFilterType.Equal, value.Number); break;
+                case StorageType.String: return new ScheduleFilter(fieldId, value.IsPrefix ? ScheduleFilterType.BeginsWith : ScheduleFilterType.Equal, value.Text);
+                case StorageType.Integer: return new ScheduleFilter(fieldId, ScheduleFilterType.Equal, value.Integer);
+                case StorageType.Double: return new ScheduleFilter(fieldId, ScheduleFilterType.Equal, value.Number);
                 case StorageType.ElementId:
 #if Debug2020 || Revit2020 || Debug2023 || Revit2023
-                    automatic = new ScheduleFilter(field.FieldId, ScheduleFilterType.Equal, new ElementId(checked((int)value.ElementIdValue))); break;
+                    return new ScheduleFilter(fieldId, ScheduleFilterType.Equal, new ElementId(checked((int)value.ElementIdValue)));
 #else
-                    automatic = new ScheduleFilter(field.FieldId, ScheduleFilterType.Equal, new ElementId(value.ElementIdValue)); break;
+                    return new ScheduleFilter(fieldId, ScheduleFilterType.Equal, new ElementId(value.ElementIdValue));
 #endif
                 default: throw new InvalidOperationException("Неизвестный тип значения копирования.");
             }
-            filters.Add(automatic);
-            messages.Add(operation.CopyParameter.Name + " = «" + value.Display + "».");
-            return filters;
+        }
+
+        internal static List<ScheduleCopyValue> GroupPrefixes(IEnumerable<ScheduleCopyValue> values, string separator, int parts)
+        {
+            if (string.IsNullOrEmpty(separator) || parts < 1 || parts > 20)
+                throw new InvalidOperationException("Укажите разделитель и число частей от 1 до 20.");
+
+            var groups = new Dictionary<string, ScheduleCopyValue>(StringComparer.OrdinalIgnoreCase);
+            foreach (var value in values)
+            {
+                if (value.Storage != StorageType.String)
+                    throw new InvalidOperationException("Группировка по префиксу доступна только для текстовых параметров.");
+                var segments = (value.Text ?? "").Split(new[] { separator }, StringSplitOptions.None);
+                if (segments.Length <= parts || segments.Take(parts).Any(string.IsNullOrWhiteSpace))
+                    throw new InvalidOperationException("Значение «" + value.Display + "» не соответствует группировке. Нужны "
+                        + parts + " части и следующий разделитель. Измените настройки или используйте точные значения.");
+                string prefix = string.Join(separator, segments.Take(parts));
+                ScheduleCopyValue group;
+                if (!groups.TryGetValue(prefix, out group))
+                {
+                    group = new ScheduleCopyValue { Storage = StorageType.String, IsPrefix = true,
+                        Text = prefix, Display = prefix };
+                    groups.Add(prefix, group);
+                }
+                group.ElementCount += value.ElementCount;
+            }
+            return groups.Values.OrderBy(value => value.Display, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
     }
 }

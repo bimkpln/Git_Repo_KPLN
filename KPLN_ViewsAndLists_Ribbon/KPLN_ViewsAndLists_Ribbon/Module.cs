@@ -48,6 +48,17 @@ namespace KPLN_ViewsAndLists_Ribbon
 
             #region Добавляю в выпадающий список элементы для видов
             AddPushButtonDataInPullDown(
+                "ScheduleManager",
+                ExtCmdScheduleManager.PluginName,
+                "Копирование спецификаций и управление фильтрами.",
+                "Выберите спецификации, настройте фильтры, проверьте результат и создайте копии или измените выбранные спецификации.",
+                typeof(ExtCmdScheduleManager).FullName,
+                pullDown_Views,
+                "mainViews",
+                "http://moodle/"
+            );
+
+            AddPushButtonDataInPullDown(
                 ExtCmdCutCopy.PluginName,
                 ExtCmdCutCopy.PluginName,
                 "Копирует подрезку активного плана на выбранные из списка планы этажей/потолков/несущих конструкций.",

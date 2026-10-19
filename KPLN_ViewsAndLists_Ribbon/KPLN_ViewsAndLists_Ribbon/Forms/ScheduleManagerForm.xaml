@@ -1,0 +1,138 @@
+<Window x:Class="KPLN_ViewsAndLists_Ribbon.Forms.ScheduleManagerForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:KPLN_ViewsAndLists_Ribbon.Forms" xmlns:models="clr-namespace:KPLN_ViewsAndLists_Ribbon.Common.Schedules"
+        Title="KPLN: Конструктор спецификаций" Width="1280" Height="850" MinWidth="1050" MinHeight="700"
+        Background="#2B2F38" Foreground="#EDEDED" FontFamily="Segoe UI" FontSize="14" WindowStartupLocation="CenterOwner">
+    <Window.Resources><ResourceDictionary Source="ScheduleManagerStyles.xaml"/></Window.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBlock Style="{StaticResource FormText}" Text="Конструктор спецификаций" FontSize="24" FontWeight="SemiBold" Margin="6,0,6,10"/>
+        <TabControl x:Name="Tabs" Grid.Row="1">
+            <TabItem Header="1. Выбор и копирование спецификаций">
+                <Grid Margin="8" Background="#333840">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="100"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="1.5*" MinHeight="190"/></Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource Hint}" Text="Для изменения фильтров отметьте одну или несколько спецификаций. Для копирования — ровно одну и один из режимов ниже. Обе галочки сняты — редактирование; при выборе нескольких спецификаций режим копирования сбрасывается. Копии создаются в проекте без размещения на листах."/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal">
+                        <Button Content="Выбрать все" Click="SelectAll" ToolTip="Отметить все спецификации, видимые с учётом поиска. Скрытые отметки сохраняются."/><Button Content="Снять все" Click="SelectNone" ToolTip="Снять отметки только с видимых спецификаций. Скрытые отметки сохраняются."/>
+                        <TextBlock Text="Поиск по имени:" Style="{StaticResource FormText}" VerticalAlignment="Center" Margin="12,0,6,0"/>
+                        <TextBox Width="320" VerticalAlignment="Center" Text="{Binding ScheduleSearch, UpdateSourceTrigger=PropertyChanged}" ToolTip="Поиск по части имени без учёта регистра. Очистите строку, чтобы показать все спецификации. Скрытые спецификации сохраняют свои отметки."/>
+                        
+                    </StackPanel>
+                    <DataGrid x:Name="SchedulesGrid" Grid.Row="2" ItemsSource="{Binding VisibleSchedules}">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="✓" Width="45"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <CheckBox IsChecked="{Binding Include, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Спецификация" Binding="{Binding Name}" IsReadOnly="True" Width="*" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTextColumn Header="Фильтров" Binding="{Binding Filters.Count}" IsReadOnly="True" Width="90" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTextColumn Header="Шаблон" Binding="{Binding Hint}" IsReadOnly="True" Width="300" ElementStyle="{StaticResource DG_TC}"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal">
+                        <CheckBox Content="Создать копию по ручным настройкам" IsChecked="{Binding ManualCopy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanCopy}" ToolTip="Создание копий доступно, когда отмечена ровно одна спецификация."/>
+                        <CheckBox Content="Создать копию по параметрам" IsChecked="{Binding ByParameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanCopy}" ToolTip="Выберите ровно одну спецификацию. Если обе галочки сняты, изменяются исходные спецификации."/>
+                    </StackPanel>
+                    <Grid Grid.Row="4"><Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource FormText}" Text="Название копии:" Margin="6"/>
+                        <DockPanel Grid.Column="1" IsEnabled="{Binding CreateCopies}"><Button DockPanel.Dock="Right" Content="Маски…" Click="EditNameMask" ToolTip="Выбрать подстановки для названия копии."/><TextBox Text="{Binding NamePattern, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Подстановки: {Исходное} — имя исходной спеки; {Значение} — значение или префикс создаваемой копии."/></DockPanel>
+                    </Grid>
+                    <Grid Grid.Row="5" IsEnabled="{Binding IsParameterCopy}">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Получить значения" Click="ReadCopyValues" ToolTip="Прочитать уникальные непустые значения, включая элементы связей, если они включены в исходной спецификации. Все фильтры исходной спецификации временно исключаются при чтении значений. Категория и фаза спецификации учитываются. Условия создаваемых копий задаются на вкладке 2. Исходная спецификация и связи не изменяются."/>
+                            <TextBlock DockPanel.Dock="Left" Text="Параметр:" Style="{StaticResource FormText}" Margin="6"/>
+                            <local:ScheduleParameterComboBox Style="{StaticResource {x:Type ComboBox}}" ItemsSource="{Binding CopyParameters}" SelectedItem="{Binding CopyParameter, Mode=TwoWay}" DisplayMemberPath="Name" DropDownOpened="LoadCopyParameters" SelectionChanged="CopyParameterChanged" ToolTip="Параметры экземпляров, типов и связанных сущностей исходной спецификации. Полный список загружается при раскрытии."/>
+                        </DockPanel>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal">
+                            <CheckBox Content="По префиксу" IsChecked="{Binding GroupByPrefix}" ToolTip="Для текстовых параметров: одна копия на группу. Например, 2.1.1 и 2.1.2 → имя 2.1, фильтр «Начинается с 2.1»."/>
+                            <TextBlock Text="Разделитель:" Style="{StaticResource FormText}" Margin="6"/>
+                            <TextBox Width="45" Text="{Binding PrefixSeparator, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding GroupByPrefix}"/>
+                            <TextBlock Text="Первые части:" Style="{StaticResource FormText}" Margin="6"/>
+                            <TextBox Width="45" Text="{Binding PrefixParts, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding GroupByPrefix}" ToolTip="Число частей перед последующим разделителем. Для 2.-1.13 укажите 2 — получится 2.-1."/>
+                        </StackPanel>
+                        <DockPanel Grid.Row="2">
+                            <Button DockPanel.Dock="Right" Content="Снять все" Click="SelectNoValues"/>
+                            <Button DockPanel.Dock="Right" Content="Выбрать все" Click="SelectAllValues"/>
+                            <TextBlock Style="{StaticResource Hint}" Text="{Binding ValuesStatus}"/>
+                        </DockPanel>
+                        <DataGrid x:Name="ValuesGrid" Grid.Row="3" ItemsSource="{Binding CopyValues}" CanUserDeleteRows="False">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="✓" Width="45"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                    <CheckBox IsChecked="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/>
+                                </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Значение параметра — для имени и фильтра копии" Binding="{Binding Display}" IsReadOnly="True" Width="*" ElementStyle="{StaticResource DG_TC}"/>
+                                <DataGridTextColumn Header="Элементов" Binding="{Binding ElementCount}" IsReadOnly="True" Width="110" ElementStyle="{StaticResource DG_TC}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="2. Управление фильтрами">
+                <Grid Margin="8" Background="#333840">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource Hint}" Text="Синие строки — существующие общие фильтры: параметр и условие совпадают во всех отмеченных спецификациях. При разных значениях показано {Исходное} — собственное значение каждой спеки. Для одной спецификации показаны все её фильтры. Зелёные строки — новые условия. Для них доступны только параметры, общие для всех отмеченных на первой вкладке спецификаций; отсутствующее поле добавляется скрытым. Остальные фильтры сохраняются. При изменении выбора спецификаций общие строки загружаются заново."/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal"><Button Content="Добавить правило" Click="AddRule"/><Button Content="Удалить / восстановить" Click="RemoveRule" ToolTip="Существующий фильтр помечается к удалению; повторное нажатие восстановит его. Новая строка удаляется из списка. Изменения в Revit — только после проверки и выполнения."/></StackPanel>
+                    <DataGrid x:Name="BatchGrid" Grid.Row="2" ItemsSource="{Binding BatchRules}" CanUserDeleteRows="False">
+                        <DataGrid.RowStyle><Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="#E4F3E5"/>
+                            <Setter Property="ToolTip" Value="Новый фильтр: будет добавлен к выбранным спецификациям."/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExisting}" Value="True"><Setter Property="Background" Value="#DCEBFA"/><Setter Property="ToolTip" Value="Общий существующий фильтр. Без изменений сохраняется как есть."/></DataTrigger>
+                                <DataTrigger Binding="{Binding Deleted}" Value="True"><Setter Property="Background" Value="#F6DDDD"/><Setter Property="ToolTip" Value="Фильтр будет удалён после проверки и выполнения. Для отмены нажмите «Удалить / восстановить»."/></DataTrigger>
+                                <DataTrigger Binding="{Binding IsAutomatic}" Value="True"><Setter Property="Background" Value="#FFF0CE"/><Setter Property="ToolTip" Value="Автоматический фильтр: для каждой копии подставляется отмеченное значение с первой вкладки. Все прежние условия этого параметра заменяются одним условием «Равно»."/></DataTrigger>
+                            </Style.Triggers>
+                        </Style></DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="✓" Width="45"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding CanToggle}" HorizontalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Состояние" Binding="{Binding State}" Width="125" IsReadOnly="True" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTemplateColumn Header="Общий параметр [количество; идентификатор]" Width="2*"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ContentControl Content="{Binding}">
+                                    <ContentControl.Style><Style TargetType="ContentControl">
+                                        <Setter Property="ContentTemplate"><Setter.Value><DataTemplate><TextBlock Text="{Binding Parameter.Label}" ToolTip="{Binding Parameter.Label}" Style="{StaticResource DG_TC}"/></DataTemplate></Setter.Value></Setter>
+                                        <Style.Triggers><DataTrigger Binding="{Binding CanChangeParameter}" Value="True">
+                                            <Setter Property="ContentTemplate"><Setter.Value><DataTemplate>
+                                                <local:ScheduleParameterComboBox Style="{StaticResource {x:Type ComboBox}}" IsEnabled="{Binding CanEdit}" ItemsSource="{Binding DataContext.Parameters, RelativeSource={RelativeSource AncestorType=Window}}" SelectedItem="{Binding Parameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Label"/>
+                                            </DataTemplate></Setter.Value></Setter>
+                                        </DataTrigger></Style.Triggers>
+                                    </Style></ContentControl.Style>
+                                </ContentControl>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Условие" Width="220"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding CanEdit}" ItemsSource="{x:Static models:BatchScheduleFilter.Conditions}" SelectedItem="{Binding Condition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Тип значения (авто)" Binding="{Binding Kind, Mode=OneWay}" IsReadOnly="True" Width="200" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTemplateColumn Header="Значение или маска" Width="*" MinWidth="190"><DataGridTemplateColumn.CellTemplate><DataTemplate><DockPanel IsEnabled="{Binding CanEdit}">
+ <Button DockPanel.Dock="Right" Content="…" Click="EditBatchMask" ToolTip="Открыть конструктор маски: выбрать подстановки, прочитать пояснения и посмотреть пример." Padding="8,2"/>
+ <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Обычный текст или маска. Кнопка … открывает список подстановок с подсказками."/>
+ </DockPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Grid.Row="3" Style="{StaticResource Hint}" Text="Тип значения определяется автоматически по выбранному параметру. Для чисел — единицы проекта, для ссылок — ID элемента. Только в существующих фильтрах доступно {Исходное} — прежнее значение фильтра каждой спеки. Для новых фильтров задайте конкретное значение. {Значение} используется только автоматическим фильтром копий. Жёлтая строка управляется параметром копирования на первой вкладке. Новые строки добавляют условия; существующие строки меняют только соответствующий общий фильтр. Снятый флажок отключает изменение строки. Общий шаблон не меняется: при необходимости создаётся отдельный шаблон."/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="3. Проверка и результат">
+                <DataGrid x:Name="ResultsGrid" Margin="8" ItemsSource="{Binding Operations}" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Действие" Binding="{Binding Action}" Width="170" ElementStyle="{StaticResource DG_TC}"/>
+                        <DataGridTextColumn Header="Исходная спецификация" Binding="{Binding SourceName}" Width="250" ElementStyle="{StaticResource DG_TC}"/>
+                        <DataGridTextColumn Header="Параметр" Binding="{Binding ParameterName}" Width="180" ElementStyle="{StaticResource DG_TC}"/>
+                        <DataGridTextColumn Header="Значение" Binding="{Binding ValueName}" Width="170" ElementStyle="{StaticResource DG_TC}"/>
+                        <DataGridTextColumn Header="Итоговое имя" Binding="{Binding TargetName}" Width="250" ElementStyle="{StaticResource DG_TC}"/>
+                        <DataGridTextColumn Header="Результат проверки / выполнения" Binding="{Binding Result}" Width="*" MinWidth="200" ElementStyle="{StaticResource DG_TC}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+        <Border Grid.Row="2" Style="{StaticResource KPLN_CardBorder}" MaxHeight="100"><ScrollViewer VerticalScrollBarVisibility="Auto"><TextBlock Style="{StaticResource FormText}" Text="{Binding Status}"/></ScrollViewer></Border>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Итоги последнего запуска…" Click="ShowExecutionReport" IsEnabled="{Binding HasExecutionReport}"/>
+            <Button Content="Проверить и показать результат" Click="Preview"/>
+            <Button Content="Выполнить" Click="Execute" IsEnabled="{Binding Ready}"/>
+            <Button Content="Закрыть" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
+
+
+

@@ -1,0 +1,53 @@
+<Window x:Class="KPLN_ViewsAndLists_Ribbon.Forms.ScheduleFiltersForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:entities="clr-namespace:KPLN_ViewsAndLists_Ribbon.Common.Schedules"
+        Title="KPLN: Фильтры спецификации" Width="1180" Height="700" MinWidth="950" MinHeight="550"
+        WindowStartupLocation="CenterOwner" Background="#2B2F38" Foreground="#EDEDED" FontFamily="Segoe UI" FontSize="14">
+    <Window.Resources><ResourceDictionary Source="ScheduleManagerStyles.xaml"/></Window.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBlock Style="{StaticResource FormText}" Text="{Binding ScheduleName}" FontSize="19" FontWeight="SemiBold" Margin="6" TextWrapping="Wrap"/>
+        <TextBlock Grid.Row="1" Style="{StaticResource Hint}" Text="Настраивайте каждое условие отдельно. Для текстовых значений доступны {Этаж}, {Уровень}, {Отметка}, {Типовые}, {Исходное}, {Индекс}. Числа вводите в единицах проекта, элементы — по уникальному имени. Шаблон, управляющий фильтрами, будет скопирован отдельно."/>
+        <DataGrid x:Name="RulesGrid" Grid.Row="2" ItemsSource="{Binding Rules}">
+            <DataGrid.Columns>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Поле" Binding="{Binding FieldName}" IsReadOnly="True" Width="190"/>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Условие" Binding="{Binding Condition}" IsReadOnly="True" Width="120"/>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Исходное значение" Binding="{Binding Value}" IsReadOnly="True" Width="170"/>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Тип" Binding="{Binding ValueType}" IsReadOnly="True" Width="140"/>
+                <DataGridTemplateColumn Header="Действие" SortMemberPath="Mode" Width="180">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <ComboBox ItemsSource="{x:Static entities:FilterModes.All}"
+                                      SelectedItem="{Binding Mode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Маска" Width="*" MinWidth="190"><DataGridTemplateColumn.CellTemplate><DataTemplate><DockPanel>
+ <Button DockPanel.Dock="Right" Content="…" Click="EditMask" ToolTip="Открыть конструктор маски: выбрать подстановки, прочитать пояснения и посмотреть пример." Padding="8,2"/>
+ <TextBox Text="{Binding Pattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Обычный текст или маска. Кнопка … открывает список подстановок с подсказками."/>
+ </DockPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <DockPanel Grid.Row="3">
+            <Button DockPanel.Dock="Right" Content="Пересчитать по этажам" Click="RebuildValues"/>
+            <TextBlock Style="{StaticResource Hint}" Text="Пересчёт показывает все режимы по выбранным этажам. «Сохранить» — исходное значение; «Целевой уровень» — уровень Revit (только для фильтра по уровню). «По маске» — расчёт по шаблону. «Вручную по этажам» — введите значение отдельно в каждой строке; повторный пересчёт сохранит ввод. Для «По маске» ручные поправки при пересчёте сбрасываются."/>
+        </DockPanel>
+        <DataGrid x:Name="ValuesGrid" Grid.Row="4" ItemsSource="{Binding Values}" BeginningEdit="BeginValueEdit">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="ToolTip" Value="{Binding Explanation}"/>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Уровень" Binding="{Binding LevelName}" IsReadOnly="True" Width="270"/>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Условие" Binding="{Binding Field}" IsReadOnly="True" Width="230"/>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" Header="Режим" Binding="{Binding Mode}" IsReadOnly="True" Width="170"/>
+                <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Значение для этажа" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Применить настройки" Click="Apply"/>
+            <Button Content="Отмена" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
