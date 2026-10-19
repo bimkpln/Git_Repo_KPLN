@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Threading;
 
@@ -16,6 +17,11 @@ namespace KPLN_Library_Forms.UI.ViewModels
         private volatile bool _isCancellationRequested;
         private volatile bool _isCancellationEnabled = true;
         private Dispatcher _dispatcher;
+        private readonly Stopwatch _reportClock = Stopwatch.StartNew();
+        private string _lastReportedStage;
+
+        /// <summary>Минимальный интервал обновлений внутри этапа. Вызывать Report из потока операции.</summary>
+        public int UpdateIntervalMilliseconds { get; set; } = 75;
 
         public event Action CompleteStatus;
         public event PropertyChangedEventHandler PropertyChanged;
@@ -119,6 +125,45 @@ namespace KPLN_Library_Forms.UI.ViewModels
             OnPropertyChanged(nameof(IsCancellationRequested));
             OnPropertyChanged(nameof(CanCancel));
             CompleteStatus?.Invoke();
+        }
+
+        /// <summary>Обновляет счётчик с ограничением частоты; отмена проверяется при каждом вызове.</summary>
+        public void Report(int completed, int total, string stage)
+        {
+            ThrowIfCancellationRequested();
+            if (!IsIndeterminate && stage == _lastReportedStage && total == MaxProgress
+                && completed > 0 && completed < total
+                && _reportClock.ElapsedMilliseconds < UpdateIntervalMilliseconds)
+                return;
+
+            _lastReportedStage = stage;
+            _reportClock.Restart();
+            MaintStatus = stage;
+            MaxProgress = total;
+            CurrentProgress = completed;
+            IsIndeterminate = false;
+        }
+
+        /// <summary>Этап, для которого пока неизвестно число операций.</summary>
+        public void SetStage(string stage)
+        {
+            ThrowIfCancellationRequested();
+            _lastReportedStage = null;
+            MaintStatus = stage;
+            IsIndeterminate = true;
+        }
+
+        public void ThrowIfCancellationRequested()
+        {
+            if (IsCancellationRequested)
+                throw new OperationCanceledException();
+        }
+
+        /// <summary>Отключает отмену перед окончательным сохранением; принятую отмену не игнорирует.</summary>
+        public void BeginCommit()
+        {
+            IsCancellationEnabled = false;
+            SetStage("Сохраняю изменения");
         }
 
         internal void AttachDispatcher(Dispatcher dispatcher)
