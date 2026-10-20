@@ -79,6 +79,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Schedules
         private bool _include = true;
         public ViewSchedule Schedule { get; set; }
         public ObservableCollection<FilterRule> Filters { get; } = new ObservableCollection<FilterRule>();
+        // null — настройки старого формата; пустой список — явно настроенная спецификация без правил.
+        public List<LevelScheduleFilter> LevelFilters { get; set; }
         public string Name => Schedule.Name;
         public string Hint { get; set; }
         public bool Copy { get => _copy; set => Change(ref _copy, value); }

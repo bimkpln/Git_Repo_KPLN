@@ -126,7 +126,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
 
             var copy = (ViewSchedule)doc.GetElement(source.Duplicate(ViewDuplicateOption.Duplicate));
             copy.Name = name ?? ScheduleSupport.UniqueViewName(doc, source.Name + " — " + level.Name);
-            ApplyFilters(doc, source, copy, row.Filters, level, index, warnings);
+            if (row.LevelFilters == null)
+                ApplyFilters(doc, source, copy, row.Filters, level, index, warnings);
+            else
+            {
+                ScheduleLevelFilterService.CheckSource(doc, row, row.LevelFilters);
+                ScheduleBatchService.ApplyBatchFilters(doc, copy, row.LevelFilters, level, index, warnings, source.UniqueId);
+            }
             return copy;
         }
 

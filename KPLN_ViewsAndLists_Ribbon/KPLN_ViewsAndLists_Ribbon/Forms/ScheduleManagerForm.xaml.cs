@@ -88,7 +88,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
         private void EditNameMask(object sender, RoutedEventArgs args)
         {
-            var dialog = new ScheduleMaskForm(ViewModel.NamePattern, true, ViewModel.IsParameterCopy, true) { Owner = this };
+            var dialog = new ScheduleMaskForm(ViewModel.NamePattern,
+                ScheduleMaskCatalog.Constructor(true, ViewModel.IsParameterCopy)) { Owner = this };
             if (dialog.ShowDialog() == true) ViewModel.NamePattern = dialog.Pattern;
         }
 
@@ -97,7 +98,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             var rule = ((FrameworkElement)sender).DataContext as BatchScheduleFilter;
             if (rule == null) return;
 
-            var dialog = new ScheduleMaskForm(rule.Value, false, false, true, rule.IsExisting) { Owner = this };
+            var dialog = new ScheduleMaskForm(rule.Value,
+                ScheduleMaskCatalog.Constructor(allowOriginal: rule.IsExisting)) { Owner = this };
             if (dialog.ShowDialog() == true) rule.Value = dialog.Pattern;
         }
 

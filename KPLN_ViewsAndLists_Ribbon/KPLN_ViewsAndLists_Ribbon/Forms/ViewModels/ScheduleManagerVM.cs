@@ -187,45 +187,8 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.ViewModels
 
         private void LoadCommonFilters(List<ScheduleItem> sources)
         {
-            if (sources.Count == 0) return;
-            var used = sources.ToDictionary(item => item.Schedule.UniqueId, item => new HashSet<int>());
-            foreach (var candidate in sources[0].Filters)
+            foreach (var rule in ScheduleBatchService.ReadCommonFilters(Document, sources, Parameters))
             {
-                var field = sources[0].Schedule.Definition.GetField(candidate.Original.FieldId);
-                string key = ScheduleBatchService.ParameterKey(Document, field);
-                var matches = new Dictionary<string, int>();
-                foreach (var source in sources)
-                {
-                    var match = source.Filters.FirstOrDefault(f => !used[source.Schedule.UniqueId].Contains(f.Index)
-                        && ScheduleBatchService.ParameterKey(Document, source.Schedule.Definition.GetField(f.Original.FieldId)) == key
-                        && candidate.Original.FilterType == f.Original.FilterType);
-                    if (match == null) break;
-                    matches.Add(source.Schedule.UniqueId, match.Index);
-                }
-                if (matches.Count != sources.Count) continue;
-
-                var parameter = Parameters.FirstOrDefault(p => p.Key == key);
-                if (parameter == null)
-                {
-                    parameter = new ScheduleParameterChoice { Key = key, Name = field.GetName(), ScheduleCount = sources.Count, SuggestedKind = "Текст" };
-                    // Существующее условие доступно для исправления, но не расширяет список новых параметров.
-                }
-                var original = candidate.Original;
-                bool differentValues = sources.Any(source => !ScheduleService.SameValue(original,
-                    source.Filters.First(f => f.Index == matches[source.Schedule.UniqueId]).Original));
-                var rule = new BatchScheduleFilter
-                {
-                    IsExisting = true, Parameter = parameter, Condition = candidate.Condition,
-                    Kind = original.IsDoubleValue ? "Число в единицах проекта" : original.IsIntegerValue ? "Целое число"
-                        : original.IsElementIdValue ? "ID элемента" : "Текст",
-                    Value = differentValues ? "{Исходное}" : original.IsElementIdValue ? original.GetElementIdValue().ToString() : candidate.Value
-                };
-                foreach (var pair in matches)
-                {
-                    rule.SourceIndices.Add(pair.Key, pair.Value);
-                    used[pair.Key].Add(pair.Value);
-                }
-                rule.InitialSignature = rule.Signature;
                 rule.PropertyChanged += (sender, args) => Invalidate();
                 BatchRules.Add(rule);
             }
@@ -362,13 +325,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.ViewModels
             Invalidate();
         }
 
-        private static void CheckManagerPattern(string pattern)
-        {
-            foreach (string token in new[] { "{Этаж}", "{Уровень}", "{Отметка}", "{Типовые}" })
-                if ((pattern ?? "").Contains(token))
-                    throw new InvalidOperationException("В менеджере вместо маски " + token + " используйте {Значение} выбранного параметра. Маски этажей остаются в копировании листов.");
-        }
-
         public void BuildPreview()
         {
             Ready = false;
@@ -387,9 +343,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.ViewModels
                     throw new InvalidOperationException("Параметром копирования управляет автоматическая строка. Удалите дополнительное правило этого параметра.");
                 if (!CreateCopies && !BatchRules.Any(rule => rule.HasChanges))
                     throw new InvalidOperationException("Не заданы изменения фильтров.");
-                if (CreateCopies) ScheduleMaskForm.ValidateManagerPattern(NamePattern, IsParameterCopy);
+                if (CreateCopies) ScheduleMaskCatalog.Constructor(true, IsParameterCopy).Validate(NamePattern);
                 foreach (var rule in BatchRules.Where(rule => rule.HasChanges && !rule.IsAutomatic))
-                    ScheduleMaskForm.ValidateManagerPattern(rule.Value, false, rule.IsExisting);
+                    ScheduleMaskCatalog.Constructor(allowOriginal: rule.IsExisting).Validate(rule.Value);
 
                 foreach (var source in sources)
                 {

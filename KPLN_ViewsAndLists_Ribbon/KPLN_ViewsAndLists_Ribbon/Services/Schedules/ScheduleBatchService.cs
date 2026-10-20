@@ -9,6 +9,53 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
 {
     public static class ScheduleBatchService
     {
+        public static List<BatchScheduleFilter> ReadCommonFilters(Document doc, List<ScheduleItem> sources, IEnumerable<ScheduleParameterChoice> parameters)
+        {
+            var result = new List<BatchScheduleFilter>();
+            if (sources.Count == 0) return result;
+            var used = sources.ToDictionary(item => item.Schedule.UniqueId, item => new HashSet<int>());
+            foreach (var candidate in sources[0].Filters)
+            {
+                var field = sources[0].Schedule.Definition.GetField(candidate.Original.FieldId);
+                string key = ScheduleBatchService.ParameterKey(doc, field);
+                var matches = new Dictionary<string, int>();
+                foreach (var source in sources)
+                {
+                    var match = source.Filters.FirstOrDefault(f => !used[source.Schedule.UniqueId].Contains(f.Index)
+                        && ScheduleBatchService.ParameterKey(doc, source.Schedule.Definition.GetField(f.Original.FieldId)) == key
+                        && candidate.Original.FilterType == f.Original.FilterType);
+                    if (match == null) break;
+                    matches.Add(source.Schedule.UniqueId, match.Index);
+                }
+                if (matches.Count != sources.Count) continue;
+
+                var parameter = parameters.FirstOrDefault(p => p.Key == key);
+                if (parameter == null)
+                {
+                    parameter = new ScheduleParameterChoice { Key = key, Name = field.GetName(), ScheduleCount = sources.Count, SuggestedKind = "Текст" };
+                    // Существующее условие доступно для исправления, но не расширяет список новых параметров.
+                }
+                var original = candidate.Original;
+                bool differentValues = sources.Any(source => !ScheduleService.SameValue(original,
+                    source.Filters.First(f => f.Index == matches[source.Schedule.UniqueId]).Original));
+                var rule = new BatchScheduleFilter
+                {
+                    IsExisting = true, Parameter = parameter, Condition = candidate.Condition,
+                    Kind = original.IsDoubleValue ? "Число в единицах проекта" : original.IsIntegerValue ? "Целое число"
+                        : original.IsElementIdValue ? "ID элемента" : "Текст",
+                    Value = differentValues ? "{Исходное}" : original.IsElementIdValue ? original.GetElementIdValue().ToString() : candidate.Value
+                };
+                foreach (var pair in matches)
+                {
+                    rule.SourceIndices.Add(pair.Key, pair.Value);
+                    used[pair.Key].Add(pair.Value);
+                }
+                rule.InitialSignature = rule.Signature;
+                result.Add(rule);
+            }
+            return result;
+        }
+
         public static string ParameterKey(Document doc, ScheduleField field)
         {
             var shared = doc.GetElement(field.ParameterId) as SharedParameterElement;
@@ -251,6 +298,21 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
             return entries;
         }
 
+        private static bool UsesOriginalValue(BatchScheduleFilter rule)
+        {
+            var levelRule = rule as LevelScheduleFilter;
+            return (levelRule == null || (levelRule.NeedsValue && levelRule.Mode == FilterModes.Pattern))
+                && (rule.Value ?? "").Contains("{Исходное}");
+        }
+
+        private static string ResolveRuleValue(Document doc, BatchScheduleFilter rule, ScheduleLevelRow level,
+            string original, int index, ScheduleOperation operation)
+        {
+            var levelRule = rule as LevelScheduleFilter;
+            return levelRule == null ? ExpandRule(rule.Value, level, original, index, operation)
+                : ScheduleLevelFilterService.ResolveValue(doc, levelRule, level, index);
+        }
+
         private static string ExpandRule(string pattern, ScheduleLevelRow level, string original, int index, ScheduleOperation operation)
         {
             return ScheduleNaming.Expand(pattern, level.Floor, level.Name, level.Elevation, level.Group, original, index,
@@ -396,7 +458,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
                 {
                     string oldValue = original.IsElementIdValue ? original.GetElementIdValue().ToString()
                         : ScheduleService.DisplayValue(doc, field, original);
-                    string text = ExpandRule(rule.Value, level, oldValue, index, operation);
+                    string text = ResolveRuleValue(doc, rule, level, oldValue, index, operation);
                     filters[position] = MakeFilter(doc, field, rule, text);
                     messages.Add(field.GetName() + ": " + rule.Condition + " «" + text + "».");
                 }
@@ -409,7 +471,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
                 .GroupBy(field => ParameterKey(doc, field)).ToDictionary(group => group.Key, group => group.First());
             foreach (BatchScheduleFilter rule in newRules)
             {
-                if (!rule.IsExisting && (rule.Value ?? "").Contains("{Исходное}"))
+                if (!rule.IsExisting && UsesOriginalValue(rule))
                     throw new InvalidOperationException("Маска {Исходное} доступна только для существующих фильтров. Для нового фильтра задайте конкретное значение.");
                 if (rule.Parameter == null) throw new InvalidOperationException("Выберите параметр для нового правила.");
                 SchedulableField available;
@@ -437,11 +499,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Services.Schedules
                 foreach (ScheduleField field in fields)
                 {
                     var oldFilters = definition.GetFilters().Where(f => f.FieldId == field.FieldId).ToList();
-                    if (oldFilters.Count != 1 && (rule.Value ?? "").Contains("{Исходное}"))
+                    if (oldFilters.Count != 1 && UsesOriginalValue(rule))
                         throw new InvalidOperationException("Для {Исходное} нужен ровно один исходный фильтр: " + field.GetName());
                     string original = oldFilters.Count == 1 ? (oldFilters[0].IsElementIdValue
                         ? oldFilters[0].GetElementIdValue().ToString() : ScheduleService.DisplayValue(doc, field, oldFilters[0])) : "";
-                    string text = ExpandRule(rule.Value, level, original, index, operation);
+                    string text = ResolveRuleValue(doc, rule, level, original, index, operation);
                     filters.Add(MakeFilter(doc, field, rule, text));
                     messages.Add(field.GetName() + ": добавлен фильтр " + rule.Condition + " «" + text + "».");
                     changed = true;

@@ -1,30 +1,18 @@
+using KPLN_Library_Forms.UI;
 using KPLN_ViewsAndLists_Ribbon.Common.Schedules;
 using System;
-using System.Windows;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms
 {
-    public partial class ScheduleReportForm : Window
+    // Адаптер сохраняет публичный конструктор; вся разметка и поведение находятся в Forms.
+    public class ScheduleReportForm : OperationReportWindow
     {
-        private readonly ScheduleExecutionReport _report;
-
         public ScheduleReportForm(ScheduleExecutionReport report)
+            : base("KPLN: Итоги работы со спецификациями",
+                (report ?? throw new ArgumentNullException(nameof(report))).Text)
         {
-            _report = report;
-            InitializeComponent();
-            DataContext = report;
-        }
-
-        private void CopyReport(object sender, RoutedEventArgs args)
-        {
-            try
-            {
-                Clipboard.SetText(_report.Text);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, "Не удалось скопировать отчёт: " + ex.Message, Title);
-            }
+            Width = 650;
+            Height = 570;
         }
     }
 }

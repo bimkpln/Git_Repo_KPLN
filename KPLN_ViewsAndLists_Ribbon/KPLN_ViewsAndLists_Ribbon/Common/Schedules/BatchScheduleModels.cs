@@ -14,7 +14,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Schedules
         public string Label => Name + " [" + ScheduleCount + " спец.; " + Key + "]";
     }
 
-    public sealed class BatchScheduleFilter : ScheduleObservableObject
+    public class BatchScheduleFilter : ScheduleObservableObject
     {
         public bool IsAutomatic { get; set; }
         public bool CanToggle => !IsAutomatic;
@@ -23,7 +23,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Schedules
         public Dictionary<string, int> SourceIndices { get; } = new Dictionary<string, int>();
         public string InitialSignature { get; set; }
         public string Signature => Condition + "\n" + Kind + "\n" + Value;
-        public bool HasChanges => Enabled && (!IsExisting || Deleted || Signature != InitialSignature);
+        public virtual bool HasChanges => Enabled && (!IsExisting || Deleted || Signature != InitialSignature);
         private bool _deleted;
         public bool Deleted
         {

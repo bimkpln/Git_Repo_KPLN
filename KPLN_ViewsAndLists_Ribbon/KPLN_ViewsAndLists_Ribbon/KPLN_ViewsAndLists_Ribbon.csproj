@@ -322,6 +322,9 @@
     <Compile Include="Common\Schedules\ScheduleObservableObject.cs" />
     <Compile Include="Common\Schedules\ScheduleNaming.cs" />
     <Compile Include="Common\Schedules\ScheduleModels.cs" />
+    <Compile Include="Common\Schedules\ScheduleMaskCatalog.cs" />
+    <Compile Include="Common\Schedules\LevelScheduleFilter.cs" />
+    <Compile Include="Services\Schedules\ScheduleLevelFilterService.cs" />
     <Compile Include="Common\Schedules\BatchScheduleModels.cs" />
     <Compile Include="Services\Schedules\ScheduleService.cs" />
     <Compile Include="Services\Schedules\ScheduleSupport.cs" />
@@ -363,12 +366,6 @@
   <Target Name="AfterBuild">
   </Target>
   <ItemGroup>
-    <Compile Include="Forms\ScheduleReportForm.xaml.cs">
-      <DependentUpon>ScheduleReportForm.xaml</DependentUpon>
-    </Compile>
-    <Page Include="Forms\ScheduleReportForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
+    <Compile Include="Forms\ScheduleReportForm.xaml.cs" />
   </ItemGroup>
 </Project>
