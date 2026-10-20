@@ -7,7 +7,8 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         SizeToContent="WidthAndHeight"
-        Background="#0F1115"
+        Title="KPLN: Положение вида"
+        Background="#2B2F38"
         FontFamily="Segoe UI"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
@@ -35,13 +36,14 @@
         <Border 
         Width="550"
         Padding="28"
-        Background="{StaticResource CardBgBrush}"
-        Effect="{StaticResource CardShadow}"
+        Margin="0"
+        Style="{StaticResource KPLN_CardBorder}"
         HorizontalAlignment="Center"
         VerticalAlignment="Center">
 
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
@@ -53,20 +55,29 @@
                 Margin="0,0,0,18">
                     <TextBlock 
                     Text="Выбор конфигурации"
-                    FontSize="30"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource TextPrimaryBrush}"/>
+                    Style="{StaticResource ConfigHeading}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                    <TextBlock Text="Тип вида"
+                               Style="{StaticResource ConfigLabel}"/>
+                    <ComboBox Style="{StaticResource KPLN_ComboBox}"
+                              Margin="0"
+                              ItemsSource="{Binding ViewTypeItems}"
+                              DisplayMemberPath="Name"
+                              SelectedItem="{Binding SelectedViewType, Mode=TwoWay}"
+                              ToolTip="При выборе вида тип подставляется автоматически. Старые конфигурации доступны в «Все типы» и «Неизв»."/>
                 </StackPanel>
 
                 <ScrollViewer 
-                Grid.Row="1"
+                Grid.Row="2"
+                Height="420"
+                Background="#2B2F38"
                 VerticalScrollBarVisibility="Auto">
                     <Grid>
                         <ItemsControl 
                         x:Name="Items"
-                        Height="500"
-                        Background="{StaticResource SurfaceBrush}"
-                        ItemsSource="{Binding ListVPPositionCreateItems, UpdateSourceTrigger=PropertyChanged}">
+                        ItemsSource="{Binding FilteredConfigItems}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Button 
@@ -76,7 +87,7 @@
                                     CommandParameter="{Binding}">
                                         <TextBlock 
                                         TextWrapping="Wrap"
-                                        MaxWidth="250"
+                                        MaxWidth="430"
                                         TextAlignment="Center"
                                         Text="{Binding ConfigName}"/>
                                         <Button.ContextMenu>
@@ -95,7 +106,7 @@
                 </ScrollViewer>
 
                 <!-- Создать/подсказка -->
-                <DockPanel Grid.Row="2"
+                <DockPanel Grid.Row="3"
                     LastChildFill="False">
                     <Button 
                         Style="{StaticResource PrimaryButton}"

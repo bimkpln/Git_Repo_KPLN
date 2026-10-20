@@ -34,6 +34,7 @@ namespace KPLN_DefaultPanelExtension_Modify.Forms.Models
 
         public ListVPPositionCreateM(Element selVElem)
         {
+            ViewTypeCode = ListVPPositionViewTypeM.GetCode(selVElem);
             VPPoints = InsertPointsFromVP(selVElem);
             SelectedAlign = AlignMode.Center;
 #if Debug2020 || Revit2020
@@ -69,6 +70,11 @@ namespace KPLN_DefaultPanelExtension_Modify.Forms.Models
                 OnPropertyChanged();
             }
         }
+
+        /// <summary>
+        /// Тип исходного вида. Старые конфигурации без этого поля относятся к «Неизв».
+        /// </summary>
+        public string ViewTypeCode { get; set; } = ListVPPositionViewTypeM.UnknownCode;
 
         public AlignMode SelectedAlign
         {
@@ -115,6 +121,7 @@ namespace KPLN_DefaultPanelExtension_Modify.Forms.Models
         public object ToJson() => new
         {
             this.ConfigName,
+            this.ViewTypeCode,
             this.SelectedAlign,
             this.VPTransOrigin,
             this.VPInsertPoint,

@@ -26,15 +26,53 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
 
             Document doc = uidoc.Document;
 
-            if (_selVElem == null)
+            if (_selVElem == null || !_selVElem.IsValidObject || !_selVElem.Document.Equals(doc))
             {
                 MessageBox.Show(
-                    "В выобрке нет видов, которые могут быть перемещены",
+                    "Исходный вид удалён или активен другой документ. Выбери вид заново.",
                     "Ошибка",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
 
                 return Result.Cancelled;
+            }
+
+
+            // Проверяем совместимость до открытия транзакции.
+            if (_createMItem == null)
+                return Result.Cancelled;
+
+            XYZ targetPoint;
+            if (_createMItem.SelectedAlign == AlignMode.OrignToOrigin)
+            {
+                if (!(_selVElem is Viewport viewport) || _createMItem.VPTransOrigin == null)
+                    return ShowIncompatibleOrigin();
+
+                try
+                {
+#if Debug2020 || Revit2020
+                    return ShowIncompatibleOrigin();
+#else
+                    XYZ delta = viewport.GetProjectionToSheetTransform().Origin - _createMItem.VPTransOrigin;
+                    targetPoint = viewport.GetBoxCenter() - delta;
+#endif
+                }
+                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                {
+                    return ShowIncompatibleOrigin();
+                }
+            }
+            else
+            {
+                if ((int)_createMItem.SelectedAlign < 0 || (int)_createMItem.SelectedAlign > 4
+                    || _createMItem.VPInsertPoint == null)
+                {
+                    MessageBox.Show("Конфигурация не содержит корректной точки выравнивания. Создай её заново.",
+                        "Положение вида", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return Result.Cancelled;
+                }
+
+                targetPoint = GetBoxCenter(_selVElem);
             }
 
 
@@ -44,9 +82,9 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
                 trans.Start();
 
                 if (_selVElem is Viewport selVP)
-                    selVP.SetBoxCenter(GetBoxCenter(_selVElem));
+                    selVP.SetBoxCenter(targetPoint);
                 else if (_selVElem is ScheduleSheetInstance ssi)
-                    ssi.Point = GetBoxCenter(_selVElem);
+                    ssi.Point = targetPoint;
 
                 trans.Commit();
             }
@@ -67,43 +105,19 @@ namespace KPLN_DefaultPanelExtension_Modify.ExecutableCommands
                 currentVEInsertPnt = new XYZ(currentVEPoints[(int)AlignMode.LeftTop].X + 0.007, currentVEPoints[(int)AlignMode.LeftTop].Y, currentVEPoints[(int)AlignMode.LeftTop].Z);
 
             // Получаю данные смещения в зависимости от конфигурации
-            XYZ resultDelta = null;
-            if (_createMItem.SelectedAlign == AlignMode.OrignToOrigin)
-            {
-                try
-                {
-#if Debug2020 || Revit2020
-#else
-                    if (ve is Viewport vp)
-                        resultDelta = vp.GetProjectionToSheetTransform().Origin - _createMItem.VPTransOrigin;
-                    else
-                        throw new Exception("Отправь разработчику: " +
-                            "в структуре кода ошибка - в выравнивание по СВН попали спеки, хотя это должно быть заблокировано на уровне кнопки wpf");
-#endif
-                }
-                // У легенд и спек - нет привязки к координатам модели
-                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
-                {
-                    MessageBox.Show(
-                        "Свомещение внутренних начал применимо только для видов, у которых есть координаты (планы, разрезы, фасады, 3д-виды).\n " +
-                            "Для текущего вида - смещение отменено",
-                        "Ошибка",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
-
-                    return currentVEInsertPnt;
-                }
-                catch (Exception ex)
-                {
-                    throw ex;
-                }
-
-            }
-            else 
-                resultDelta = currentVEPoints[(int)_createMItem.SelectedAlign] - _createMItem.VPInsertPoint;
+            XYZ resultDelta = currentVEPoints[(int)_createMItem.SelectedAlign] - _createMItem.VPInsertPoint;
 
 
             return currentVEInsertPnt - resultDelta;
+        }
+
+        private static Result ShowIncompatibleOrigin()
+        {
+            MessageBox.Show(
+                "Совмещение внутренних начал требует вида с координатами модели и конфигурации с сохранённым началом. " +
+                "Для спецификаций, легенд и чертёжных видов выбери выравнивание по центру или углу.",
+                "Положение вида", MessageBoxButton.OK, MessageBoxImage.Information);
+            return Result.Cancelled;
         }
     }
 }

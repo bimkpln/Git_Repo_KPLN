@@ -173,6 +173,7 @@
     <Compile Include="Forms\Models\ListVPPositionCreateM.cs" />
     <Compile Include="Forms\Models\ListVPPositionCreateVM.cs" />
     <Compile Include="Forms\Models\ListVPPositionMainVM.cs" />
+    <Compile Include="Forms\Models\ListVPPositionViewTypeM.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_UserEntity.cs" />
     <Compile Include="Forms\Models\SendMsgToBitrix_VM.cs" />
     <Compile Include="Forms\ImgLargeFrom.xaml.cs">

@@ -67,7 +67,8 @@ namespace KPLN_DefaultPanelExtension_Modify.Forms.Models
             }
 
             // Уточняю имя системными приставками
-            ListVPPositionItem.ConfigName = $"{SetSystemPartConfigName()}{ListVPPositionItem.ConfigName}";
+            ListVPPositionItem.ConfigName =
+                $"{SetSystemPartConfigName()}{ListVPPositionItem.ConfigName.Trim()}";
 
 
             if (windObj is Window window)
@@ -110,7 +111,7 @@ namespace KPLN_DefaultPanelExtension_Modify.Forms.Models
                     Parameter xParam = tBlock.LookupParameter("х");
                     if (sizeParam != null && xParam != null)
                     {
-                        titleNamePart = $"[А{sizeParam.AsValueString()}х{xParam.AsValueString()}]_";
+                        titleNamePart = $"А{sizeParam.AsValueString()}х{xParam.AsValueString()}_";
                         break;
                     }
                 }
@@ -121,27 +122,27 @@ namespace KPLN_DefaultPanelExtension_Modify.Forms.Models
             switch (ListVPPositionItem.SelectedAlign)
             {
                 case (AlignMode.LeftTop):
-                    alignNamePart = "[ЛВ]: ";
+                    alignNamePart = "ЛВ";
                     break;
                 case (AlignMode.RightTop):
-                    alignNamePart = "[ПВ]: ";
+                    alignNamePart = "ПВ";
                     break;
                 case (AlignMode.Center):
-                    alignNamePart = "[Ц]: ";
+                    alignNamePart = "Ц";
                     break;
                 case (AlignMode.LeftBottom):
-                    alignNamePart = "[ЛН]: ";
+                    alignNamePart = "ЛН";
                     break;
                 case (AlignMode.RightBottom):
-                    alignNamePart = "[ПН]: ";
+                    alignNamePart = "ПН";
                     break;
                 case (AlignMode.OrignToOrigin):
-                    alignNamePart = "[СВН]: ";
+                    alignNamePart = "СВН";
                     break;
             }
 
 
-            return $"{titleNamePart}{alignNamePart}";
+            return $"[{titleNamePart}{alignNamePart}_{ListVPPositionItem.ViewTypeCode}]: ";
         }
     }
 }

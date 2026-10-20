@@ -13,7 +13,13 @@ namespace KPLN_DefaultPanelExtension_Modify.ExternalEventHandler
 #else
         public EventHandler<SelectionChangedEventArgs> Handler { get; set; }
 
-        public void Execute(UIApplication app) => app.SelectionChanged -= Handler;
+        public EventHandler<ViewActivatedEventArgs> ViewActivatedHandler { get; set; }
+
+        public void Execute(UIApplication app)
+        {
+            app.SelectionChanged -= Handler;
+            app.ViewActivated -= ViewActivatedHandler;
+        }
 #endif
     }
 }

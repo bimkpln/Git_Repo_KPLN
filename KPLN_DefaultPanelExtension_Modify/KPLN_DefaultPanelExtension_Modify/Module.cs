@@ -14,8 +14,21 @@ namespace KPLN_DefaultPanelExtension_Modify
 {
     public class Module : IExternalModule
     {
+#if Debug2020 || Revit2020
+        // Revit 2020: только заглушка для загрузчика, без панели и подписок.
+        public Result Execute(UIControlledApplication application, string tabName)
+        {
+            return Result.Succeeded;
+        }
+
+        public Result Close()
+        {
+            return Result.Succeeded;
+        }
+#else
         private readonly string _assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
         private readonly ObservableCollection<Element> _selElems = new ObservableCollection<Element>();
+        
         private UIApplication _uiApp;
 
         private UIControlledApplication _controlledApp;
@@ -265,5 +278,6 @@ namespace KPLN_DefaultPanelExtension_Modify
                 _positionBtn.Size = Autodesk.Windows.RibbonItemSize.Large;
             }
         }
+#endif
     }
 }

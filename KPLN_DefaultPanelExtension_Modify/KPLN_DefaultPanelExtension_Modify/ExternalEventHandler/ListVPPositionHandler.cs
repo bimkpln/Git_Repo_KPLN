@@ -14,7 +14,10 @@ namespace KPLN_DefaultPanelExtension_Modify.ExternalEventHandler
         {
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null)
+            {
+                HandlerListVPPositionMainVM?.UpdateSelection(null, new Element[0]);
                 return;
+            }
 
             Document doc = uidoc.Document;
 
@@ -27,7 +30,7 @@ namespace KPLN_DefaultPanelExtension_Modify.ExternalEventHandler
                 .Where(el => el is Viewport || el is ScheduleSheetInstance);
             
             if (HandlerListVPPositionMainVM != null)
-                HandlerListVPPositionMainVM.SelectedViewElems = userSelElems.ToArray();
+                HandlerListVPPositionMainVM.UpdateSelection(doc, userSelElems.ToArray());
         }
 
         public string GetName() => "ListVPPositionHandler";

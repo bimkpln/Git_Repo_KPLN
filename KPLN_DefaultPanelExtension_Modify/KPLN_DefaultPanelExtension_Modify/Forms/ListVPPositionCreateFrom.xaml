@@ -8,7 +8,8 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         SizeToContent="WidthAndHeight"
-        Background="#0F1115"
+        Title="KPLN: Создание конфигурации"
+        Background="#2B2F38"
         FontFamily="Segoe UI"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType"
@@ -38,8 +39,8 @@
         <!-- Центровка карточки -->
         <Border Width="550"
             Padding="28"
-            Background="{StaticResource CardBgBrush}"
-            Effect="{StaticResource CardShadow}"
+            Margin="0"
+            Style="{StaticResource KPLN_CardBorder}"
             HorizontalAlignment="Center"
             VerticalAlignment="Center">
 
@@ -55,30 +56,27 @@
                 <!-- Заголовок -->
                 <StackPanel Grid.Row="0" Margin="0,0,0,18">
                     <TextBlock Text="Создание конфигурации"
-                        FontSize="30"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource TextPrimaryBrush}"/>
+                        Style="{StaticResource ConfigHeading}"/>
                 </StackPanel>
 
                 <!-- Имя -->
                 <StackPanel Grid.Row="1" Margin="0,0,0,18">
                     <TextBlock Text="Введи имя конфигурации"
-                        FontSize="20"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Style="{StaticResource ConfigLabel}"
                         Margin="0,0,0,8"/>
                     <TextBox 
                     x:Name="ConfigName"
                     Style="{StaticResource ModernTextBox}"
+                    ToolTip="Введи понятное имя для сохранённого положения выбранного вида на листе-доноре. Формат листа для штампов КПЛН, способ выравнивания и тип вида добавятся автоматически в техническую часть: [А2х1_Ц_ПП]: Типовой план."
                     Text="{Binding ListVPPositionItem.ConfigName, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
 
                 <!-- Условие -->
                 <StackPanel Grid.Row="2" Margin="0,0,0,10">
                     <TextBlock Text="Выбери условие выравнивания"
-                        FontSize="20"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource TextSecondaryBrush}"
+                        Style="{StaticResource ConfigLabel}"
+                        ToolTip="Углы и центр используют границы вида на листе, которые Revit рассчитывает с учётом подрезки. СВН использует координаты модели. Для одинакового положения по границам подготовь одинаковую подрезку; её можно перенести плагином «Виды и листы. Копировать подрезку»."
+                        ToolTipService.ShowDuration="30000"
                         Margin="0,0,0,12"/>
                 </StackPanel>
 
@@ -100,6 +98,7 @@
                     <ToggleButton Grid.Row="0" Grid.Column="0"
                             Style="{StaticResource PillButton}"
                             Content="Лево  верх"
+                            ToolTip="ЛВ — сохранить положение верхнего левого угла границ вида на листе. При применении этот угол другого вида совместится с сохранённой точкой. Результат зависит от подрезки, но не от координат модели: подходит для разных секций, размещаемых в одном месте листа."
                             IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=LeftTop}"
                             Command="{Binding SelectAlignCmd}"
                             CommandParameter="LeftTop"/>
@@ -108,6 +107,7 @@
                     <ToggleButton Grid.Row="0" Grid.Column="2"
                             Style="{StaticResource PillButton}"
                             Content="Право  верх"
+                            ToolTip="ПВ — сохранить положение верхнего правого угла границ вида на листе. При применении этот угол другого вида совместится с сохранённой точкой. Результат зависит от подрезки, но не от координат модели: подходит для разных секций, размещаемых в одном месте листа."
                             IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=RightTop}"
                             Command="{Binding SelectAlignCmd}"
                             CommandParameter="RightTop"/>
@@ -116,6 +116,7 @@
                     <ToggleButton Grid.Row="1" Grid.Column="1"
                             Style="{StaticResource PillButton}"
                             Content="Центр"
+                            ToolTip="Ц — сохранить положение центра границ вида на листе. При применении центры совместятся. Изменение подрезки меняет границы и их центр, поэтому элементы модели могут оказаться в другом месте относительно листа. Для привязки по координатам модели используй СВН."
                             MinWidth="140"
                             IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=Center}"
                             Command="{Binding SelectAlignCmd}"
@@ -125,6 +126,7 @@
                     <ToggleButton Grid.Row="2" Grid.Column="0"
                             Style="{StaticResource PillButton}"
                             Content="Лево  низ"
+                            ToolTip="ЛН — сохранить положение нижнего левого угла границ вида на листе. При применении этот угол другого вида совместится с сохранённой точкой. Результат зависит от подрезки, но не от координат модели: подходит для разных секций, размещаемых в одном месте листа."
                             IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=LeftBottom}"
                             Command="{Binding SelectAlignCmd}"
                             CommandParameter="LeftBottom"/>
@@ -133,6 +135,7 @@
                     <ToggleButton Grid.Row="2" Grid.Column="2"
                             Style="{StaticResource PillButton}"
                             Content="Право  низ"
+                            ToolTip="ПН — сохранить положение нижнего правого угла границ вида на листе. При применении этот угол другого вида совместится с сохранённой точкой. Результат зависит от подрезки, но не от координат модели: подходит для разных секций, размещаемых в одном месте листа."
                             IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=RightBottom}"
                             Command="{Binding SelectAlignCmd}"
                             CommandParameter="RightBottom"/>
@@ -141,6 +144,7 @@
                     <ToggleButton Grid.Row="3" Grid.ColumnSpan="3"
                             Style="{StaticResource PillButton}"
                             Content="Совмещение внутренних начал"
+                            ToolTip="СВН — выравнивать по внутреннему началу модели, независимо от границ подрезки. Подходит для видов с одинаковыми координатами модели, например этажей односекционного здания. Для разных по координатам секций используй углы или центр. Для видов без связи с координатами модели, включая спецификации и легенды, этот режим недоступен."
                             IsChecked="{Binding ListVPPositionItem.SelectedAlign, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=OrignToOrigin}"
                             IsEnabled="{Binding ListVPPositionItem.ByOriginVisible}"
                             Command="{Binding SelectAlignCmd}"
@@ -153,13 +157,14 @@
                     <Button 
                         Style="{StaticResource PrimaryButton}"
                         Content="Сохранить"
+                        ToolTip="Записать конфигурацию положения выбранного вида на листе-доноре. Затем выбери вид на другом листе и нажми сохранённую конфигурацию в основном окне, чтобы применить это положение."
                         Width="400"
                         Command="{Binding SaveCmd}"
                         CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
                     <Button 
                         Style="{StaticResource PrimaryButton}"
                         Content="?"
-                        ToolTip="Открыть инструкцию на Moodle"
+                        ToolTip="Открыть главу «Плагин Положение вида» в инструкции на Moodle: создание конфигурации, примеры выравнивания по углам, центру и внутреннему началу, рекомендации по выбору режима."
                         Width="60"
                         Command="{Binding HelpCmd}"
                         CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"/>
