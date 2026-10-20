@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug2023</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <Revit2026Build Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'">true</Revit2026Build>
+    <Configurations>Debug2020;Revit2020;Debug2023;Revit2023;Debug2024;Revit2024;Debug2026;Revit2026</Configurations>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+  <Import Project="..\build\KPLN.Revit2026.props" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="'$(Revit2026Build)' != 'true' AND Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <ProjectGuid>{478F7CEF-2290-4C40-8F3E-7085D32ED7A3}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>KPLN_ViewsAndLists_CopyByLevels</RootNamespace>
+    <AssemblyName>KPLN_ViewsAndLists_CopyByLevels</AssemblyName>
+    <TargetFrameworkVersion Condition="'$(Revit2026Build)' != 'true'">v4.8</TargetFrameworkVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2020' OR '$(Configuration)' == 'Revit2020'"><RevitVer>2020</RevitVer></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2023' OR '$(Configuration)' == 'Revit2023'"><RevitVer>2023</RevitVer></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2024' OR '$(Configuration)' == 'Revit2024'"><RevitVer>2024</RevitVer></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'"><RevitVer>2026</RevitVer></PropertyGroup>
+  <PropertyGroup>
+    <KPLNLoaderPath Condition="'$(KPLNLoaderPath)' == ''">X:\BIM\5_Scripts\SetupFiles\Revit\1.Common\KPLN\$(RevitVer)\KPLN_Loader\KPLN_Loader.dll</KPLNLoaderPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug$(RevitVer)'">
+    <OutputPath>bin\Debug\$(RevitVer)\</OutputPath><DebugSymbols>true</DebugSymbols><DebugType>full</DebugType>
+    <DefineConstants>TRACE;DEBUG;Debug$(RevitVer)</DefineConstants><Optimize>false</Optimize>
+    <StartAction>Program</StartAction><StartProgram>C:\Program Files\Autodesk\Revit $(RevitVer)\Revit.exe</StartProgram>
+    <StartWorkingDirectory>C:\Program Files\Autodesk\Revit $(RevitVer)</StartWorkingDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Revit$(RevitVer)'">
+    <OutputPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ViewsAndLists_CopyByLevels\$(RevitVer)\</OutputPath><DebugType>none</DebugType><Optimize>true</Optimize>
+    <DefineConstants>TRACE;Revit$(RevitVer)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="RevitAPI"><HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="RevitAPIUI"><HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath><Private>False</Private></Reference>
+    <Reference Include="KPLN_Loader"><HintPath>$(KPLNLoaderPath)</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(Revit2026Build)' != 'true'">
+    <Reference Include="System" /><Reference Include="System.Core" /><Reference Include="System.Xml" /><Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Xaml" /><Reference Include="PresentationCore" /><Reference Include="PresentationFramework" /><Reference Include="WindowsBase" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(Configuration)' == 'Debug$(RevitVer)'">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ViewsAndLists_Ribbon">
+          <HintPath>C:\KPLN_Debug\KPLN_ViewsAndLists_Ribbon\Debug\$(RevitVer)\KPLN_ViewsAndLists_Ribbon.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition="'$(Configuration)' == 'Revit$(RevitVer)'">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_ViewsAndLists_Ribbon">
+          <HintPath>Z:\Отдел BIM\03_Скрипты\09_Модули_KPLN_Loader_v.2\ViewsAndLists_Ribbon\$(RevitVer)\KPLN_ViewsAndLists_Ribbon.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="Common\NamingRules.cs" />
+    <Compile Include="Common\ObservableObject.cs" />
+    <Compile Include="ExternalCommands\CopyByLevelsExtCmd.cs" />
+    <Compile Include="Forms\Commands\RelayCommand.cs" />
+    <Compile Include="Forms\CopyByLevelsForm.xaml.cs"><DependentUpon>CopyByLevelsForm.xaml</DependentUpon></Compile>
+    <Compile Include="Forms\Entities\CopyByLevelsM.cs" />
+    <Compile Include="Forms\ViewModels\CopyByLevelsVM.cs" />
+    <Compile Include="Module.cs" />
+    <Compile Include="ModuleData.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Services\GenerationService.cs" />
+    <Compile Include="Services\PlanService.cs" />
+    <Compile Include="Services\RevitHelpers.cs" />
+    <Compile Include="Services\SettingsService.cs" />
+    <Compile Include="Services\SourceReader.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Forms\CopyByLevelsForm.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Page Include="Forms\Styles.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="'$(Revit2026Build)' != 'true'" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
+  <Target Name="RestoreMissingRevit2026Assets" BeforeTargets="PrepareForBuild;ResolvePackageAssets"
+          Condition="'$(Revit2026Build)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND !Exists('$(ProjectAssetsFile)')">
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Restore" Properties="Configuration=$(Configuration);Platform=$(Platform);BuildingInsideVisualStudio=false" />
+  </Target>
+</Project>
