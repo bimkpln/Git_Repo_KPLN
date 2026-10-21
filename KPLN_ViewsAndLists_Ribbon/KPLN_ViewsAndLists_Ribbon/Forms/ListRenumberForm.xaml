@@ -173,7 +173,7 @@
             GroupName="RenameType" 
             Style="{StaticResource MainRB}" 
             IsChecked="{Binding IsOnlyRenumber}" 
-            Content="Пренеумеровать?"/>
+            Content="Перенумеровать?"/>
         <Expander 
             Style="{StaticResource EXP}" 
             Header="Только обновляем нумерацию (приставки сохранятся)!" 

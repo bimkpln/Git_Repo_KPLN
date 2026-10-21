@@ -250,13 +250,6 @@ namespace KPLN_ViewsAndLists_Ribbon
                 "http://moodle/mod/book/view.php?id=502&chapterid=1330"
             );
 
-
-
-
-
-
-
-
             AddPushButtonDataInPullDown(
                 "CommandIZMFilling",
                 "Заполнение ИЗМов",
@@ -273,12 +266,6 @@ namespace KPLN_ViewsAndLists_Ribbon
                 "CommandIZMFilling",
                 "http://moodle/"
             );
-
-
-
-
-
-
             #endregion
 
             return Result.Succeeded;
