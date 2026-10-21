@@ -2,18 +2,32 @@
 using Autodesk.Revit.UI;
 using KPLN_ViewsAndLists_Ribbon.Common.Lists;
 using KPLN_ViewsAndLists_Ribbon.Forms.Commands;
+using KPLN_ViewsAndLists_Ribbon.Forms.Entities;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 
 namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 {
+    // Имена параметров читаются в контексте Revit, WPF получает готовый снимок.
+    public sealed class ListRenumberParameter
+    {
+        internal Parameter Parameter { get; }
+        public string Name { get; }
+        public ListRenumberParameter(Parameter parameter)
+        {
+            Parameter = parameter;
+            Name = parameter.Definition.Name;
+        }
+        public static implicit operator ListRenumberParameter(Parameter parameter)
+            => parameter == null ? null : new ListRenumberParameter(parameter);
+    }
+
     public enum RenameMode
     {
         Unicode,
@@ -32,8 +46,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        private static string _sysPref;
-
         private readonly UIApplication _uiapp;
         private readonly ViewSheet[] _shetsToRenumber;
 
@@ -45,9 +57,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         private bool _isRefreshParam = false;
         private bool _isClearRenumber = false;
 
-        private Parameter _prefix_SelectedTitleBlockParameter;
-        private Parameter _onlyRenumber_SelectedTitleBlockParameter;
-        private Parameter _refreshParam_SelectedTitleBlockParameter;
+        private ListRenumberParameter _prefix_SelectedTitleBlockParameter;
+        private ListRenumberParameter _onlyRenumber_SelectedTitleBlockParameter;
+        private ListRenumberParameter _refreshParam_SelectedTitleBlockParameter;
 
         private UniEntity _unicode_SelectedUnicode;
         private bool _unicode_IsChangePrefixToUnicode;
@@ -63,7 +75,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         {
             _uiapp = uiapp;
             _shetsToRenumber = shetsToRenumber.ToArray();
-            _sysPref = $"{DateTime.Now:h_m_s}_";
 
             Unicode_UnicodeList = new ObservableCollection<UniEntity>()
             {
@@ -98,9 +109,13 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
                     DecCode = (int)UniDecCodes.US
                 }
             };
-            TitleBlockParameters = new ObservableCollection<Parameter>(tBlockParams);
+            TitleBlockParameters = new ObservableCollection<ListRenumberParameter>(tBlockParams.Select(p => new ListRenumberParameter(p)));
 
-            OkCommand = new RelayCommand<object>(_ => OnOk());
+            OkCommand = new RelayCommand<object>(_ =>
+            {
+                if (RequestApiAction != null) RequestApiAction(OnPreview);
+                else OnPreview();
+            });
         }
 
         public RenameMode SelectedMode
@@ -131,7 +146,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
 
         public ObservableCollection<UniEntity> Unicode_UnicodeList { get; set; }
 
-        public ObservableCollection<Parameter> TitleBlockParameters { get; set; }
+        public ObservableCollection<ListRenumberParameter> TitleBlockParameters { get; set; }
 
         public UniEntity Unicode_SelectedUnicode
         {
@@ -170,7 +185,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             }
         }
 
-        public Parameter Prefix_SelectedTitleBlockParameter
+        public ListRenumberParameter Prefix_SelectedTitleBlockParameter
         {
             get => _prefix_SelectedTitleBlockParameter;
             set => Set(ref _prefix_SelectedTitleBlockParameter, value);
@@ -213,7 +228,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             set => Set(ref _onlyRenumber_IsParamUpdate, value);
         }
 
-        public Parameter OnlyRenumber_SelectedTitleBlockParameter
+        public ListRenumberParameter OnlyRenumber_SelectedTitleBlockParameter
         {
             get => _onlyRenumber_SelectedTitleBlockParameter;
             set => Set(ref _onlyRenumber_SelectedTitleBlockParameter, value);
@@ -232,7 +247,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             }
         }
 
-        public Parameter RefreshParam_SelectedTitleBlockParameter
+        public ListRenumberParameter RefreshParam_SelectedTitleBlockParameter
         {
             get => _refreshParam_SelectedTitleBlockParameter;
             set => Set(ref _refreshParam_SelectedTitleBlockParameter, value);
@@ -257,104 +272,123 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         public ICommand CancelCommand { get; set; }
 
         public Action CloseAction { get; set; }
+        internal Action<Action> RequestApiAction { get; set; }
 
-        private void OnOk()
+        public Func<ListRenumberPreviewVM, bool?> PreviewAction { get; set; }
+
+        private void OnPreview()
         {
-            Document doc = _uiapp.ActiveUIDocument.Document;
             UIDocument uidoc = _uiapp.ActiveUIDocument;
             if (uidoc == null) return;
 
-            CloseAction?.Invoke();
-            using (Transaction trans = new Transaction(doc, $"KPLN: {PluginName}"))
+            try
             {
-                trans.Start();
+                if (!IsUnicode && !IsPrefix && !IsOnlyRenumber && !IsRefreshParam && !IsClearedNumber)
+                    throw new InvalidOperationException("Выберите режим нумерации.");
+
+                Parameter parameter = null;
+                bool updateParameter = SelectedMode == RenameMode.RefreshParam
+                    || SelectedMode == RenameMode.Prefix && Prefix_IsParamUpdate
+                    || SelectedMode == RenameMode.OnlyRenumber && OnlyRenumber_IsParamUpdate;
+                if (updateParameter)
+                {
+                    parameter = (SelectedMode == RenameMode.RefreshParam ? RefreshParam_SelectedTitleBlockParameter
+                        : SelectedMode == RenameMode.Prefix ? Prefix_SelectedTitleBlockParameter : OnlyRenumber_SelectedTitleBlockParameter)?.Parameter;
+                    if (parameter == null)
+                        throw new InvalidOperationException("Выберите параметр для заполнения номера.");
+                    if (parameter.Id.Equals(new ElementId(BuiltInParameter.SHEET_NUMBER)))
+                        throw new InvalidOperationException("Для изменения системного номера используйте столбец «Новый номер». Выберите другой параметр для заполнения.");
+                }
+
+                int startNumber = 0;
+                if (SelectedMode == RenameMode.OnlyRenumber && !int.TryParse(OnlyRenumber_StartNumber, out startNumber))
+                    throw new InvalidOperationException("Укажите целое стартовое значение номера листа.");
+                if (SelectedMode == RenameMode.Prefix && string.IsNullOrEmpty(Prefix_Text))
+                    throw new InvalidOperationException("Укажите префикс.");
+
+                string parameterName = parameter?.Definition.Name;
+                var rows = _shetsToRenumber.Select(sheet => new ListRenumberPreviewRow(sheet,
+                    updateParameter ? sheet.LookupParameter(parameterName) : null) { UpdateParameter = updateParameter }).ToArray();
+
+                if (SelectedMode == RenameMode.Unicode)
+                    CalculateUnicodePreview(uidoc.Document, rows);
+                else
+                {
+                    for (int index = 0; index < rows.Length; index++)
+                    {
+                        ListRenumberPreviewRow row = rows[index];
+                        try
+                        {
+                            switch (SelectedMode)
+                            {
+                                case RenameMode.Prefix:
+                                    row.NewNumber = ListRenumberNumberCalculator.Prefix(row.OriginalNumber, Prefix_Text);
+                                    break;
+                                case RenameMode.OnlyRenumber:
+                                    row.NewNumber = ListRenumberNumberCalculator.Renumber(row.OriginalNumber, checked(startNumber + index));
+                                    break;
+                                case RenameMode.ClearedNumber:
+                                    row.NewNumber = ListRenumberNumberCalculator.UserNumber(row.OriginalNumber);
+                                    break;
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            row.CalculationError = "Не удалось рассчитать номер. Введите новый номер вручную.";
+                        }
+                    }
+                }
+
+                foreach (ListRenumberPreviewRow row in rows)
+                    row.RefreshParameterValue();
+
+                var preview = new ListRenumberPreviewVM(uidoc.Document, rows, SelectedMode, parameterName,
+                    Unicode_SelectedUnicode?.Code, Unicode_SelectedUnicode?.Name);
+                if (PreviewAction?.Invoke(preview) == true)
+                    CloseAction?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Предпросмотр нумерации листов", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void CalculateUnicodePreview(Document document, ListRenumberPreviewRow[] rows)
+        {
+            if (Unicode_SelectedUnicode == null)
+                throw new InvalidOperationException("Выберите символ Unicode.");
+            if (!int.TryParse(Unicdoe_CountOfUnicodes, out int count) || count < 1 || count > 10000)
+                throw new InvalidOperationException("Укажите количество символов Unicode от 1 до 10000.");
+
+            var selectedIds = new HashSet<ElementId>(rows.Select(row => row.Sheet.Id));
+            var occupied = new HashSet<string>(new FilteredElementCollector(document).OfClass(typeof(ViewSheet))
+                .Cast<ViewSheet>().Where(sheet => !selectedIds.Contains(sheet.Id)).Select(sheet => sheet.SheetNumber), StringComparer.Ordinal);
+            var baseNumbers = new Dictionary<ListRenumberPreviewRow, string>();
+            foreach (ListRenumberPreviewRow row in rows)
+            {
                 try
                 {
-                    switch (SelectedMode)
-                    {
-                        // Меняю номер листа с использованием символов Юникода
-                        case RenameMode.Unicode:
-                            UniEntity cmbSelUni = Unicode_SelectedUnicode;
-                            if (cmbSelUni == null)
-                            {
-                                MessageBox.Show("Вы забили выбрать Юникод", "Ошибка");
-                                return;
-                            }
-
-                            int uniNumber = Int32.Parse(Unicdoe_CountOfUnicodes) - 1;
-                            bool isRun = true;
-                            while (isRun)
-                            {
-                                uniNumber++;
-                                isRun = UseUniCodes(_shetsToRenumber, cmbSelUni, uniNumber, Unicode_IsChangePrefixToUnicode);
-                            }
-                            break;
-
-                        // Меняю номер листа с использованием префиксов
-                        case RenameMode.Prefix:
-                            if (string.IsNullOrEmpty(Prefix_Text))
-                            {
-                                MessageBox.Show("Вы забили указать префикс", "Ошибка");
-                                return;
-                            }
-                            string userPrefix = $"{Prefix_Text}/";
-                            UsePrefix(_shetsToRenumber, userPrefix);
-
-                            if (Prefix_IsParamUpdate)
-                                ParamRefresh(_shetsToRenumber, Prefix_SelectedTitleBlockParameter);
-
-                            break;
-
-                        //Меняю номер листа без редактирования префиксов и Юникодов
-                        case RenameMode.OnlyRenumber:
-                            if (int.TryParse(OnlyRenumber_StartNumber, out int or_startNumber))
-                            {
-                                ClearRenumber(_shetsToRenumber, or_startNumber);
-
-                                if (OnlyRenumber_IsParamUpdate)
-                                    ParamRefresh(_shetsToRenumber, OnlyRenumber_SelectedTitleBlockParameter);
-                            }
-
-                            break;
-
-                        // Заполняю пользовательский параметр для нумерации в штампе
-                        case RenameMode.RefreshParam:
-                            ParamRefresh(_shetsToRenumber, RefreshParam_SelectedTitleBlockParameter);
-                            break;
-
-                        // Очистка от приставок и юникодов
-                        case RenameMode.ClearedNumber:
-                            ClearedNumber(_shetsToRenumber);
-                            break;
-                    }
-
-                    doc.Regenerate();
-
-                    DropSysPrefix(_shetsToRenumber);
-
+                    baseNumbers[row] = Unicode_IsChangePrefixToUnicode
+                        ? ListRenumberNumberCalculator.UserNumber(row.OriginalNumber) : row.OriginalNumber;
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    if (ex.Message.Contains("Sheet number is already in use"))
-                    {
-                        TaskDialog.Show("Предупреждение", "Такой номер листа уже есть. Работа экстренно завершена!", TaskDialogCommonButtons.Ok);
-                        trans.RollBack();
-                        return;
-                    }
-                    else
-                    {
-                        TaskDialog.Show("Ошибка", $"Отправь в BIM-отдел\n\n{ex.StackTrace}\n{ex.Message}\n\nРабота экстренно завершена!", TaskDialogCommonButtons.Ok);
-                        trans.RollBack();
-                        return;
-                    }
+                    row.CalculationError = "Не удалось рассчитать номер. Введите новый номер вручную.";
                 }
-                trans.Commit();
-
-                // Обновляю нумерацию в браузере проекта
-                DockablePaneId dpId = DockablePanes.BuiltInDockablePanes.ProjectBrowser;
-                DockablePane dP = new DockablePane(dpId);
-                dP.Show();
             }
+
+            // Подбираем приставку в памяти; совпадения внутри выборки пользователь увидит в таблице.
+            string prefix;
+            do
+            {
+                prefix = string.Concat(Enumerable.Repeat(Unicode_SelectedUnicode.Code, count));
+                if (!baseNumbers.Values.Any(number => occupied.Contains(prefix + number))) break;
+                count++;
+            }
+            while (count <= 10000);
+
+            foreach (var pair in baseNumbers)
+                pair.Key.NewNumber = prefix + pair.Value;
         }
 
         private void UpdateSelectedMode()
@@ -372,247 +406,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
         }
 
 
-
-        /// <summary>
-        /// Метод для замены номер листа с использованием символов Юникода
-        /// </summary>
-        /// <example> 
-        /// "7.1" преобразуется в "символЮникода7.1"
-        /// </example>
-        private static bool UseUniCodes(IEnumerable<ViewSheet> sortedSheets, UniEntity cmbSelUni, int counter, bool isConvertToUni)
-        {
-            try
-            {
-                foreach (ViewSheet curVSheet in sortedSheets)
-                {
-                    string trueNumbStr;
-                    if (isConvertToUni)
-                    {
-                        string strVSheetNumb = curVSheet.SheetNumber;
-                        trueNumbStr = UserNumber(strVSheetNumb);
-                    }
-                    else
-                        trueNumbStr = curVSheet.SheetNumber;
-
-                    curVSheet.SheetNumber = String.Concat(Enumerable.Repeat(cmbSelUni.Code, counter)) + trueNumbStr;
-
-                    Parameter uniCodeParam = curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e"));
-                    if (uniCodeParam != null)
-                    {
-                        if (counter == 1)
-                            curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set(cmbSelUni.Name);
-                        else
-                            curVSheet.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set($"{counter}X{cmbSelUni.Name}");
-                    }
-                }
-                return false;
-            }
-            catch (Autodesk.Revit.Exceptions.ArgumentException)
-            {
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// Метод преобразования номера с символами в число.
-        /// <example> 
-        /// Например: АР1/007.1 преобразуется в 7.1
-        /// </example>
-        /// </summary>
-        private static string UserNumber(string number)
-        {
-            char[] charArray = number.ToCharArray();
-            foreach (char c in charArray)
-            {
-                if (Char.IsLetter(c))
-                    number = number.Trim(c);
-                else if (Enum.IsDefined(typeof(UniDecCodes), (int)c))
-                    number = number.Trim(c);
-                else if (c.Equals('.'))
-                    continue;
-                else if (Char.IsPunctuation(c))
-                    number = number.Split(c)[1];
-            }
-
-            if (number.All(c => c.Equals('0'))) 
-                return "0";
-            else 
-                number = number.Length > 1 ? number.TrimStart('0') : number;
-
-            return number;
-        }
-
-        /// <summary>
-        /// Метод для замены номер листа с использованием символов префикса
-        /// </summary>
-        /// <example> 
-        /// "7.1" преобразуется в "АР/7.1", или в "007.1"
-        /// </example>
-        private static void UsePrefix(IEnumerable<ViewSheet> sortedSheets, string userPrefix)
-        {
-            foreach (ViewSheet curVSheet in sortedSheets)
-            {
-                string strVSheetNumb = curVSheet.SheetNumber;
-                string onlyNumb = UserNumber(strVSheetNumb);
-
-                string ZeroNumber;
-                if (OnlyNumber(onlyNumb) < 10)
-                {
-                    ZeroNumber = $"00{onlyNumb}";
-                }
-                else if (OnlyNumber(onlyNumb) < 100)
-                {
-                    ZeroNumber = $"0{onlyNumb}";
-                }
-                else
-                {
-                    ZeroNumber = $"{onlyNumb}";
-                }
-                curVSheet.SheetNumber = userPrefix + ZeroNumber;
-            }
-        }
-
-        /// <summary>
-        /// Метод преобразования номера с символами в число без подразделов
-        /// </summary>
-        /// <example> 
-        /// АР/007.1 преобразуется в 7
-        /// </example>
-        private static int OnlyNumber(string number)
-        {
-            char[] charArray = number.ToCharArray();
-            if (number.Contains('/'))
-            {
-                string[] splitedNumber = number.Split('/');
-                string lastPartSplNumber = splitedNumber[splitedNumber.Length - 1];
-                charArray = lastPartSplNumber.ToCharArray();
-
-                foreach (char c in charArray)
-                {
-                    if (c.Equals('.'))
-                    {
-                        number = number.Split('.')[0];
-                        break;
-                    }
-                }
-
-                return Int32.Parse(new String(lastPartSplNumber.Where(Char.IsDigit).ToArray()));
-            }
-
-            foreach (char c in charArray)
-            {
-                if (c.Equals('.'))
-                {
-                    number = number.Split('.')[0];
-                    break;
-                }
-            }
-
-            return Int32.Parse(new String(number.Where(Char.IsDigit).ToArray()));
-        }
-
-        /// <summary>
-        /// Метод для заполнения номером пользовательского параметра
-        /// </summary>
-        /// <example> 
-        /// "АР/7.1" заполниться в выбранный параметр как "7.1"
-        /// </example>
-        private static void ParamRefresh(IEnumerable<ViewSheet> sortedSheets, Parameter cmbSelPar)
-        {
-            foreach (ViewSheet curVSheet in sortedSheets)
-            {
-                string strVSheetNumb = curVSheet.SheetNumber;
-                string cmbSelParName = cmbSelPar.Definition.Name;
-                string onlyNumb = UserNumber(strVSheetNumb);
-                if (Int32.TryParse(strVSheetNumb, out int refreshNumber))
-                    curVSheet.LookupParameter(cmbSelParName).Set(refreshNumber.ToString());
-                else
-                    curVSheet.LookupParameter(cmbSelParName).Set(onlyNumb);
-            }
-        }
-
-        /// <summary>
-        /// Метод для замены номер листа с использованием стартового номера и с сохранением приставок и т.п.
-        /// </summary>
-        /// <example> 
-        /// "АР/007.1" преобразуется в "АР/008.1"
-        /// </example>
-        private static void ClearRenumber(ViewSheet[] sortedSheets, int startNumber)
-        {
-            // Задаю нумерацию с учетом стартовой разницы
-            foreach (ViewSheet curVSheet in sortedSheets)
-            {
-                int number = startNumber;
-                startNumber++;
-
-                string uniCode = string.Empty;
-                string textPrefix = string.Empty;
-                string zeroNumberPrefix = string.Empty;
-                string subNumberOfNumber = string.Empty;
-
-                string sheetNumber = curVSheet.SheetNumber;
-                var matchNumberByPrefix = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)/");
-                var matchNumberByPrefixWithIntNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)\d/");
-                var matchNumberByPrefixWithDoubleNumb = Regex.Match(sheetNumber, @"([А-ЯA-Z]+)(\d?)\.(\d?)/");
-                var matchByZeroPrefix = Regex.Match(sheetNumber, @"(/[0]?)");
-                var matchBySubNumber = Regex.Match(sheetNumber, @"/(\d?)\.(\d?)");
-
-                if (matchNumberByPrefix.Success)
-                    textPrefix = matchNumberByPrefix.Value;
-                else if (matchNumberByPrefixWithIntNumb.Success)
-                    textPrefix = matchNumberByPrefixWithIntNumb.Value;
-                else if (matchNumberByPrefixWithDoubleNumb.Success)
-                    textPrefix = matchNumberByPrefixWithDoubleNumb.Value;
-
-                if (matchByZeroPrefix.Success && matchByZeroPrefix.Value.Contains("0"))
-                {
-                    if (number < 10)
-                        zeroNumberPrefix = "00";
-                    else if (number < 100)
-                        zeroNumberPrefix = "0";
-                }
-
-                if (matchBySubNumber.Success)
-                    subNumberOfNumber = $".{matchBySubNumber.Value.Split('.')[1]}";
-
-                curVSheet.SheetNumber = $"{_sysPref}{textPrefix}{zeroNumberPrefix}{number}{subNumberOfNumber}";
-            }
-        }
-
-        /// <summary>
-        /// Метод очистки номера от приставок и юникодов
-        /// </summary>
-        private static void ClearedNumber(ViewSheet[] sortedSheets)
-        {
-            foreach (ViewSheet vs in sortedSheets)
-            {
-                string strVSheetNumb = vs.SheetNumber;
-                vs.SheetNumber = UserNumber(strVSheetNumb);
-                Parameter uniCodeParam = vs.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e"));
-                if (uniCodeParam != null)
-                    vs.get_Parameter(new Guid("09b934d4-81b3-4aff-b37e-d20dfbc1ac8e")).Set(string.Empty);
-            }
-        }
-
-        /// <summary>
-        /// Очистка номера от технической приставки
-        /// </summary>
-        /// <param name="sheets"></param>
-        private static void DropSysPrefix(ViewSheet[] sheets)
-        {
-            foreach (ViewSheet curVSheet in sheets)
-            {
-                string durtyNumb = curVSheet.SheetNumber;
-                string clearNumb;
-                string[] splNumb = durtyNumb.Split(new string[] { _sysPref }, StringSplitOptions.None);
-                if (splNumb.Length == 1)
-                    clearNumb = splNumb[0];
-                else
-                    clearNumb = durtyNumb.Split(new string[] { _sysPref }, StringSplitOptions.None)[1];
-                
-                curVSheet.SheetNumber = clearNumb;
-            }
-        }
 
         private void OnPropertyChanged([CallerMemberName] string prop = "")
         {

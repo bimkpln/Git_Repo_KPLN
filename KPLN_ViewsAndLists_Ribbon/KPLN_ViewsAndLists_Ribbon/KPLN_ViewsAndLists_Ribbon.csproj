@@ -100,6 +100,12 @@
   <ItemGroup>
     <Compile Include="Common\Lists\TBlockEntity.cs" />
     <Compile Include="Common\Lists\UniCodesCollection.cs" />
+    <Compile Include="Common\Lists\ListRenumberNumberCalculator.cs" />
+    <Compile Include="Forms\Entities\ListRenumberPreviewRow.cs" />
+    <Compile Include="Forms\ViewModels\ListRenumberPreviewVM.cs" />
+    <Compile Include="Forms\ListRenumberPreviewForm.xaml.cs">
+      <DependentUpon>ListRenumberPreviewForm.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Common\UserErrorException.cs" />
     <Compile Include="ExecutableCommand\DeleteElemsExcCmd.cs" />
     <Compile Include="ExternalCommands\Lists\ExtCmdListIZMFilling.cs" />
@@ -227,6 +233,10 @@
     <Page Include="Forms\FrmIZMFilling.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\ListRenumberPreviewForm.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Forms\ListRenumberForm.xaml">
       <Generator>MSBuild:Compile</Generator>

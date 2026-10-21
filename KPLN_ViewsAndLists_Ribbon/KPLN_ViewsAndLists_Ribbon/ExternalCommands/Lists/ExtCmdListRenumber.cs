@@ -53,23 +53,11 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
             {
                 ParameterSet titleBlockParams = mixedSheetsList[0].Parameters;
                 ListRenumberForm inputForm = new ListRenumberForm(uiapp, sortedSheets, titleBlockParams);
-                if ((bool)inputForm.ShowDialog())
-                {
-                    if (falseElemList.Count != 0)
-                    {
-                        int cnt = 0;
-                        foreach (Element elem in falseElemList)
-                        {
-                            cnt++;
-                        }
-                        string msg = string.Format("Если что, были случайно выбраны элементы, которые не являются листами. Успешно проигнорировано {0} штук/-и", cnt.ToString());
-                        TaskDialog.Show("Предупреждение", msg, TaskDialogCommonButtons.Ok);
-                    }
+                if (falseElemList.Count != 0)
+                    TaskDialog.Show("Предупреждение", $"Выбранные элементы, не являющиеся листами, проигнорированы: {falseElemList.Count}.");
 
-                    return Result.Succeeded;
-                }
-
-                return Result.Cancelled;
+                inputForm.Show();
+                return Result.Succeeded;
             }
 
             TaskDialog.Show("Ошибка", "В выборке нет ни одного листа, или вообще ничего не выбрано :(", TaskDialogCommonButtons.Ok);

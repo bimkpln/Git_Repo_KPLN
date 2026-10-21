@@ -158,7 +158,7 @@
                         IsEnabled="{Binding Prefix_IsParamUpdate}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Definition.Name}"/>
+                                <TextBlock Text="{Binding Name}"/>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
@@ -201,7 +201,7 @@
                         IsEnabled="{Binding OnlyRenumber_IsParamUpdate}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Definition.Name}"/>
+                                <TextBlock Text="{Binding Name}"/>
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
@@ -231,7 +231,7 @@
                     SelectedItem="{Binding RefreshParam_SelectedTitleBlockParameter}">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Definition.Name}"/>
+                            <TextBlock Text="{Binding Name}"/>
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
@@ -253,11 +253,19 @@
         Grid.Row="5" 
         Margin="0,10,0,5"
         Orientation="Horizontal">
-        <Button 
-            Style="{StaticResource BTN}" 
-            Content="Запуск" 
-            Command="{Binding OkCommand}" 
-            IsDefault="True"/>
+        <Button Width="160"
+                Margin="5,0,0,0"
+                FontFamily="Segoe UI"
+                Content="Предпросмотр"
+                Command="{Binding OkCommand}"
+                IsDefault="True">
+            <Button.Resources>
+                <ResourceDictionary Source="/KPLN_Library_Forms;component/UI/LibStyles.xaml" />
+            </Button.Resources>
+            <Button.Style>
+                <StaticResource ResourceKey="KPLN_RunButton" />
+            </Button.Style>
+        </Button>
     </StackPanel>
 </Grid>
     
