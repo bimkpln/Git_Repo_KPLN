@@ -133,6 +133,9 @@ namespace KPLN_Tools_OVVK
             ovvkToolsPullDownBtn.AddPushButton(ovvkAutonumber);
             ovvkToolsPullDownBtn.AddPushButton(auptTagPlacer);
 
+            KPLN_Tools_Lib.ToolsRibbon.AddCreateSpacesButton(ovvkToolsPullDownBtn);
+            KPLN_Tools_Lib.ToolsRibbon.AddTagSpacesButton(ovvkToolsPullDownBtn);
+
             return Result.Succeeded;
         }
 
