@@ -68,7 +68,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
 
         internal static string Prefix(string sheetNumber, string prefix)
         {
-            string onlyNumb = UserNumber(sheetNumber);
+            string onlyNumb = UserNumber(ListRenumberSequenceNumber.NumberPart(sheetNumber));
             string zeroNumber;
             if (OnlyNumber(onlyNumb) < 10)
                 zeroNumber = $"00{onlyNumb}";
@@ -82,6 +82,9 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
 
         internal static string Renumber(string sheetNumber, int number)
         {
+            string originalNumber = sheetNumber;
+            sheetNumber = ListRenumberSequenceNumber.WithoutUnicode(sheetNumber);
+
             string textPrefix = string.Empty;
             string zeroNumberPrefix = string.Empty;
             string subNumberOfNumber = string.Empty;
@@ -109,7 +112,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
 
             if (matchBySubNumber.Success)
                 subNumberOfNumber = $".{matchBySubNumber.Value.Split('.')[1]}";
-            return $"{textPrefix}{zeroNumberPrefix}{number}{subNumberOfNumber}";
+            string calculatedNumber = $"{textPrefix}{zeroNumberPrefix}{number}{subNumberOfNumber}";
+
+            // Меняем только номер: приставка и все скрытые символы остаются у исходного листа.
+            return ListRenumberSequenceNumber.ReplaceNumberPart(originalNumber,
+                ListRenumberSequenceNumber.NumberPart(calculatedNumber));
         }
     }
 
@@ -137,6 +144,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Common.Lists
         {
             string visible = VisibleNumber(fullNumber, out List<int> positions);
             return visible.Substring(NumberOffset(visible));
+        }
+
+        internal static string WithoutUnicode(string fullNumber)
+        {
+            return VisibleNumber(fullNumber, out List<int> positions);
         }
 
         internal static string ReplaceNumberPart(string fullNumber, string value)

@@ -368,8 +368,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms.MVVM
             {
                 try
                 {
+                    // Заменяем прежние скрытые символы, а не накапливаем их при повторном запуске.
+                    string visibleNumber = ListRenumberSequenceNumber.WithoutUnicode(row.OriginalNumber);
                     baseNumbers[row] = Unicode_IsChangePrefixToUnicode
-                        ? ListRenumberNumberCalculator.UserNumber(row.OriginalNumber) : row.OriginalNumber;
+                        ? ListRenumberNumberCalculator.UserNumber(ListRenumberSequenceNumber.NumberPart(visibleNumber))
+                        : visibleNumber;
                 }
                 catch (Exception)
                 {

@@ -176,7 +176,7 @@
             Content="Перенумеровать?"/>
         <Expander 
             Style="{StaticResource EXP}" 
-            Header="Только обновляем нумерацию (приставки сохранятся)!" 
+            Header="Только обновляем нумерацию (приставки и Unicode сохранятся)!" 
             IsEnabled="{Binding IsOnlyRenumber}"
             IsExpanded="{Binding IsOnlyRenumber}">
             <StackPanel>
