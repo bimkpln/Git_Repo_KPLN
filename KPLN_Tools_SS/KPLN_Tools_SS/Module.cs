@@ -91,6 +91,9 @@ namespace KPLN_Tools_SS
             ssToolsPullDownBtn.AddPushButton(ssCheckingDimension);
             ssToolsPullDownBtn.AddPushButton(hiddenElementsFilter);
 
+            KPLN_Tools_Lib.ToolsRibbon.AddCreateSpacesButton(ssToolsPullDownBtn);
+            KPLN_Tools_Lib.ToolsRibbon.AddTagSpacesButton(ssToolsPullDownBtn);
+
             return Result.Succeeded;
         }
 
