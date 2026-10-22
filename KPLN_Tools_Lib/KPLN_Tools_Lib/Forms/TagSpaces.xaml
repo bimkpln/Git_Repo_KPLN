@@ -1,0 +1,137 @@
+<Window x:Class="KPLN_Tools_Lib.Forms.TagSpaces"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="KPLN: Маркировать помещения / пространства" Width="700"
+        MinWidth="540" MinHeight="510" WindowStartupLocation="CenterOwner"
+        Background="#2B2F38" Foreground="#EDEDED" FontFamily="Segoe UI">
+    <Window.Style>
+        <Style TargetType="Window">
+            <Setter Property="Height" Value="620" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentTagSpacesM.IsSpace}" Value="True">
+                    <Setter Property="Height" Value="820" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/KPLN_Library_Forms;component/UI/LibStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseWindowCmd}" />
+    </Window.InputBindings>
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel DataContext="{Binding CurrentTagSpacesM}">
+                <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" FontSize="16" FontWeight="SemiBold"
+                           Text="{Binding ViewSummary}" Margin="0,0,0,10" />
+                <Border Style="{StaticResource KPLN_CardBorder}" Padding="10" Margin="0,0,0,16">
+                    <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" TextWrapping="Wrap" Text="{Binding ViewNames}" />
+                    </ScrollViewer>
+                </Border>
+                <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" Text="Что маркировать" Margin="0,0,0,5" />
+                <ComboBox Style="{StaticResource KPLN_ComboBox}" ItemsSource="{Binding Categories}"
+                          SelectedItem="{Binding SelectedCategory}" Margin="0,0,0,12" />
+                <Border Background="#173D50" BorderBrush="#64C8F0" BorderThickness="1" CornerRadius="4"
+                        Padding="9,7" Margin="0,0,0,12">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSpaces}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Foreground="#DDF5FF" FontSize="12" TextWrapping="Wrap"
+                               Text="В текущей модели нет пространств с площадью больше нуля — режим их маркировки скрыт. Создайте или разместите пространства и откройте эту команду заново." />
+                </Border>
+                <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" Text="{Binding MainTagTypeLabel}" Margin="0,0,0,5" />
+                <ComboBox Style="{StaticResource KPLN_ComboBox}" ItemsSource="{Binding TagTypes}" DisplayMemberPath="Name"
+                          SelectedItem="{Binding SelectedType}" ToolTip="{Binding SelectedType.Name}" Margin="0,0,0,12" />
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRoom}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" Text="Источники помещений"
+                               TextWrapping="Wrap" Margin="0,0,0,5" />
+                    <Border Style="{StaticResource KPLN_CardBorder}" Padding="8" Margin="0,0,0,8">
+                        <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding Sources}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Style="{StaticResource KPLN_CheckBox}"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  ToolTip="{Binding Name}" Margin="0,4">
+                                            <TextBlock Text="{Binding Name}" TextWrapping="Wrap" Foreground="#EDEDED" />
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                    <Border Background="#173D50" BorderBrush="#64C8F0" BorderThickness="1" CornerRadius="4"
+                            Padding="9,7" Margin="0,0,0,12">
+                        <TextBlock Foreground="#DDF5FF" FontSize="12" TextWrapping="Wrap"
+                                   Text="В списке только загруженные связи. Если нужной связи нет — загрузите её в Revit и откройте эту команду заново." />
+                    </Border>
+                </StackPanel>
+                <Border Padding="12" Margin="0,0,0,12">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource KPLN_CardBorder}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSpace}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" FontWeight="SemiBold"
+                                   Text="Уточнения по типам марок" Margin="0,0,0,12" />
+                        <CheckBox Style="{StaticResource KPLN_CheckBox}" Content="Маркировать с учётом радиаторов"
+                                  IsChecked="{Binding UseRadiators, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                        <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" FontSize="13"
+                                   Text="Тип марки пространств с радиаторами" Margin="0,0,0,5" />
+                        <ComboBox Style="{StaticResource KPLN_ComboBox}" ItemsSource="{Binding SpaceTagTypes}" DisplayMemberPath="Name"
+                                  SelectedItem="{Binding SelectedRadiatorType}" IsEnabled="{Binding UseRadiators}"
+                                  ToolTip="{Binding SelectedRadiatorType.Name}" Margin="0,0,0,16" />
+                        <CheckBox Style="{StaticResource KPLN_CheckBox}" Content="Маркировать с учётом решёток"
+                                  IsChecked="{Binding UseGrilles, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                        <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" FontSize="13"
+                                   Text="Тип марки пространств с решётками" Margin="0,0,0,5" />
+                        <ComboBox Style="{StaticResource KPLN_ComboBox}" ItemsSource="{Binding SpaceTagTypes}" DisplayMemberPath="Name"
+                                  SelectedItem="{Binding SelectedGrilleType}" IsEnabled="{Binding UseGrilles}"
+                                  ToolTip="{Binding SelectedGrilleType.Name}" Margin="0,0,0,10" />
+                        <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" FontSize="13" TextWrapping="Wrap"
+                                   Text="Учитываются только элементы на этом виде. Для решёток: точное вхождение LocationPoint, квадрат XY ±25 мм, затем поиск под квадратом вниз до 1,5 м. Общий план отопления и вентиляции будет пропущен при включённых обеих проверках." Margin="0" />
+                    </StackPanel>
+                </Border>
+                <TextBlock Style="{StaticResource KPLN_TextBlock}" MaxWidth="10000" Text="{Binding UserHelp}"
+                           TextWrapping="Wrap" FontSize="13" Margin="0,0,0,12" />
+                <TextBlock MaxWidth="10000" Text="{Binding ConfigStatus}" TextWrapping="Wrap" FontSize="13"
+                           Foreground="#FFD166" Margin="0,0,0,8" />
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Style="{StaticResource KPLN_Button}" Content="Отмена" Command="{Binding CloseWindowCmd}" />
+            <Button Style="{StaticResource KPLN_RunButton}" Content="Маркировать" Command="{Binding RunCmd}" IsDefault="True" Margin="8,0,0,0" />
+        </StackPanel>
+    </Grid>
+</Window>

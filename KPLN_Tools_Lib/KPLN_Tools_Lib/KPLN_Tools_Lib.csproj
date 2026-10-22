@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug2020</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
+    <ProjectGuid>{857F5C40-501B-45C8-A31C-2528B70A2299}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>KPLN_Tools_Lib</RootNamespace>
+    <AssemblyName>KPLN_Tools_Lib</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <LangVersion>7.3</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2020' OR '$(Configuration)'=='Revit2020'">
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2023' OR '$(Configuration)'=='Revit2023'">
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug2024' OR '$(Configuration)'=='Revit2024'">
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Debug$(RevitVer)|x64' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\$(RevitVer)\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug$(RevitVer)</DefineConstants>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)'=='Revit$(RevitVer)|x64' ">
+    <OutputPath>bin\$(RevitVer)\</OutputPath>
+    <DefineConstants>Revit$(RevitVer)</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <Choose>
+    <When Condition=" '$(Configuration)'=='Debug$(RevitVer)' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\Debug\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+    <When Condition=" '$(Configuration)'=='Revit$(RevitVer)' ">
+      <ItemGroup>
+        <Reference Include="KPLN_Library_ConfigWorker">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+        <Reference Include="KPLN_Library_Forms">
+          <HintPath>..\..\01_KPLN_Library\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath>
+          <Private>False</Private>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="ExternalCommands\CreateSpacesExtCmd.cs" />
+    <Compile Include="ExternalCommands\TagSpacesExtCmd.cs" />
+    <Compile Include="Forms\Entities\TagSpacesM.cs" />
+    <Compile Include="Forms\Entities\TagSpacesConfig.cs" />
+    <Compile Include="Services\TagSpacesConfigService.cs" />
+    <Compile Include="Services\TagSpacesEquipmentService.cs" />
+    <Compile Include="Services\TagSpacesEquipmentRules.cs" />
+    <Compile Include="Forms\ViewModels\TagSpacesVM.cs" />
+    <Compile Include="Services\TagSpacesGeometry.cs" />
+    <Compile Include="Services\TagSpacesResult.cs" />
+    <Compile Include="Services\TagSpacesService.cs" />
+    <Compile Include="Forms\TagSpaces.xaml.cs">
+      <DependentUpon>TagSpaces.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Forms\TagSpaces.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <EmbeddedResource Include="Imagens\tagSpaces.png" />
+    <Compile Include="Forms\Commands\RelayCommand.cs" />
+    <Compile Include="Forms\Entities\CreateSpacesM.cs" />
+    <Compile Include="Forms\ViewModels\CreateSpacesVM.cs" />
+    <Compile Include="Services\CreateSpacesResult.cs" />
+    <Compile Include="Services\CreateSpacesService.cs" />
+    <Compile Include="ToolsRibbon.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Forms\CreateSpaces.xaml.cs">
+      <DependentUpon>CreateSpaces.xaml</DependentUpon>
+    </Compile>
+    <Page Include="Forms\CreateSpaces.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <EmbeddedResource Include="Imagens\createSpaces.png" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
