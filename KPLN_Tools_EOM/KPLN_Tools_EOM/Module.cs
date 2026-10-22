@@ -29,7 +29,6 @@ namespace KPLN_Tools_EOM
                 ?? application.CreateRibbonPanel(tabName, panelName);
 
 
-#if Revit2020 || Debug2020
             PulldownButton eomToolsPullDownBtn = CreatePulldownButtonInRibbon(
                 "Плагины ЭОМ",
                 "Плагины ЭОМ",
@@ -43,6 +42,7 @@ namespace KPLN_Tools_EOM
                 panel,
                 false);
 
+#if Revit2020 || Debug2020
             // Импорт глобальных параметров доступен только специалистам BIM-отдела.
             if (SQLiteMainService.CurrentUserDBSubDepartment?.Id == 8)
             {
@@ -111,6 +111,9 @@ namespace KPLN_Tools_EOM
                 "KPLN_Tools_EOM.Imagens.FillInParamSmall.png",
                 "http://moodle/mod/book/view.php?id=502&chapterid=1319"));
 #endif
+
+            KPLN_Tools_Lib.ToolsRibbon.AddCreateSpacesButton(eomToolsPullDownBtn);
+            KPLN_Tools_Lib.ToolsRibbon.AddTagSpacesButton(eomToolsPullDownBtn);
 
             return Result.Succeeded;
         }
