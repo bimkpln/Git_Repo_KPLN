@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
@@ -443,10 +443,16 @@ namespace KPLN_Publication.ExternalCommands.Print
                 ProgressInfoViewModel progressInfoViewModel = new ProgressInfoViewModel
                 {
                     ProcessTitle = "Экспорт в pdf видов/листов...",
-                    MaxProgress = mSheets.Count
+                    MaxProgress = mSheets.Sum(sheet => sheet.MainView is ViewSheet ? sheet.TitleBlocks.Count : 1)
                 };
                 ProgressWindow window = ProgressWindow.ShowInBackground(progressInfoViewModel, "KPLN: Пакетная выдача");
 
+
+                UIDocument printUiDocument = commandData.Application.ActiveUIDocument;
+                if (printUiDocument == null || !printUiDocument.Document.Equals(openedDoc))
+                    printUiDocument = null;
+                View originalView = printUiDocument?.ActiveView;
+                bool changedActiveView = false;
 
                 try
                 {
@@ -467,6 +473,17 @@ namespace KPLN_Publication.ExternalCommands.Print
                         {
                             SchedulesRefresh.Start(openedDoc, msheet.MainView);
                             logger.Write("Спецификации обновлены успешно");
+                        }
+
+                        // Открываем многосоставной лист один раз до транзакции и всех заданий печати.
+                        // Иначе SubmitPrint для закрытого вида повторно готовит его для каждого штампа.
+                        if (printUiDocument != null && msheet.MainView is ViewSheet
+                            && msheet.TitleBlocks.Count > 1
+                            && !printUiDocument.ActiveView.Id.Equals(msheet.MainView.Id))
+                        {
+                            printUiDocument.ActiveView = msheet.MainView;
+                            changedActiveView = true;
+                            logger.Write("Лист открыт один раз для печати всех основных надписей");
                         }
 
                         using (Transaction t = new Transaction(openedDoc))
@@ -534,6 +551,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                                 msheet.PdfFileName = fullFilename;
                                 printedFiles.Add(Tuple.Create(fullFilename, isSheet, msheet.ForceColored, msheet.MainView.Name));
                                 printedSheetCount++;
+                                ++progressInfoViewModel.CurrentProgress;
                             }
 
                             if (msheet.MainView is ViewSheet && printerName == "PDFCreator" && printSettings.isUseOrientation)
@@ -542,7 +560,6 @@ namespace KPLN_Publication.ExternalCommands.Print
                             t.RollBack();
                         }
 
-                        ++progressInfoViewModel.CurrentProgress;
                     }
 
 
@@ -553,6 +570,21 @@ namespace KPLN_Publication.ExternalCommands.Print
                 {
                     window.CloseSafely();
                     throw;
+                }
+                finally
+                {
+                    // Транзакция печати уже закрыта, можно вернуть исходный активный вид.
+                    if (changedActiveView && originalView != null && originalView.IsValidObject)
+                    {
+                        try
+                        {
+                            printUiDocument.ActiveView = originalView;
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.Write("Не удалось вернуть исходный активный вид: " + ex.Message);
+                        }
+                    }
                 }
 
                 if (rlt != null)
