@@ -83,7 +83,7 @@ namespace KPLN_Tools_AR
                 typeof(ExtCmd_AR_TEPDesign).FullName,
                 "KPLN_Tools_AR.Imagens.TEPDesignBig.png",
                 "KPLN_Tools_AR.Imagens.TEPDesignSmall.png",
-                "http://moodle");
+                "http://moodle/mod/book/view.php?id=502&chapterid=1363");
 
             PushButtonData evacuationRoutes = CreateBtnData(
                 "Автомоделирование путей эвакуации",

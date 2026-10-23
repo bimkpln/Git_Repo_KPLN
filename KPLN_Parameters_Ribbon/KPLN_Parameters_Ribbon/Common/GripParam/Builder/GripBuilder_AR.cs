@@ -139,6 +139,15 @@ namespace KPLN_Parameters_Ribbon.Common.GripParam.Builder
                 .Where(x => !x.Symbol.FamilyName.StartsWith("199_"))
                 .Select(e => new InstanceGeomData(e)));
 
+            // Семейства "Специальное оборудование"
+            ElemsOnLevel.AddRange(new FilteredElementCollector(Doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(BuiltInCategory.OST_SpecialityEquipment)
+                .Cast<FamilyInstance>()
+                // Только с геометрией
+                .Where(x => x.get_BoundingBox(null).Max.Z > 0 && x.get_BoundingBox(null).Min.Z > 0)
+                .Select(e => new InstanceGeomData(e)));
+
         }
     }
 }
