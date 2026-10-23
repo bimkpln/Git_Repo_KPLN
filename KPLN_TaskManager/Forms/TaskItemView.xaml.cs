@@ -3,6 +3,8 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_Bitrix24Worker;
 using KPLN_Library_DBWorker;
+using KPLN_Library_DBWorker.Core;
+using System.ComponentModel;
 using KPLN_Library_Forms.Services;
 using KPLN_Library_Forms.UI;
 using KPLN_TaskManager.Common;
@@ -24,6 +26,8 @@ namespace KPLN_TaskManager.Forms
 {
     public partial class TaskItemView : Window
     {
+        private bool _modelNamesLoaded;
+
         public TaskItemView(TaskItemEntity taskItemEntity)
         {
             InitializeComponent();
@@ -32,7 +36,6 @@ namespace KPLN_TaskManager.Forms
 
             CurrentTaskItemEntity = taskItemEntity;
 
-            DataContext = CurrentTaskItemEntity;
 
             CurrentTaskComments = new ObservableCollection<TaskItemEntity_Comment>(TMDBService.GetComments_ByTaskItem(CurrentTaskItemEntity));
             TaskItem_Comments.ItemsSource = CurrentTaskComments;
@@ -56,7 +59,59 @@ namespace KPLN_TaskManager.Forms
             SetUserAccessLevel();
 
             // Подписка на обновление из БД при открытии
-            this.Loaded += (s, e) => RefreshFromDatabase();
+            Loaded += TaskItemView_Loaded;
+            Closed += (s, e) => CurrentTaskItemEntity.PropertyChanged -= TaskItemEntity_PropertyChanged;
+        }
+
+        private void TaskItemView_Loaded(object sender, RoutedEventArgs e)
+        {
+            Loaded -= TaskItemView_Loaded;
+            RefreshFromDatabase();
+            RefreshModelNames();
+            DataContext = CurrentTaskItemEntity;
+            CurrentTaskItemEntity.PropertyChanged += TaskItemEntity_PropertyChanged;
+        }
+
+        private void TaskItemEntity_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(TaskItemEntity.DelegatedDepartmentId))
+                RefreshModelNames();
+        }
+
+        private void RefreshModelNames()
+        {
+            string previousModelName = CurrentTaskItemEntity.ModelName;
+            try
+            {
+                string[] warnings = CurrentTaskItemEntity.RefreshModelNames();
+                _modelNamesLoaded = true;
+                ModelBindingCBox.IsEnabled = IsCreatorEditable && _modelNamesLoaded;
+
+                if (CurrentTaskItemEntity.Id == 0)
+                    CurrentTaskItemEntity.FindModelByDlgSubDep();
+                else
+                    CurrentTaskItemEntity.ModelName = previousModelName;
+
+                if (warnings.Length > 0)
+                {
+                    MessageBox.Show(this,
+                        "Некоторые связи пропущены при подборе моделей. Остальные модели доступны для выбора.\n\n"
+                        + string.Join("\n\n", warnings),
+                        "KPLN: Пропущенные связи", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Worker_Error ex)
+            {
+                // Не позволяем выбрать модель из списка для предыдущего отдела.
+                _modelNamesLoaded = false;
+                ModelBindingCBox.IsEnabled = false;
+
+                // Сохраняем привязку существующего замечания при первом открытии.
+                if (!string.IsNullOrEmpty(previousModelName))
+                    CurrentTaskItemEntity.ModelNamesColl.Add(previousModelName);
+                MessageBox.Show(this, ex.Message, "KPLN: Ошибка подбора моделей",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         public TaskItemEntity CurrentTaskItemEntity { get; set; }
@@ -120,7 +175,7 @@ namespace KPLN_TaskManager.Forms
             HeaderTBox.IsEnabled = IsCreatorEditable;
             DelegateDepCBox.IsEnabled = IsCreatorEditable;
             BodyTBox.IsReadOnly = !IsCreatorEditable;
-            ModelBindingCBox.IsEnabled = IsCreatorEditable;
+            ModelBindingCBox.IsEnabled = IsCreatorEditable && _modelNamesLoaded;
             DeleteBtn.IsEnabled = IsCreatorEditable;
             ImgLoad.IsEnabled = IsCreatorEditable;
             AddElementIdsBtn.IsEnabled = IsCreatorEditable;

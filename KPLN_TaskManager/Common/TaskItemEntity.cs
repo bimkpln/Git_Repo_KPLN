@@ -17,8 +17,20 @@ namespace KPLN_TaskManager.Common
 {
     public enum TaskStatusEnum
     {
+        /// <summary>
+        /// Открыто
+        /// </summary>
         Open,
-        Close
+        /// <summary>
+        /// Закрыто (читай Приянто)
+        /// </summary>
+        Close,
+        /// <summary>
+        /// ПОКА В АРХИВЕ - НЕ ПОНЯТНО НА СКОЛЬКО АКТУАЛЬНО. Отработано
+        /// ВАЖНО: Чтобы не ложить БД - WorkedOut добавлен ПОСЛЕ статуса закрыто/принято. Это не совсем логино, но это уже не исправить 
+        /// (нужны правки в БД и 100% ребут, оно того не стоит)
+        /// </summary>
+        WorkedOut
     }
 
     public sealed class TaskItemEntity : INotifyPropertyChanged
@@ -143,10 +155,6 @@ namespace KPLN_TaskManager.Common
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(TaskTitle));
                     OnPropertyChanged(nameof(DBUserColl));
-                    OnPropertyChanged(nameof(ModelNamesColl));
-
-                    if (Id == 0)
-                        FindModelByDlgSubDep();
                 }
             }
         }
@@ -278,11 +286,14 @@ namespace KPLN_TaskManager.Common
             {
                 switch (value)
                 {
+                    case TaskStatusEnum.Open:
+                        TaskBackground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 84, 42));
+                        break;
                     case TaskStatusEnum.Close:
                         TaskBackground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 190, 104));
                         break;
-                    case TaskStatusEnum.Open:
-                        TaskBackground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 84, 42));
+                    case TaskStatusEnum.WorkedOut:
+                        TaskBackground = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 255, 128, 0));
                         break;
                 }
 
@@ -527,31 +538,35 @@ namespace KPLN_TaskManager.Common
         /// <summary>
         /// Коллекция моделей в открытом документе
         /// </summary>
-        public HashSet<string> ModelNamesColl
+        public HashSet<string> ModelNamesColl { get; private set; } = new HashSet<string>() { "<Весь проект>" };
+
+        /// <summary>
+        /// Подготовить список моделей до передачи в WPF-привязку.
+        /// При ошибке прежняя коллекция остается без изменений.
+        /// </summary>
+        internal string[] RefreshModelNames()
         {
-            get
+            HashSet<string> result = new HashSet<string>() { "<Весь проект>" };
+            HashSet<string> warnings = new HashSet<string>();
+            HashSet<string> skippedNames = new HashSet<string>();
+
+            if (Id > 0 && !string.IsNullOrEmpty(ModelName))
+                result.Add(ModelName);
+
+            if (Module.CurrentDoc != null && Module.CurrnetDocSubDep != null
+                && Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
+                result.Add(CurrentModelName(Module.CurrentDoc));
+
+            if (Module.CurrentDoc != null && DelegatedDepartmentId > 0)
             {
-                HashSet<string> result = new HashSet<string>() { "<Весь проект>" };
-
-                // Если НЕ новое замечание - добавляю имя
-                if (Id > 0 && !string.IsNullOrEmpty(ModelName))
-                    result.Add(ModelName);
-
-                // Если отдел делегирования совпадает с отделом открытой модели - добавляю в списк эту же модель
-                if (Module.CurrentDoc != null && Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
-                    result.Add(CurrentModelName(Module.CurrentDoc));
-
-                // Заполняю список линками в зависимости от выбранного отдела делегирования
-                if (Module.CurrentDoc != null && DelegatedDepartmentId > 0)
-                {
-                    foreach (string docName in GetDocRLinkNamesByDelegatedDep(DelegatedDepartmentId))
-                    {
-                        result.Add(docName);
-                    }
-                }
-
-                return result;
+                foreach (string docName in GetDocRLinkNamesByDelegatedDep(DelegatedDepartmentId, warnings, skippedNames))
+                    result.Add(docName);
             }
+
+            result.ExceptWith(skippedNames);
+            ModelNamesColl = result;
+            OnPropertyChanged(nameof(ModelNamesColl));
+            return warnings.ToArray();
         }
 
         /// <summary>
@@ -591,13 +606,14 @@ namespace KPLN_TaskManager.Common
         internal void FindModelByDlgSubDep()
         {
             // Если отдел ответсвенного совпадает с отделом модели - то ставим на этот же файл
-            if (Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
+            if (Module.CurrentDoc != null && Module.CurrnetDocSubDep != null
+                && Module.CurrnetDocSubDep.Id == DelegatedDepartmentId)
                 ModelName = ModelNamesColl.FirstOrDefault(name => name.Contains(CurrentModelName(Module.CurrentDoc)));
             else
                 ModelName = ModelNamesColl.FirstOrDefault();
         }
 
-        private static string[] GetDocRLinkNamesByDelegatedDep(int depId)
+        private static string[] GetDocRLinkNamesByDelegatedDep(int depId, HashSet<string> warnings, HashSet<string> skippedNames)
         {
             if (Module.CurrentDoc == null)
                 return null;
@@ -612,7 +628,26 @@ namespace KPLN_TaskManager.Common
             foreach (RevitLinkInstance inst in rlInsts)
             {
                 string instName = inst.Name;
-                DBSubDepartment rlSubDep = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(instName);
+                DBSubDepartment rlSubDep;
+                try
+                {
+                    rlSubDep = SQLiteMainService.SQLiteSubDepServiceInst.GetDBSubDepartment_ByRevitDocFullPath(instName);
+                }
+                catch (Worker_Error ex)
+                {
+                    // Ошибка одной связи не мешает подобрать остальные модели.
+                    warnings.Add(ex.Message);
+                    skippedNames.Add(instName.Split(new string[] { " : " }, StringSplitOptions.None)[0]);
+                    continue;
+                }
+
+                if (rlSubDep == null)
+                {
+                    warnings.Add($"Не удалось определить раздел по имени файла: {instName}");
+                    skippedNames.Add(instName.Split(new string[] { " : " }, StringSplitOptions.None)[0]);
+                    continue;
+                }
+
                 if (rlSubDep.Id == depId)
                 {
                     // Чистка от доп. параметров в имени линка
