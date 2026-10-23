@@ -11,18 +11,27 @@ namespace KPLN_Tools_Lib
     public static class ToolsRibbon
     {
         public static PushButton AddTagSpacesButton(PulldownButton pulldown)
+            => AddTagButton(pulldown, false);
+
+        public static PushButton AddTagRoomsButton(PulldownButton pulldown)
+            => AddTagButton(pulldown, true);
+
+        private static PushButton AddTagButton(PulldownButton pulldown, bool roomsOnly)
         {
             if (pulldown == null)
                 throw new ArgumentNullException(nameof(pulldown));
 
             Assembly assembly = typeof(TagSpacesExtCmd).Assembly;
-            var data = new PushButtonData("KPLN_Tools_Lib.TagSpaces", TagSpacesExtCmd.PluginName,
-                assembly.Location, typeof(TagSpacesExtCmd).FullName)
+            var data = new PushButtonData(roomsOnly ? "KPLN_Tools_Lib.TagRooms" : "KPLN_Tools_Lib.TagSpaces",
+                roomsOnly ? TagRoomsExtCmd.PluginName : TagSpacesExtCmd.PluginName,
+                assembly.Location, roomsOnly ? typeof(TagRoomsExtCmd).FullName : typeof(TagSpacesExtCmd).FullName)
             {
-                ToolTip = "Маркировать помещения или пространства на выбранных планах этажей / потолков.",
-                LongDescription = "Выделите планы в диспетчере проекта через Ctrl / Shift. Выберите категорию, "
+                ToolTip = roomsOnly ? "Маркировать помещения на выбранных планах этажей / потолков." : "Маркировать помещения или пространства на выбранных планах этажей / потолков.",
+                LongDescription = (roomsOnly
+                    ? "Выделите планы в диспетчере проекта через Ctrl / Shift. Выберите тип марки и источники помещений: текущую модель или загруженные связи.\n"
+                    : "Выделите планы в диспетчере проекта через Ctrl / Shift. Выберите категорию, "
                     + "тип марки и источник помещений: текущую модель или загруженную связь. "
-                    + "Пространства маркируются в текущей модели. Уже маркированные элементы пропускаются.\n"
+                    + "Пространства маркируются в текущей модели. Уже маркированные элементы пропускаются.\n")
                     + string.Format("Дата сборки: {0:yyyy/MM/dd}\nНомер сборки: {1}\nИмя модуля: {2}",
                         File.GetLastWriteTime(assembly.Location), assembly.GetName().Version, assembly.GetName().Name)
             };

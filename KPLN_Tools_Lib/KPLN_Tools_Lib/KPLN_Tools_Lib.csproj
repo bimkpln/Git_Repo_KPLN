@@ -83,6 +83,7 @@
   <ItemGroup>
     <Compile Include="ExternalCommands\CreateSpacesExtCmd.cs" />
     <Compile Include="ExternalCommands\TagSpacesExtCmd.cs" />
+    <Compile Include="ExternalCommands\TagRoomsExtCmd.cs" />
     <Compile Include="Forms\Entities\TagSpacesM.cs" />
     <Compile Include="Forms\Entities\TagSpacesConfig.cs" />
     <Compile Include="Services\TagSpacesConfigService.cs" />

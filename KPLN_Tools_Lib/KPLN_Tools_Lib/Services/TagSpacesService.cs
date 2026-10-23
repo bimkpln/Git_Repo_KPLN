@@ -266,7 +266,18 @@ namespace KPLN_Tools_Lib.Services
                 PlanPoint[][] crop = GetCropPolygons(view);
                 equipment = new TagSpacesEquipmentService().Analyze(document, view, (Phase)document.GetElement(phaseId),
                     candidates.Cast<Space>().ToArray(), crop, equipmentOptions);
-                result.Messages.AddRange(equipment.Messages);
+                foreach (KeyValuePair<string, List<ElementId>> failure in equipment.FailureIdsByMessage)
+                {
+                    if (!result.EquipmentFailureIdsByMessage.TryGetValue(failure.Key, out List<ElementId> ids))
+                    {
+                        ids = new List<ElementId>();
+                        result.EquipmentFailureIdsByMessage.Add(failure.Key, ids);
+                    }
+
+                    foreach (ElementId id in failure.Value)
+                        if (!ids.Contains(id))
+                            ids.Add(id);
+                }
                 if (!string.IsNullOrEmpty(equipment.LayoutError))
                 {
                     result.ErrorViews++;

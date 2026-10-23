@@ -46,7 +46,7 @@
                     <Border.Style>
                         <Style TargetType="Border">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasSpaces}" Value="True">
+                                <DataTrigger Binding="{Binding HideNoSpacesWarning}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                 </DataTrigger>
                             </Style.Triggers>

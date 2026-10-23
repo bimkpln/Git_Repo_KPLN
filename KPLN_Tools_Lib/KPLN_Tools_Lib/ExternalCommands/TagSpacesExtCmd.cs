@@ -19,31 +19,35 @@ namespace KPLN_Tools_Lib.ExternalCommands
         public const string PluginName = "Маркировать помещения/пространства";
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+            => Execute(commandData, ref message, elements, false);
+
+        internal static Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements, bool roomsOnly)
         {
+            string pluginName = roomsOnly ? TagRoomsExtCmd.PluginName : PluginName;
             try
             {
                 UIDocument uiDocument = commandData.Application.ActiveUIDocument;
                 Document document = uiDocument?.Document;
                 if (document == null || document.IsFamilyDocument || document.IsReadOnly)
                 {
-                    TaskDialog.Show(PluginName, "Откройте проект, доступный для редактирования.");
+                    TaskDialog.Show(pluginName, "Откройте проект, доступный для редактирования.");
                     return Result.Cancelled;
                 }
 
                 Element[] selection = uiDocument.Selection.GetElementIds().Select(document.GetElement).ToArray();
                 if (selection.Length == 0 || selection.Any(element => !IsSupportedView(element)))
                 {
-                    TaskDialog.Show(PluginName, "Выделите в диспетчере проекта один или несколько планов этажей / потолков "
+                    TaskDialog.Show(pluginName, "Выделите в диспетчере проекта один или несколько планов этажей / потолков "
                         + "через Ctrl или Shift. В выборе должны быть только планы, без шаблонов видов.");
                     return Result.Cancelled;
                 }
 
 
-                var model = new TagSpacesM(document, selection.Cast<ViewPlan>().OrderBy(view => view.Name).ToArray());
+                var model = new TagSpacesM(document, selection.Cast<ViewPlan>().OrderBy(view => view.Name).ToArray(), roomsOnly);
                 model.ApplyConfig(TagSpacesConfigService.Load(document, out string configWarning));
                 model.ConfigStatus = configWarning;
                 
-                var window = new TagSpaces(model);
+                var window = new TagSpaces(model) { Title = "KPLN: " + pluginName };
                 WindowHandleSearch.MainWindowHandle.SetAsOwner(window);
                 if (window.ShowDialog() != true)
                     return Result.Cancelled;
@@ -59,17 +63,20 @@ namespace KPLN_Tools_Lib.ExternalCommands
                 if (!string.IsNullOrEmpty(saveWarning))
                     result.Messages.Add(saveWarning);
 
-                bool hasIssues = result.Messages.Count > 0 || result.Errors.Count > 0;
+                bool hasIssues = result.Messages.Count > 0 || result.Errors.Count > 0 || result.EquipmentFailureIdsByMessage.Count > 0;
                 if (hasIssues)
                 {
-                    HtmlOutput.Print(PluginName, MessageType.Header);
+                    HtmlOutput.Print(pluginName, MessageType.Header);
                     if (result.Messages.Count > 0)
                         HtmlOutput.Print(string.Join("<br/>", result.Messages.Select(WebUtility.HtmlEncode)), MessageType.Warning);
+                    HtmlOutput.PrintMsgDict("Привязка приборов к пространствам", MessageType.Warning,
+                        result.EquipmentFailureIdsByMessage.ToDictionary(pair => WebUtility.HtmlEncode(pair.Key), pair => pair.Value));
+
                     if (result.Errors.Count > 0)
                         HtmlOutput.Print(string.Join("<br/>", result.Errors.Select(WebUtility.HtmlEncode)), MessageType.Error);
                 }
 
-                TaskDialog.Show(PluginName, result.Summary + (hasIssues
+                TaskDialog.Show(pluginName, result.Summary + (hasIssues
                     ? "\nПодробности приведены в окне вывода KPLN." : string.Empty));
                 return Result.Succeeded;
             }

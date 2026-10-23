@@ -21,11 +21,12 @@ namespace KPLN_Tools_Lib.Forms.Entities
         private TagSpacesTypeM _grilleType;
         private TagSpacesConfig _loadedConfig;
 
-        internal TagSpacesM(Document document, ViewPlan[] views)
+        internal TagSpacesM(Document document, ViewPlan[] views, bool roomsOnly = false)
         {
+            RoomsOnly = roomsOnly;
             HasSpaces = new FilteredElementCollector(document).OfCategory(BuiltInCategory.OST_MEPSpaces)
                 .WhereElementIsNotElementType().Cast<Space>().Any(space => space.Area > 0);
-            Categories = HasSpaces ? new[] { "Помещения", "Пространства" } : new[] { "Помещения" };
+            Categories = !RoomsOnly && HasSpaces ? new[] { "Помещения", "Пространства" } : new[] { "Помещения" };
 
             Views = views;
             ViewNames = string.Join("\n", views.Select(view => view.Name));
@@ -41,7 +42,7 @@ namespace KPLN_Tools_Lib.Forms.Entities
             foreach (TagSpacesSourceM source in Sources)
                 source.PropertyChanged += (sender, args) => UpdateValidation();
 
-            (Sources.Length > 1 ? Sources[1] : Sources[0]).IsSelected = true;
+            (!RoomsOnly && Sources.Length > 1 ? Sources[1] : Sources[0]).IsSelected = true;
             _roomType = _allTypes.FirstOrDefault(type => type.IsRoom);
             _spaceType = _allTypes.Where(type => !type.IsRoom)
                 .OrderByDescending(type => type.RevitType.FamilyName.IndexOf("Пространство_Имя_Номер_Площадь", System.StringComparison.OrdinalIgnoreCase) >= 0)
@@ -59,6 +60,8 @@ namespace KPLN_Tools_Lib.Forms.Entities
         public string ViewSummary => string.Format("Выбрано планов: {0}", Views.Length);
         public string[] Categories { get; }
         public bool HasSpaces { get; }
+        public bool RoomsOnly { get; }
+        public bool HideNoSpacesWarning => RoomsOnly || HasSpaces;
         public TagSpacesSourceM[] Sources { get; }
         public TagSpacesTypeM[] TagTypes { get; private set; }
         public TagSpacesTypeM[] SpaceTagTypes { get; }
@@ -138,7 +141,7 @@ namespace KPLN_Tools_Lib.Forms.Entities
             get => _selectedCategory;
             set
             {
-                _selectedCategory = value;
+                _selectedCategory = RoomsOnly ? Categories[0] : value;
                 TagTypes = _allTypes.Where(type => type.IsRoom == IsRoom).ToArray();
                 NotifyPropertyChanged();
                 NotifyPropertyChanged(nameof(IsRoom));
@@ -208,7 +211,7 @@ namespace KPLN_Tools_Lib.Forms.Entities
             SelectedGrilleType = ResolveType(settings.GrilleTag, false) ?? FindDefaultSpaceTag("воздухообм");
             UseRadiators = settings.UseRadiators;
             UseGrilles = settings.UseGrilles;
-            SelectedCategory = settings.IsRoom || !HasSpaces ? Categories[0] : Categories[1];
+            SelectedCategory = RoomsOnly || settings.IsRoom || !HasSpaces ? Categories[0] : Categories[1];
         }
 
         internal TagSpacesConfig GetConfig()

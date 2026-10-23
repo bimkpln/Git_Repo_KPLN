@@ -1,6 +1,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Mechanical;
 using System;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -23,7 +24,7 @@ namespace KPLN_Tools_Lib.Services
     {
         internal HashSet<ElementId> RadiatorSpaces { get; } = new HashSet<ElementId>();
         internal HashSet<ElementId> GrilleSpaces { get; } = new HashSet<ElementId>();
-        internal List<string> Messages { get; } = new List<string>();
+        internal Dictionary<string, List<ElementId>> FailureIdsByMessage { get; } = new Dictionary<string, List<ElementId>>();
         internal string LayoutError { get; set; }
 
         internal FamilySymbol GetTagType(ElementId spaceId, FamilySymbol defaultType, TagSpacesEquipmentOptions options)
@@ -40,8 +41,12 @@ namespace KPLN_Tools_Lib.Services
     {
 #if Debug2020 || Revit2020
         private static readonly double MaxGrilleProjection = UnitUtils.ConvertToInternalUnits(1500, DisplayUnitType.DUT_MILLIMETERS);
+        private static readonly double MaxRadiatorUp = UnitUtils.ConvertToInternalUnits(200, DisplayUnitType.DUT_MILLIMETERS);
+        private static readonly double MaxRadiatorDown = UnitUtils.ConvertToInternalUnits(500, DisplayUnitType.DUT_MILLIMETERS);
         private static readonly double GrilleHalfWidth = UnitUtils.ConvertToInternalUnits(25, DisplayUnitType.DUT_MILLIMETERS);
 #else
+        private static readonly double MaxRadiatorUp = UnitUtils.ConvertToInternalUnits(200, UnitTypeId.Millimeters);
+        private static readonly double MaxRadiatorDown = UnitUtils.ConvertToInternalUnits(500, UnitTypeId.Millimeters);
         private static readonly double MaxGrilleProjection = UnitUtils.ConvertToInternalUnits(1500, UnitTypeId.Millimeters);
         private static readonly double GrilleHalfWidth = UnitUtils.ConvertToInternalUnits(25, UnitTypeId.Millimeters);
 #endif
@@ -59,7 +64,7 @@ namespace KPLN_Tools_Lib.Services
             // Коллектор ограничен конкретным видом, включая его категории, фильтры и варианты.
             FamilyInstance[] visible = new FilteredElementCollector(document, view.Id)
                 .OfClass(typeof(FamilyInstance)).WherePasses(new ElementMulticategoryFilter(categories))
-                .Cast<FamilyInstance>().Where(instance => IsVisible(instance, view, phase, crop)).ToArray();
+                .Cast<FamilyInstance>().Where(instance => instance.SuperComponent == null && IsVisible(instance, view, phase, crop)).ToArray();
             FamilyInstance[] radiators = visible.Where(instance => MatchesRule(instance, BuiltInCategory.OST_MechanicalEquipment)).ToArray();
             FamilyInstance[] grilles = visible.Where(instance => MatchesRule(instance, BuiltInCategory.OST_DuctTerminal)).ToArray();
 
@@ -78,10 +83,13 @@ namespace KPLN_Tools_Lib.Services
             using (var calculator = new SpatialElementGeometryCalculator(document))
             {
                 foreach (FamilyInstance instance in radiators)
-                    Associate(instance, spaces, phase, result.RadiatorSpaces, result.Messages, view.Name, null);
+                    Associate(instance, spaces, phase, result.RadiatorSpaces, result.FailureIdsByMessage, view.Name,
+                        () => FindRadiatorSpace(instance, spaces, calculator, spaceSolids),
+                        "вверх до 200 мм, квадрат XY ±25 мм и вертикально вниз до 500 мм");
                 foreach (FamilyInstance instance in grilles)
-                    Associate(instance, spaces, phase, result.GrilleSpaces, result.Messages, view.Name,
-                        () => FindSpaceBelow(instance, spaces, calculator, spaceSolids));
+                    Associate(instance, spaces, phase, result.GrilleSpaces, result.FailureIdsByMessage, view.Name,
+                        () => FindSpaceBelow(instance, spaces, calculator, spaceSolids, MaxGrilleProjection),
+                        "квадрат XY ±25 мм и проекция квадрата вниз до 1,5 м");
             }
 
             return result;
@@ -126,25 +134,23 @@ namespace KPLN_Tools_Lib.Services
         }
 
         private static void Associate(FamilyInstance instance, Space[] spaces, Phase phase,
-            HashSet<ElementId> matches, List<string> messages, string viewName, Func<Space> findBelow)
+            HashSet<ElementId> matches, Dictionary<string, List<ElementId>> messages, string viewName, Func<Space> findFallback, string searchDescription)
         {
-            string label = string.Format("План «{0}», прибор «{1}: {2}» [id: {3}]",
-                viewName, instance.Symbol.FamilyName, instance.Name, instance.Id);
+            string label = string.Format("План «{0}»", viewName);
             try
             {
-                XYZ point = findBelow != null ? (instance.Location as LocationPoint)?.Point
-                    : instance.HasSpatialElementCalculationPoint ? instance.GetSpatialElementCalculationPoint()
-                    : (instance.Location as LocationPoint)?.Point;
-                if (point == null && findBelow == null)
+                // Штатная принадлежность Revit имеет приоритет над геометрией LocationPoint.
+                Space native = instance.get_Space(phase);
+                if (native != null && native.Area > 0 && spaces.Any(space => space.Id.Equals(native.Id)))
                 {
-                    messages.Add(label + ": нет точки для определения пространства; проверьте принадлежность вручную.");
+                    matches.Add(native.Id);
                     return;
                 }
 
-                Space native = instance.get_Space(phase);
-                if (point != null && native != null && spaces.Any(space => space.Id.Equals(native.Id)) && native.IsPointInSpace(point))
+                XYZ point = (instance.Location as LocationPoint)?.Point;
+                if (point == null)
                 {
-                    matches.Add(native.Id);
+                    HtmlOutput.SetMsgDict_ByMsg(label + ": нет LocationPoint для определения пространства; проверьте принадлежность вручную.", instance.Id, messages);
                     return;
                 }
 
@@ -155,22 +161,21 @@ namespace KPLN_Tools_Lib.Services
                     return;
                 }
 
-                if (containing.Length == 0 && findBelow != null)
+                if (containing.Length == 0)
                 {
-                    Space projected = findBelow();
+                    Space projected = findFallback();
                     if (projected != null)
                     {
                         matches.Add(projected.Id);
                         return;
                     }
 
-                    messages.Add(label + ": пространство не найдено: LocationPoint, квадрат XY ±25 мм и проекция квадрата вниз до 1,5 м; специальная марка не назначена.");
+                    HtmlOutput.SetMsgDict_ByMsg(label + ": пространство не найдено: принадлежность Revit, LocationPoint, "
+                        + searchDescription + "; специальная марка не назначена.", instance.Id, messages);
                     return;
                 }
 
-                messages.Add(label + (containing.Length == 0
-                        ? ": точка прибора вне объёма пространств плана; специальная марка не назначена."
-                        : ": точка прибора попала в несколько пространств; исправьте пересечение пространств."));
+                HtmlOutput.SetMsgDict_ByMsg(label + ": точка прибора попала в несколько пространств; исправьте пересечение пространств.", instance.Id, messages);
             }
             catch (Autodesk.Revit.Exceptions.RegenerationFailedException)
             {
@@ -178,12 +183,12 @@ namespace KPLN_Tools_Lib.Services
             }
             catch (Exception ex)
             {
-                messages.Add(label + ": не удалось определить пространство: " + ex.Message);
+                HtmlOutput.SetMsgDict_ByMsg(label + ": не удалось определить пространство: " + ex.Message, instance.Id, messages);
             }
         }
 
         private static Space FindSpaceBelow(FamilyInstance instance, Space[] spaces,
-            SpatialElementGeometryCalculator calculator, Dictionary<ElementId, Solid> spaceSolids)
+            SpatialElementGeometryCalculator calculator, Dictionary<ElementId, Solid> spaceSolids, double maxProjection, bool onlyAtOrigin = false)
         {
             XYZ origin = (instance.Location as LocationPoint)?.Point;
             if (origin == null)
@@ -206,7 +211,7 @@ namespace KPLN_Tools_Lib.Services
                 // Верхняя грань — квадрат вокруг LocationPoint, объём под ней — третья ступень поиска.
                 // Это точное пересечение объёмов, а не выборка точек и не габарит решётки.
                 using (Solid search = GeometryCreationUtilities.CreateExtrusionGeometry(
-                    new[] { loop }, -XYZ.BasisZ, MaxGrilleProjection))
+                    new[] { loop }, -XYZ.BasisZ, maxProjection))
                 {
                     foreach (Space space in spaces)
                     {
@@ -234,10 +239,65 @@ namespace KPLN_Tools_Lib.Services
 
                             double distance = Math.Max(0, origin.Z - top);
                             // Пересечение на исходной высоте (ступень 2) приоритетнее любого попадания ниже.
-                            if (distance <= MaxGrilleProjection && distance < nearestDistance)
+                            if (distance <= maxProjection && (!onlyAtOrigin || distance <= 1e-9) && distance < nearestDistance)
                             {
                                 nearest = space;
                                 nearestDistance = distance;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return nearest;
+        }
+
+        private static Space FindRadiatorSpace(FamilyInstance instance, Space[] spaces,
+            SpatialElementGeometryCalculator calculator, Dictionary<ElementId, Solid> spaceSolids)
+        {
+            XYZ origin = (instance.Location as LocationPoint)?.Point;
+            if (origin == null)
+                return null;
+
+            // Смещения выполняются строго последовательно после штатной привязки и точного вхождения.
+            return FindSpaceVertically(origin, XYZ.BasisZ, MaxRadiatorUp, spaces, calculator, spaceSolids)
+                ?? FindSpaceBelow(instance, spaces, calculator, spaceSolids, MaxRadiatorDown, true)
+                ?? FindSpaceVertically(origin, -XYZ.BasisZ, MaxRadiatorDown, spaces, calculator, spaceSolids);
+        }
+
+        private static Space FindSpaceVertically(XYZ origin, XYZ direction, double distance, Space[] spaces,
+            SpatialElementGeometryCalculator calculator, Dictionary<ElementId, Solid> spaceSolids)
+        {
+            Space nearest = null;
+            double nearestDistance = double.MaxValue;
+            // Отрезок всегда полной длины 200/500 мм, а не короткий шаг у границы пространства.
+            using (Line line = Line.CreateBound(origin, origin + direction * distance))
+            using (var options = new SolidCurveIntersectionOptions())
+            {
+                foreach (Space space in spaces)
+                {
+                    if (space.Area <= 0)
+                        continue;
+
+                    if (!spaceSolids.TryGetValue(space.Id, out Solid solid))
+                    {
+                        solid = calculator.CalculateSpatialElementGeometry(space).GetGeometry();
+                        spaceSolids.Add(space.Id, solid);
+                    }
+
+                    using (SolidCurveIntersection intersection = solid.IntersectWithCurve(line, options))
+                    {
+                        for (int i = 0; i < intersection.SegmentCount; i++)
+                        {
+                            using (Curve segment = intersection.GetCurveSegment(i))
+                            {
+                                double hitDistance = Math.Min(origin.DistanceTo(segment.GetEndPoint(0)),
+                                    origin.DistanceTo(segment.GetEndPoint(1)));
+                                if (hitDistance < nearestDistance)
+                                {
+                                    nearest = space;
+                                    nearestDistance = hitDistance;
+                                }
                             }
                         }
                     }
