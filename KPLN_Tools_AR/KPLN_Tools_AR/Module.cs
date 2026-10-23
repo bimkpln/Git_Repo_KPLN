@@ -123,6 +123,7 @@ namespace KPLN_Tools_AR
             arToolsPullDownBtn.AddPushButton(TEPDesign);
 #endif
             arToolsPullDownBtn.AddPushButton(evacuationRoutes);
+            KPLN_Tools_Lib.ToolsRibbon.AddTagRoomsButton(arToolsPullDownBtn);
 
             return Result.Succeeded;
         }
