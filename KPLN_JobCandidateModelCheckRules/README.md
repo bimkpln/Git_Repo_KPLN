@@ -8,6 +8,7 @@
 - [Порядок проверки](rules/review-policy.md) — получение данных, выполнение проверки и отчёт.
 - [Контракт критериев](rules/criteria-contract.md) — критерии, статусы и основание оценки.
 - Общие процедуры: [веса](rules/error-weight-policy.md), [основное и дополнительное](rules/assignment-scoring.md), [коллизии](rules/collision-policy.md).
+- [Действующее задание АР](rules/ar-current-assignment.json) — версия исходного PDF и контрольная сумма для новых проверок.
 - Уточнения заданий: [АР](rules/ar-assignment-clarifications.md), [КР](rules/kr-assignment-clarifications.md).
 - Каталоги ошибок: [АР](rules/ar-error-weights.md), [КР](rules/kr-error-weights.md).
 - `skills/kpln-job-candidate-model-check/SKILL.md` — лёгкая точка входа.

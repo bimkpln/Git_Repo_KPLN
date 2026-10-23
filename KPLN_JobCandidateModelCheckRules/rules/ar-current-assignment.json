@@ -1,0 +1,11 @@
+{
+  "assignment_id": "AR-assignment-20261023",
+  "version": "1.0",
+  "registered_on": "2026-10-23",
+  "discipline": "АР",
+  "pdf": "local/ar-assignment-20261023/assignment-source.pdf",
+  "metadata": "local/ar-assignment-20261023/manifest.json",
+  "sha256": "053d4a33a3ceb1769a7881c20cd3482eb584fda0ec118b6e0432a63df0f073f8",
+  "pages": 1,
+  "rules_version": "0.1.14"
+}

@@ -1,0 +1,12 @@
+{
+  "assignment_id": "KR-assignment-20261023",
+  "version": "1.0",
+  "registered_on": "2026-10-23",
+  "discipline": "КР",
+  "pdf": "local/kr-assignment-20261023/assignment-source.pdf",
+  "metadata": "local/kr-assignment-20261023/manifest.json",
+  "criteria_profile": "local/kr-assignment-20261023/criteria-profile.json",
+  "sha256": "e8032aa1851344da131fcf07bb20661be8b80cdb15cf53295e8cffc1fc828476",
+  "pages": 1,
+  "rules_version": "0.1.15"
+}
