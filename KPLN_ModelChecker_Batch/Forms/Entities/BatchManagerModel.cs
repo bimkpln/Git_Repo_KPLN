@@ -5,6 +5,7 @@ using KPLN_Library_DBWorker;
 using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_OpenDocHandler;
 using KPLN_Library_OpenDocHandler.Core;
@@ -12,6 +13,7 @@ using KPLN_ModelChecker_Batch.Common;
 using KPLN_ModelChecker_Lib.Commands;
 using KPLN_ModelChecker_Lib.Core;
 using Microsoft.Win32;
+using RevitServerAPILib;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -22,8 +24,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace KPLN_ModelChecker_Batch.Forms.Entities
 {
@@ -73,7 +77,19 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             Document actDoc = _uiapp.ActiveUIDocument?.Document;
             if (actDoc != null)
             {
-                var fEnt = CreateFEnt(SQLiteDocService.GetFileFullName(actDoc));
+                FileEntity fEnt;
+                string mPath = SQLiteDocService.GetFileFullName(actDoc);
+                if(mPath.IndexOf("rsn", StringComparison.CurrentCultureIgnoreCase) >= 0)
+                {
+                    // Инфа по РС от открытой модели собирается налету
+                    ModelPath modelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(mPath);
+                    RevitServer rs = new RevitServer(modelPath.CentralServerPath, ModuleData.RevitVersion);
+                    fEnt = CreateFEnt(mPath, rs);
+
+                }
+                else
+                    fEnt = CreateFEnt(mPath);
+                
                 fEnt.IsActiveDoc = true;
 
                 FileEntitiesList.Add(fEnt);
@@ -153,20 +169,24 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
         internal static NLog.Logger CurrentLogger { get; set; }
 
-        private static FileEntity CreateFEnt(string mPath)
+        private static FileEntity CreateFEnt(string mPath, RevitServer revitServer = null)
         {
-            string fileName = mPath.Split('\\').LastOrDefault();
-
             string fileSize;
-            if (mPath.IndexOf("rsn", StringComparison.CurrentCultureIgnoreCase) >= 0)
+            if (revitServer != null)
             {
-                string rsHost = SelectFilesFromRevitServer.CurrentRevitServer.Host;
-                // mPath = "RSN:\\host\Folder\Sub\Model.rvt"  ->  нужно "Folder\Sub\Model.rvt"
+                string rsHost = revitServer.Host;
                 string rsRelativePath = mPath.Substring($"RSN:\\\\{rsHost}".Length).TrimStart('\\');
-                fileSize = (SelectFilesFromRevitServer.CurrentRevitServer.GetModelInfo(rsRelativePath).ModelSize / 1024 / 1024).ToString();
+                // mPath = "RSN:\\host\Folder\Sub\Model.rvt"  ->  нужно "Folder\Sub\Model.rvt"
+                fileSize = (revitServer.GetModelInfo(rsRelativePath).ModelSize / 1024 / 1024).ToString();
             }
             else
                 fileSize = (new FileInfo(mPath).Length / 1024 / 1024).ToString();
+
+            string fileName;
+            if(mPath.Contains('\\'))
+                fileName = mPath.Split('\\').LastOrDefault();
+            else
+                fileName = mPath.Split('/').LastOrDefault();
 
             return new FileEntity(fileName, mPath, fileSize);
         }
@@ -295,7 +315,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 foreach (ElementEntity formEntity in rsFilesPickForm.SelectedElements)
                 {
                     string filePath = $"RSN:\\\\{SelectFilesFromRevitServer.CurrentRevitServer.Host}{formEntity.Name}";
-                    AddToFileEntitiesWithCheck(CreateFEnt(filePath));
+                    AddToFileEntitiesWithCheck(CreateFEnt(filePath, SelectFilesFromRevitServer.CurrentRevitServer));
                 }
             }
         }
@@ -313,23 +333,20 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
         private void Run(object parameter)
         {
-            bool isFileError = false;
-            bool isCheckError = false;
-            string fileNames = string.Join("; ", FileEntitiesList.Select(ent => ent.Name));
-            string checkNames = string.Join("; ", _checkEntitiesList.Select(ent => ent.Name));
-            List<ExcelDataEntity> excelDataEntities = new List<ExcelDataEntity>();
-
             string excelPath = ExportToExcel.SetPath();
             if (string.IsNullOrEmpty(excelPath)) return;
 
-            CurrentLogger.Info($"Старт палгина \"{PluginName}.\"");
+            bool hasErrors = false;
+            FileEntity[] files = FileEntitiesList.ToArray();
+            CheckEntity[] checks = _checkEntitiesList.Where(check => check.IsChecked).ToArray();
+            List<string> reportPaths = new List<string>();
+
+            CurrentLogger.Info($"Старт плагина \"{PluginName}\".");
             using (UIContrAppSubscriber subscriber = new UIContrAppSubscriber(ModuleData.RevitUIControlledApp, CurrentLogger, this))
             {
-                foreach (FileEntity file in FileEntitiesList)
+                foreach (FileEntity file in files)
                 {
-                    CurrentLogger.Info($"Начинаю проверку файла: \"{file.Name}\"");
-
-
+                    Document doc = null;
                     ExcelDataEntity excelEnt = new ExcelDataEntity()
                     {
                         CheckRunData = DateTime.Now.ToString("G"),
@@ -338,14 +355,11 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         ChecksData = new List<CheckData>(),
                     };
 
-
-                    #region Открытие документа
-                    ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);
-
-                    // Открываем документ по указанному пути
-                    Document doc = null;
+                    // Ошибка одной модели не прерывает обработку следующих.
                     try
                     {
+                        CurrentLogger.Info($"Начинаю проверку файла: \"{file.Name}\"");
+                        ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);
                         // Открываю документ, если нужно
                         if (!file.IsActiveDoc)
                         {
@@ -402,102 +416,122 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                         excelEnt.CountedLinks = modelLinks;
                         excelEnt.OpenedLinks = loadedLinks;
 
-                    }
-                    catch (Autodesk.Revit.Exceptions.FileNotFoundException)
-                    {
-                        string modelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
-                        string msg = $"Путь к файлу {modelPath} - не существует. Внимательно проверь путь и наличие модели по указанному пути";
-                        CurrentLogger.Error(msg);
 
-                        if (!file.IsActiveDoc)
-                            doc?.Close(false);
-
-                        continue;
-                    }
-                    catch (Exception ex)
-                    {
-                        CurrentLogger.Error($"Не удалось открыть Revit-документ ({ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath)}). Нужно вмешаться человеку, " +
-                            $"ошибка при открытии: \"{ex.Message}\"");
-                        isFileError = true;
-
-                        if (!file.IsActiveDoc)
-                            doc?.Close(false);
-
-                        continue;
-                    }
-                    #endregion
-
-                    #region Запуск проверки
-                    string checkName = string.Empty;
-                    try
-                    {
-                        foreach (CheckEntity check in _checkEntitiesList)
+                        // Изолируем подготовку и выполнение каждой выбранной проверки.
+                        foreach (CheckEntity check in checks)
                         {
-                            check.CurrentAbstrCheck.Set_UIAppData(_uiapp, doc);
-                            checkName = check.Name;
-
-
-                            if (!check.IsChecked)
+                            CheckData result = new CheckData()
                             {
-                                CurrentLogger.Info($"Пользователь выбрал игнорировать проверку с именем: \"{checkName}\"");
-                                continue;
+                                PluginName = check.Name,
+                                CheckRunResult = CheckResultStatus.Failed,
+                            };
+
+                            try
+                            {
+                                CurrentLogger.Info($"Начинаю проверку: \"{check.Name}\"");
+                                // Новая проверка не наследует частичные данные предыдущей модели.
+                                AbstrCheck currentCheck = (AbstrCheck)Activator.CreateInstance(check.CurrentAbstrCheck.GetType());
+                                currentCheck.Set_UIAppData(_uiapp, doc);
+                                Element[] elements = currentCheck.GetElemsToCheck();
+                                result.CheckRunResult = currentCheck.ExecuteCheck(elements, false);
+                                result.PluginCheckerEntitiesColl = currentCheck.CheckerEntitiesColl;
+
+                                if (result.CheckRunResult == CheckResultStatus.Failed)
+                                {
+                                    hasErrors = true;
+                                    result.ErrorMessage = "Проверка завершилась с ошибкой. Подробности см. в окне ошибок проверки.";
+                                    ReportBatchError(file.Name, check.Name, result.ErrorMessage);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                hasErrors = true;
+                                result.CheckRunResult = CheckResultStatus.Failed;
+                                result.ErrorMessage = ex.Message;
+                                ReportBatchError(file.Name, check.Name, ex.ToString());
                             }
 
-
-                            CurrentLogger.Info($"Начинаю проверку с именем: \"{checkName}\"");
-
-                            CheckResultStatus checkResultStatus = check.RunCommand();
-                            excelEnt.ChecksData.Add(new CheckData()
-                            {
-                                PluginCheckerEntitiesColl = check.CurrentAbstrCheck.CheckerEntitiesColl,
-                                PluginName = checkName,
-                                CheckRunResult = checkResultStatus,
-                            });
-
-                            CurrentLogger.Info($"Завершена проверка с именем: \"{checkName}\"");
+                            excelEnt.ChecksData.Add(result);
                         }
                     }
                     catch (Exception ex)
                     {
-                        isCheckError = true;
-                        CurrentLogger.Error($"Работа плагина \"{PluginName}\" с проверкой прервана\"{checkName}\". Ошибка: \"{ex.Message}\"\n");
+                        hasErrors = true;
+                        excelEnt.ChecksData.Add(new CheckData()
+                        {
+                            PluginName = "Открытие / подготовка модели",
+                            CheckRunResult = CheckResultStatus.Failed,
+                            ErrorMessage = ex.Message,
+                        });
+                        ReportBatchError(file.Name, "Открытие / подготовка модели", ex.ToString());
                     }
-
-                    excelDataEntities.Add(excelEnt);
-
-                    if (!file.IsActiveDoc)
+                    finally
                     {
+                        // Сохраняем результат до закрытия документа, пока доступны его элементы.
                         try
                         {
-                            doc.Close(false);
+                            string reportPath = ExportToExcel.Run(excelPath, new[] { excelEnt });
+                            reportPaths.Add(reportPath);
+                            CurrentLogger.Info($"Сохранён отчёт: {reportPath}");
                         }
-                        // Ошибка возникает, когда файл был связью подгружен в открытй документ. Просто игнор
-                        catch (Autodesk.Revit.Exceptions.InvalidOperationException)
-                        {
-                        }
-                        // Если другой тип - свечу наверх
                         catch (Exception ex)
                         {
-                            isCheckError = true;
-                            CurrentLogger.Info($"Не удалось закрыть файл: \"{file.Name}\". Ошибка: \"{ex.Message}\"\n");
+                            hasErrors = true;
+                            ReportBatchError(file.Name, "Сохранение Excel", ex.ToString());
+                        }
+                        finally
+                        {
+                            if (!file.IsActiveDoc && doc != null)
+                            {
+                                try
+                                {
+                                    doc.Close(false);
+                                }
+                                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                                {
+                                    // Документ может быть связью открытой модели.
+                                }
+                                catch (Exception ex)
+                                {
+                                    hasErrors = true;
+                                    ReportBatchError(file.Name, "Закрытие модели", ex.ToString());
+                                }
+                            }
                         }
                     }
-                    #endregion
-
-                    CurrentLogger.Info($"Завершена проверка файла: \"{file.Name}\"");
                 }
-
-                CurrentLogger.Info($"Плагин \"{PluginName}\" завершил работу.\n");
             }
 
-
-            string excelFilePath = ExportToExcel.Run(excelPath, excelDataEntities.ToArray());
-
-            if (isCheckError || isFileError)
-                SendResultErrorMsg(fileNames, checkNames, excelFilePath);
+            string fileNames = string.Join("; ", files.Select(file => file.Name));
+            string checkNames = string.Join("; ", checks.Select(check => check.Name));
+            string reports = reportPaths.Count == 0 ? "Отчёты не сохранены" : string.Join("\n", reportPaths);
+            if (hasErrors)
+                SendResultErrorMsg(fileNames, checkNames, reports);
             else
-                SendResultMsg(fileNames, checkNames, excelFilePath);
+                SendResultMsg(fileNames, checkNames, reports);
+        }
 
+        private static void ReportBatchError(string fileName, string stage, string details)
+        {
+            string message = $"Модель: {fileName}. Этап: {stage}. Ошибка: {details}";
+            // Сбой вывода сообщения тоже не должен прерывать пакет.
+            try
+            {
+                CurrentLogger.Error(message);
+            }
+            catch (Exception)
+            {
+                System.Diagnostics.Trace.WriteLine(message);
+            }
+
+            try
+            {
+                HtmlOutput.Print(message, MessageType.Error);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.WriteLine(ex);
+            }
         }
 
         /// <summary>
@@ -566,7 +600,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 SQLiteMainService.CurrentDBUser,
                 $"Модуль: [b]{PluginName}\n[/b]" +
                 $"Анализируемые файлы: {fileNames}\n" +
-                $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
+                $"Файлы с результатами проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
                 $"Статус: Отработано. Глобальных ошибок нет. Возможны локальные, внимательно изучи полученный файл с результатом проверок.\n");
         }
@@ -580,7 +614,7 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
                 SQLiteMainService.CurrentDBUser,
                 $"Модуль: [b]{PluginName}\n[/b]" +
                 $"Анализируемые файлы: {fileNames}\n" +
-                $"Путь к файлу с результатом проверок: {excelFilePath}\n" +
+                $"Файлы с результатами проверок: {excelFilePath}\n" +
                 $"Запускаемые проверки: {checkNames}\n" +
                 $"Статус: Отработано с глобальными ошибками.\n" +
                 $"Ошибки: См. файл логов у пользователя {SQLiteMainService.CurrentDBUser.Surname} {SQLiteMainService.CurrentDBUser.Name}.\n" +
