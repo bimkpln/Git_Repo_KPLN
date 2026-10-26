@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using KPLN_RevitMcpBridge.Server;
 
 internal static class Program
@@ -35,6 +36,35 @@ internal static class Program
             Parallel.Invoke(() => didCancel = item.Cancel(), () => item.Execute(() => { Interlocked.Increment(ref writes); return null; }));
             Assert(writes <= 1 && (!didCancel || writes == 0) && item.Completion.Task.IsCompleted, "cancel/execute race");
         }
-        Console.WriteLine("PASS: cancel before execution, single execution, exception result, running timeout, 2000 cancellation races.");
+        var history = new Dictionary<string, WorkItem>();
+        var protectedWrite = new WorkItem("write", "{}");
+        protectedWrite.Execute(() => 123);
+        history.Add(protectedWrite.Id, protectedWrite);
+        var pendingRead = new WorkItem("pending", "{}", true);
+        history.Add(pendingRead.Id, pendingRead);
+        for (int i = 0; i < 2000; i++)
+        {
+            WorkItem.TrimCompletedReads(history, 512);
+            Assert(history.Count < 512, "completed reads blocked next request");
+            var read = new WorkItem("read" + i, "{}", true);
+            read.Execute(() => i);
+            history.Add(read.Id, read);
+        }
+        Assert(history.Count == 512, "history is not bounded");
+        Assert(history.ContainsKey("write") && history.ContainsKey("pending"), "write or pending read evicted");
+        Assert((int)history["write"].Completion.Task.Result == 123, "write receipt lost");
+        Assert(WorkItem.IsReadOnlyCommand("get_view_annotations"), "annotation query not read-only");
+        foreach (var command in new[] { "create_tags", "set_parameters", "export_selected_sheets_pdf", "print_selected_sheets_pdf", "get_unknown", "" })
+            Assert(!WorkItem.IsReadOnlyCommand(command), "unsafe command eviction: " + command);
+        var writesOnly = new Dictionary<string, WorkItem>();
+        for (int i = 0; i < 512; i++)
+        {
+            var write = new WorkItem(i.ToString(), "{}");
+            write.Execute(() => 1);
+            writesOnly.Add(write.Id, write);
+        }
+        WorkItem.TrimCompletedReads(writesOnly, 512);
+        Assert(writesOnly.Count == 512, "protected write receipts evicted");
+        Console.WriteLine("PASS: dispatcher races, 2000 read requests, bounded history, protected writes and pending reads.");
     }
 }

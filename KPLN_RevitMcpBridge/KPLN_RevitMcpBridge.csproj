@@ -141,6 +141,7 @@
     <Compile Include="Services\PlanRoutingService.cs" />
     <Compile Include="Services\AnnotationPlane.cs" />
     <Compile Include="Services\DocumentationReadService.cs" />
+    <Compile Include="Services\AnnotationContentService.cs" />
     <Compile Include="Services\SheetLayoutService.cs" />
     <Compile Include="Services\ElementLocationService.cs" />
     <Compile Include="Services\InterferenceService.cs" />

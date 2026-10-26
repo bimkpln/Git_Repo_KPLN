@@ -14,16 +14,18 @@ namespace KPLN_RevitMcpBridge.Services
                 // Группы, помещения и ряд аннотаций имеют точку, но не поддерживают Rotation.
                 double? rotation = null;
                 string rotationStatus = "available";
+                string rotationError = null;
                 try
                 {
                     rotation = point.Rotation;
                 }
-                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                catch (System.Exception ex)
                 {
                     rotationStatus = "not_supported";
+                    rotationError = ex.Message;
                 }
 
-                return new { kind = "point", point_mm = Point(point.Point), rotation_radians = rotation, rotation_status = rotationStatus };
+                return new { kind = "point", point_mm = Point(point.Point), rotation_radians = rotation, rotation_status = rotationStatus, rotation_error = rotationError };
             }
 
             var curve = (element.Location as LocationCurve)?.Curve;

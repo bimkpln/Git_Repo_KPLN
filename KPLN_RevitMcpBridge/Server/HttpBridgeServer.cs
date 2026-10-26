@@ -110,7 +110,7 @@ namespace KPLN_RevitMcpBridge.Server
                     throw new BridgeException("unauthorized", "Нет доступа к локальной сессии.", 401);
                 object result;
                 if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/health")
-                    result = new { ok = true, session_id = SessionId, revit_version = _version, protocol = 1, bridge_version = "1.1.13", api_context = "ExternalEvent", background_wakeup = "WM_NULL" };
+                    result = new { ok = true, session_id = SessionId, revit_version = _version, protocol = 1, bridge_version = "1.1.14", api_context = "ExternalEvent", background_wakeup = "WM_NULL" };
                 else if (request.HttpMethod == "GET" && request.Url.AbsolutePath.StartsWith("/operations/", StringComparison.Ordinal))
                 {
                     WorkItem item;
@@ -148,8 +148,16 @@ namespace KPLN_RevitMcpBridge.Server
                         else
                         {
                             foreach (var key in _operations.Where(p => p.Value.Completion.Task.IsCompleted && p.Value.Created < DateTime.UtcNow.AddMinutes(-15)).Select(p => p.Key).ToArray()) _operations.Remove(key);
-                            if (_operations.Count >= 512 || _queue.Count >= 32) throw new BridgeException("busy", "Очередь заполнена; дождитесь завершения запросов.", 503);
-                            item = new WorkItem(id, body); _operations.Add(id, item); _queue.Enqueue(item);
+                            if (_queue.Count >= 32)
+                                throw new BridgeException("busy", "Очередь выполнения заполнена; дождитесь завершения запросов.", 503);
+
+                            WorkItem.TrimCompletedReads(_operations, 512);
+                            if (_operations.Count >= 512)
+                                throw new BridgeException("busy", "Хранилище результатов заполнено защищёнными операциями. Срок хранения — 15 минут; не повторяйте запись с новым UUID.", 503);
+
+                            item = new WorkItem(id, body, WorkItem.IsReadOnlyCommand(input.Text("command")));
+                            _operations.Add(id, item);
+                            _queue.Enqueue(item);
                         }
                     }
                     RequestDispatch(null);

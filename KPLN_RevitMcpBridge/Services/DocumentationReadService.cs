@@ -130,7 +130,7 @@ namespace KPLN_RevitMcpBridge.Services
             int offset = input.Range("offset", 0, 0, 10000000);
             int limit = input.Range("limit", 100, 1, 200);
             var values = new FilteredElementCollector(doc).OwnedByView(view.Id).WhereElementIsNotElementType()
-                .Where(e => e is IndependentTag || e is SpatialElementTag || e is Dimension)
+                .Where(e => e is IndependentTag || e is SpatialElementTag || e is Dimension || AnnotationContentService.Supports(e))
                 .OrderBy(e => RevitService.IdValue(e.Id)).Skip(offset).Take(limit + 1).ToArray();
 
             return new
@@ -138,13 +138,30 @@ namespace KPLN_RevitMcpBridge.Services
                 view = Info(view), scale = view.Scale, template = Info(doc.GetElement(view.ViewTemplateId)),
                 coordinate_system = "document_internal", units = "mm", origin_mm = Point(view.Origin),
                 right = Vector(view.RightDirection), up = Vector(view.UpDirection), direction = Vector(view.ViewDirection),
-                items = values.Take(limit).Select(e => Annotation(doc, e)).ToArray(), offset,
+                visibility_semantics = "owner_view_elements; crop, visibility and occlusion not evaluated",
+                items = values.Take(limit).Select(e => ReadAnnotation(doc, e)).ToArray(), offset,
                 next_offset = values.Length > limit ? (int?)(offset + limit) : null
             };
         }
 
+        private static object ReadAnnotation(Document doc, Element e)
+        {
+            try
+            {
+                return Annotation(doc, e);
+            }
+            catch (Exception ex)
+            {
+                // Неподдерживаемая аннотация не должна скрывать остальные элементы страницы.
+                return new { kind = "read_error", element = Info(e), error_type = ex.GetType().FullName, message = ex.Message };
+            }
+        }
+
         private static object Annotation(Document doc, Element e)
         {
+            if (AnnotationContentService.Supports(e))
+                return AnnotationContentService.Read(doc, e);
+
             var tag = e as IndependentTag;
             if (tag != null)
             {
@@ -183,7 +200,9 @@ namespace KPLN_RevitMcpBridge.Services
                 curve = CurveInfo(dimension.Curve),
                 references = dimension.References.Cast<Reference>().Select(r => ReferenceInfo(doc, r)).ToArray(),
                 segment_count = dimension.NumberOfSegments,
-                value_override = dimension.NumberOfSegments == 0 ? dimension.ValueOverride : null
+                value_override = dimension.NumberOfSegments == 0 ? dimension.ValueOverride : null,
+                segments = dimension.NumberOfSegments == 0 ? new object[0] : dimension.Segments.Cast<DimensionSegment>()
+                    .Select((s, index) => (object)new { index, value_override = s.ValueOverride, above = s.Above, below = s.Below, prefix = s.Prefix, suffix = s.Suffix }).ToArray()
             };
         }
 

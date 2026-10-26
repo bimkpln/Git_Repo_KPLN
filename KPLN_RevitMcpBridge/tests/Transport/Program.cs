@@ -126,9 +126,19 @@ internal static class Program
             using (var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(restarted.Url) })
             {
                 client.DefaultRequestHeaders.Add("Authorization", "Bearer " + discovery.Text("token"));
-                var response = Post(client, Payload(restarted));
+                var protectedPayload = Payload(restarted);
+                var response = Post(client, protectedPayload);
                 PumpUntil(() => response.IsCompleted);
                 Check(Body(response).Contains("executed") && RevitService.Executed == 9, "restart did not dispatch cleanly");
+                for (int i = 0; i < 600; i++)
+                {
+                    var readPayload = Json.Serialize(new { session_id = restarted.SessionId, operation_id = Guid.NewGuid().ToString("N"), command = "get_view_annotations" });
+                    var readResponse = Post(client, readPayload);
+                    PumpUntil(() => readResponse.IsCompleted);
+                    Check(Body(readResponse).Contains("executed"), "read history blocked request " + i);
+                }
+                Check(RevitService.Executed == 609, "read requests lost or duplicated");
+                Check(Body(Post(client, protectedPayload)).Contains("executed") && RevitService.Executed == 609, "protected operation replayed after read eviction");
             }
         }
         Directory.Delete(directory); // exact generated test directory, nonrecursive and empty

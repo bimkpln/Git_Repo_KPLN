@@ -116,7 +116,7 @@ namespace KPLN_RevitMcpBridge.Services
                     }
                     break;
                 case "get_elements":
-                    result = Resolve(doc, input).Select(e => new { element = ElementInfo(e), bounding_box = Box(e), parameters = ParameterService.Read(e), location = ElementLocationService.Read(e) }).ToArray(); break;
+                    result = Resolve(doc, input).Select(e => new { element = ElementInfo(e), bounding_box = Box(e), parameters = ParameterService.Read(e), location = ElementLocationService.Read(e), annotation = AnnotationContentService.Read(doc, e) }).ToArray(); break;
                 case "get_group_members": result = ModelInspectionService.GroupMembers(doc, input); break;
                 case "get_sheet_contents": result = ModelInspectionService.SheetContents(doc, input); break;
                 case "get_documentation_catalog": result = DocumentationReadService.Catalog(doc, input); break;

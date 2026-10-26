@@ -453,7 +453,7 @@ def get_revit_project_levels(document_id: str, offset: Offset = 0, limit: Limit 
 
 @mcp.tool(annotations=READ)
 def get_revit_view_annotations(document_id: str, view_unique_id: str, offset: Offset = 0, limit: Limit = 100, session_id: str | None = None) -> dict:
-    """Существующие марки/размеры вида-образца: тип, цель, позиция головки, привязки размера и базис вида. Точки в мм внутренних координат. Не копировать project-specific ID в другой документ."""
+    """Аннотации вида/листа: марки с целями, размеры и подмены сегментов, TextNote с полным text, типовые аннотации с параметрами экземпляра и типа (мост 1.1.14+). Точки в мм. Для generic_annotation параметры не равны отображаемым меткам семейства: text_status явно указывает ограничение. read_error относится к одному элементу, остальные строки читаются. Обойти next_offset при одной revision. Потенциальная принадлежность виду не доказывает видимость после обрезки."""
     return client.command("get_view_annotations", session_id, document_id=document_id, view_unique_id=view_unique_id, offset=offset, limit=limit)
 
 
