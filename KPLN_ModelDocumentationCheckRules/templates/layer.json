@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "scope": {
+    "level": "department",
+    "department": "EXAMPLE"
+  },
+  "rules": [
+    {
+      "id": "DOC-OVERLAY",
+      "title": "Ручное наложение на автоматическую спецификацию",
+      "active": true,
+      "condition": "Текст, аннотация или маска пересекает размещённый фрагмент. Точную подмену значения доказывать отдельно.",
+      "disposition": "review",
+      "severity": "medium",
+      "source": "USER-OVERLAY",
+      "overrides": true,
+      "reason": "Заменить конкретным основанием изменения для выбранной области. Не включать шаблон в реестр без решения."
+    }
+  ]
+}

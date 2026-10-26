@@ -1,0 +1,4 @@
+interface:
+  display_name: "KPLN — проверка документации моделей"
+  short_description: "Ручные марки, спецификации и допуски KPLN"
+  default_prompt: "Используй $kpln-model-documentation-check для проверки ручных данных на листах модели с учётом правил на X:."

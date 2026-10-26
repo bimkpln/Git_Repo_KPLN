@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "departments": {
+    "OV": {
+      "label": "Отдел ОВ",
+      "path": "departments/OV/rules.json"
+    },
+    "AR": {
+      "label": "Отдел АР",
+      "path": "departments/AR/rules.json"
+    }
+  },
+  "projects": {
+    "MTRS_PAR1": {
+      "label": "Подтверждённый контекст МТРС / ПАР1 из проверок ОВ и АР",
+      "departments": {
+        "OV": {
+          "path": "projects/MTRS_PAR1/departments/OV/rules.json"
+        },
+        "AR": {
+          "path": "projects/MTRS_PAR1/departments/AR/rules.json"
+        }
+      }
+    }
+  }
+}

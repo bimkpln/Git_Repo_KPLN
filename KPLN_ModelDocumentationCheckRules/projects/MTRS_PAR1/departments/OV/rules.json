@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "scope": {
+    "level": "project_department",
+    "project": "MTRS_PAR1",
+    "department": "OV"
+  },
+  "rules": [],
+  "note": "Дополнительные проектно-отделовые исключения пока не установлены. Результаты и история модели — на C: пользователя по rules/storage.md."
+}
