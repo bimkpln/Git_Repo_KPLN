@@ -471,6 +471,34 @@ namespace KPLN_Library_Bitrix24Worker
             return false;
         }
 
+        /// <summary>Получить ID родительской задачи; 0, если родитель не назначен.</summary>
+        public static async Task<int> GetParentTaskId_ByTaskId(int taskId)
+        {
+            if (taskId <= 0)
+                return 0;
+
+            using (HttpClient client = new HttpClient())
+            {
+                client.Timeout = TimeSpan.FromSeconds(20);
+                HttpResponseMessage response = await client.GetAsync($"{WebHookUrl}/tasks.task.get.json?taskId={taskId}").ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                string content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                JObject data = JObject.Parse(content);
+                JToken task = data["result"]?["task"];
+                if (task == null || data["error"] != null)
+                    throw new InvalidOperationException("Не удалось получить задачу Bitrix.");
+
+                JToken parent = task["parentId"] ?? task["PARENT_ID"];
+                if (parent == null || parent.Type == JTokenType.Null)
+                    return 0;
+
+                if (!int.TryParse(parent.ToString(), out int parentId))
+                    throw new InvalidOperationException("Некорректный ID базовой задачи Bitrix.");
+
+                return parentId;
+            }
+        }
+
         /// <summary>
         /// Получить все подзадачи для родительской задчи
         /// </summary>
