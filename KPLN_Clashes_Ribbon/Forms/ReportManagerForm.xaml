@@ -482,7 +482,7 @@
                                         Background="{x:Null}" 
                                         BorderBrush="White" 
                                         Click="OnBtnAddReport" 
-                                        Opacity="0.2" 
+                                        Opacity="1" 
                                         Foreground="White">
                                         <Button.ToolTip>
                                             <StackPanel MaxWidth="300">
@@ -502,7 +502,7 @@
                                         Background="{x:Null}" 
                                         BorderBrush="White" 
                                         Click="OnButtonCloseReportGroup" 
-                                        Opacity="0.2" 
+                                        Opacity="1" 
                                         Foreground="White">
                                         <Button.ToolTip>
                                             <StackPanel MaxWidth="300">
@@ -523,7 +523,7 @@
                                          Background="{x:Null}" 
                                          BorderBrush="White" 
                                          Click="OnButtonImportStatus" 
-                                         Opacity="0.2" 
+                                         Opacity="1" 
                                          Foreground="White">
                                         <Button.ToolTip>
                                             <StackPanel MaxWidth="350">
@@ -534,22 +534,30 @@
                                             </StackPanel>
                                         </Button.ToolTip>
                                     </Button>
+
+                                    <Button Margin="5,0,0,0"
+                                            Content="Открыть базовую задачу"
+                                            Background="{x:Null}"
+                                            BorderBrush="White"
+                                            Foreground="White"
+                                            Click="OpenBaseTaskBtn_Click"
+                                            ToolTip="Открыть базовую задачу группы отчётов в Bitrix" />
                                 </StackPanel>
                                 
                                 <StackPanel Grid.Row="3" Orientation="Horizontal">
-                                    <TextBlock Text="Автор: " Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding UserCreated}" Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text=" (" Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding DateCreated}" Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
+                                    <TextBlock Text="Автор: " Opacity="1" Foreground="White"/>
+                                    <TextBlock Text="{Binding UserCreated}" Opacity="1" Foreground="White"/>
+                                    <TextBlock Text=" (" Opacity="1" Foreground="White"/>
+                                    <TextBlock Text="{Binding DateCreated}" Opacity="1" Foreground="White"/>
+                                    <TextBlock Text=")" Opacity="1" Foreground="White"/>
                                 </StackPanel>
                                 
                                 <StackPanel Grid.Row="4" Orientation="Horizontal">
-                                    <TextBlock Text="Изменил: " Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding UserLast}" Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text=" (" Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text="{Binding DateLast}" Opacity="0.2" Foreground="White"/>
-                                    <TextBlock Text=")" Opacity="0.2" Foreground="White"/>
+                                    <TextBlock Text="Изменил: " Opacity="1" Foreground="White"/>
+                                    <TextBlock Text="{Binding UserLast}" Opacity="1" Foreground="White"/>
+                                    <TextBlock Text=" (" Opacity="1" Foreground="White"/>
+                                    <TextBlock Text="{Binding DateLast}" Opacity="1" Foreground="White"/>
+                                    <TextBlock Text=")" Opacity="1" Foreground="White"/>
                                 </StackPanel>
                                 
                             </Grid>

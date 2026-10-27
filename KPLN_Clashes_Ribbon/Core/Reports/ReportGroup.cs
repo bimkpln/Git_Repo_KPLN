@@ -330,9 +330,21 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         /// <summary>
         /// Специальный формат для вывода в окно пользователя
         /// </summary>
+        public int BaseBitrixTaskId { get; private set; }
+
+        public string BaseBitrixTaskStatus { get; private set; } = "загрузка...";
+
+        public void SetBaseBitrixTask(int taskId, string status)
+        {
+            BaseBitrixTaskId = taskId;
+            BaseBitrixTaskStatus = status;
+            NotifyPropertyChanged(nameof(BaseBitrixTaskId));
+            NotifyPropertyChanged(nameof(GroupName));
+        }
+
         public string GroupName
         {
-            get => $"[{DBProject.Code}]: {Name} ({DBProject.Name}, Id отчёта:{Id})";
+            get => $"[{DBProject.Code}]: {Name} ({DBProject.Name}, Id отчёта:{Id}, ID базовой задачи Bitrix: {(BaseBitrixTaskId > 0 ? BaseBitrixTaskId.ToString() : BaseBitrixTaskStatus)})";
         }
 
         public bool IsEnabled

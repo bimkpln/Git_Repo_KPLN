@@ -18,6 +18,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
+using KPLN_Library_Bitrix24Worker;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -41,6 +43,9 @@ namespace KPLN_Clashes_Ribbon.Forms
         private readonly Services.SQLite.SQLiteService_MainDB _sqliteService_MainDB = new Services.SQLite.SQLiteService_MainDB();
         private string _reportNameTBxData = string.Empty;
         private string _reportBitrixIdTBxData = string.Empty;
+
+        private readonly SemaphoreSlim _baseTaskRequests = new SemaphoreSlim(4);
+        private readonly Dictionary<ReportGroup, Task> _baseTaskLoads = new Dictionary<ReportGroup, Task>();
 
         private ExternalEvent _viewExtEv;
         private ViewActivatedHandler _viewHandler;
@@ -151,6 +156,8 @@ namespace KPLN_Clashes_Ribbon.Forms
                     group.Reports.Add(report);
             }
 
+            EnsureBaseTaskLoaded(group);
+
             return group;
         }
 
@@ -232,27 +239,9 @@ namespace KPLN_Clashes_Ribbon.Forms
                 && rGrName.ToLower().Contains(_reportNameTBxData))
                 return true;
 
-            string rGrBitrId_AR = rGroup.BitrixTaskIdAR.ToString();
-            string rGrBitrId_KR = rGroup.BitrixTaskIdKR.ToString();
-            string rGrBitrId_OV = rGroup.BitrixTaskIdOV.ToString();
-            string rGrBitrId_ITP = rGroup.BitrixTaskIdITP.ToString();
-            string rGrBitrId_VK = rGroup.BitrixTaskIdVK.ToString();
-            string rGrBitrId_AUPT = rGroup.BitrixTaskIdAUPT.ToString();
-            string rGrBitrId_EOM = rGroup.BitrixTaskIdEOM.ToString();
-            string rGrBitrId_SS = rGroup.BitrixTaskIdSS.ToString();
-            string rGrBitrId_AV = rGroup.BitrixTaskIdAV.ToString();
-
             if (!string.IsNullOrEmpty(_reportBitrixIdTBxData)
-                && (rGrBitrId_AR.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_KR.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_OV.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_ITP.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_VK.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_AUPT.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_EOM.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_EOM.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_SS.Contains(_reportBitrixIdTBxData)
-                    || rGrBitrId_AV.Contains(_reportBitrixIdTBxData)))
+                && ((rGroup.BaseBitrixTaskId > 0 && rGroup.BaseBitrixTaskId.ToString().Contains(_reportBitrixIdTBxData))
+                    || rGroup.SubDepartmentBtns.Any(btn => btn.Id.ToString().Contains(_reportBitrixIdTBxData))))
                 return true;
 
             return false;
@@ -1174,9 +1163,81 @@ namespace KPLN_Clashes_Ribbon.Forms
         private void ReportBitrixIdTBx_TextChanged(object sender, TextChangedEventArgs e)
         {
             System.Windows.Controls.TextBox textBox = (System.Windows.Controls.TextBox)sender;
-            _reportBitrixIdTBxData = textBox.Text.ToLower();
+            _reportBitrixIdTBxData = textBox.Text.Trim();
 
             FilteredRepGroupColl?.Refresh();
+        }
+
+        private Task EnsureBaseTaskLoaded(ReportGroup group)
+        {
+            if (!_baseTaskLoads.TryGetValue(group, out Task load))
+            {
+                load = LoadBaseTaskAsync(group);
+                _baseTaskLoads[group] = load;
+            }
+
+            return load;
+        }
+
+        private async Task LoadBaseTaskAsync(ReportGroup group)
+        {
+            await _baseTaskRequests.WaitAsync();
+            try
+            {
+                group.SetBaseBitrixTask(0, "загрузка...");
+                bool failed = false;
+                foreach (int taskId in group.SubDepartmentBtns.Select(btn => btn.Id).Distinct())
+                {
+                    try
+                    {
+                        int parentId = await BitrixMessageSender.GetParentTaskId_ByTaskId(taskId);
+                        if (parentId > 0)
+                        {
+                            group.SetBaseBitrixTask(parentId, string.Empty);
+                            return;
+                        }
+                    }
+                    catch
+                    {
+                        failed = true;
+                    }
+                }
+
+                group.SetBaseBitrixTask(0, failed ? "не удалось загрузить" : "не привязана");
+            }
+            finally
+            {
+                _baseTaskRequests.Release();
+                FilteredRepGroupColl?.Refresh();
+            }
+        }
+
+        private async void OpenBaseTaskBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (!((sender as System.Windows.Controls.Button)?.DataContext is ReportGroup group))
+                return;
+
+            try
+            {
+                // После ошибки повторяем запрос по нажатию кнопки.
+                if (_baseTaskLoads.TryGetValue(group, out Task previous) && previous.IsCompleted && group.BaseBitrixTaskId <= 0)
+                    _baseTaskLoads.Remove(group);
+
+                await EnsureBaseTaskLoaded(group);
+                if (group.BaseBitrixTaskId <= 0)
+                {
+                    System.Windows.MessageBox.Show(this, $"Базовая задача Bitrix: {group.BaseBitrixTaskStatus}.",
+                        "Открытие базовой задачи", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                Process.Start("chrome", $"https://kpln.bitrix24.ru/company/personal/user/{SQLiteMainService.CurrentDBUser.BitrixUserID}/tasks/task/view/{group.BaseBitrixTaskId}/");
+            }
+            catch (Exception)
+            {
+                System.Windows.MessageBox.Show(this, "Не удалось открыть базовую задачу Bitrix.",
+                    "Открытие базовой задачи", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void BitrixTaskBtn_Click(object sender, RoutedEventArgs e)
