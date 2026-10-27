@@ -164,6 +164,16 @@ namespace KPLN_ModelChecker_Batch.Common
                         }
 
                         // Кастомный заголовок для проверок с критической ошибкой запуска
+                        if (chData.CheckRunResult == CheckResultStatus.Cancelled)
+                        {
+                            row++;
+                            worksheet.Cells[row, 1].Value = "Отменено / не выполнено";
+                            worksheet.Cells[row, 2].Value = chData.ErrorMessage ?? "Проверка отменена пользователем";
+                            worksheet.Cells[row, 2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.Orange);
+                            row += 2;
+                            continue;
+                        }
+
                         if (chData.CheckRunResult == CheckResultStatus.Failed)
                         {
                             row++;

@@ -5,6 +5,7 @@ using KPLN_Library_DBWorker;
 using KPLN_Library_DBWorker.FactoryParts.SQLite;
 using KPLN_Library_Forms.Common;
 using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.ViewModels;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Library_Forms.UIFactory;
 using KPLN_Library_OpenDocHandler;
@@ -339,167 +340,262 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
             bool hasErrors = false;
             FileEntity[] files = FileEntitiesList.ToArray();
             CheckEntity[] checks = _checkEntitiesList.Where(check => check.IsChecked).ToArray();
-            List<string> reportPaths = new List<string>();
-
-            CurrentLogger.Info($"Старт плагина \"{PluginName}\".");
-            using (UIContrAppSubscriber subscriber = new UIContrAppSubscriber(ModuleData.RevitUIControlledApp, CurrentLogger, this))
+            if (files.Length == 0 || checks.Length == 0)
             {
-                foreach (FileEntity file in files)
+                MessageBox.Show("Выберите хотя бы одну модель и одну проверку", PluginName);
+                return;
+            }
+
+            List<string> reportPaths = new List<string>();
+            int completedModels = 0;
+            bool cancelled = false;
+            ProgressInfoViewModel progress = new ProgressInfoViewModel
+            {
+                ProcessTitle = "Модели",
+                MaxProgress = files.Length,
+                HasSecondaryProgress = true,
+                SecondaryProcessTitle = "Проверки текущей модели",
+                SecondaryMaxProgress = checks.Length,
+                WaitForCancellationCompletion = true,
+            };
+            ProgressWindow progressWindow = ProgressWindow.ShowInBackground(
+                progress, "KPLN: Пакетная проверка", false, _uiapp.MainWindowHandle);
+
+            try
+            {
+
+                CurrentLogger.Info($"Старт плагина \"{PluginName}\".");
+                using (UIContrAppSubscriber subscriber = new UIContrAppSubscriber(ModuleData.RevitUIControlledApp, CurrentLogger, this))
                 {
-                    Document doc = null;
-                    ExcelDataEntity excelEnt = new ExcelDataEntity()
+                    foreach (FileEntity file in files)
                     {
-                        CheckRunData = DateTime.Now.ToString("G"),
-                        FileName = file.Name,
-                        FileSize = file.FileSize,
-                        ChecksData = new List<CheckData>(),
-                    };
-
-                    // Ошибка одной модели не прерывает обработку следующих.
-                    try
-                    {
-                        CurrentLogger.Info($"Начинаю проверку файла: \"{file.Name}\"");
-                        ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);
-                        // Открываю документ, если нужно
-                        if (!file.IsActiveDoc)
+                        if (progress.IsCancellationRequested)
                         {
-                            #region Подготовка OpenOptions
-                            IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
-                            IList<WorksetId> worksetIds = new List<WorksetId>();
-
-                            int openWS = 0;
-                            int allWS = 0;
-                            foreach (WorksetPreview worksetPrev in worksets)
-                            {
-                                allWS++;
-                                if (WorksetToCloseNamesStartWith.Count() == 0)
-                                {
-                                    openWS++;
-                                    worksetIds.Add(worksetPrev.Id);
-                                }
-                                else if (!WSName_IsMatchByRules(worksetPrev.Name, WorksetToCloseNamesStartWith))
-                                {
-                                    openWS++;
-                                    worksetIds.Add(worksetPrev.Id);
-                                }
-                            }
-                            excelEnt.CountedWorksets = allWS;
-                            excelEnt.OpenedWorksets = openWS;
-
-                            OpenOptions openOptions = new OpenOptions()
-                            {
-                                DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
-                            };
-
-                            WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
-                            openConfig.Open(worksetIds);
-                            openOptions.SetOpenWorksetsConfiguration(openConfig);
-                            #endregion
-
-                            // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
-                            Thread.Sleep(2000);
-
-                            doc = _uiapp.Application.OpenDocumentFile(docModelPath, openOptions);
+                            cancelled = true;
+                            break;
                         }
-                        else
-                            doc = _uiapp.ActiveUIDocument.Document;
 
-
-                        // Обрабатываю документ
-                        var linkTypes = new FilteredElementCollector(doc)
-                            .OfClass(typeof(RevitLinkType))
-                            .Cast<RevitLinkType>()
-                            .ToArray();
-
-                        int modelLinks = linkTypes.Length;
-                        int loadedLinks = linkTypes.Where(rlt => rlt.GetLinkedFileStatus() == LinkedFileStatus.Loaded).Count();
-                        excelEnt.CountedLinks = modelLinks;
-                        excelEnt.OpenedLinks = loadedLinks;
-
-
-                        // Изолируем подготовку и выполнение каждой выбранной проверки.
-                        foreach (CheckEntity check in checks)
+                        progress.CurrentEventName = file.Name;
+                        progress.SecondaryCurrentProgress = 0;
+                        progress.SecondaryEventName = "Ожидание открытия модели";
+                        Document doc = null;
+                        ExcelDataEntity excelEnt = new ExcelDataEntity()
                         {
-                            CheckData result = new CheckData()
-                            {
-                                PluginName = check.Name,
-                                CheckRunResult = CheckResultStatus.Failed,
-                            };
+                            CheckRunData = DateTime.Now.ToString("G"),
+                            FileName = file.Name,
+                            FileSize = file.FileSize,
+                            ChecksData = new List<CheckData>(),
+                        };
 
-                            try
-                            {
-                                CurrentLogger.Info($"Начинаю проверку: \"{check.Name}\"");
-                                // Новая проверка не наследует частичные данные предыдущей модели.
-                                AbstrCheck currentCheck = (AbstrCheck)Activator.CreateInstance(check.CurrentAbstrCheck.GetType());
-                                currentCheck.Set_UIAppData(_uiapp, doc);
-                                Element[] elements = currentCheck.GetElemsToCheck();
-                                result.CheckRunResult = currentCheck.ExecuteCheck(elements, false);
-                                result.PluginCheckerEntitiesColl = currentCheck.CheckerEntitiesColl;
-
-                                if (result.CheckRunResult == CheckResultStatus.Failed)
-                                {
-                                    hasErrors = true;
-                                    result.ErrorMessage = "Проверка завершилась с ошибкой. Подробности см. в окне ошибок проверки.";
-                                    ReportBatchError(file.Name, check.Name, result.ErrorMessage);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                hasErrors = true;
-                                result.CheckRunResult = CheckResultStatus.Failed;
-                                result.ErrorMessage = ex.Message;
-                                ReportBatchError(file.Name, check.Name, ex.ToString());
-                            }
-
-                            excelEnt.ChecksData.Add(result);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        hasErrors = true;
-                        excelEnt.ChecksData.Add(new CheckData()
-                        {
-                            PluginName = "Открытие / подготовка модели",
-                            CheckRunResult = CheckResultStatus.Failed,
-                            ErrorMessage = ex.Message,
-                        });
-                        ReportBatchError(file.Name, "Открытие / подготовка модели", ex.ToString());
-                    }
-                    finally
-                    {
-                        // Сохраняем результат до закрытия документа, пока доступны его элементы.
+                        // Ошибка одной модели не прерывает обработку следующих.
                         try
                         {
-                            string reportPath = ExportToExcel.Run(excelPath, new[] { excelEnt });
-                            reportPaths.Add(reportPath);
-                            CurrentLogger.Info($"Сохранён отчёт: {reportPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            hasErrors = true;
-                            ReportBatchError(file.Name, "Сохранение Excel", ex.ToString());
-                        }
-                        finally
-                        {
-                            if (!file.IsActiveDoc && doc != null)
+                            progress.Report(completedModels, files.Length, "Открытие модели");
+                            CurrentLogger.Info($"Начинаю проверку файла: \"{file.Name}\"");
+                            ModelPath docModelPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(file.Path);
+                            // Открываю документ, если нужно
+                            if (!file.IsActiveDoc)
                             {
+                                #region Подготовка OpenOptions
+                                IList<WorksetPreview> worksets = WorksharingUtils.GetUserWorksetInfo(docModelPath);
+                                IList<WorksetId> worksetIds = new List<WorksetId>();
+
+                                int openWS = 0;
+                                int allWS = 0;
+                                foreach (WorksetPreview worksetPrev in worksets)
+                                {
+                                    allWS++;
+                                    if (WorksetToCloseNamesStartWith.Count() == 0)
+                                    {
+                                        openWS++;
+                                        worksetIds.Add(worksetPrev.Id);
+                                    }
+                                    else if (!WSName_IsMatchByRules(worksetPrev.Name, WorksetToCloseNamesStartWith))
+                                    {
+                                        openWS++;
+                                        worksetIds.Add(worksetPrev.Id);
+                                    }
+                                }
+                                excelEnt.CountedWorksets = allWS;
+                                excelEnt.OpenedWorksets = openWS;
+
+                                OpenOptions openOptions = new OpenOptions()
+                                {
+                                    DetachFromCentralOption = DetachFromCentralOption.DetachAndPreserveWorksets
+                                };
+
+                                WorksetConfiguration openConfig = new WorksetConfiguration(WorksetConfigurationOption.CloseAllWorksets);
+                                openConfig.Open(worksetIds);
+                                openOptions.SetOpenWorksetsConfiguration(openConfig);
+                                #endregion
+
+                                // Добавил задержку, т.к. бывает файл не хочет открыться, и ошибка "was thrown by Revit or by one of its external applications"
+                                for (int delay = 0; delay < 20; delay++)
+                                {
+                                    progress.ThrowIfCancellationRequested();
+                                    Thread.Sleep(100);
+                                }
+                                progress.ThrowIfCancellationRequested();
+
+                                doc = _uiapp.Application.OpenDocumentFile(docModelPath, openOptions);
+                            }
+                            else
+                                doc = _uiapp.ActiveUIDocument.Document;
+
+
+                            progress.ThrowIfCancellationRequested();
+
+                            // Обрабатываю документ
+                            var linkTypes = new FilteredElementCollector(doc)
+                                .OfClass(typeof(RevitLinkType))
+                                .Cast<RevitLinkType>()
+                                .ToArray();
+
+                            int modelLinks = linkTypes.Length;
+                            int loadedLinks = linkTypes.Where(rlt => rlt.GetLinkedFileStatus() == LinkedFileStatus.Loaded).Count();
+                            excelEnt.CountedLinks = modelLinks;
+                            excelEnt.OpenedLinks = loadedLinks;
+
+
+                            // Изолируем подготовку и выполнение каждой выбранной проверки.
+                            int completedChecks = 0;
+                            foreach (CheckEntity check in checks)
+                            {
+                                progress.ReportSecondary(completedChecks, checks.Length, check.Name);
+                                progress.MaintStatus = "Выполняется проверка";
+                                CheckData result = new CheckData()
+                                {
+                                    PluginName = check.Name,
+                                    CheckRunResult = CheckResultStatus.Failed,
+                                };
+
                                 try
                                 {
-                                    doc.Close(false);
+                                    CurrentLogger.Info($"Начинаю проверку: \"{check.Name}\"");
+                                    // Новая проверка не наследует частичные данные предыдущей модели.
+                                    AbstrCheck currentCheck = (AbstrCheck)Activator.CreateInstance(check.CurrentAbstrCheck.GetType());
+                                    currentCheck.Set_UIAppData(_uiapp, doc);
+                                    progress.ThrowIfCancellationRequested();
+                                    Element[] elements = currentCheck.GetElemsToCheck();
+                                    progress.ThrowIfCancellationRequested();
+                                    result.CheckRunResult = currentCheck.ExecuteCheck(elements, false);
+                                    result.PluginCheckerEntitiesColl = currentCheck.CheckerEntitiesColl;
+
+                                    if (result.CheckRunResult == CheckResultStatus.Failed)
+                                    {
+                                        hasErrors = true;
+                                        result.ErrorMessage = "Проверка завершилась с ошибкой. Подробности см. в окне ошибок проверки.";
+                                        ReportBatchError(file.Name, check.Name, result.ErrorMessage);
+                                    }
                                 }
-                                catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                                catch (OperationCanceledException) when (progress.IsCancellationRequested)
                                 {
-                                    // Документ может быть связью открытой модели.
+                                    throw;
                                 }
                                 catch (Exception ex)
                                 {
                                     hasErrors = true;
-                                    ReportBatchError(file.Name, "Закрытие модели", ex.ToString());
+                                    result.CheckRunResult = CheckResultStatus.Failed;
+                                    result.ErrorMessage = ex.Message;
+                                    ReportBatchError(file.Name, check.Name, ex.ToString());
+                                }
+
+                                excelEnt.ChecksData.Add(result);
+                                progress.SecondaryCurrentProgress = ++completedChecks;
+                                progress.ThrowIfCancellationRequested();
+                            }
+                        }
+                        catch (OperationCanceledException) when (progress.IsCancellationRequested)
+                        {
+                            cancelled = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            hasErrors = true;
+                            excelEnt.ChecksData.Add(new CheckData()
+                            {
+                                PluginName = "Открытие / подготовка модели",
+                                CheckRunResult = CheckResultStatus.Failed,
+                                ErrorMessage = ex.Message,
+                            });
+                            ReportBatchError(file.Name, "Открытие / подготовка модели", ex.ToString());
+                        }
+                        finally
+                        {
+                            // Отмена не превращает незапущенные проверки в успешные.
+                            if (progress.IsCancellationRequested)
+                            {
+                                cancelled = true;
+                                foreach (CheckEntity pending in checks.Where(check => !excelEnt.ChecksData.Any(data => data.PluginName == check.Name)))
+                                    excelEnt.ChecksData.Add(new CheckData
+                                    {
+                                        PluginName = pending.Name,
+                                        CheckRunResult = CheckResultStatus.Cancelled,
+                                        ErrorMessage = "Не запущена: пакетная проверка отменена пользователем",
+                                    });
+                            }
+                            else
+                                progress.MaintStatus = "Сохранение отчёта и закрытие модели";
+
+                            // Сохраняем результат до закрытия документа, пока доступны его элементы.
+                            try
+                            {
+                                string reportPath = ExportToExcel.Run(excelPath, new[] { excelEnt });
+                                reportPaths.Add(reportPath);
+                                CurrentLogger.Info($"Сохранён отчёт: {reportPath}");
+                            }
+                            catch (Exception ex)
+                            {
+                                hasErrors = true;
+                                ReportBatchError(file.Name, "Сохранение Excel", ex.ToString());
+                            }
+                            finally
+                            {
+                                if (!file.IsActiveDoc && doc != null)
+                                {
+                                    try
+                                    {
+                                        doc.Close(false);
+                                    }
+                                    catch (Autodesk.Revit.Exceptions.InvalidOperationException)
+                                    {
+                                        // Документ может быть связью открытой модели.
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        hasErrors = true;
+                                        ReportBatchError(file.Name, "Закрытие модели", ex.ToString());
+                                    }
                                 }
                             }
                         }
+                        if (cancelled)
+                        {
+                            if (excelEnt.ChecksData.Count == checks.Length
+                                && excelEnt.ChecksData.All(data => data.CheckRunResult != CheckResultStatus.Cancelled))
+                                progress.CurrentProgress = ++completedModels;
+                            break;
+                        }
+
+                        progress.CurrentProgress = ++completedModels;
                     }
                 }
+            }
+            finally
+            {
+                cancelled |= progress.IsCancellationRequested;
+                progress.IsCancellationEnabled = false;
+                progressWindow.CloseSafely();
+            }
+
+            if (cancelled)
+            {
+                string message = $"Пакетная проверка отменена. Обработано моделей: {completedModels}/{files.Length}. " +
+                    "Следующие модели не запускались. Сохранённые отчёты перечислены ниже.\n" +
+                    (reportPaths.Count == 0 ? "Отчёты не сохранены" : string.Join("\n", reportPaths));
+                CurrentLogger.Info(message);
+                HtmlOutput.Print(message, MessageType.Warning);
+                return;
             }
 
             string fileNames = string.Join("; ", files.Select(file => file.Name));
