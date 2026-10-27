@@ -26,8 +26,15 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
         {
             string familyName = hole.Symbol.FamilyName.ToLowerInvariant();
             Autodesk.Revit.DB.Transform transform = hole.GetTransform();
+            // Проектное уточнение имеет приоритет над общими суффиксами семейства.
+            bool isSetWallOpening = CheckHolesProjectRules.IsSetWallOpening(
+                hole.Document.Title, hole.Symbol.FamilyName,
+                hole.Category != null && hole.Category.Id.Equals(new ElementId(BuiltInCategory.OST_Windows)));
+
             XYZ axis;
-            if (familyName.Contains("стена") || familyName.Contains("стене"))
+            if (isSetWallOpening)
+                axis = transform.BasisY.Normalize();
+            else if (familyName.Contains("стена") || familyName.Contains("стене"))
                 axis = transform.BasisY.Normalize();
             else if (familyName.Contains("перекрыт") || familyName.Contains("плита"))
                 axis = transform.BasisZ.Normalize();

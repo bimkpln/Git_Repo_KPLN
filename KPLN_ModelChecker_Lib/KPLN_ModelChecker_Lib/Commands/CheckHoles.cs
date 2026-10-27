@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_ModelChecker_Lib.Commands.Common.CheckHoles;
 using KPLN_ModelChecker_Lib.Common;
@@ -108,16 +108,19 @@ namespace KPLN_ModelChecker_Lib.Commands
 
         public override Element[] GetElemsToCheck()
         {
+            // Уточнение для ЛОКАЛЬНЫХ ПРОЕКТОВ: определяется заново при запуске для каждой модели.
+            bool isSMLT = CheckHolesProjectRules.IsSetProject(CheckDocument.Title);
             FamilyInstance[] holesFamInsts;
-            if (CheckDocument.Title.Contains("СЕТ_1"))
+            if (isSMLT)
             {
                 holesFamInsts = new FilteredElementCollector(CheckDocument)
                     .OfClass(typeof(FamilyInstance))
                     .OfCategory(BuiltInCategory.OST_Windows)
                     .Cast<FamilyInstance>()
-                    .Where(e =>
-                        e.Symbol.FamilyName.StartsWith("ASML_АР_Отверстие")
-                        && e.GetSubComponentIds().Count == 0)
+                    .Where(e => CheckHolesProjectRules.IsSetWallOpening(
+                        CheckDocument.Title, e.Symbol.FamilyName, true)
+                        // Родительское отверстие может содержать перемычку. Вложенные экземпляры не дублируем.
+                        && e.SuperComponent == null)
                     .ToArray();
             }
             else
