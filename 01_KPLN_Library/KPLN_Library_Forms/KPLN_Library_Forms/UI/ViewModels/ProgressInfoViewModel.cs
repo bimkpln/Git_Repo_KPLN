@@ -19,6 +19,71 @@ namespace KPLN_Library_Forms.UI.ViewModels
         private Dispatcher _dispatcher;
         private readonly Stopwatch _reportClock = Stopwatch.StartNew();
         private string _lastReportedStage;
+        private string _currentEventName;
+        private string _secondaryEventName;
+        private string _secondaryProcessTitle = "Проверки";
+        private bool _hasSecondaryProgress;
+        private int _secondaryCurrentProgress;
+        private int _secondaryMaxProgress = 1;
+
+        // Новые возможности включаются явно; прежняя семантика отмены сохранена.
+        public bool WaitForCancellationCompletion { get; set; }
+
+        public string CurrentEventName
+        {
+            get => _currentEventName;
+            set { _currentEventName = value; OnPropertyChanged(); }
+        }
+
+        public bool HasSecondaryProgress
+        {
+            get => _hasSecondaryProgress;
+            set { _hasSecondaryProgress = value; OnPropertyChanged(); }
+        }
+
+        public string SecondaryProcessTitle
+        {
+            get => _secondaryProcessTitle;
+            set { _secondaryProcessTitle = value; OnPropertyChanged(); }
+        }
+
+        public string SecondaryEventName
+        {
+            get => _secondaryEventName;
+            set { _secondaryEventName = value; OnPropertyChanged(); }
+        }
+
+        public int SecondaryCurrentProgress
+        {
+            get => _secondaryCurrentProgress;
+            set
+            {
+                _secondaryCurrentProgress = Math.Max(0, value);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SecondaryProgressCount));
+            }
+        }
+
+        public int SecondaryMaxProgress
+        {
+            get => _secondaryMaxProgress;
+            set
+            {
+                _secondaryMaxProgress = Math.Max(1, value);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(SecondaryProgressCount));
+            }
+        }
+
+        public string SecondaryProgressCount => $"{SecondaryCurrentProgress}/{SecondaryMaxProgress}";
+
+        public void ReportSecondary(int completed, int total, string eventName)
+        {
+            ThrowIfCancellationRequested();
+            SecondaryMaxProgress = total;
+            SecondaryCurrentProgress = completed;
+            SecondaryEventName = eventName;
+        }
 
         /// <summary>Минимальный интервал обновлений внутри этапа. Вызывать Report из потока операции.</summary>
         public int UpdateIntervalMilliseconds { get; set; } = 75;
@@ -121,10 +186,13 @@ namespace KPLN_Library_Forms.UI.ViewModels
                 return;
 
             _isCancellationRequested = true;
-            MaintStatus = "Отменено пользователем";
+            MaintStatus = WaitForCancellationCompletion
+                ? "Отмена запрошена. Дожидаюсь текущей операции и сохраняю результаты..."
+                : "Отменено пользователем";
             OnPropertyChanged(nameof(IsCancellationRequested));
             OnPropertyChanged(nameof(CanCancel));
-            CompleteStatus?.Invoke();
+            if (!WaitForCancellationCompletion)
+                CompleteStatus?.Invoke();
         }
 
         /// <summary>Обновляет счётчик с ограничением частоты; отмена проверяется при каждом вызове.</summary>

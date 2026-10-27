@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Interop;
 
 namespace KPLN_Library_Forms.UI
 {
@@ -33,6 +34,13 @@ namespace KPLN_Library_Forms.UI
         public static ProgressWindow ShowInBackground(ProgressInfoViewModel progressInfo,
             string title = "KPLN: Выполнение")
         {
+            // Сигнатура и прежнее поведение сохранены для уже собранных плагинов.
+            return ShowInBackground(progressInfo, title, true, IntPtr.Zero);
+        }
+
+        public static ProgressWindow ShowInBackground(ProgressInfoViewModel progressInfo,
+            string title, bool topmost, IntPtr ownerHandle)
+        {
             ProgressWindow window = null;
             Exception startupError = null;
             using (var ready = new ManualResetEventSlim(false))
@@ -42,6 +50,9 @@ namespace KPLN_Library_Forms.UI
                     try
                     {
                         window = new ProgressWindow(progressInfo) { Title = title, _ownsDispatcher = true };
+                        window.Topmost = topmost;
+                        if (ownerHandle != IntPtr.Zero)
+                            new WindowInteropHelper(window).Owner = ownerHandle;
                         window.Show();
                     }
                     catch (Exception ex)
@@ -132,6 +143,13 @@ namespace KPLN_Library_Forms.UI
 
         private void OnClosing(object sender, CancelEventArgs e)
         {
+            if (!_programmaticClose && !_progressInfo.IsComplete && _progressInfo.WaitForCancellationCompletion)
+            {
+                e.Cancel = true;
+                _progressInfo.RequestCancellation();
+                return;
+            }
+
             if (_programmaticClose || _progressInfo.IsComplete || _progressInfo.IsCancellationRequested)
                 return;
 
