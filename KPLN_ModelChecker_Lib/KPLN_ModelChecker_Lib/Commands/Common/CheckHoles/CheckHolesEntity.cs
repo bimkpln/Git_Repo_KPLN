@@ -1,15 +1,13 @@
-﻿using Autodesk.Revit.DB;
-using KPLN_Library_Forms.UI.HtmlWindow;
+using Autodesk.Revit.DB;
 using System;
+using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
 {
-    /// <summary>
-    /// Контейнер для сущностей плагина CommandCheckHoles
-    /// </summary>
     internal class CheckHolesEntity
     {
         private Transform _currentLinkTransform;
+        private BoundingBoxXYZ _candidateBounds;
 
         public CheckHolesEntity(Element elem)
         {
@@ -22,12 +20,10 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
         }
 
         public Element CurrentElement { get; }
-
         public Solid CurrentSolid { get; set; }
-
+        public List<Solid> CurrentSolids { get; private set; } = new List<Solid>();
         public BoundingBoxXYZ CurrentBBox { get; protected set; }
-
-        public RevitLinkInstance CurrentLinkInstance { get; } = null;
+        public RevitLinkInstance CurrentLinkInstance { get; }
 
         public Transform CurrentLinkTransform
         {
@@ -39,70 +35,95 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
             }
         }
 
-        /// <summary>
-        /// Заполнить поля RoomSolid и RoomBBox, если он не были заданы ранее (РЕСУРСОЕМКИЙ МЕТОД)
-        /// </summary>
-        /// <param name="detailLevel">Уровень детализации</param>
+        /// <summary>Только предварительный отбор; точное пересечение проверяется по Solid.</summary>
+        public bool MayIntersect(BoundingBoxXYZ holeBounds)
+        {
+            if (_candidateBounds == null)
+            {
+                BoundingBoxXYZ bounds = CurrentElement.get_BoundingBox(null);
+                if (bounds == null)
+                    return true;
+                _candidateBounds = TransformBounds(bounds, CurrentLinkTransform);
+            }
+            const double tolerance = 1e-6;
+            return _candidateBounds.Min.X <= holeBounds.Max.X + tolerance && _candidateBounds.Max.X >= holeBounds.Min.X - tolerance
+                && _candidateBounds.Min.Y <= holeBounds.Max.Y + tolerance && _candidateBounds.Max.Y >= holeBounds.Min.Y - tolerance
+                && _candidateBounds.Min.Z <= holeBounds.Max.Z + tolerance && _candidateBounds.Max.Z >= holeBounds.Min.Z - tolerance;
+        }
+
         public void SetGeometryData(ViewDetailLevel detailLevel)
         {
-            #region Задаю Solid, если ранее не был создан
-            if (CurrentSolid == null)
+            if (CurrentSolid != null && CurrentBBox != null)
+                return;
+
+            // Собираем все тела ИОС; для основного тела отверстия сохраняем выбор по максимальному объёму.
+            List<Solid> solids = new List<Solid>();
+            CollectSolids(CurrentElement.get_Geometry(new Options { DetailLevel = detailLevel }), solids, 0);
+            if (solids.Count == 0)
+                throw new InvalidOperationException("У элемента нет объёмной геометрии");
+
+            List<Solid> transformed = new List<Solid>();
+            Solid largest = null;
+            double largestVolume = 0;
+            foreach (Solid solid in solids)
             {
-                Solid resultSolid = null;
-                GeometryElement geomElem = CurrentElement.get_Geometry(new Options { DetailLevel = detailLevel });
-                foreach (GeometryObject gObj in geomElem)
+                Solid current = CurrentLinkInstance == null ? solid : SolidUtils.CreateTransformed(solid, CurrentLinkTransform);
+                double volume = Math.Abs(current.Volume);
+                transformed.Add(current);
+                if (volume > largestVolume)
                 {
-                    Solid solid = gObj as Solid;
-                    GeometryInstance gInst = gObj as GeometryInstance;
-                    if (solid != null) resultSolid = solid;
-                    else if (gInst != null)
-                    {
-                        GeometryElement instGeomElem = gInst.GetInstanceGeometry();
-                        double tempVolume = 0;
-                        foreach (GeometryObject gObj2 in instGeomElem)
-                        {
-                            solid = gObj2 as Solid;
-                            if (solid != null && solid.Volume > tempVolume)
-                            {
-                                tempVolume = solid.Volume;
-                                resultSolid = solid;
-                            }
-                        }
-                    }
-                }
-
-                if (resultSolid != null)
-                    CurrentSolid = CurrentLinkInstance == null ? resultSolid : SolidUtils.CreateTransformed(resultSolid, CurrentLinkTransform);
-
-                // Фильтрация семейств без геометрии от Ostec, крышка лотка DKC, неподвижную опору ОВВК а также общих вложенных, которые часто также без геометрии.
-                else if (resultSolid == null && (CurrentElement is FamilyInstance fi && fi.SuperComponent == null))
-                {
-                    HtmlOutput.Print($"У элемента семейства {fi.Symbol.FamilyName} " +
-                    $"из модели {CurrentLinkInstance.Name} с id: {CurrentElement.Id} проблемы с получением Solid);", MessageType.Warning);
+                    largestVolume = volume;
+                    largest = current;
                 }
             }
-            #endregion
+            if (largest == null)
+                throw new InvalidOperationException("Не найдено тело с положительным объёмом");
 
-            #region Задаю BoundingBoxXYZ, если ранее не был создан
-            if (CurrentBBox == null)
+            BoundingBoxXYZ box = largest.GetBoundingBox() ?? throw new InvalidOperationException("Не удалось получить габарит Solid");
+            // Solid уже в координатах основной модели: повторно трансформацию связи не применяем.
+            BoundingBoxXYZ worldBounds = TransformBounds(box, null);
+            CurrentSolids = transformed;
+            CurrentSolid = largest;
+            CurrentBBox = worldBounds;
+        }
+
+        private static void CollectSolids(GeometryElement geometry, List<Solid> result, int depth)
+        {
+            if (geometry == null)
+                return;
+            if (depth > 12)
+                throw new InvalidOperationException("Слишком много уровней вложенной геометрии");
+
+            foreach (GeometryObject item in geometry)
             {
-                if (CurrentSolid != null)
+                if (item is Solid solid && solid.Faces.Size > 0)
                 {
-                    BoundingBoxXYZ bbox = CurrentSolid.GetBoundingBox();
-                    if (bbox == null)
-                        throw new Exception($"Элементу {CurrentElement.Id} - невозможно создать BoundingBoxXYZ. Отправь сообщение разработчику");
-
-                    Transform transform = bbox.Transform;
-                    Transform resultTransform = CurrentLinkInstance == null ? transform : transform * CurrentLinkTransform;
-
-                    CurrentBBox = new BoundingBoxXYZ()
-                    {
-                        Max = resultTransform.OfPoint(bbox.Max),
-                        Min = resultTransform.OfPoint(bbox.Min),
-                    };
+                    // Ошибка чтения объёма передаётся в группированный отчёт, а не замалчивается.
+                    if (Math.Abs(solid.Volume) > 1e-12)
+                        result.Add(solid);
                 }
+                else if (item is GeometryInstance instance)
+                    CollectSolids(instance.GetInstanceGeometry(), result, depth + 1);
             }
-            #endregion
+        }
+
+        internal static BoundingBoxXYZ TransformBounds(BoundingBoxXYZ box, Transform link)
+        {
+            Transform transform = link == null ? box.Transform : link.Multiply(box.Transform);
+            double minX = double.MaxValue, minY = double.MaxValue, minZ = double.MaxValue;
+            double maxX = double.MinValue, maxY = double.MinValue, maxZ = double.MinValue;
+            for (int i = 0; i < 8; i++)
+            {
+                XYZ point = transform.OfPoint(new XYZ((i & 1) == 0 ? box.Min.X : box.Max.X,
+                    (i & 2) == 0 ? box.Min.Y : box.Max.Y, (i & 4) == 0 ? box.Min.Z : box.Max.Z));
+                minX = Math.Min(minX, point.X);
+                minY = Math.Min(minY, point.Y);
+                minZ = Math.Min(minZ, point.Z);
+                maxX = Math.Max(maxX, point.X);
+                maxY = Math.Max(maxY, point.Y);
+                maxZ = Math.Max(maxZ, point.Z);
+            }
+            return new BoundingBoxXYZ { Min = new XYZ(minX, minY, minZ), Max = new XYZ(maxX, maxY, maxZ) };
         }
     }
 }

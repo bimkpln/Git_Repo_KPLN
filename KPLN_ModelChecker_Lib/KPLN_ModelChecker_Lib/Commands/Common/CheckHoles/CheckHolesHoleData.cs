@@ -1,92 +1,100 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
 namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
 {
-    /// <summary>
-    /// Контейнер для сбора информации по каждому отверстию АР
-    /// </summary>
     internal sealed class CheckHolesHoleData : CheckHolesEntity
     {
-        private Face _mainHoleFace;
+        public double? MainHoleArea { get; private set; }
+        public Dictionary<string, HashSet<ElementId>> FailedElements { get; } = new Dictionary<string, HashSet<ElementId>>();
+        public List<string> GeometryReadErrors { get; } = new List<string>();
+        public List<CheckHolesMEPData> IntesectElementsColl { get; } = new List<CheckHolesMEPData>();
 
-        public CheckHolesHoleData(Element elem) : base(elem)
-        {
-        }
-
-        /// <summary>
-        /// Коллекция элементов, которые пересекаются с CurrentHole
-        /// </summary>
-        public List<CheckHolesMEPData> IntesectElementsColl { get; private set; } = new List<CheckHolesMEPData>();
-
-        /// <summary>
-        /// Суммарная площадь пересекаемых элементов ИОС с CurrentHole
-        /// </summary>
+        /// <summary>Площадь объединённой проекции, кв. футы; без повторного учёта наложенных областей.</summary>
         public double SumIntersectArea { get; private set; }
 
-        /// <summary>
-        /// Основная поверхность отверстия (та, которая пересекается с элементами ИОС)
-        /// </summary>
-        public Face MainHoleFace
+        public CheckHolesHoleData(Element elem) : base(elem) { }
+
+        private void AddGeometryError(CheckHolesMEPData data, string error, Action<CheckHolesEntity, string> reportError)
         {
-            get
+            reportError(data, error);
+            string source = $"{data.CurrentElement.Document.Title} (ID связи: {data.CurrentLinkInstance?.Id})";
+            if (!FailedElements.TryGetValue(source, out HashSet<ElementId> ids))
             {
-                if (_mainHoleFace == null)
-                    _mainHoleFace = GetMainFace(this.CurrentSolid);
-                return _mainHoleFace;
+                ids = new HashSet<ElementId>();
+                FailedElements.Add(source, ids);
             }
+            ids.Add(data.CurrentElement.Id);
+            GeometryReadErrors.Add($"{source}; элемент ИОС: {data.CurrentElement.Id}. {error}");
         }
 
-        /// <summary>
-        ///  Поиск основной поверхности отверстия
-        /// </summary>
-        private Face GetMainFace(Solid solid)
+        public void SetIntersectsData(List<CheckHolesMEPData> mepElements, Action<CheckHolesEntity, string> reportError)
         {
-            FaceArray faces = solid.Faces;
-            foreach (Face face in faces)
+            HoleProjection projection = new HoleProjection((FamilyInstance)CurrentElement, CurrentSolid);
+            MainHoleArea = projection.OpeningArea;
+            foreach (CheckHolesMEPData data in mepElements)
             {
-                PlanarFace planarFace = face as PlanarFace;
-                if (planarFace != null && (planarFace.XVector.Z == 1 || planarFace.XVector.Z == -1)) return face;
-            }
-
-            throw new Exception($"Ошибка с получением основной поверхности отверстия или результата пересечений у отверстия с id: {this.CurrentElement.Id}. Отправь разработчику!");
-        }
-
-        /// <summary>
-        /// Задать коллецию элементов и рассчитать площадь пересечения элементов, которые пересекаются с отверстием
-        /// </summary>
-        /// <param name="mepElements">Коллекция элементов ИОС, которые нужно проверить на пересечение</param>
-        public void SetIntersectsData(List<CheckHolesMEPData> mepElements)
-        {
-            XYZ currentCentroid = this.CurrentSolid.ComputeCentroid();
-            foreach (CheckHolesMEPData mepData in mepElements)
-            {
-                foreach (XYZ locPoint in mepData.CurrentLocationColl)
+                try
                 {
-                    if (locPoint.DistanceTo(currentCentroid) < 30)
+                    // Проверяем габарит именно этого отверстия; близость точки вставки не доказывает пересечение.
+                    if (!data.MayIntersect(CurrentBBox))
+                        continue;
+                }
+                catch (Exception ex)
+                {
+                    AddGeometryError(data, $"Предварительный отбор: {ex.GetType().FullName}: {ex.Message}", reportError);
+                    continue;
+                }
+
+                if (data.GeometryReadError != null)
+                {
+                    AddGeometryError(data, data.GeometryReadError, reportError);
+                    continue;
+                }
+                try
+                {
+                    data.SetGeometryData(ViewDetailLevel.Fine);
+                }
+                catch (Exception ex)
+                {
+                    data.CurrentSolid = null;
+                    data.GeometryReadError = $"Чтение геометрии ИОС: {ex.GetType().FullName}: {ex.Message}";
+                    AddGeometryError(data, data.GeometryReadError, reportError);
+                    continue;
+                }
+
+                List<Solid> intersections = new List<Solid>();
+                try
+                {
+                    // Обрезаем по глубине; внешний контур затем ограничивается плоскостью проёма.
+                    foreach (Solid solid in data.CurrentSolids)
                     {
-                        mepData.SetGeometryData(ViewDetailLevel.Fine);
-                        if (mepData.CurrentSolid == null)
+                        Solid intersection = projection.ClipToDepth(solid);
+                        if (intersection == null)
                             continue;
-                        try
+                        intersections.Add(intersection);
+                        if (intersection.Faces.Size == 0 || Math.Abs(intersection.Volume) <= 1e-12)
                         {
-                            Solid intersectionSolid = BooleanOperationsUtils.ExecuteBooleanOperation(this.CurrentSolid, mepData.CurrentSolid, BooleanOperationsType.Intersect);
-                            if (intersectionSolid != null && intersectionSolid.Volume > 0)
-                            {
-                                this.IntesectElementsColl.Add(mepData);
-                                Face mainIntersectFace = GetMainFace(intersectionSolid);
-                                SumIntersectArea += mainIntersectFace.Area;
-                            }
-                            break;
-                        }
-                        catch (Exception)
-                        {
-                            // Это ошибка создания солида. Возникает крайне редко, и такой элемент игнарирую,
-                            // т.к. он все равно попадет в отчет (либо площади не хватит, либо будет незанятое отверстие)
-                            break;
+                            intersections.RemoveAt(intersections.Count - 1);
+                            intersection.Dispose();
                         }
                     }
+
+                    if (intersections.Count > 0 && projection.Add(intersections))
+                    {
+                        IntesectElementsColl.Add(data);
+                        SumIntersectArea = projection.OccupiedArea;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddGeometryError(data, $"Расчёт проекции пересечения: {ex.GetType().FullName}: {ex.Message}", reportError);
+                }
+                finally
+                {
+                    foreach (Solid intersection in intersections)
+                        intersection.Dispose();
                 }
             }
         }

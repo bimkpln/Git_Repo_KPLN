@@ -18,6 +18,9 @@ namespace KPLN_ModelChecker_Lib.Commands
 
     public sealed class CheckDimensions : AbstrCheck
     {
+        // Технический допуск сравнения границ: погрешность вычислений double, мм.
+        private const double _comparisonToleranceMm = 0.000001;
+
         /// <summary>
         /// Список сепараторов, для поиска диапозона у размеров ПО МАКСИМУМУ
         /// </summary>
@@ -72,6 +75,13 @@ namespace KPLN_ModelChecker_Lib.Commands
                 .WhereElementIsNotElementType()
                 .ToArray();
 
+            // Размещённые виды, включая легенды на одном или нескольких листах
+            HashSet<ElementId> placedViewIds = new HashSet<ElementId>(
+                new FilteredElementCollector(CheckDocument)
+                    .OfClass(typeof(Viewport))
+                    .Cast<Viewport>()
+                    .Select(viewport => viewport.ViewId));
+
             // Анализирую ТОЛЬКО размеры на листах
             foreach (Element elem in docDimensions)
             {
@@ -81,8 +91,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 if (dimView == null)
                     continue;
 
-                string sheetName = dimView.get_Parameter(BuiltInParameter.VIEWPORT_SHEET_NAME)?.AsString();
-                if (string.IsNullOrEmpty(sheetName))
+                if (!placedViewIds.Contains(dim.OwnerViewId))
                     continue;
 
                 result.Add(elem);
@@ -171,7 +180,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 // Диапазон ОТ ... ДО
                 if (overrideMinDouble != overrideMaxDouble)
                 {
-                    if (value > overrideMaxDouble || value < overrideMinDouble)
+                    if (value > overrideMaxDouble + _comparisonToleranceMm || value < overrideMinDouble - _comparisonToleranceMm)
                         return new CheckerEntity(
                             dim,
                             "Нарушение диапозона (от ... до)",
@@ -185,7 +194,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     string[] splitValues_MAX = overrideValue.Split(_separArr_MAX, StringSplitOptions.None);
                     if (splitValues_MIN.Length > 1 
                         && TryExtractNumber(splitValues_MIN[1], out overrideMinDouble)
-                        && value < overrideMinDouble)
+                        && value < overrideMinDouble - _comparisonToleranceMm)
                     {
                         return new CheckerEntity(
                             dim,
@@ -195,7 +204,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     }
                     else if (splitValues_MAX.Length > 1
                         && TryExtractNumber(splitValues_MAX[1], out overrideMaxDouble)
-                        && value > overrideMaxDouble)
+                        && value > overrideMaxDouble + _comparisonToleranceMm)
                     {
                         return new CheckerEntity(
                             dim,

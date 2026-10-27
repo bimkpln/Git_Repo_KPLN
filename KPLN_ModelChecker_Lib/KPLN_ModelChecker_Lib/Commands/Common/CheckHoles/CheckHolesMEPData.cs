@@ -8,6 +8,8 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
     /// </summary>
     internal sealed class CheckHolesMEPData : CheckHolesEntity
     {
+        public string GeometryReadError { get; set; }
+
         private readonly List<XYZ> _currentLocationColl = new List<XYZ>();
 
         public CheckHolesMEPData(Element elem, RevitLinkInstance linkInstance) : base(elem, linkInstance)
