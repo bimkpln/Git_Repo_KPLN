@@ -46,6 +46,7 @@
   <ItemGroup>
     <Reference Include="KPLN_Library_DBWorker">
       <HintPath>X:\BIM\5_Scripts\Git_Repo_KPLN\01_KPLN_Library\KPLN_Library_DBWorker\KPLN_Library_DBWorker\bin\2024\KPLN_Library_DBWorker.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
@@ -329,46 +330,6 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <Compile Include="Common\Schedules\ScheduleObservableObject.cs" />
-    <Compile Include="Common\Schedules\ScheduleNaming.cs" />
-    <Compile Include="Common\Schedules\ScheduleModels.cs" />
-    <Compile Include="Common\Schedules\ScheduleMaskCatalog.cs" />
-    <Compile Include="Common\Schedules\LevelScheduleFilter.cs" />
-    <Compile Include="Services\Schedules\ScheduleLevelFilterService.cs" />
-    <Compile Include="Common\Schedules\BatchScheduleModels.cs" />
-    <Compile Include="Services\Schedules\ScheduleService.cs" />
-    <Compile Include="Services\Schedules\ScheduleSupport.cs" />
-    <Compile Include="Services\Schedules\ScheduleBatchService.cs" />
-    <Compile Include="Services\Schedules\ScheduleParameterCatalog.cs" />
-    <Compile Include="Services\Schedules\ScheduleCopyService.cs" />
-    <Compile Include="Services\Schedules\ScheduleLinkedValuesService.cs" />
-    <Compile Include="Forms\ViewModels\ScheduleManagerVM.cs" />
-    <Compile Include="ExternalCommands\Views\ExtCmdScheduleManager.cs" />
-    <Compile Include="Forms\ScheduleFiltersForm.xaml.cs">
-      <DependentUpon>ScheduleFiltersForm.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\ScheduleMaskForm.xaml.cs">
-      <DependentUpon>ScheduleMaskForm.xaml</DependentUpon>
-    </Compile>
-    <Page Include="Forms\ScheduleMaskForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Compile Include="Forms\ScheduleManagerForm.xaml.cs">
-      <DependentUpon>ScheduleManagerForm.xaml</DependentUpon>
-    </Compile>
-    <Page Include="Forms\ScheduleFiltersForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\ScheduleManagerForm.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Forms\ScheduleManagerStyles.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild">
@@ -376,6 +337,16 @@
   <Target Name="AfterBuild">
   </Target>
   <ItemGroup>
-    <Compile Include="Forms\ScheduleReportForm.xaml.cs" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(Configuration)' == 'Debug$(RevitVer)'"><ItemGroup>
+      <Reference Include="KPLN_Library_Schedules"><HintPath>..\..\01_KPLN_Library\KPLN_Library_Schedules\KPLN_Library_Schedules\bin\Debug\$(RevitVer)\KPLN_Library_Schedules.dll</HintPath><Private>False</Private></Reference>
+    </ItemGroup></When>
+    <Otherwise><ItemGroup>
+      <Reference Include="KPLN_Library_Schedules"><HintPath>..\..\01_KPLN_Library\KPLN_Library_Schedules\KPLN_Library_Schedules\bin\$(RevitVer)\KPLN_Library_Schedules.dll</HintPath><Private>False</Private></Reference>
+    </ItemGroup></Otherwise>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="ExternalCommands\Views\ExtCmdScheduleManager.cs" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />
   </ItemGroup>
 </Project>

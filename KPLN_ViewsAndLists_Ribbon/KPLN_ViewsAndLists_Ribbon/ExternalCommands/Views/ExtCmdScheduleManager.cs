@@ -1,8 +1,8 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using KPLN_ViewsAndLists_Ribbon.Forms;
-using KPLN_ViewsAndLists_Ribbon.Forms.ViewModels;
+using KPLN_Library_Schedules.Forms;
+using KPLN_Library_Schedules.Forms.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Windows.Interop;
