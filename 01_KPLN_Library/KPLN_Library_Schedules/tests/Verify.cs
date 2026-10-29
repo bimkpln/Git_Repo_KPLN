@@ -53,6 +53,22 @@ public static class ScheduleLibraryVerification
         clone.Overrides["L2"] = "changed"; Check(rule.Overrides["L2"] == "manual", "Cancel isolation");
         clone.Parameter = Parameter("number", "Номер"); Check(clone.Overrides.Count == 0, "Parameter replacement kept stale values");
 
+        var levelRule = LevelRule();
+        levelRule.IsLevelParameter = true;
+        levelRule.Mode = FilterModes.Level;
+        levelRule.Parameter = Parameter("purpose", "Назначение");
+        Check(!levelRule.IsLevelParameter && !levelRule.Modes.Contains(FilterModes.Level)
+            && levelRule.Mode == FilterModes.Pattern, "Non-level replacement retained target-level mode");
+        var levelClone = ScheduleLevelFilterService.Clone(levelRule);
+        levelClone.Parameter = Parameter("number", "Номер");
+        Check(levelClone.IsLevelParameter && levelClone.Modes.Contains(FilterModes.Level), "Clone lost original level parameter");
+        levelClone.Mode = FilterModes.Level;
+        levelClone.Parameter = Parameter("number", "Номер");
+        Check(levelClone.Mode == FilterModes.Level, "Same-key rebind lost target-level mode");
+        Check(!levelRule.IsLevelParameter, "Clone changed source level metadata");
+        levelRule.Parameter = Parameter("number", "Номер");
+        Check(levelRule.IsLevelParameter && levelRule.Modes.Contains(FilterModes.Level), "Returning to level parameter lost mode");
+
         var first = SortRule(0); var second = SortRule(2);
         var changed = (BatchScheduleSort)Internal("ScheduleSortingService", "Clone", first);
         changed.Parameter = Parameter("number", "Номер"); changed.Position = "2"; changed.Visibility = "Виден";

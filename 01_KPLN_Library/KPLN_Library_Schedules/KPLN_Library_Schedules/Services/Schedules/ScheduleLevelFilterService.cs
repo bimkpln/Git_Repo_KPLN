@@ -46,7 +46,7 @@ namespace KPLN_Library_Schedules.Services.Schedules
                 IsExisting = source.IsExisting, Parameter = source.Parameter, Condition = source.Condition,
                 Kind = source.Kind, Value = source.Value, Enabled = source.Enabled, Deleted = source.Deleted,
                 OriginalIdentity = source.OriginalIdentity, OriginalValue = source.OriginalValue,
-                OriginalCondition = source.OriginalCondition, IsLevelParameter = source.IsLevelParameter,
+                OriginalCondition = source.OriginalCondition, LevelParameterKey = source.LevelParameterKey,
                 Mode = source.Mode, InitialSignature = source.InitialSignature,
                 InitialParameterKey = source.InitialParameterKey, InitialKind = source.InitialKind,
                 Visibility = source.Visibility, InitialVisibility = source.InitialVisibility,

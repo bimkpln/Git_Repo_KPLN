@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System;
 using System.Collections.Generic;
@@ -182,18 +182,18 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 public bool NeedCloseTempOpenedDoc;
             }
 
-            private bool TrySwitchActiveToSource(out DocSwitchContext ctx, out string error)
+            private bool TrySwitchActiveToSource(Document srcDoc, out DocSwitchContext ctx, out string error)
             {
                 ctx = new DocSwitchContext();
                 error = null;
 
-                if (SelectedSourceDoc == null || SelectedSourceDoc.Doc == null)
+                if (srcDoc == null || !srcDoc.IsValidObject)
                 {
                     error = "Не выбран документ-источник.";
                     return false;
                 }
 
-                Document srcDoc = SelectedSourceDoc.Doc;
+
 
                 // Обычный открытый документ (не линк)
                 if (!srcDoc.IsLinked)
@@ -337,7 +337,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                         return;
                     }
 
-                    if (!TrySwitchActiveToSource(out sw, out swError))
+                    if (!TrySwitchActiveToSource(sourceDocOriginal, out sw, out swError))
                     {
                         TaskDialog.Show("Копирование шаблонов", swError);
                         return;
@@ -435,38 +435,19 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                             }
 
                             {
-                                bool assign = (action == DuplicateAction.ReplaceOldAndAssign);
-
-                                List<ElementId> oldAssignedViews = GetViewsAssignedToTemplate(targetDoc, existingTargetTemplate.Id);
-
-                                if (oldAssignedViews.Count > 0)
-                                    UnassignTemplateFromViews(targetDoc, oldAssignedViews);
-
-                                if (!DeleteElementSafeResult(targetDoc, existingTargetTemplate.Id))
+                                try
                                 {
-                                    skipped.Add(srcName + " (не удалось удалить существующий шаблон)");
-                                    continue;
+                                    View replacement = ReplaceTemplateAtomic(targetDoc, sourceDoc, srcId,
+                                        existingTargetTemplate.Id, srcName, action == DuplicateAction.ReplaceOldAndAssign);
+                                    copied.Add(replacement.Name);
+                                    targetTemplatesByName[replacement.Name] = replacement;
                                 }
-
-                                string tempName = BuildTempName(srcName);
-                                View newCopied = CopyTemplate_WithName(targetDoc, sourceDoc, srcId, tempName);
-
-                                if (newCopied == null)
+                                catch (Exception ex)
                                 {
-                                    skipped.Add(srcName + " (ошибка CopyElements после удаления старого)");
-                                    continue;
+                                    skipped.Add(srcName + " (замена отменена: " + ex.Message + ")");
+                                    // После отката заново получаем объекты Revit из документа.
+                                    targetTemplatesByName = GetTargetTemplatesByName(targetDoc);
                                 }
-
-                                string finalName = RenameView_ToExactOrUnique(targetDoc, newCopied.Id, srcName);
-
-                                if (assign && oldAssignedViews.Count > 0)
-                                    AssignTemplateToViews(targetDoc, oldAssignedViews, newCopied.Id);
-
-                                copied.Add(finalName);
-
-                                var v = targetDoc.GetElement(newCopied.Id) as View;
-                                if (v != null && v.IsTemplate)
-                                    targetTemplatesByName[v.Name] = v;
 
                                 continue;
                             }
@@ -480,6 +461,39 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
                 finally
                 {
                     RestoreActiveDocument(sw);
+                }
+            }
+
+            private static View ReplaceTemplateAtomic(Document targetDoc, Document sourceDoc,
+                ElementId sourceId, ElementId oldId, string name, bool assign)
+            {
+                List<ElementId> assignedViews = GetViewsAssignedToTemplate(targetDoc, oldId);
+
+                // Удаление, копирование и назначения фиксируются только вместе.
+                using (var transaction = new Transaction(targetDoc, "KPLN. Замена шаблона вида"))
+                {
+                    transaction.Start();
+                    foreach (ElementId viewId in assignedViews)
+                        ((View)targetDoc.GetElement(viewId)).ViewTemplateId = ElementId.InvalidElementId;
+
+                    targetDoc.Delete(oldId);
+                    ICollection<ElementId> copiedIds = ElementTransformUtils.CopyElements(sourceDoc,
+                        new[] { sourceId }, targetDoc, Transform.Identity, new CopyPasteOptions());
+                    View replacement = copiedIds.Select(id => targetDoc.GetElement(id)).OfType<View>()
+                        .SingleOrDefault(view => view.IsTemplate && view.Name == name)
+                        ?? throw new InvalidOperationException("Не удалось определить скопированный шаблон.");
+
+                    replacement.Name = name;
+                    if (assign)
+                    {
+                        foreach (ElementId viewId in assignedViews)
+                            ((View)targetDoc.GetElement(viewId)).ViewTemplateId = replacement.Id;
+                    }
+
+                    if (transaction.Commit() != TransactionStatus.Committed)
+                        throw new InvalidOperationException("Revit не подтвердил замену шаблона.");
+
+                    return replacement;
                 }
             }
 
@@ -800,7 +814,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             {
                 TemplateItems.Clear();
 
-                Document src = _activeDoc ?? (SelectedSourceDoc?.Doc);
+                Document src = SelectedSourceDoc?.Doc;
 
                 if (src == null)
                 {

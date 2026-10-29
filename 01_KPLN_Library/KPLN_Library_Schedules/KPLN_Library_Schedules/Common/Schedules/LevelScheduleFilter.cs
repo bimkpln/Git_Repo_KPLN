@@ -11,7 +11,17 @@ namespace KPLN_Library_Schedules.Common.Schedules
         public string OriginalIdentity { get; set; }
         public string OriginalValue { get; set; }
         public string OriginalCondition { get; set; }
-        public bool IsLevelParameter { get; set; }
+        internal string LevelParameterKey { get; set; }
+        public bool IsLevelParameter
+        {
+            get => LevelParameterKey != null && LevelParameterKey == Parameter?.Key;
+            set
+            {
+                LevelParameterKey = value ? Parameter?.Key : null;
+                Notify(nameof(IsLevelParameter));
+                Notify(nameof(Modes));
+            }
+        }
         public Dictionary<string, string> Overrides { get; } = new Dictionary<string, string>();
         public bool NeedsValue => Condition != "Параметр существует" && Condition != "Есть значение" && Condition != "Нет значения";
         public string Mode
@@ -42,8 +52,8 @@ namespace KPLN_Library_Schedules.Common.Schedules
                 {
                     _lastParameterKey = Parameter?.Key;
                     Overrides.Clear();
-                    IsLevelParameter = false;
-                    if (Mode == FilterModes.Level)
+                    Notify(nameof(IsLevelParameter));
+                    if (!IsLevelParameter && Mode == FilterModes.Level)
                         Mode = FilterModes.Pattern;
                     Notify(nameof(Modes));
                 }
