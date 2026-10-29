@@ -51,9 +51,8 @@ namespace KPLN_Publication
                     if (viewport != null)
                     {
                         Outline box = viewport.GetBoxOutline();
-                        Outline label = viewport.GetLabelOutline();
-                        bool labelOutside = label != null && !label.MinimumPoint.IsAlmostEqualTo(label.MaximumPoint)
-                            && GetBounds(label).ExtendsOutside(frame);
+                        SheetPrintBounds label = GetLabelBounds(viewport, sheet);
+                        bool labelOutside = label != null && label.ExtendsOutside(frame);
                         if (GetBounds(box).ExtendsOutside(frame) || labelOutside)
                             outside.Add(element);
                         continue;
@@ -66,6 +65,33 @@ namespace KPLN_Publication
             }
 
             return outside.Count == 0 ? null : new SheetBoundaryIssue(sheet, outside);
+        }
+
+        private static SheetPrintBounds GetLabelBounds(Viewport viewport, ViewSheet sheet)
+        {
+            Element type = sheet.Document.GetElement(viewport.GetTypeId());
+            Parameter showLabel = type?.get_Parameter(BuiltInParameter.VIEWPORT_ATTR_SHOW_LABEL);
+            Parameter labelType = type?.get_Parameter(BuiltInParameter.VIEWPORT_ATTR_LABEL_TAG);
+
+            // «Показать заголовок = Да» не гарантирует наличие подписи: название может быть <нет>.
+            if ((showLabel != null && showLabel.AsInteger() == 0)
+                || (labelType != null && labelType.AsElementId().Equals(ElementId.InvalidElementId)))
+                return null;
+
+            try
+            {
+                Outline label = viewport.GetLabelOutline();
+                return label == null || label.MinimumPoint.IsAlmostEqualTo(label.MaximumPoint)
+                    ? null : GetBounds(label);
+            }
+            catch (Autodesk.Revit.Exceptions.InvalidOperationException ex)
+            {
+                // Если Revit не вычислил отдельную подпись, проверяем общий габарит экрана на листе.
+                System.Diagnostics.Debug.WriteLine("Не вычислены границы подписи видового экрана "
+                    + viewport.Id + ": " + ex.Message);
+                BoundingBoxXYZ bounds = viewport.get_BoundingBox(sheet);
+                return bounds == null ? null : GetBounds(bounds);
+            }
         }
 
         private static bool IsPrinted(ViewSheet sheet, Element element)
