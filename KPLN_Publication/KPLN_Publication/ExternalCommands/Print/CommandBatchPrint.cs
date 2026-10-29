@@ -1,4 +1,4 @@
-using Autodesk.Revit.Attributes;
+﻿using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
@@ -29,12 +29,20 @@ namespace KPLN_Publication.ExternalCommands.Print
         private readonly List<string> _redirectedExportFolders = new List<string>();
         private ExportFilePlan _pdfExportPlan;
         private ExportFilePlan _dwgExportPlan;
+        private SheetBoundaryStop _boundaryStop;
+        private bool _printAllBoundaryIssues;
+        private readonly List<string> _boundaryReviewSheets = new List<string>();
+        private string _boundaryReportFolder;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             _redirectedExportFolders.Clear();
             _pdfExportPlan = null;
             _dwgExportPlan = null;
+            _boundaryStop = null;
+            _printAllBoundaryIssues = false;
+            _boundaryReviewSheets.Clear();
+            _boundaryReportFolder = null;
             string exportResult = "Экспорт прерван. В указанных папках могут находиться уже выданные файлы.";
 
             try
@@ -207,7 +215,8 @@ namespace KPLN_Publication.ExternalCommands.Print
                 if (printSettings.isPDFExport && printSettings.isDWGExport)
                 {
                     int printedSheetCount = ExportToPDFEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form);
-                    int dwgExportedSheetCount = ExportToDWGEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form);
+                    int dwgExportedSheetCount = _boundaryStop == null
+                        ? ExportToDWGEXcecute(logger, printSettings, commandData, mainDoc, mainDocTitle, allEntities, form) : 0;
 
                     msg = $"Напечатано листов: {printedSheetCount}.\nПереведено в dwg листов: {dwgExportedSheetCount}.";
                     logger.Write($"Экспорт успешно завершен для {printedSheetCount + dwgExportedSheetCount} листа/-ов");
@@ -228,28 +237,58 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
 
                 exportResult = msg;
-                if (_redirectedExportFolders.Count == 0)
+                if (_boundaryStop == null && _redirectedExportFolders.Count == 0 && _boundaryReviewSheets.Count == 0)
                     BalloonTip.Show("Экспорт завершен!", msg);
 
                 return Result.Succeeded;
             }
             catch (Exception e)
             {
+                if (_boundaryStop != null)
+                    _boundaryStop.Failure = e.Message;
                 PrintError(e, "Произошла ошибка во время запуска скрипта");
 
                 return Result.Failed;
             }
             finally
             {
+                string boundaryReport = BuildBoundaryReviewReport();
+
+                // Открытие листа выполняется после закрытия транзакций, связей и обработки PDF.
+                if (_boundaryStop != null)
+                {
+                    string openMessage = string.Empty;
+                    try
+                    {
+                        _boundaryStop.OpenSheet(commandData.Application);
+                    }
+                    catch (Exception ex)
+                    {
+                        openMessage = "\n\nНе удалось автоматически открыть лист: " + ex.Message;
+                    }
+
+                    CustomMessageBox stoppedWindow = new CustomMessageBox("Печать остановлена",
+                        _boundaryStop.GetSummary() + openMessage + boundaryReport)
+                    {
+                        Title = "KPLN: Пакетная выдача",
+                        Width = 780,
+                        Height = 500,
+                        WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+                    };
+                    WindowHandleSearch.MainWindowHandle.SetAsOwner(stoppedWindow);
+                    EnableReportScrolling(stoppedWindow);
+                    stoppedWindow.ShowDialog();
+                }
+
                 // Показываем фактические папки и при ошибке после частичной выдачи.
-                if (_redirectedExportFolders.Count != 0)
+                if (_boundaryStop == null && _redirectedExportFolders.Count != 0)
                 {
                     CustomMessageBox resultWindow = new CustomMessageBox(
                         "Изменена папка экспорта",
                         exportResult + "\n\nПуть превышает допустимую длину Windows. " +
                         "Для экспорта выбраны папки на системном диске:\n\n" +
                         string.Join("\n\n", _redirectedExportFolders) +
-                        "\n\nВыделите нужный путь и нажмите Ctrl+C.")
+                        "\n\nВыделите нужный путь и нажмите Ctrl+C." + boundaryReport)
                     {
                         Title = "KPLN: Пакетная выдача",
                         Width = 720,
@@ -257,9 +296,58 @@ namespace KPLN_Publication.ExternalCommands.Print
                         WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
                     };
                     WindowHandleSearch.MainWindowHandle.SetAsOwner(resultWindow);
+                    EnableReportScrolling(resultWindow);
                     resultWindow.ShowDialog();
                 }
+                else if (_boundaryStop == null && _boundaryReviewSheets.Count != 0)
+                {
+                    CustomMessageBox reviewWindow = new CustomMessageBox("Листы для проверки",
+                        exportResult + boundaryReport)
+                    {
+                        Title = "KPLN: Пакетная выдача — отчёт",
+                        Width = 780,
+                        Height = 520,
+                        WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner
+                    };
+                    WindowHandleSearch.MainWindowHandle.SetAsOwner(reviewWindow);
+                    EnableReportScrolling(reviewWindow);
+                    reviewWindow.ShowDialog();
+                }
             }
+        }
+
+        private static void EnableReportScrolling(CustomMessageBox window)
+        {
+            if (window.FindName("TblMainContent") is System.Windows.Controls.TextBox text)
+                text.VerticalScrollBarVisibility = System.Windows.Controls.ScrollBarVisibility.Auto;
+        }
+
+        private string BuildBoundaryReviewReport()
+        {
+            if (_boundaryReviewSheets.Count == 0)
+                return string.Empty;
+
+            string report = "Листы с выступающими элементами, отправленные на печать: "
+                + _boundaryReviewSheets.Count + "\n"
+                + "Проверьте их в полученных файлах на смещение и обрезку содержимого.\n\n"
+                + string.Join("\n\n", _boundaryReviewSheets.Select((sheet, index) => (index + 1) + ". " + sheet));
+
+            // Сохраняем список рядом с выдачей, чтобы он оставался после закрытия окна.
+            if (!string.IsNullOrEmpty(_boundaryReportFolder))
+            {
+                string path = Path.Combine(_boundaryReportFolder, "Проверить_листы.txt");
+                try
+                {
+                    File.WriteAllText(path, report, System.Text.Encoding.UTF8);
+                    report = "Список сохранён:\n" + path + "\n\n" + report;
+                }
+                catch (Exception ex)
+                {
+                    report += "\n\nНе удалось сохранить текстовый отчёт: " + ex.Message
+                        + "\nСкопируйте список из этого окна (Ctrl+A, Ctrl+C).";
+                }
+            }
+            return "\n\n" + report;
         }
 
         private int ExportToPDFEXcecute(Logger logger, YayPrintSettings printSettings, ExternalCommandData commandData, Document mainDoc, string mainDocTitle, Dictionary<string, List<MainEntity>> allSheets, FormPrint form)
@@ -306,6 +394,7 @@ namespace KPLN_Publication.ExternalCommands.Print
             if (printToFile)
             {
                 outputFolder = CreateFolderToEXport(_pdfExportPlan, "PDF", logger, printerName);
+                _boundaryReportFolder = outputFolder;
                 logger.Write("Создана папка для печати: " + outputFolder);
             }
 
@@ -322,6 +411,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                 logger.Write("Печать листов из файла " + docTitle);
 
                 RevitLinkType rlt = null;
+                bool openedForPrinting = false;
+                ModelPath reopenPath = null;
+                bool detachOnReopen = false;
 
                 //проверяю, текущий это документ или полученный через ссылку
                 if (docTitle == mainDocTitle)
@@ -376,6 +468,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                             oo.SetOpenWorksetsConfiguration(wc);
                             rlt.Unload(new SaveCoordinates());
                             openedDoc = commandData.Application.Application.OpenDocumentFile(mpath, oo);
+                            reopenPath = mpath;
+                            detachOnReopen = true;
+                            openedForPrinting = true;
                         }
                         else
                         {
@@ -383,6 +478,8 @@ namespace KPLN_Publication.ExternalCommands.Print
                             string docPath = linkDoc.PathName;
                             rlt.Unload(new SaveCoordinates());
                             openedDoc = commandData.Application.Application.OpenDocumentFile(docPath);
+                            reopenPath = ModelPathUtils.ConvertUserVisiblePathToModelPath(docPath);
+                            openedForPrinting = true;
                         }
                     }
                     logger.Write("Файл-ссылка успешно открыт");
@@ -475,6 +572,30 @@ namespace KPLN_Publication.ExternalCommands.Print
                             logger.Write("Спецификации обновлены успешно");
                         }
 
+                        SheetBoundaryIssue issue = SheetBoundaryCheck.Find(msheet);
+                        if (issue != null)
+                        {
+                            logger.Write("Выход за границы основной надписи: " + msheet + "\n" + issue.Details);
+                            SheetBoundaryDecision decision = _printAllBoundaryIssues
+                                ? SheetBoundaryDecision.PrintAll : SheetBoundaryDialog.Choose(issue, window);
+                            if (decision == SheetBoundaryDecision.PrintAll)
+                                _printAllBoundaryIssues = true;
+                            if (decision == SheetBoundaryDecision.Stop)
+                            {
+                                _boundaryStop = new SheetBoundaryStop(issue, reopenPath, detachOnReopen)
+                                {
+                                    Folder = outputFolder,
+                                    Files = pdfFileNames.ToList(),
+                                    SentCount = printedSheetCount,
+                                    PrintToFile = printToFile,
+                                    MergeRequested = printSettings.isMergePdfs,
+                                    DwgSkipped = printSettings.isDWGExport
+                                };
+                                logger.Write("Пользователь остановил пакет перед проблемным листом");
+                                break;
+                            }
+                        }
+
                         // Открываем многосоставной лист один раз до транзакции и всех заданий печати.
                         // Иначе SubmitPrint для закрытого вида повторно готовит его для каждого штампа.
                         if (printUiDocument != null && msheet.MainView is ViewSheet
@@ -548,6 +669,14 @@ namespace KPLN_Publication.ExternalCommands.Print
                                 pManager.Apply();
 
                                 logger.Write("Лист успешно отправлен на принтер");
+                                if (issue != null)
+                                {
+                                    // Данные сохраняем строкой до возможного закрытия документа связи.
+                                    _boundaryReviewSheets.Add("Модель: " + openedDoc.Title + "\nЛист: "
+                                        + issue.Sheet.SheetNumber + " — " + issue.Sheet.Name
+                                        + "\nВыступающих элементов: " + issue.ElementIds.Count
+                                        + "\n" + issue.Details);
+                                }
                                 msheet.PdfFileName = fullFilename;
                                 printedFiles.Add(Tuple.Create(fullFilename, isSheet, msheet.ForceColored, msheet.MainView.Name));
                                 printedSheetCount++;
@@ -563,7 +692,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                     }
 
 
-                    if (!progressInfoViewModel.IsCancellationRequested)
+                    if (_boundaryStop == null && !progressInfoViewModel.IsCancellationRequested)
                         progressInfoViewModel.IsComplete = true;
                 }
                 catch
@@ -573,6 +702,7 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
                 finally
                 {
+                    window.CloseSafely();
                     // Транзакция печати уже закрыта, можно вернуть исходный активный вид.
                     if (changedActiveView && originalView != null && originalView.IsValidObject)
                     {
@@ -587,9 +717,8 @@ namespace KPLN_Publication.ExternalCommands.Print
                     }
                 }
 
-                if (rlt != null)
+                if (rlt != null && openedForPrinting)
                 {
-
                     openedDoc.Close(false);
 #if R2017
                     RevitLinkLoadResult LoadResult = rlt.Reload();
@@ -598,9 +727,16 @@ namespace KPLN_Publication.ExternalCommands.Print
 #endif
                     logger.Write("Ссылочный документ закрыт");
                 }
+                // Остановка относится ко всему пакету, а не только к текущему документу.
+                if (_boundaryStop != null)
+                    break;
             }
             if (!printToFile)
                 return printedSheetCount;
+
+            // При остановке дожидаемся завершения файлов даже без выбранной постобработки.
+            if (_boundaryStop != null)
+                PrintedPdfOutput.WaitForFiles(pdfFileNames, TimeSpan.FromSeconds(120));
 
             //если требуется постобработка файлов - ждем, пока они напечатаются
             if (printSettings.colorsType == ColorType.MonochromeWithExcludes || printSettings.isMergePdfs || printSettings.isExcludeBorders)
@@ -689,14 +825,18 @@ namespace KPLN_Publication.ExternalCommands.Print
             }
 
             //объединяю файлы при необходимости
-            if (printSettings.isMergePdfs)
+            if (printSettings.isMergePdfs && pdfFileNames.Count > 0)
             {
                 logger.Write(" ");
                 logger.Write("\nОбъединение PDF файлов");
                 System.Threading.Thread.Sleep(500);
                 string combinedFile = _pdfExportPlan.GetPath(mainDoc.Title + ".pdf", true);
 
-                PdfWorker.PdfWorker.CombineMultiplyPDFs(pdfFileNames, combinedFile, logger);
+                // Не удаляем исходники, если хотя бы один PDF ещё пишется или повреждён.
+                PrintedPdfOutput.WaitForFiles(pdfFileNames, TimeSpan.FromSeconds(120));
+                PrintedPdfOutput.Combine(pdfFileNames, combinedFile);
+                if (_boundaryStop != null)
+                    _boundaryStop.MergedFile = combinedFile;
 
                 foreach (string file in pdfFileNames)
                 {
@@ -705,6 +845,9 @@ namespace KPLN_Publication.ExternalCommands.Print
                 }
                 logger.Write("Объединено успешно");
             }
+
+            if (_boundaryStop != null)
+                _boundaryStop.Finalized = true;
 
             if (printToFile)
             {

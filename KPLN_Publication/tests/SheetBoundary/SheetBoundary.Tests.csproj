@@ -1,0 +1,21 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <OutputPath>bin\Debug\</OutputPath>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>SheetBoundary.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="itextsharp"><HintPath>..\..\packages\iTextSharp.5.5.13.4\lib\net461\itextsharp.dll</HintPath></Reference>
+    <Reference Include="BouncyCastle.Cryptography"><HintPath>..\..\packages\BouncyCastle.Cryptography.2.4.0\lib\net461\BouncyCastle.Cryptography.dll</HintPath></Reference>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\Print\SheetPrintBounds.cs" Link="SheetPrintBounds.cs" />
+    <Compile Include="..\..\KPLN_Publication\Common\Print\PrintedPdfOutput.cs" Link="PrintedPdfOutput.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

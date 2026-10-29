@@ -288,6 +288,11 @@
   <ItemGroup>
     <Compile Include="Common\ExportDWGSettingsShell.cs" />
     <Compile Include="Common\Print\BatchPrintService.cs" />
+    <Compile Include="Common\Print\SheetPrintBounds.cs" />
+    <Compile Include="Common\Print\SheetBoundaryCheck.cs" />
+    <Compile Include="Common\Print\SheetBoundaryStop.cs" />
+    <Compile Include="Common\Print\PrintedPdfOutput.cs" />
+    <Compile Include="Forms\SheetBoundaryDialog.cs" />
     <Compile Include="Common\Print\FileNameTemplate.cs" />
     <Compile Include="Forms\FormExportNamePreview.cs" />
     <Compile Include="Common\Print\PdfCreatorSettingsScope.cs" />
