@@ -100,4 +100,12 @@
           Condition="'$(Revit2026Build)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND !Exists('$(ProjectAssetsFile)')">
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Restore" Properties="Configuration=$(Configuration);Platform=$(Platform);BuildingInsideVisualStudio=false" />
   </Target>
+  <Choose>
+    <When Condition="'$(Configuration)' == 'Debug$(RevitVer)'"><ItemGroup>
+      <Reference Include="KPLN_Library_Schedules"><HintPath>..\01_KPLN_Library\KPLN_Library_Schedules\KPLN_Library_Schedules\bin\Debug\$(RevitVer)\KPLN_Library_Schedules.dll</HintPath><Private>False</Private></Reference>
+    </ItemGroup></When>
+    <Otherwise><ItemGroup>
+      <Reference Include="KPLN_Library_Schedules"><HintPath>..\01_KPLN_Library\KPLN_Library_Schedules\KPLN_Library_Schedules\bin\$(RevitVer)\KPLN_Library_Schedules.dll</HintPath><Private>False</Private></Reference>
+    </ItemGroup></Otherwise>
+  </Choose>
 </Project>

@@ -1,12 +1,12 @@
-using KPLN_ViewsAndLists_Ribbon.Common.Schedules;
-using KPLN_ViewsAndLists_Ribbon.Services.Schedules;
+using KPLN_Library_Schedules.Common.Schedules;
+using KPLN_Library_Schedules.Services.Schedules;
 using Autodesk.Revit.DB;
 using KPLN_ViewsAndLists_CopyByLevels.Common;
 using KPLN_ViewsAndLists_CopyByLevels.Forms.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using FilterRule = KPLN_ViewsAndLists_Ribbon.Common.Schedules.FilterRule;
+using FilterRule = KPLN_Library_Schedules.Common.Schedules.FilterRule;
 
 namespace KPLN_ViewsAndLists_CopyByLevels.Services
 {

@@ -1,5 +1,5 @@
-using KPLN_ViewsAndLists_Ribbon.Common.Schedules;
-using KPLN_ViewsAndLists_Ribbon.Services.Schedules;
+using KPLN_Library_Schedules.Common.Schedules;
+using KPLN_Library_Schedules.Services.Schedules;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
 using KPLN_ViewsAndLists_CopyByLevels.Forms.Entities;

@@ -110,7 +110,7 @@
                             <DataGridTextColumn ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}" Header="Шаблон" Binding="{Binding Hint}" IsReadOnly="True" Width="300"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <Button Grid.Row="2" Content="Настроить фильтры выбранной спецификации…" HorizontalAlignment="Left" Click="EditFilters"/>
+                    <Button Grid.Row="2" Content="Настроить выбранную спецификацию…" HorizontalAlignment="Left" Click="EditFilters"/>
                 </Grid>
             </TabItem>
             <TabItem Header="4. Имена и предпросмотр">

@@ -45,7 +45,7 @@ namespace KPLN_ViewsAndLists_CopyByLevels.Forms
             CommitGrids();
             var selected = SchedulesGrid.SelectedItem as ScheduleRow;
             if (selected == null) return;
-            var dialog = new KPLN_ViewsAndLists_Ribbon.Forms.ScheduleFiltersForm(selected, ViewModel.Model.Document, ViewModel.Model.Levels.Where(l => l.Selected)) { Owner = this };
+            var dialog = new KPLN_Library_Schedules.Forms.ScheduleFiltersForm(selected, ViewModel.Model.Document, ViewModel.Model.Levels.Where(l => l.Selected)) { Owner = this };
             if (dialog.ShowDialog() == true) ViewModel.Invalidate();
         }
 
