@@ -197,6 +197,7 @@
     <Compile Include="Module.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\CheckBatchRunner.cs" />
+    <Compile Include="Services\CadPdfChangeCheck.cs" />
     <Compile Include="Services\INIFileService.cs" />
   </ItemGroup>
   <ItemGroup>

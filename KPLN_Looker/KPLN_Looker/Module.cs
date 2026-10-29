@@ -530,6 +530,21 @@ namespace KPLN_Looker
             Document doc = args.GetDocument();
             if (doc == null) return;
 
+            // Сначала фильтр транзакции: обычные изменения модели не запускают проверку DWG/PDF.
+            if (_currentMonitoredDocFilePath_ExceptARKon != null && CadPdfChangeCheck.IsRelevantTransaction(args))
+            {
+                string monitoredPath = MonitoredDocFilePath_ExceptARKon(doc);
+                if (monitoredPath != null)
+                {
+                    DBProject project = string.Equals(monitoredPath, _currentMonitoredDocFilePath_ExceptARKon, StringComparison.OrdinalIgnoreCase)
+                        ? CurrentDBProject
+                        : SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(monitoredPath, RevitVersion);
+                    
+                    if (CadPdfChangeCheck.Check(doc, args, project))
+                        return;
+                }
+            }
+
 #if DEBUG
             // Фильтрация по имени проекта
             if (_currentMonitoredDocFilePath_ExceptARKon != null)
