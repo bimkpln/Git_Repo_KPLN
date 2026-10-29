@@ -1,0 +1,37 @@
+<Window x:Class="KPLN_Library_Schedules.Forms.ScheduleFiltersForm"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:KPLN_Library_Schedules.Forms"
+        xmlns:models="clr-namespace:KPLN_Library_Schedules.Common.Schedules"
+        Title="KPLN: Настройки спецификации — листы по этажам" Width="1440" Height="1000" MinWidth="1100" MinHeight="800"
+        WindowStartupLocation="CenterOwner" Background="#2B2F38" Foreground="#EDEDED" FontFamily="Segoe UI" FontSize="14">
+    <Window.Resources><ResourceDictionary Source="ScheduleManagerStyles.xaml"/></Window.Resources>
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="3*" MinHeight="450"/><RowDefinition Height="8"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="1.5*" MinHeight="100"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock Style="{StaticResource FormText}" Text="{Binding ScheduleName}" FontSize="19" FontWeight="SemiBold" Margin="6" TextWrapping="Wrap"/>
+        <local:ScheduleRulesEditor x:Name="RulesEditor" Grid.Row="1" Grid.RowSpan="3" DataContext="{Binding Editor}"/>
+        <Border Grid.Row="4" Height="1" VerticalAlignment="Center" Background="#46505F"/>
+        <DockPanel Grid.Row="5">
+            <Button DockPanel.Dock="Right" Content="Пересчитать по этажам" Click="RebuildValues" ToolTip="Сбросить ручные поправки к маскам и заново вычислить значения. Режим «Вручную по этажам» сохраняет введённые значения."/>
+            <TextBlock Style="{StaticResource Hint}" Text="Результат обновляется при изменении правил. «Сохранить» оставляет исходное значение; «Целевой уровень» подставляет уровень Revit. Для ручного режима редактируйте нижнюю таблицу. Маски: {Этаж}, {Уровень}, {Отметка}, {Типовые}, {Индекс}; {Исходное} — только для существующих фильтров."/>
+        </DockPanel>
+        <DataGrid x:Name="ValuesGrid" Grid.Row="6" ItemsSource="{Binding Values}" BeginningEdit="BeginValueEdit" CanUserDeleteRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Уровень" Binding="{Binding LevelName}" IsReadOnly="True" Width="300" ElementStyle="{StaticResource DG_TC}"/>
+                <DataGridTextColumn Header="Параметр / условие" Binding="{Binding Field}" IsReadOnly="True" Width="*" MinWidth="260" ElementStyle="{StaticResource DG_TC}"/>
+                <DataGridTextColumn Header="Действие" Binding="{Binding Mode}" IsReadOnly="True" Width="180" ElementStyle="{StaticResource DG_TC}"/>
+                <DataGridTextColumn Header="Значение для этажа" Binding="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="200"
+                    ElementStyle="{StaticResource DG_TC}" EditingElementStyle="{StaticResource KPLN_TextBox}"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        <TextBlock x:Name="PreviewStatus" Grid.Row="7" Style="{StaticResource Hint}"/>
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Применить настройки" Click="Apply"/>
+            <Button Content="Отмена" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

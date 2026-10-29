@@ -1,0 +1,74 @@
+<UserControl x:Class="KPLN_Library_Schedules.Forms.ScheduleRulesEditor"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:local="clr-namespace:KPLN_Library_Schedules.Forms" xmlns:models="clr-namespace:KPLN_Library_Schedules.Common.Schedules">
+ <UserControl.Resources><ResourceDictionary Source="ScheduleManagerStyles.xaml"/></UserControl.Resources>
+ <Grid Margin="8" Background="#333840">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="130"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*" MinHeight="130"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock x:Name="RulesHint" Style="{StaticResource Hint}" Text="Синие строки — существующие общие фильтры: параметр и условие совпадают во всех отмеченных спецификациях. При разных значениях показано {Исходное} — собственное значение каждой спеки. Для одной спецификации показаны все её фильтры. Зелёные строки — новые условия. Для них доступны только параметры, общие для всех отмеченных на первой вкладке спецификаций; видимость столбца задаётся в последнем столбце таблицы. Остальные фильтры сохраняются. При изменении выбора спецификаций общие строки загружаются заново."/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal"><Button Content="Добавить правило" Click="AddRule"/><Button Content="Удалить / восстановить" Click="RemoveRule" ToolTip="Существующий фильтр помечается к удалению; повторное нажатие восстановит его. Новая строка удаляется из списка. Изменения в Revit — только после проверки и выполнения."/></StackPanel>
+                    <DataGrid x:Name="BatchGrid" Grid.Row="2" ItemsSource="{Binding BatchRules}" CanUserDeleteRows="False">
+                        <DataGrid.RowStyle><Style TargetType="DataGridRow">
+                            <Setter Property="Background" Value="#E4F3E5"/>
+                            <Setter Property="ToolTip" Value="Новый фильтр: будет добавлен к выбранным спецификациям."/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExisting}" Value="True"><Setter Property="Background" Value="#DCEBFA"/><Setter Property="ToolTip" Value="Общий существующий фильтр. Без изменений сохраняется как есть."/></DataTrigger>
+                                <DataTrigger Binding="{Binding Deleted}" Value="True"><Setter Property="Background" Value="#F6DDDD"/><Setter Property="ToolTip" Value="Фильтр будет удалён после проверки и выполнения. Для отмены нажмите «Удалить / восстановить»."/></DataTrigger>
+                                <DataTrigger Binding="{Binding IsAutomatic}" Value="True"><Setter Property="Background" Value="#FFF0CE"/><Setter Property="ToolTip" Value="Автоматический фильтр: для каждой копии подставляется отмеченное значение с первой вкладки. Все прежние условия этого параметра заменяются одним условием «Равно»."/></DataTrigger>
+                            </Style.Triggers>
+                        </Style></DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="✓" Width="45"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding CanToggle}" HorizontalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Состояние" Binding="{Binding State}" Width="125" IsReadOnly="True" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTemplateColumn x:Name="FilterParameterColumn" Header="Общий параметр [количество; идентификатор]" Width="2*"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <local:ScheduleParameterComboBox Style="{StaticResource {x:Type ComboBox}}" IsEnabled="{Binding CanEdit}" DropDownOpened="LoadFilterParameters" ItemsSource="{Binding DataContext.Parameters, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Parameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Label" ToolTip="Заменить параметр фильтра. Доступны только общие параметры выбранных спецификаций. После замены проверьте условие и значение."/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Условие" Width="170"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding CanEdit}" ItemsSource="{x:Static models:BatchScheduleFilter.Conditions}" SelectedItem="{Binding Condition, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Тип значения (авто)" Binding="{Binding Kind, Mode=OneWay}" IsReadOnly="True" Width="160" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTextColumn x:Name="OriginalColumn" Header="Исходное" Binding="{Binding OriginalValue}" Width="110" IsReadOnly="True" Visibility="Collapsed" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTemplateColumn x:Name="LevelModeColumn" Header="Значение по этажам" Width="165" Visibility="Collapsed"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding CanEdit}" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Значение или маска" Width="*" MinWidth="190"><DataGridTemplateColumn.CellTemplate><DataTemplate><DockPanel IsEnabled="{Binding CanEditValue}">
+ <Button DockPanel.Dock="Right" Content="…" Click="EditBatchMask" ToolTip="Открыть конструктор маски: выбрать подстановки, прочитать пояснения и посмотреть пример." Padding="8,2"/>
+ <TextBox Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Обычный текст или маска. Кнопка … открывает список подстановок с подсказками."/>
+ </DockPanel></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Видимость" Width="120"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding Enabled}" ItemsSource="{x:Static models:BatchScheduleFilter.VisibilityOptions}" SelectedItem="{Binding Visibility, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Исходное — сохранить видимость; новое поле будет скрытым. Видимость относится к столбцу спецификации."/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Border Grid.Row="3" Height="6" Background="#566171"/>
+                    <StackPanel Grid.Row="4" Orientation="Horizontal">
+                        <TextBlock Text="Сортировка" Style="{StaticResource FormText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6"/>
+                        <Button Content="Добавить сортировку" Click="AddSort"/>
+                        <Button Content="Удалить / восстановить" Click="RemoveSort"/>
+                    </StackPanel>
+                    <DataGrid x:Name="SortGrid" Grid.Row="5" ItemsSource="{Binding SortRules}" CanUserDeleteRows="False" CanUserSortColumns="False">
+                        <DataGrid.RowStyle><Style TargetType="DataGridRow"><Setter Property="Background" Value="#E4F3E5"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsExisting}" Value="True"><Setter Property="Background" Value="#DCEBFA"/></DataTrigger>
+                                <DataTrigger Binding="{Binding Deleted}" Value="True"><Setter Property="Background" Value="#F6DDDD"/></DataTrigger>
+                            </Style.Triggers>
+                        </Style></DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="✓" Width="45"><DataGridTemplateColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Состояние" Binding="{Binding State}" Width="125" IsReadOnly="True" ElementStyle="{StaticResource DG_TC}"/>
+                            <DataGridTemplateColumn Header="Индекс" Width="110"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding CanEdit}" ItemsSource="{Binding DataContext.SortPositions, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Position, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Приоритет от 1 до числа параметров сортировки. Занятые индексы меняются местами. Исходное сохраняет индивидуальный порядок."/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn x:Name="SortParameterColumn" Header="Общий параметр [количество; идентификатор]" Width="2*"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <local:ScheduleParameterComboBox Style="{StaticResource {x:Type ComboBox}}" IsEnabled="{Binding CanEdit}" DropDownOpened="LoadSortParameters" ItemsSource="{Binding DataContext.SortParameters, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Parameter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" DisplayMemberPath="Label" ToolTip="Заменить параметр сортировки. Индекс и настройки группировки сохраняются. Доступны только общие параметры выбранных спецификаций."/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Направление" Width="220"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding CanEdit}" ItemsSource="{x:Static models:BatchScheduleSort.Directions}" SelectedItem="{Binding Direction, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Видимость" Width="120"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                                <ComboBox IsEnabled="{Binding CanEdit}" ItemsSource="{x:Static models:BatchScheduleFilter.VisibilityOptions}" SelectedItem="{Binding Visibility, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Исходное — сохранить видимость; новое поле будет скрытым. Видимость относится к столбцу спецификации."/>
+                            </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock x:Name="SortHint" Grid.Row="6" Style="{StaticResource Hint}" Text="Индекс 1 — главный параметр сортировки. Доступный диапазон учитывает индивидуальные строки каждой спецификации. Исходное сохраняет её настройки; для нового поля видимость по умолчанию — скрыто. Необщие правила, группировка и итоги сохраняются. Видимость одного параметра в обеих таблицах должна совпадать. Общий шаблон не меняется: при необходимости создаётся отдельный."/>
+                </Grid>
+</UserControl>

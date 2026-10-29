@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug2023</Configuration>
+    <Platform Condition="'$(Platform)' == ''">x64</Platform>
+    <Revit2026Build Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'">true</Revit2026Build>
+    <Configurations>Debug2020;Revit2020;Debug2023;Revit2023;Debug2024;Revit2024;Debug2026;Revit2026</Configurations>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+  <Import Project="..\..\..\build\KPLN.Revit2026.props" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="'$(Revit2026Build)' != 'true' AND Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <ProjectGuid>{B93E949B-087C-4A5C-A861-06C8517E096F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>KPLN_Library_Schedules</RootNamespace>
+    <AssemblyName>KPLN_Library_Schedules</AssemblyName>
+    <TargetFrameworkVersion Condition="'$(Revit2026Build)' != 'true'">v4.8</TargetFrameworkVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2020' OR '$(Configuration)' == 'Revit2020'"><RevitVer>2020</RevitVer></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2023' OR '$(Configuration)' == 'Revit2023'"><RevitVer>2023</RevitVer></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2024' OR '$(Configuration)' == 'Revit2024'"><RevitVer>2024</RevitVer></PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'"><RevitVer>2026</RevitVer></PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
+    <OutputPath>bin\Debug\2020\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
+    <Optimize>false</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2020|x64'">
+    <OutputPath>bin\2020\</OutputPath>
+    <DefineConstants>Revit2020</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
+    <OutputPath>bin\Debug\2023\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
+    <Optimize>false</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2023|x64'">
+    <OutputPath>bin\2023\</OutputPath>
+    <DefineConstants>Revit2023</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
+    <OutputPath>bin\Debug\2024\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
+    <Optimize>false</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2024|x64'">
+    <OutputPath>bin\2024\</OutputPath>
+    <DefineConstants>Revit2024</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2026|x64'">
+    <OutputPath>bin\Debug\2026\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;Debug2026</DefineConstants>
+    <Optimize>false</Optimize>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>portable</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+    <XamlDebuggingInformation>True</XamlDebuggingInformation>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Revit2026|x64'">
+    <OutputPath>bin\2026\</OutputPath>
+    <DefineConstants>Revit2026</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="RevitAPI"><HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath><Private>False</Private></Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(Revit2026Build)' != 'true'">
+    <Reference Include="System"/><Reference Include="System.Core"/><Reference Include="System.Xml"/><Reference Include="System.Xml.Linq"/>
+    <Reference Include="System.Xaml"/><Reference Include="PresentationCore"/><Reference Include="PresentationFramework"/><Reference Include="WindowsBase"/>
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(Configuration)' == 'Debug$(RevitVer)'"><ItemGroup><Reference Include="KPLN_Library_Forms"><HintPath>..\..\KPLN_Library_Forms\KPLN_Library_Forms\bin\Debug\$(RevitVer)\KPLN_Library_Forms.dll</HintPath><Private>False</Private></Reference></ItemGroup></When>
+    <Otherwise><ItemGroup><Reference Include="KPLN_Library_Forms"><HintPath>..\..\KPLN_Library_Forms\KPLN_Library_Forms\bin\$(RevitVer)\KPLN_Library_Forms.dll</HintPath><Private>False</Private></Reference></ItemGroup></Otherwise>
+  </Choose>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs"/>
+    <Compile Include="Forms\ScheduleRulesEditor.xaml.cs"><DependentUpon>ScheduleRulesEditor.xaml</DependentUpon></Compile>
+    <Page Include="Forms\ScheduleRulesEditor.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Compile Include="Forms\ScheduleParameterComboBox.cs"/>
+    <Compile Include="Common\Schedules\BatchScheduleModels.cs"/>
+    <Compile Include="Common\Schedules\BatchScheduleSort.cs"/>
+    <Compile Include="Common\Schedules\LevelScheduleFilter.cs"/>
+    <Compile Include="Common\Schedules\ScheduleMaskCatalog.cs"/>
+    <Compile Include="Common\Schedules\ScheduleModels.cs"/>
+    <Compile Include="Common\Schedules\ScheduleNaming.cs"/>
+    <Compile Include="Common\Schedules\ScheduleObservableObject.cs"/>
+    <Page Include="Forms\ScheduleFiltersForm.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Compile Include="Forms\ScheduleFiltersForm.xaml.cs"><DependentUpon>ScheduleFiltersForm.xaml</DependentUpon></Compile>
+    <Page Include="Forms\ScheduleManagerForm.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Compile Include="Forms\ScheduleManagerForm.xaml.cs"><DependentUpon>ScheduleManagerForm.xaml</DependentUpon></Compile>
+    <Page Include="Forms\ScheduleManagerStyles.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Page Include="Forms\ScheduleMaskForm.xaml"><Generator>MSBuild:Compile</Generator><SubType>Designer</SubType></Page>
+    <Compile Include="Forms\ScheduleMaskForm.xaml.cs"><DependentUpon>ScheduleMaskForm.xaml</DependentUpon></Compile>
+    <Compile Include="Forms\ScheduleReportForm.xaml.cs"><DependentUpon>ScheduleReportForm.xaml</DependentUpon></Compile>
+    <Compile Include="Forms\ViewModels\ScheduleManagerVM.cs"/>
+    <Compile Include="Services\Schedules\ScheduleBatchService.cs"/>
+    <Compile Include="Services\Schedules\ScheduleCopyService.cs"/>
+    <Compile Include="Services\Schedules\ScheduleLevelFilterService.cs"/>
+    <Compile Include="Services\Schedules\ScheduleLinkedValuesService.cs"/>
+    <Compile Include="Services\Schedules\ScheduleParameterCatalog.cs"/>
+    <Compile Include="Services\Schedules\ScheduleService.cs"/>
+    <Compile Include="Services\Schedules\ScheduleSortingService.cs"/>
+    <Compile Include="Services\Schedules\ScheduleSupport.cs"/>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" Condition="'$(Revit2026Build)' != 'true'" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" Condition="'$(Revit2026Build)' == 'true'" />
+  <Target Name="RestoreMissingRevit2026Assets" BeforeTargets="PrepareForBuild;ResolvePackageAssets"
+          Condition="'$(Revit2026Build)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND !Exists('$(ProjectAssetsFile)')">
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Restore" Properties="Configuration=$(Configuration);Platform=$(Platform);BuildingInsideVisualStudio=false" />
+  </Target>
+</Project>
