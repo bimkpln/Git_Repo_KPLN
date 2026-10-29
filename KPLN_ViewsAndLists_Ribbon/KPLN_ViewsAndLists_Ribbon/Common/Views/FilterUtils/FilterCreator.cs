@@ -58,7 +58,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             if (filter != null)
                 return filter;
 
+#if Debug2026 || Revit2026
+            FilterRule markEquals = ParameterFilterRuleFactory.CreateEqualsRule(markParam.Id, mark);
+#else
             FilterRule markEquals = ParameterFilterRuleFactory.CreateEqualsRule(markParam.Id, mark, true);
+#endif
 
 #if R2017 || R2018
             filter = ParameterFilterElement.Create(doc, filterName, catsIds);
@@ -83,7 +87,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             if (filter != null)
                 return filter;
 
+#if Debug2026 || Revit2026
+            FilterRule ruleHostEquals = ParameterFilterRuleFactory.CreateEqualsRule(rebarHostParam.Id, hostMark);
+#else
             FilterRule ruleHostEquals = ParameterFilterRuleFactory.CreateEqualsRule(rebarHostParam.Id, hostMark, true);
+#endif
             
 
             
@@ -101,7 +109,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
 
             FilterRule ruleIsNotFamily = ParameterFilterRuleFactory.CreateEqualsRule(rebarIsFamilyParam.Id, 0);
             FilterRule ruleIsFamily = ParameterFilterRuleFactory.CreateEqualsRule(rebarIsFamilyParam.Id, 1);
+#if Debug2026 || Revit2026
+            FilterRule ruleMrkEquals = ParameterFilterRuleFactory.CreateEqualsRule(rebarMrkParam.Id, hostMark);
+#else
             FilterRule ruleMrkEquals = ParameterFilterRuleFactory.CreateEqualsRule(rebarMrkParam.Id, hostMark, true);
+#endif
 
 
 #if R2017 || R2018
@@ -162,7 +174,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                     case StorageType.String:
                         string val = mp.AsString();
                         if (val == null) break;
+#if Debug2026 || Revit2026
+                        rule = ParameterFilterRuleFactory.CreateEqualsRule(param.Id, val);
+#else
                         rule = ParameterFilterRuleFactory.CreateEqualsRule(param.Id, val, true);
+#endif
                         break;
                     case StorageType.ElementId:
                         rule = ParameterFilterRuleFactory.CreateEqualsRule(param.Id, mp.AsElementId());
@@ -181,7 +197,11 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
                     case StorageType.String:
                         string val = mp.AsString();
                         if (val == null) break;
+#if Debug2026 || Revit2026
+                        rule = ParameterFilterRuleFactory.CreateBeginsWithRule(param.Id, val);
+#else
                         rule = ParameterFilterRuleFactory.CreateBeginsWithRule(param.Id, val, true);
+#endif
                         break;
                     default:
                         break;
@@ -250,29 +270,77 @@ namespace KPLN_ViewsAndLists_Ribbon.Views.FilterUtils
             switch (Function)
             {
                 case "Равно":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateEqualsRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateEqualsRule(ParameterId, Value, true);
+#endif
                 case "Не равно":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateNotEqualsRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateNotEqualsRule(ParameterId, Value, true);
+#endif
                 case "Больше":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateGreaterRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateGreaterRule(ParameterId, Value, true);
+#endif
                 case "Больше или равно":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateLessOrEqualRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateLessOrEqualRule(ParameterId, Value, true);
+#endif
                 case "Меньше":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateLessRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateLessRule(ParameterId, Value, true);
+#endif
                 case "Меньше или равно":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateLessOrEqualRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateLessOrEqualRule(ParameterId, Value, true);
+#endif
                 case "Содержит":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateContainsRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateContainsRule(ParameterId, Value, true);
+#endif
                 case "Не содержит":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateNotContainsRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateNotContainsRule(ParameterId, Value, true);
+#endif
                 case "Начинается с":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateBeginsWithRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateBeginsWithRule(ParameterId, Value, true);
+#endif
                 case "Не начинается с":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateNotBeginsWithRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateNotBeginsWithRule(ParameterId, Value, true);
+#endif
                 case "Заканчивается на":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateEndsWithRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateEndsWithRule(ParameterId, Value, true);
+#endif
                 case "Не заканчивается на":
+#if Debug2026 || Revit2026
+                    return ParameterFilterRuleFactory.CreateNotEndsWithRule(ParameterId, Value);
+#else
                     return ParameterFilterRuleFactory.CreateNotEndsWithRule(ParameterId, Value, true);
+#endif
                 case "Поддерживает":
                     return ParameterFilterRuleFactory.CreateSharedParameterApplicableRule(Value);
 

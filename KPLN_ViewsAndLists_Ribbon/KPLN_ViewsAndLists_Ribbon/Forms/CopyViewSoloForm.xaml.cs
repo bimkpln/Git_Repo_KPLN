@@ -25,10 +25,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
         public CopyViewSoloForm(UIApplication uiapp)
         {
             InitializeComponent();
-
-            if (uiapp == null) throw new ArgumentNullException(nameof(uiapp));
-
-            _uiapp = uiapp;
+            _uiapp = uiapp ?? throw new ArgumentNullException(nameof(uiapp));
             _mainDocument = _uiapp.ActiveUIDocument.Document;
 
             _handler = new CopyTemplatesHandler();
@@ -97,8 +94,6 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             private readonly ExternalEvent _exEvent;
             private readonly CopyTemplatesHandler _handler;
-
-            private Document _effectiveSourceDoc;
 
             private List<DocRef> _allDocsPool = new List<DocRef>();
 
@@ -180,24 +175,12 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
 
             private sealed class DocSwitchContext
             {
-                public UIDocument PrevUiDoc;
                 public Document EffectiveSourceDoc;
-                public Document ActivatedDoc;
                 public bool Switched;
 
                 public Document TempOpenedDoc;
                 public bool NeedCloseTempOpenedDoc;
             }
-
-
-
-
-
-
-
-
-
-
 
             private bool TrySwitchActiveToSource(out DocSwitchContext ctx, out string error)
             {
@@ -817,7 +800,7 @@ namespace KPLN_ViewsAndLists_Ribbon.Forms
             {
                 TemplateItems.Clear();
 
-                Document src = _effectiveSourceDoc ?? (SelectedSourceDoc != null ? SelectedSourceDoc.Doc : null);
+                Document src = _activeDoc ?? (SelectedSourceDoc?.Doc);
 
                 if (src == null)
                 {
