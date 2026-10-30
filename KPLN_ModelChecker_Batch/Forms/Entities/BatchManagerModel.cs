@@ -76,7 +76,12 @@ namespace KPLN_ModelChecker_Batch.Forms.Entities
 
             // Добавление в список открытого документа
             Document actDoc = _uiapp.ActiveUIDocument?.Document;
-            if (actDoc != null)
+            if (actDoc?.IsDetached == true)
+            {
+                TaskDialog.Show(PluginName,
+                    "Активная модель не добавлена в список, так как она отсоединена и нигде не сохранена.\n\nВАЖНО: Плагин можно запустить БЕЗ открывания моделей.");
+            }
+            else if (actDoc != null)
             {
                 FileEntity fEnt;
                 string mPath = SQLiteDocService.GetFileFullName(actDoc);
