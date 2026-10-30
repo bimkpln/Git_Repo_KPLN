@@ -29,6 +29,7 @@ namespace KPLN_Publication
         private readonly YayPrintSettings _printSettings;
         private readonly string _mainDocTitle;
         private readonly bool _onlySheets;
+        private readonly bool _canExcludeBorders;
         private readonly int _nameRulesFullHeight;
         private readonly int _nameRulesRowHeight;
 
@@ -187,6 +188,8 @@ namespace KPLN_Publication
                 comboBoxDWGExportTypes.SelectedIndex = dwgExpTypeFromConfigIndex;
             #endregion
 
+            _canExcludeBorders = checkBoxExcludeBorders.Enabled;
+            UpdateExportControlsState();
             checkBoxMergePdfs_CheckedChanged(null, null);
 
             textBox_SheetNameConstructor.TextChanged += NameRulesChanged;
@@ -443,8 +446,43 @@ namespace KPLN_Publication
             }
         }
 
+        private void UpdateExportControlsState()
+        {
+            bool printEnabled = checkBox_isPDFExport.Enabled && checkBox_isPDFExport.Checked;
+            bool pdfEnabled = printEnabled && radioButtonPDF.Checked;
+            bool dwgEnabled = checkBox_isDWGExport.Enabled && checkBox_isDWGExport.Checked;
+
+            // Переключатели остаются доступны, значения отключённых полей сохраняются.
+            foreach (System.Windows.Forms.Control control in groupBox1.Controls)
+            {
+                if (control != checkBox_isPDFExport)
+                    control.Enabled = printEnabled;
+            }
+
+            groupBox2.Enabled = printEnabled;
+            groupBox3.Enabled = printEnabled;
+            textBox_PDFPath.Enabled = buttonPDFBrowse.Enabled = label5.Enabled = pdfEnabled;
+            checkBoxMergePdfs.Enabled = pdfEnabled;
+            checkBoxOrientation.Enabled = pdfEnabled && _onlySheets;
+            checkBoxRefresh.Enabled = printEnabled && _onlySheets;
+            checkBoxExcludeBorders.Enabled = printEnabled && _canExcludeBorders;
+            comboBoxRasterQuality.Enabled = printEnabled && radioButtonRastr.Checked;
+            buttonExcludesColor.Enabled = printEnabled
+                && comboBoxColors.SelectedItem is ColorType color
+                && color == ColorType.MonochromeWithExcludes;
+
+            foreach (System.Windows.Forms.Control control in groupBox4.Controls)
+            {
+                if (control != checkBox_isDWGExport)
+                    control.Enabled = dwgEnabled;
+            }
+
+            groupBoxNameRules.Enabled = pdfEnabled || dwgEnabled;
+        }
+
         private void NameRulesChanged(object sender, EventArgs e)
         {
+            UpdateExportControlsState();
             checkBoxMergePdfs_CheckedChanged(sender, e);
             UpdateNameRulesState();
         }

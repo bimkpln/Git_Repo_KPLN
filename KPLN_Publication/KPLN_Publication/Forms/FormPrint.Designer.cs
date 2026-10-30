@@ -142,9 +142,9 @@
             this.checkBox_isPDFExport.Location = new System.Drawing.Point(9, 18);
             this.checkBox_isPDFExport.Margin = new System.Windows.Forms.Padding(2);
             this.checkBox_isPDFExport.Name = "checkBox_isPDFExport";
-            this.checkBox_isPDFExport.Size = new System.Drawing.Size(185, 17);
+            this.checkBox_isPDFExport.Size = new System.Drawing.Size(222, 17);
             this.checkBox_isPDFExport.TabIndex = 13;
-            this.checkBox_isPDFExport.Text = "Выполнить экспорт на бумагу?";
+            this.checkBox_isPDFExport.Text = "Выполнить экспорт в PDF/На бумагу?";
             this.checkBox_isPDFExport.UseVisualStyleBackColor = true;
             this.checkBox_isPDFExport.CheckedChanged += new System.EventHandler(this.checkBoxMergePdfs_CheckedChanged);
             // 
@@ -217,9 +217,9 @@
             this.label3.AutoSize = true;
             this.label3.Location = new System.Drawing.Point(6, 35);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(177, 13);
+            this.label3.Size = new System.Drawing.Size(224, 13);
             this.label3.TabIndex = 3;
-            this.label3.Text = "Имя (рекомендуется PDFCreator):";
+            this.label3.Text = "Имя принтера (для pdf - лучше PDFCreator):";
             // 
             // comboBoxPrinters
             // 
