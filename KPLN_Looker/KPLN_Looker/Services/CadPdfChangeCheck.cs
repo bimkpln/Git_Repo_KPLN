@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using KPLN_Library_DBWorker.Core;
@@ -102,7 +102,7 @@ namespace KPLN_Looker.Services
                     }
 
                     // MainPath — папка на файловом сервере и для проектов с моделями на Revit Server.
-                    string root = NormalizePath(project?.MainPath);
+                    string root = GetProjectRoot(project?.MainPath);
                     string linkPath = NormalizePath(path);
                     if (root == null)
                     {
@@ -112,7 +112,7 @@ namespace KPLN_Looker.Services
                     else if (linkPath == null || !linkPath.StartsWith(root + "\\", StringComparison.OrdinalIgnoreCase))
                     {
                         summaries.Add("Вы вставляете связь не из папки проекта. Это запрещено.\n\nХраните и используйте файлы в папке проекта по структуре KPLN.");
-                        errors.Add($"Файл: {name}\n\nПричина: связь находится вне папки проекта.\n\nТекущий путь:\n{path}\n\nПапка проекта:\n{project.MainPath}\n\nЧто делать: поместите файл в соответствующую папку по структуре KPLN и повторите связывание.");
+                        errors.Add($"Файл: {name}\n\nПричина: связь находится вне папки проекта.\n\nТекущий путь:\n{path}\n\nПапка проекта:\n{root}\n\nЧто делать: поместите файл в соответствующую папку по структуре KPLN и повторите связывание.");
                     }
                 }
                 catch (Exception ex)
@@ -166,6 +166,17 @@ namespace KPLN_Looker.Services
 
         private static bool HasExtension(string path, string extension) =>
             !string.IsNullOrWhiteSpace(path) && path.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
+
+        internal static string GetProjectRoot(string mainPath)
+        {
+            string root = NormalizePath(mainPath);
+            if (root == null)
+                return null;
+
+            // Корень проекта всегда на один уровень выше MainPath.
+            string parent = Path.GetDirectoryName(root);
+            return string.IsNullOrEmpty(parent) ? null : parent.TrimEnd(Path.DirectorySeparatorChar);
+        }
 
         internal static string NormalizePath(string path)
         {
