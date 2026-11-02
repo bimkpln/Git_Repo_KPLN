@@ -364,7 +364,8 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                         GetIntList(arguments, "columnIndexes"),
                         GetInt(arguments, "limit", 200),
                         GetInt(arguments, "offset"),
-                        cancellationToken);
+                        cancellationToken,
+                        GetString(arguments, "section", "body"));
 
                 case "get_schedule_sorting_info":
                     return Commands.GetScheduleSortingInfo(

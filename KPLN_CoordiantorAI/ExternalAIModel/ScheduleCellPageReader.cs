@@ -24,7 +24,8 @@ namespace KPLN_CoordiantorAI.ExternalModel
             int offset,
             Func<int, int, string> readCell,
             CancellationToken cancellationToken,
-            int timeBudgetMilliseconds = TimeBudgetMilliseconds)
+            int timeBudgetMilliseconds = TimeBudgetMilliseconds,
+            Func<int, int, JObject> readCellDetails = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (limit <= 0 || offset < 0 || totalRows < 0)
@@ -69,7 +70,16 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     JObject cell = new JObject { { "columnIndex", columnIndex } };
                     try
                     {
-                        cell["text"] = readCell(rowIndex, columnIndex) ?? string.Empty;
+                        if (readCellDetails == null)
+                            cell["text"] = readCell(rowIndex, columnIndex) ?? string.Empty;
+                        else
+                        {
+                            JObject details = readCellDetails(rowIndex, columnIndex);
+                            foreach (JProperty property in details.Properties())
+                                cell[property.Name] = property.Value.DeepClone();
+                            if (cell["error"] != null || cell["mergeError"] != null)
+                                rowErrors++;
+                        }
                     }
                     catch (OperationCanceledException)
                     {

@@ -8286,9 +8286,17 @@ namespace KPLN_CoordiantorAI.ExternalModel
             List<int> columnIndexes,
             int limit = 200,
             int offset = 0,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default(CancellationToken),
+            string section = "body")
         {
             cancellationToken.ThrowIfCancellationRequested();
+            SectionType sectionType;
+            if (string.Equals(section, "body", StringComparison.OrdinalIgnoreCase))
+                sectionType = SectionType.Body;
+            else if (string.Equals(section, "header", StringComparison.OrdinalIgnoreCase))
+                sectionType = SectionType.Header;
+            else
+                return new { error = "section must be body or header.", error_code = "invalid_arguments" };
             if (doc == null)
                 return new { error = "No active Revit document." };
             if (scheduleId <= 0 || limit <= 0 || offset < 0)
@@ -8304,49 +8312,52 @@ namespace KPLN_CoordiantorAI.ExternalModel
 
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 using (TableData table = schedule.GetTableData())
-                using (TableSectionData body = table.GetSectionData(SectionType.Body))
+                using (TableSectionData sectionData = table.GetSectionData(sectionType))
                 {
-                    if (body == null)
-                        return new { error = "The schedule has no Body section.", scheduleId };
+                    if (sectionData == null)
+                        return new { error = "The schedule has no " + sectionType + " section.", scheduleId };
 
-                    int firstColumn = body.FirstColumnNumber;
-                    int columnCount = body.NumberOfColumns;
+                    int firstColumn = sectionData.FirstColumnNumber;
+                    int columnCount = sectionData.NumberOfColumns;
                     List<int> selectedColumns = columnIndexes == null || columnIndexes.Count == 0
                         ? Enumerable.Range(firstColumn, columnCount).ToList()
                         : columnIndexes.Distinct().OrderBy(index => index).ToList();
                     if (selectedColumns.Any(index => index < firstColumn || (long)index - firstColumn >= columnCount))
                         return new
                         {
-                            error = "columnIndexes must contain visible Body column indices, not field IDs.",
+                            error = "columnIndexes must contain " + sectionType + " column indices, not field IDs.",
                             firstColumnIndex = firstColumn,
                             column_count = columnCount
                         };
 
-                    ScheduleDefinition definition = schedule.Definition;
                     List<ScheduleField> visibleFields = new List<ScheduleField>();
                     JArray warnings = new JArray();
                     bool fieldMappingAvailable = false;
                     JToken isItemized = JValue.CreateNull();
-                    try
+                    if (sectionType == SectionType.Body)
                     {
-                        isItemized = new JValue(definition.IsItemized);
-                        foreach (ScheduleFieldId fieldId in definition.GetFieldOrder())
+                        try
                         {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            ScheduleField field = definition.GetField(fieldId);
-                            if (!field.IsHidden)
-                                visibleFields.Add(field);
+                            ScheduleDefinition definition = schedule.Definition;
+                            isItemized = new JValue(definition.IsItemized);
+                            foreach (ScheduleFieldId fieldId in definition.GetFieldOrder())
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+                                ScheduleField field = definition.GetField(fieldId);
+                                if (!field.IsHidden)
+                                    visibleFields.Add(field);
+                            }
+                            // Hidden fields have no Body column; embedded schedules need their own mapping.
+                            fieldMappingAvailable = !definition.HasEmbeddedSchedule && visibleFields.Count == columnCount;
                         }
-                        // Hidden fields have no Body column; embedded schedules need their own mapping.
-                        fieldMappingAvailable = !definition.HasEmbeddedSchedule && visibleFields.Count == columnCount;
+                        catch (OperationCanceledException) { throw; }
+                        catch (Exception ex)
+                        {
+                            warnings.Add("Schedule field metadata is unavailable: " + ex.Message);
+                        }
+                        if (!fieldMappingAvailable)
+                            warnings.Add("Body columns could not be reliably mapped to schedule fields. Use columnIndex; field metadata is null.");
                     }
-                    catch (OperationCanceledException) { throw; }
-                    catch (Exception ex)
-                    {
-                        warnings.Add("Schedule field metadata is unavailable: " + ex.Message);
-                    }
-                    if (!fieldMappingAvailable)
-                        warnings.Add("Body columns could not be reliably mapped to schedule fields. Use columnIndex; field metadata is null.");
 
                     JArray columns = new JArray();
                     foreach (int columnIndex in selectedColumns)
@@ -8394,9 +8405,9 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     {
                         { "scheduleId", scheduleId },
                         { "scheduleName", schedule.Name },
-                        { "section", "Body" },
+                        { "section", sectionType.ToString() },
                         { "isItemized", isItemized },
-                        { "firstRowIndex", body.FirstRowNumber },
+                        { "firstRowIndex", sectionData.FirstRowNumber },
                         { "firstColumnIndex", firstColumn },
                         { "column_count", columnCount },
                         { "field_mapping_available", fieldMappingAvailable },
@@ -8406,9 +8417,12 @@ namespace KPLN_CoordiantorAI.ExternalModel
                     int remainingMilliseconds = (int)Math.Max(0L,
                         ScheduleCellPageReader.TimeBudgetMilliseconds - stopwatch.ElapsedMilliseconds);
                     return ScheduleCellPageReader.Read(
-                        metadata, body.FirstRowNumber, body.NumberOfRows, selectedColumns, limit, offset,
-                        (row, column) => schedule.GetCellText(SectionType.Body, row, column),
-                        cancellationToken, remainingMilliseconds);
+                        metadata, sectionData.FirstRowNumber, sectionData.NumberOfRows, selectedColumns, limit, offset,
+                        (row, column) => schedule.GetCellText(sectionType, row, column),
+                        cancellationToken, remainingMilliseconds,
+                        sectionType == SectionType.Header
+                            ? new Func<int, int, JObject>((row, column) => ReadScheduleHeaderCell(schedule, sectionData, row, column))
+                            : null);
                 }
             }
             catch (OperationCanceledException) { throw; }
@@ -8416,6 +8430,52 @@ namespace KPLN_CoordiantorAI.ExternalModel
             {
                 return new { error = "Cannot read schedule cells: " + ex.Message, scheduleId };
             }
+        }
+
+        private static JObject ReadScheduleHeaderCell(ViewSchedule schedule, TableSectionData header, int row, int column)
+        {
+            JObject cell = new JObject
+            {
+                { "isMerged", JValue.CreateNull() },
+                { "mergedRange", JValue.CreateNull() }
+            };
+            int textRow = row;
+            int textColumn = column;
+            try
+            {
+                using (TableMergedCell merged = header.GetMergedCell(row, column))
+                {
+                    bool isMerged = merged.Top != merged.Bottom || merged.Left != merged.Right;
+                    cell["isMerged"] = isMerged;
+                    if (isMerged)
+                    {
+                        cell["mergedRange"] = new JObject
+                        {
+                            { "top", merged.Top }, { "bottom", merged.Bottom },
+                            { "left", merged.Left }, { "right", merged.Right }
+                        };
+                        // Read the anchor even when it lies outside the requested page/columns.
+                        textRow = merged.Top;
+                        textColumn = merged.Left;
+                    }
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                cell["mergeError"] = ex.Message;
+            }
+            try
+            {
+                cell["text"] = schedule.GetCellText(SectionType.Header, textRow, textColumn) ?? string.Empty;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                cell["text"] = JValue.CreateNull();
+                cell["error"] = ex.Message;
+            }
+            return cell;
         }
 
         #endregion
