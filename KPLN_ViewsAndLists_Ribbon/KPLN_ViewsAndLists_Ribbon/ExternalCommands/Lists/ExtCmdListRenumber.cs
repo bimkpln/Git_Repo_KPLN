@@ -3,27 +3,11 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_ViewsAndLists_Ribbon.Forms;
-using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 
 namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
 {
-    internal class NumericStringComparer : IComparer<string>
-    {
-        public int Compare(string x, string y)
-        {
-            if (double.TryParse(x, NumberStyles.Any, CultureInfo.InvariantCulture, out double xValue) &&
-                double.TryParse(y, NumberStyles.Any, CultureInfo.InvariantCulture, out double yValue))
-            {
-                return xValue.CompareTo(yValue);
-            }
-
-            return string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
-        }
-    }
-
     [Transaction(TransactionMode.Manual)]
     [Regeneration(RegenerationOption.Manual)]
     internal class ExtCmdListRenumber : IExternalCommand
@@ -47,7 +31,7 @@ namespace KPLN_ViewsAndLists_Ribbon.ExternalCommands.Lists
                 else
                     falseElemList.Add(elem);
             }
-            List<ViewSheet> sortedSheets = mixedSheetsList.OrderBy(s => s.SheetNumber, new NumericStringComparer()).ToList();
+            List<ViewSheet> sortedSheets = mixedSheetsList.OrderBy(s => s.SheetNumber, Comparer<string>.Create(NamingUtils.CompareNames)).ToList();
 
             if (mixedSheetsList.Count != 0)
             {
