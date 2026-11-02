@@ -74,7 +74,9 @@ namespace KPLN_Publication.ExternalCommands.Print
 
                 if (!selSheets.Any() && !selViews.Any())
                 {
-                    message = "Вы не выбрали листы или виды для экспорта. Выберите их в Диспетчере проекта через Shift.";
+                    message = "Вы не выбрали листы или виды для экспорта. Выберите их в Диспетчере проекта через Shift.\n\n"
+                        + "ВАЖНО: Если листы раскрыты в Диспетчере проекта до размещённых видов, сверните их. "
+                        + "Затем заново выделите только строки листов и повторите запуск.";
                     logger.Write("Эксопорт остановлен, ничего для экспорта не выбрано");
                     return Result.Failed;
                 }
@@ -82,94 +84,11 @@ namespace KPLN_Publication.ExternalCommands.Print
                 View[] resultViews = selSheets.Concat(selViews).ToArray();
 
                 //Листы/виды из всех открытых файлов, ключ - имя файла, значение - список видов
-                List<string> listErrors = new List<string>();
-                FamilyInstance[] tBlocksCollHeap = new FilteredElementCollector(mainDoc)
-                    .OfCategory(BuiltInCategory.OST_TitleBlocks)
-                    .WhereElementIsNotElementType()
-                    .Cast<FamilyInstance>()
-                    .ToArray();
                 Dictionary<string, List<MainEntity>> allEntities = EntitySupport.GetAllEntities(commandData, resultViews);
                 foreach (View view in resultViews)
                 {
                     MainEntity entInBase = allEntities[mainDocTitle].Where(i => i.MainView.Id.Equals(view.Id)).FirstOrDefault();
                     entInBase.IsPrintable = true;
-
-                    if (view is ViewSheet sheet)
-                    {
-                        // Анализирую листы на наличие 2х основных надписей в одном месте, а также фильтрую пользовательские семейства категории Основная надпись
-                        List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>();
-                        FamilyInstance[] tBlocksCollHeapOnSheet = tBlocksCollHeap
-                            .Where(el => el.OwnerViewId.Equals(view.Id))
-                            .ToArray();
-
-                        FamilyInstance[] tBlocksColl = null;
-                        if (tBlocksCollHeapOnSheet.Count() >= 1)
-                        {
-                            tBlocksColl = tBlocksCollHeapOnSheet
-                                .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись") || fi.Symbol.FamilyName.Contains("Основные надписи"))
-                                .ToArray();
-                        }
-
-                        if (tBlocksColl == null)
-                        {
-                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Имеет несколько экземпляров семейства категории \"Основные надписи\", но при этом - нет ни одного экземпляра семейства штампа КПЛН");
-                            continue;
-                        }
-
-                        // Если штамп 1, то и проверять не нужно. При взятии геометрии BoundingBoxXYZ - лист открывается.
-                        if (tBlocksColl.Length <= 1) continue;
-
-                        foreach (FamilyInstance tBlock in tBlocksColl)
-                        {
-                            if (listErrors.Contains(sheet.Name)) break;
-
-                            List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
-                            BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet) ?? throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
-
-                            // Проверяю на дубликаты
-                            if (tBlockLocations.Where(tbl => tbl.Item1.IsAlmostEqualTo(boxXYZ.Max, 0.01) && tbl.Item2.IsAlmostEqualTo(boxXYZ.Min, 0.01)).Any())
-                                listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Несколько экземпляров основной надписи в одном месте, проблема у рамки с Id: {tBlock.Id}");
-
-                            // Добавляю в коллекцию проверенных элементов
-                            tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Min, boxXYZ.Max));
-                        }
-
-                        // Проверяю на смещение
-                        var blocks = tBlockLocations
-                            .OrderBy(b => b.Item2.X)
-                            .ToList();
-
-                        double tol = 0.001;
-                        for (int i = 1; i < blocks.Count; i++)
-                        {
-                            bool errorXShift = Math.Abs(blocks[i].Item1.X) - Math.Abs(blocks[i - 1].Item2.X) > tol;
-
-                            bool errorY1 = Math.Abs(blocks[i].Item1.Y) - Math.Abs(blocks[i - 1].Item1.Y) > tol;
-                            bool errorY2 = Math.Abs(blocks[i].Item2.Y) - Math.Abs(blocks[i - 1].Item2.Y) > tol;
-
-                            bool errorZ1 = Math.Abs(blocks[i].Item1.Z) - Math.Abs(blocks[i - 1].Item1.Z) > tol;
-                            bool errorZ2 = Math.Abs(blocks[i].Item2.Z) - Math.Abs(blocks[i - 1].Item2.Z) > tol;
-
-                            if (errorXShift || errorY1 || errorY2 || errorZ1 || errorZ2)
-                            {
-                                listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: " +
-                                               $"Рамка №{i + 1} не стыкуется с рамкой №{i + 2}. " +
-                                               $"Необходимо выровнять без зазоров");
-                                break;
-                            }
-                        }
-                    }
-                }
-
-
-                if (listErrors.Count != 0)
-                {
-                    foreach (string listError in listErrors)
-                    {
-                        HtmlOutput.Print($"Ошибка: {listError}. Экспорт остановлен", MessageType.Error);
-                    }
-
-                    return Result.Failed;
                 }
 
                 //очистка старых Schema при необходимости
@@ -198,6 +117,17 @@ namespace KPLN_Publication.ExternalCommands.Print
                 printSettings = form.PrintSettings;
                 if (form.DialogResult != System.Windows.Forms.DialogResult.OK || (!printSettings.isPDFExport && !printSettings.isDWGExport))
                     return Result.Cancelled;
+
+                // Проверяем штампы окончательного набора до первого задания PDF или DWG.
+                List<string> listErrors = GetTitleBlockErrors(form._entitiesSelected.Values
+                    .SelectMany(items => items).Select(entity => entity.MainView).OfType<ViewSheet>());
+                if (listErrors.Count != 0)
+                {
+                    foreach (string listError in listErrors)
+                        HtmlOutput.Print($"Ошибка: {listError}. Экспорт остановлен", MessageType.Error);
+
+                    return Result.Failed;
+                }
 
                 logger.Write("В окне печати нажат ОК, переход к экспорту");
 
@@ -1043,6 +973,87 @@ namespace KPLN_Publication.ExternalCommands.Print
             logger.Write("Открыта папка " + outputFolder);
 
             return exportedSheetCount;
+        }
+
+        private static List<string> GetTitleBlockErrors(IEnumerable<ViewSheet> sheets)
+        {
+            List<string> listErrors = new List<string>();
+            foreach (var documentSheets in sheets.GroupBy(sheet => sheet.Document))
+            {
+                FamilyInstance[] tBlocksCollHeap = new FilteredElementCollector(documentSheets.Key)
+                    .OfCategory(BuiltInCategory.OST_TitleBlocks)
+                    .WhereElementIsNotElementType()
+                    .Cast<FamilyInstance>()
+                    .ToArray();
+
+                foreach (ViewSheet sheet in documentSheets)
+                {
+                    // Анализирую листы на наличие 2х основных надписей в одном месте, а также фильтрую пользовательские семейства категории Основная надпись
+                    List<Tuple<XYZ, XYZ>> tBlockLocations = new List<Tuple<XYZ, XYZ>>();
+                    FamilyInstance[] tBlocksCollHeapOnSheet = tBlocksCollHeap
+                        .Where(el => el.OwnerViewId.Equals(sheet.Id))
+                        .ToArray();
+
+                    FamilyInstance[] tBlocksColl = null;
+                    if (tBlocksCollHeapOnSheet.Count() >= 1)
+                    {
+                        tBlocksColl = tBlocksCollHeapOnSheet
+                            .Where(fi => fi.Symbol.FamilyName.Contains("Основная надпись") || fi.Symbol.FamilyName.Contains("Основные надписи"))
+                            .ToArray();
+                    }
+
+                    if (tBlocksColl == null)
+                    {
+                        listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Имеет несколько экземпляров семейства категории \"Основные надписи\", но при этом - нет ни одного экземпляра семейства штампа КПЛН");
+                        continue;
+                    }
+
+                    // Если штамп 1, то и проверять не нужно. При взятии геометрии BoundingBoxXYZ - лист открывается.
+                    if (tBlocksColl.Length <= 1) continue;
+
+                    foreach (FamilyInstance tBlock in tBlocksColl)
+                    {
+                        if (listErrors.Contains(sheet.Name)) break;
+
+                        List<Tuple<XYZ, XYZ>> templList = new List<Tuple<XYZ, XYZ>>();
+                        BoundingBoxXYZ boxXYZ = tBlock.get_BoundingBox(sheet) ?? throw new Exception($"Ошибка в получении BoundingBoxXYZ у листа {sheet.SheetNumber}-{sheet.Name}. Обратись к разработчику!");
+
+                        // Проверяю на дубликаты
+                        if (tBlockLocations.Where(tbl => tbl.Item1.IsAlmostEqualTo(boxXYZ.Max, 0.01) && tbl.Item2.IsAlmostEqualTo(boxXYZ.Min, 0.01)).Any())
+                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: Несколько экземпляров основной надписи в одном месте, проблема у рамки с Id: {tBlock.Id}");
+
+                        // Добавляю в коллекцию проверенных элементов
+                        tBlockLocations.Add(new Tuple<XYZ, XYZ>(boxXYZ.Min, boxXYZ.Max));
+                    }
+
+                    // Проверяю на смещение
+                    var blocks = tBlockLocations
+                        .OrderBy(b => b.Item2.X)
+                        .ToList();
+
+                    double tol = 0.001;
+                    for (int i = 1; i < blocks.Count; i++)
+                    {
+                        bool errorXShift = Math.Abs(blocks[i].Item1.X) - Math.Abs(blocks[i - 1].Item2.X) > tol;
+
+                        bool errorY1 = Math.Abs(blocks[i].Item1.Y) - Math.Abs(blocks[i - 1].Item1.Y) > tol;
+                        bool errorY2 = Math.Abs(blocks[i].Item2.Y) - Math.Abs(blocks[i - 1].Item2.Y) > tol;
+
+                        bool errorZ1 = Math.Abs(blocks[i].Item1.Z) - Math.Abs(blocks[i - 1].Item1.Z) > tol;
+                        bool errorZ2 = Math.Abs(blocks[i].Item2.Z) - Math.Abs(blocks[i - 1].Item2.Z) > tol;
+
+                        if (errorXShift || errorY1 || errorY2 || errorZ1 || errorZ2)
+                        {
+                            listErrors.Add($"{sheet.SheetNumber}-{sheet.Name}: " +
+                                           $"Рамка №{i + 1} не стыкуется с рамкой №{i + 2}. " +
+                                           $"Необходимо выровнять без зазоров");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return listErrors;
         }
 
         private static string GetDwgFileName(string fileName)
