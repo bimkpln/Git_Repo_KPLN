@@ -1,9 +1,12 @@
-﻿using KPLN_Clashes_Ribbon.Core;
+using Dapper;
+using System.Data.SQLite;
+using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using static KPLN_Clashes_Ribbon.Core.ClashesMainCollection;
 
 namespace KPLN_Clashes_Ribbon.Services.SQLite
@@ -11,13 +14,154 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
     /// <summary>
     /// Личный сервис по работе с БД инстанса отчета
     /// </summary>
-    public sealed class SQLiteService_ReportItemsDB : AbsSQLiteService
+    public sealed partial class SQLiteService_ReportItemsDB : AbsSQLiteService
     {
         private const string _dbTableName = "Items";
 
         public SQLiteService_ReportItemsDB(string dbConnectionPath)
         {
             _dbConnectionPath = $@"Data Source={dbConnectionPath};Version=3;";
+        }
+
+        // Только данные: экземпляры WPF и Revit в фоновую запись не передаются.
+        public sealed class ItemChange
+        {
+            public string Actor { get; set; }
+            public string SessionId { get; set; }
+            public int Id { get; set; }
+            public int DepartmentId { get; set; }
+            public string Comment { get; set; }
+        }
+
+        public sealed class SavedItem
+        {
+            public long Revision { get; set; }
+            public int Id { get; set; }
+            public int StatusId { get; set; }
+            public int DelegatedDepartmentId { get; set; }
+            public string Comments { get; set; }
+        }
+
+        public sealed class StatusCount
+        {
+            public int StatusId { get; set; }
+            public long ItemCount { get; set; }
+        }
+
+        public sealed class ReportSummary
+        {
+            public long Revision { get; set; }
+            public StatusCount[] Counts { get; set; }
+            public KPItemStatus Status => GetSummaryStatus(Counts);
+        }
+
+        public static KPItemStatus GetSummaryStatus(IEnumerable<StatusCount> counts)
+        {
+            StatusCount[] rows = counts.Where(c => c.ItemCount > 0).ToArray();
+            if (rows.Any(c => c.StatusId == (int)KPItemStatus.Opened))
+                return KPItemStatus.Opened;
+            if (rows.All(c => c.StatusId == (int)KPItemStatus.Closed))
+                return KPItemStatus.Closed;
+            if (rows.Any(c => c.StatusId == (int)KPItemStatus.Delegated))
+                return KPItemStatus.Delegated;
+            if (rows.All(c => c.StatusId == (int)KPItemStatus.Approved || c.StatusId == (int)KPItemStatus.Closed))
+                return KPItemStatus.Approved;
+
+            return KPItemStatus.Opened;
+        }
+
+        public ReportSummary ReadSummary()
+        {
+            EnsureChangeTracking();
+            using (var connection = SQLiteRetryPolicy.CreateConnection(_dbConnectionPath))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction(System.Data.IsolationLevel.ReadCommitted))
+                {
+                    var summary = new ReportSummary
+                    {
+                        Revision = connection.QuerySingle<long>("SELECT Revision FROM ReportRevision WHERE Id=1", transaction: transaction, commandTimeout: 1),
+                        Counts = connection.Query<StatusCount>(
+                            "SELECT StatusId, COUNT(*) AS ItemCount FROM Items WHERE ParentGroupId = -1 GROUP BY StatusId",
+                            transaction: transaction, commandTimeout: 1).ToArray()
+                    };
+                    transaction.Commit();
+                    return summary;
+                }
+            }
+        }
+
+        public Task<ReportSummary> ReadSummaryAsync() => SQLiteRetryPolicy.RunAsync(ReadSummary);
+
+        public KPItemStatus ReadSummaryStatus() => ReadSummary().Status;
+
+        public Task<KPItemStatus> ReadSummaryStatusAsync() => SQLiteRetryPolicy.RunAsync(ReadSummaryStatus);
+
+        public Task<SavedItem[]> SaveChangesBatchAsync(ItemChange[] changes, KPItemStatus? status)
+        {
+            // Не позволяем вызывающему коду изменить пакет между попытками.
+            ItemChange[] snapshot = changes.Select(c => new ItemChange
+            {
+                Id = c.Id, DepartmentId = c.DepartmentId, Comment = c.Comment,
+                Actor = c.Actor, SessionId = c.SessionId
+            }).ToArray();
+            return SQLiteRetryPolicy.RunAsync(() => SaveChangesBatch(snapshot, status));
+        }
+
+        /// <summary>Сохраняет весь выбор либо откатывает его; ошибки передаются вызывающему коду.</summary>
+        public SavedItem[] SaveChangesBatch(ItemChange[] changes, KPItemStatus? status)
+        {
+            if (changes.Length == 0)
+                return new SavedItem[0];
+            if (changes.Select(c => c.Id).Distinct().Count() != changes.Length)
+                throw new ArgumentException("Пакет содержит повторяющиеся замечания.", nameof(changes));
+
+            EnsureChangeTracking();
+
+            // Подготовка запроса и параметров до захвата блокировки записи.
+            string query = "UPDATE Items SET Comments = @Comment || " +
+                "CASE WHEN COALESCE(Comments, '') = '' THEN '' ELSE @Separator || Comments END";
+            if (status.HasValue)
+                query += ", StatusId = @StatusId, DelegatedDepartmentId = @DepartmentId";
+            query += " WHERE Id = @Id";
+            var parameters = changes.Select(change => new
+            {
+                change.Id, change.Comment, change.DepartmentId,
+                StatusId = (int?)status,
+                Separator = ClashesMainCollection.StringSeparatorItem
+            }).ToArray();
+
+            using (var connection = SQLiteRetryPolicy.CreateConnection(_dbConnectionPath))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    connection.Execute("UPDATE ReportWriterContext SET Actor=@Actor, SessionId=@SessionId WHERE Id=1",
+                        new { Actor = changes[0].Actor ?? string.Empty, SessionId = changes[0].SessionId ?? string.Empty },
+                        transaction, commandTimeout: 1);
+                    var saved = new List<SavedItem>();
+                    foreach (var parameter in parameters)
+                    {
+                        // Добавляем к текущей истории в БД, а не к копии из открытого окна.
+                        int affected = connection.Execute(query, parameter, transaction, commandTimeout: 1);
+                        if (affected != 1)
+                            throw new InvalidOperationException("Замечание отсутствует в БД: " + parameter.Id);
+                    }
+
+                    // Читаем только затронутые строки небольшими пакетами, без изображений.
+                    for (int offset = 0; offset < changes.Length; offset += 500)
+                        saved.AddRange(connection.Query<SavedItem>(
+                            "SELECT i.Id, i.StatusId, i.DelegatedDepartmentId, i.Comments, " +
+                            "COALESCE((SELECT MAX(c.Revision) FROM ReportChanges c WHERE c.ItemId=i.Id),0) AS Revision FROM Items i WHERE i.Id IN @Ids",
+                            new { Ids = changes.Skip(offset).Take(500).Select(c => c.Id).ToArray() },
+                            transaction, commandTimeout: 1));
+
+                    SavedItem[] result = saved.ToArray();
+                    connection.Execute("UPDATE ReportWriterContext SET Actor='', SessionId='' WHERE Id=1", transaction: transaction, commandTimeout: 1);
+                    transaction.Commit();
+                    return result;
+                }
+            }
         }
 
         #region Create

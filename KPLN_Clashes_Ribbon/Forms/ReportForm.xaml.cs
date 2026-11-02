@@ -1,6 +1,7 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Clashes_Ribbon.Commands;
+using KPLN_Clashes_Ribbon.Services.SQLite;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Clashes_Ribbon.ExternalEventHandler;
@@ -30,6 +31,9 @@ namespace KPLN_Clashes_Ribbon.Forms
     /// </summary>
     public partial class ReportForm : Window
     {
+        private static ReportForm _currentInstance;
+        private static bool _isOpening;
+
         public List<IExecutableCommand> OnClosingActions = new List<IExecutableCommand>();
 
         private readonly ReportManagerForm _reportManagerForm;
@@ -40,11 +44,49 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private readonly ViewActivatedHandler _viewHandler;
 
+        private bool _isSaving;
+
         private string _conflictDataTBx = string.Empty;
         private string _idDataTBx = string.Empty;
         private string _conflictMetaDataTBx = string.Empty;
 
-        public ReportForm(ReportManagerForm reportManagerForm, Report report, ReportGroup reportGroup, ViewActivatedHandler viewHandler)
+        public static void ShowOrActivate(ReportManagerForm reportManagerForm, Report report, ReportGroup reportGroup, ViewActivatedHandler viewHandler)
+        {
+            // Общее окно для всех менеджеров и документов в этом процессе Revit.
+            if (_currentInstance != null)
+            {
+                if (_currentInstance.WindowState == WindowState.Minimized)
+                    _currentInstance.WindowState = WindowState.Normal;
+                if (!_currentInstance.IsVisible)
+                    _currentInstance.Show();
+
+                _currentInstance.Activate();
+                _currentInstance.Focus();
+                return;
+            }
+
+            // Защита от повторного открытия, пока конструктор загружает отчет.
+            if (_isOpening)
+                return;
+
+            _isOpening = true;
+            try
+            {
+                _currentInstance = new ReportForm(reportManagerForm, report, reportGroup, viewHandler);
+                _currentInstance.Show();
+            }
+            catch
+            {
+                _currentInstance = null;
+                throw;
+            }
+            finally
+            {
+                _isOpening = false;
+            }
+        }
+
+        private ReportForm(ReportManagerForm reportManagerForm, Report report, ReportGroup reportGroup, ViewActivatedHandler viewHandler)
         {
             _reportManagerForm = reportManagerForm;
             _repourtGroup = reportGroup;
@@ -93,6 +135,12 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             OnClosingActions.Add(new CmdRemoveFamInst());
             Closing += RemoveOnClose;
+            StartLiveUpdates();
+            Closed += (sender, args) =>
+            {
+                if (ReferenceEquals(_currentInstance, this))
+                    _currentInstance = null;
+            };
         }
 
         private bool FilterForRepItems(object obj)
@@ -213,6 +261,12 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void RemoveOnClose(object sender, CancelEventArgs args)
         {
+            if (_isSaving)
+            {
+                args.Cancel = true;
+                return;
+            }
+
             foreach (IExecutableCommand cmd in OnClosingActions)
             {
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(cmd);
@@ -324,11 +378,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             FilteredInstancesColl?.Refresh();
         }
 
-        private void OnBtnUpdate(object sender, RoutedEventArgs args)
+        private async void OnBtnUpdate(object sender, RoutedEventArgs args)
         {
-            ReportInstancesColl = _sqliteService_ReportInstanceDB.GetAllReporItems();
-
-            FilteredInstancesColl?.Refresh();
+            await PollChangesAsync(true);
         }
         private void OnZoomSettings(object sender, RoutedEventArgs e)
         {
@@ -346,37 +398,65 @@ namespace KPLN_Clashes_Ribbon.Forms
             form.ShowDialog();
         }
 
-        /// <summary>
-        /// Метод для записи данных (комментарии) в окно и БД для текущего ReportItem
-        /// </summary>
-        /// <param name="item">ReportItem для анализа</param>
-        /// <param name="msg">Сообщение при смене статуса</param>
-        private void ItemMessageWorker(ReportItem item, string msg)
+        /// <summary>Один пакет записи в фоне; UI меняется только после commit.</summary>
+        private async Task<bool> SaveItemsAsync(List<ReportItem> items, KPItemStatus? status, string message, int? departmentId = null)
         {
-            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
+            if (_isSaving || items.Count == 0)
+                return false;
 
-            _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
-            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, Report.GetMainReportStatus(_sqliteService_ReportInstanceDB.GetAllReporItems()));
+            var changes = items.Select(item => new SQLiteService_ReportItemsDB.ItemChange
+            {
+                Id = item.Id,
+                DepartmentId = departmentId ?? item.DelegatedDepartmentId,
+                Comment = new ReportItemComment(message).ToString(),
+                Actor = SQLiteMainService.CurrentDBUser.Name + " " + SQLiteMainService.CurrentDBUser.Surname,
+                SessionId = _reportSessionId
+            }).ToArray();
+            int reportId = _currentReport.Id;
+            int groupId = _currentReport.ReportGroupId;
+            string userName = SQLiteMainService.CurrentDBUser.SystemName;
+            string fullName = SQLiteMainService.CurrentDBUser.Name + " " + SQLiteMainService.CurrentDBUser.Surname;
+            string originalTitle = Title;
+            var content = Content as UIElement;
+            bool wasEnabled = content?.IsEnabled ?? true;
+            _isSaving = true;
+            _localSaveGeneration++;
+            if (content != null)
+                content.IsEnabled = false;
+            Title = originalTitle + " — Сохранение…";
+            bool itemsSaved = false;
+            SQLiteService_ReportItemsDB.SavedItem[] saved = null;
 
-            item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
-        }
+            try
+            {
+                saved = await _sqliteService_ReportInstanceDB.SaveChangesBatchAsync(changes, status);
+                itemsSaved = true;
+                ApplyLiveRows(saved);
 
-        /// <summary>
-        /// Метод для записи данных (комментарии, статус) в окно и БД для текущего ReportItem
-        /// </summary>
-        /// <param name="item">ReportItem для анализа</param>
-        /// <param name="itemStatus">Присаваиваемый статус замечания</param>
-        /// <param name="msg">Сообщение при смене статуса</param>
-        private void ItemMessageWorker(ReportItem item, KPItemStatus itemStatus, string msg)
-        {
-            _sqliteService_ReportInstanceDB.SetStatusAndDepartment_ByReportItem(itemStatus, item);
-            _sqliteService_ReportInstanceDB.SetComment_ByReportItem(msg, item);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                string messageText = itemsSaved
+                    ? "Изменения сохранены, но не удалось обновить окно. Откройте отчет заново; повторять запись не нужно.\n"
+                    : "Не удалось сохранить изменения.\n";
+                System.Windows.MessageBox.Show(this, messageText + ex.Message,
+                    "Сохранение отчета", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+            finally
+            {
+                _isSaving = false;
+                Title = originalTitle;
+                if (content != null)
+                    content.IsEnabled = wasEnabled;
 
-            _sqliteService_MainDB.UpdateReportGroup_MarksLastChange_ByGroupId(_currentReport.ReportGroupId);
-            _sqliteService_MainDB.UpdateReport_MarksLastChange_ByIdAndMainRepInstStatus(_currentReport.Id, Report.GetMainReportStatus(_sqliteService_ReportInstanceDB.GetAllReporItems()));
-
-            item.Status = itemStatus;
-            item.CommentCollection = ReportItemComment.ParseComments(_sqliteService_ReportInstanceDB.GetComment_ByReportItem(item), item);
+                if (saved != null)
+                {
+                    QueueMetadataRefresh(saved, status.HasValue, reportId, groupId, userName, fullName);
+                    QueueCommentNames(saved);
+                }
+            }
         }
 
         /// <summary>
@@ -406,7 +486,16 @@ namespace KPLN_Clashes_Ribbon.Forms
                     MainIcon = TaskDialogIcon.TaskDialogIconWarning
                 };
 
-                TaskDialogResult tdResult = td.Show();
+                TaskDialogResult tdResult;
+                _isEditing = true;
+                try
+                {
+                    tdResult = td.Show();
+                }
+                finally
+                {
+                    _isEditing = false;
+                }
                 if (tdResult == TaskDialogResult.No)
                     return new List<ReportItem>();
             }
@@ -414,60 +503,51 @@ namespace KPLN_Clashes_Ribbon.Forms
             return items;
         }
 
-        private void OnCorrected(object sender, RoutedEventArgs e)
+        private async void OnCorrected(object sender, RoutedEventArgs e)
         {
+            if (_isSaving)
+                return;
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            foreach (ReportItem ri in GetTargetItems(item))
-            {
-                ItemMessageWorker(ri, KPItemStatus.Closed, "Статус изменен: <Устранено>\\n");
-            }
+            await SaveItemsAsync(GetTargetItems(item), KPItemStatus.Closed, "Статус изменен: <Устранено>\n");
         }
 
-        private void OnApproved(object sender, RoutedEventArgs e)
+        private async void OnApproved(object sender, RoutedEventArgs e)
         {
+            if (_isSaving)
+                return;
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-
             UserTextInput textInputForm = new UserTextInput("Введите комментарий для допуска:");
-            if ((bool)textInputForm.ShowDialog())
-            {
-                string msg = textInputForm.UserInput;
-                foreach (ReportItem ri in GetTargetItems(item))
-                {
-                    ItemMessageWorker(ri, KPItemStatus.Approved, $"Статус изменен: <Допустимое>\n{msg}");
-                }
-            }
+            if (ShowCommentInput(textInputForm))
+                await SaveItemsAsync(GetTargetItems(item), KPItemStatus.Approved,
+                    "Статус изменен: <Допустимое>\n" + textInputForm.UserInput);
         }
 
-        private void OnReset(object sender, RoutedEventArgs e)
+        private async void OnReset(object sender, RoutedEventArgs e)
         {
+            if (_isSaving)
+                return;
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-            foreach (ReportItem ri in GetTargetItems(item))
-            {
-                if (ri.Status == KPItemStatus.Closed || ri.Status == KPItemStatus.Approved)
-                    ItemMessageWorker(ri, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в допуске>\\n");
-            }
+            var items = GetTargetItems(item).Where(ri => ri.Status == KPItemStatus.Closed || ri.Status == KPItemStatus.Approved).ToList();
+            await SaveItemsAsync(items, KPItemStatus.Opened, "Статус изменен: <Возвращен в работу - отказ в допуске>\n");
         }
 
-        private void OnAddComment(object sender, RoutedEventArgs e)
+        private async void OnAddComment(object sender, RoutedEventArgs e)
         {
+            if (_isSaving)
+                return;
             ReportItem item = (sender as System.Windows.Controls.Button).DataContext as ReportItem;
-
             UserTextInput textInputForm = new UserTextInput("Введите комментарий:");
-            if ((bool)textInputForm.ShowDialog())
-            {
-                string msg = textInputForm.UserInput;
-                foreach (ReportItem ri in GetTargetItems(item))
-                {
-                    ItemMessageWorker(ri, $"{msg}");
-                }
-            }
+            if (ShowCommentInput(textInputForm))
+                await SaveItemsAsync(GetTargetItems(item), null, textInputForm.UserInput);
         }
 
         /// <summary>
         /// Кнопка делегирования коллизии на другой отдел
         /// </summary>
-        private void OnDelegate(object sender, RoutedEventArgs e)
+        private async void OnDelegate(object sender, RoutedEventArgs e)
         {
+            if (_isSaving)
+                return;
             System.Windows.Controls.Button button = sender as System.Windows.Controls.Button;
             SubDepartmentBtn subDepartmentBtn = button.DataContext as SubDepartmentBtn;
             if (!(FindParent<ItemsControl>(button).DataContext is ReportItem currentItem))
@@ -475,22 +555,19 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             List<ReportItem> items = GetTargetItems(currentItem);
 
-            // Сброс выделения делегирования при нажатии на кнопку сброса (по id)
+            if (items.Count == 0)
+                return;
+
             if (subDepartmentBtn.Id == 99)
             {
-                foreach (ReportItem ri in items)
-                {
-                    ResetDelegateBtnBrush(ri);
-                    ItemMessageWorker(ri, KPItemStatus.Opened, $"Статус изменен: <Возвращен в работу - отказ в делегировании>\n");
-                    foreach (ReportItem r in ReportInstancesColl)
-                    {
-                        if (r.Id == ri.Id)
-                            r.SubDepartmentBtns = ri.SubDepartmentBtns;
-                    }
-                }
-
+                await SaveItemsAsync(items, KPItemStatus.Opened,
+                    "Статус изменен: <Возвращен в работу - отказ в делегировании>\n", -1);
                 return;
             }
+
+            if (!await SaveItemsAsync(items, KPItemStatus.Delegated,
+                $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n", subDepartmentBtn.Id))
+                return;
 
             // Выделение и логирования делегирования при нажатии на кнопку сброса (по id)
             int delegBitrixTaskId = 0;
@@ -525,47 +602,25 @@ namespace KPLN_Clashes_Ribbon.Forms
                     break;
             }
 
-            // Анализ задачи в Bitrix (если есть)
-            if (delegBitrixTaskId > 0)
+            // Сеть не блокирует поток интерфейса; сохранение замечаний уже подтверждено.
+            try
             {
-                Task<bool> isTaskOpenTask = Task<bool>.Run(() =>
-                    BitrixMessageSender.CheckTaskOpens_ByTaskId(delegBitrixTaskId));
-
-                // Спам ТОЛЬКО в закрытые задачи
-                if (!isTaskOpenTask.Result)
+                if (delegBitrixTaskId > 0 && !await BitrixMessageSender.CheckTaskOpens_ByTaskId(delegBitrixTaskId))
                 {
-                    Task<bool> sendMsgToTaskTask = Task<bool>.Run(() =>
-                        BitrixMessageSender
-                            .SendMsgToTask_ByTaskId(
-                            delegBitrixTaskId,
-                            $"Пользователь <{SQLiteMainService.CurrentDBUser.Name} {SQLiteMainService.CurrentDBUser.Surname}> " +
-                                $"делегировал вам коллизию из отчета: \"{_currentReport.Name}\" " +
-                                $"с именем: \"{currentItem.Name}\""));
-
-                    if (sendMsgToTaskTask.Result)
+                    bool sent = await BitrixMessageSender.SendMsgToTask_ByTaskId(delegBitrixTaskId,
+                        $"Пользователь <{SQLiteMainService.CurrentDBUser.Name} {SQLiteMainService.CurrentDBUser.Surname}> " +
+                        $"делегировал вам коллизию из отчета: \"{_currentReport.Name}\" " +
+                        $"с именем: \"{currentItem.Name}\"");
+                    if (sent)
                         System.Windows.MessageBox.Show(
-                            $"ВНИМАНИЕ! Отдел, которому вы делегируете замечание - уже отработал свою задачу. Свяжитесь с исполнителем лично" +
-                            $"\nИНФО: Было отправлено сообщение о делегировании коллизии в задачу Bitrix с id: {delegBitrixTaskId}",
-                            "Bitrix",
-                            (MessageBoxButton)MessageBoxButtons.OK,
-                            (MessageBoxImage)MessageBoxIcon.Asterisk);
+                            $"Отдел уже отработал свою задачу. Сообщение о делегировании отправлено в Bitrix: {delegBitrixTaskId}.",
+                            "Bitrix", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
-
-            foreach (ReportItem ri in items)
+            catch (Exception ex)
             {
-                SubDepartmentBtn targetBtn = ri.SubDepartmentBtns.FirstOrDefault(b => b.Id == subDepartmentBtn.Id);
-                if (targetBtn != null)
-                    SetDelegateBtnBrush(ri, targetBtn);
-
-                ItemMessageWorker(ri, KPItemStatus.Delegated, $"Статус изменен: <Делегирована отделу {subDepartmentBtn.Name}>\n");
-
-                // Обновление коллекции по делегировнным кнопкам
-                foreach (ReportItem r in ReportInstancesColl)
-                {
-                    if (r.Id == ri.Id)
-                        r.SubDepartmentBtns = ri.SubDepartmentBtns;
-                }
+                System.Windows.MessageBox.Show("Делегирование сохранено, но проверка/уведомление Bitrix не выполнено.\n" + ex.Message,
+                    "Bitrix", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 

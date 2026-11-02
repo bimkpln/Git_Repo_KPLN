@@ -1,4 +1,6 @@
-﻿using KPLN_Clashes_Ribbon.Core.Reports;
+using Dapper;
+using System.Data.SQLite;
+using KPLN_Clashes_Ribbon.Core.Reports;
 using KPLN_Library_DBWorker;
 using KPLN_Library_DBWorker.Core;
 using System.Collections.ObjectModel;
@@ -17,6 +19,65 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         public SQLiteService_MainDB()
         {
             _dbConnectionPath = @"Data Source=Z:\Отдел BIM\03_Скрипты\08_Базы данных\KPLN_Clashes_MainDB.db;Version=3;";
+        }
+
+        /// <summary>Метки обновляются один раз на пакет; комментарий не меняет статус отчета.</summary>
+        public Task<bool> UpdateBatchMetadataAsync(int reportId, int groupId, long changeRevision,
+            SQLiteService_ReportItemsDB.ReportSummary summary, string userName, string fullName)
+        {
+            return SQLiteRetryPolicy.RunAsync(() =>
+            {
+                UpdateBatchMetadata(reportId, groupId, changeRevision, summary, userName, fullName);
+                return true;
+            });
+        }
+
+        public void UpdateBatchMetadata(int reportId, int groupId, long changeRevision,
+            SQLiteService_ReportItemsDB.ReportSummary summary, string userName, string fullName)
+        {
+            var parameters = new { ReportId = reportId, GroupId = groupId, Date = CurrentTime,
+                UserName = userName, FullName = fullName, Status = summary?.Status.ToString(),
+                ChangeRevision = changeRevision, StatusRevision = summary?.Revision };
+
+            using (var connection = SQLiteRetryPolicy.CreateConnection(_dbConnectionPath))
+            {
+                connection.Open();
+                using (var transaction = connection.BeginTransaction())
+                {
+                    // Раздельные версии: новый комментарий не блокирует отложенную сводку статусов.
+                    connection.Execute(@"CREATE TABLE IF NOT EXISTS ReportSyncState (
+                        ReportId INTEGER PRIMARY KEY, StatusRevision INTEGER NOT NULL DEFAULT -1,
+                        MetadataRevision INTEGER NOT NULL DEFAULT -1);
+                        INSERT OR IGNORE INTO ReportSyncState(ReportId) VALUES(@ReportId);",
+                        parameters, transaction, commandTimeout: 1);
+                    if (connection.QuerySingle<int>("SELECT COUNT(*) FROM Reports WHERE Id=@ReportId", parameters, transaction, commandTimeout: 1) != 1)
+                        throw new System.InvalidOperationException("Отчет или группа отсутствует в общей БД.");
+
+                    if (summary != null)
+                    {
+                        int updated = connection.Execute(@"UPDATE Reports SET Status=@Status WHERE Id=@ReportId
+                            AND @StatusRevision >= (SELECT StatusRevision FROM ReportSyncState WHERE ReportId=@ReportId)",
+                            parameters, transaction, commandTimeout: 1);
+                        if (updated == 1)
+                            connection.Execute("UPDATE ReportSyncState SET StatusRevision=@StatusRevision WHERE ReportId=@ReportId",
+                                parameters, transaction, commandTimeout: 1);
+                    }
+
+                    int metadataUpdated = connection.Execute(@"UPDATE Reports SET DateLast=@Date, UserLast=@UserName WHERE Id=@ReportId
+                        AND @ChangeRevision >= (SELECT MetadataRevision FROM ReportSyncState WHERE ReportId=@ReportId)",
+                        parameters, transaction, commandTimeout: 1);
+                    if (metadataUpdated == 1)
+                    {
+                        if (connection.Execute("UPDATE ReportGroups SET DateLast=@Date, UserLast=@FullName WHERE Id=@GroupId",
+                            parameters, transaction, commandTimeout: 1) != 1)
+                            throw new System.InvalidOperationException("Группа отсутствует в общей БД.");
+                        connection.Execute("UPDATE ReportSyncState SET MetadataRevision=@ChangeRevision WHERE ReportId=@ReportId",
+                            parameters, transaction, commandTimeout: 1);
+                    }
+
+                    transaction.Commit();
+                }
+            }
         }
 
         #region Create

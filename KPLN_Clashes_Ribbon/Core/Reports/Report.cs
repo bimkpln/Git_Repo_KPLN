@@ -1,4 +1,4 @@
-﻿using KPLN_Clashes_Ribbon.Services;
+using KPLN_Clashes_Ribbon.Services;
 using KPLN_Library_DBWorker;
 using System;
 using System.ComponentModel;
@@ -351,30 +351,19 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
 
         public void UpdateProgress()
         {
-            int max = 0;
-            int done = 0;
-            int delegated = 0;
-            int approved = 0;
-            Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(PathToReportInstance);
-            ReportItem[] riColl = sqliteService_ReportInstanceDB.GetAllReporItems();
-            foreach (ReportItem ri in riColl)
-            {
-                max++;
+            var service = new Services.SQLite.SQLiteService_ReportItemsDB(PathToReportInstance);
+            var summary = service.ReadSummary();
+            long total = summary.Counts.Sum(count => count.ItemCount);
+            long done = summary.Counts.Where(count => count.StatusId == (int)KPItemStatus.Closed).Sum(count => count.ItemCount);
+            long delegated = summary.Counts.Where(count => count.StatusId == (int)KPItemStatus.Delegated).Sum(count => count.ItemCount);
+            long approved = summary.Counts.Where(count => count.StatusId == (int)KPItemStatus.Approved).Sum(count => count.ItemCount);
 
-                if (ri.Status == ClashesMainCollection.KPItemStatus.Closed)
-                    done++;
-                else if (ri.Status == ClashesMainCollection.KPItemStatus.Delegated)
-                    delegated++;
-                else if (ri.Status == ClashesMainCollection.KPItemStatus.Approved)
-                    approved++;
-            }
+            Progress = total == 0 ? 0 : (int)(done * 100 / total);
+            DelegationProgress = total == 0 ? 0 : (int)(delegated * 100 / total);
+            ApprovedProgress = total == 0 ? 0 : (int)(approved * 100 / total);
 
-            Progress = (int)Math.Round((double)(done * 100 / max));
-            DelegationProgress = (int)Math.Round((double)(delegated * 100 / max));
-            ApprovedProgress = (int)Math.Round((double)(approved * 100 / max));
-
-            Status = GetMainReportStatus(riColl);
-            _sqliteService_MainDB.UpdateItemStatus_ByTableAndItemId(Status, MainDB_Enumerator.Reports, Id);
+            // Обновление отображения не записывает потенциально устаревшую сводку в общую БД.
+            Status = summary.Status;
 
             PbEnabled = System.Windows.Visibility.Visible;
         }

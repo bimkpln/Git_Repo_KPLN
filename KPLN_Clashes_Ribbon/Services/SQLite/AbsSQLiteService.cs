@@ -1,4 +1,4 @@
-﻿using Dapper;
+using Dapper;
 using KPLN_Clashes_Ribbon.Core.Reports;
 using System;
 using System.Collections.Generic;
@@ -6,10 +6,52 @@ using System.Data;
 using System.Data.SQLite;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using static KPLN_Library_Forms.UI.HtmlWindow.HtmlOutput;
 
 namespace KPLN_Clashes_Ribbon.Services.SQLite
 {
+    /// <summary>Повторяется только откатившаяся операция; ожидание выполняется без открытой транзакции.</summary>
+    internal static class SQLiteRetryPolicy
+    {
+        private static readonly int[] RetryDelays = { 200, 500, 1000 };
+
+        internal static SQLiteConnection CreateConnection(string connectionString)
+        {
+            var builder = new SQLiteConnectionStringBuilder(connectionString)
+            {
+                DefaultTimeout = 1,
+                FailIfMissing = true
+            };
+            return new SQLiteConnection(builder.ConnectionString);
+        }
+
+        internal static async Task<T> RunAsync<T>(Func<T> attempt)
+        {
+            for (int index = 0; ; index++)
+            {
+                try
+                {
+                    return await Task.Run(attempt).ConfigureAwait(false);
+                }
+                catch (SQLiteException ex) when (IsBusy(ex))
+                {
+                    if (index == RetryDelays.Length)
+                        throw new TimeoutException("База данных занята другим пользователем. Четыре попытки записи не завершились. Повторите действие позже.", ex);
+
+                    // attempt уже вышел из using: соединение закрыто, транзакция откатилась.
+                    await Task.Delay(RetryDelays[index]).ConfigureAwait(false);
+                }
+            }
+        }
+
+        private static bool IsBusy(SQLiteException exception)
+        {
+            int primaryCode = (int)exception.ResultCode & 0xff;
+            return primaryCode == (int)SQLiteErrorCode.Busy || primaryCode == (int)SQLiteErrorCode.Locked;
+        }
+    }
+
     public abstract class AbsSQLiteService
     {
         private protected string _dbConnectionPath;

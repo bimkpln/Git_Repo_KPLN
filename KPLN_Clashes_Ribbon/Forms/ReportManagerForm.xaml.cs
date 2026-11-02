@@ -1055,20 +1055,17 @@ namespace KPLN_Clashes_Ribbon.Forms
                     if (sender.GetType() == typeof(System.Windows.Shapes.Rectangle))
                     {
                         Report report = (sender as System.Windows.Shapes.Rectangle).DataContext as Report;
-                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
-                        form.Show();
+                        ReportForm.ShowOrActivate(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
                     }
                     if (sender.GetType() == typeof(TextBlock))
                     {
                         Report report = (sender as TextBlock).DataContext as Report;
-                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
-                        form.Show();
+                        ReportForm.ShowOrActivate(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
                     }
                     if (sender.GetType() == typeof(Image))
                     {
                         Report report = (sender as Image).DataContext as Report;
-                        ReportForm form = new ReportForm(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
-                        form.Show();
+                        ReportForm.ShowOrActivate(this, report, GetGroupById(report.ReportGroupId), _viewHandler);
                     }
                 }
                 catch (Exception e)
