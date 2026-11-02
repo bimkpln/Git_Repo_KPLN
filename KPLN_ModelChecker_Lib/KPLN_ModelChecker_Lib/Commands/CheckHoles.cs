@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_ModelChecker_Lib.Commands.Common.CheckHoles;
 using KPLN_ModelChecker_Lib.Common;
@@ -11,7 +11,38 @@ namespace KPLN_ModelChecker_Lib.Commands
 {
     public sealed class CheckHoles : AbstrCheck
     {
+        protected override bool UseProgress => true;
+
         private const double _criticalFillRatio = 0.05;
+
+        private enum FillClassification
+        {
+            Unknown,
+            WithinRange,
+            Critical,
+            WithoutPipes,
+            SingleElement,
+            General
+        }
+
+        // Одинаковые пороги для полного и частичного анализа; неизвестная доля не равна нулю.
+        private static FillClassification ClassifyFill(double? ratio, int count, bool hasPipe)
+        {
+            if (!ratio.HasValue || count == 0 || ratio.Value <= 0
+                || double.IsNaN(ratio.Value) || double.IsInfinity(ratio.Value))
+                return FillClassification.Unknown;
+
+            if (ProjectionAreaUnion.IsBelowRatio(ratio.Value, _criticalFillRatio))
+                return FillClassification.Critical;
+            if (!hasPipe && ProjectionAreaUnion.IsBelowRatio(ratio.Value, 0.200))
+                return FillClassification.WithoutPipes;
+            if (count == 1 && ProjectionAreaUnion.IsBelowRatio(ratio.Value, 0.250))
+                return FillClassification.SingleElement;
+            if (ProjectionAreaUnion.IsBelowRatio(ratio.Value, 0.150))
+                return FillClassification.General;
+
+            return FillClassification.WithinRange;
+        }
 
         private readonly Dictionary<string, List<ElementId>> _geometryErrors = new Dictionary<string, List<ElementId>>();
 
@@ -146,15 +177,24 @@ namespace KPLN_ModelChecker_Lib.Commands
             List<CheckHolesHoleData> validHoles = holesData.Where(h => h.GeometryReadErrors.Count == 0).ToList();
             if (validHoles.Count > 0)
             {
+                SetProgressStage("Подготовка области поиска");
                 BoundingBoxXYZ sumBBox = PreparesHolesSumBBox(validHoles);
                 List<CheckHolesMEPData> mepBBoxData = PrepareMEPData(sumBBox);
 
+                int checkedHoles = 0;
+                ReportProgress(0, validHoles.Count, "Проверка заполнения отверстий");
                 foreach (CheckHolesHoleData hd in validHoles)
                 {
+                    ThrowIfCancellationRequested();
+                    SetProgressEvent($"Отверстие ID {hd.CurrentElement.Id}");
                     try
                     {
-                        hd.SetIntersectsData(mepBBoxData, RecordGeometryError);
+                        hd.SetIntersectsData(mepBBoxData, RecordGeometryError, ThrowIfCancellationRequested);
                         // Площадь проёма и объединённой проекции вычислена в SetIntersectsData.
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -162,9 +202,13 @@ namespace KPLN_ModelChecker_Lib.Commands
                         hd.GeometryReadErrors.Add(error);
                         RecordGeometryError(hd, error);
                     }
+
+                    ReportProgress(++checkedHoles, validHoles.Count, "Проверка заполнения отверстий");
                 }
             }
 
+            SetProgressEvent(string.Empty);
+            SetProgressStage("Подготовка результатов проверки");
             if (_geometryErrors.Count > 0)
                 HtmlOutput.PrintMsgDict(
                     "Ошибка геометрии. Анализ затронутых отверстий мог быть неточным; требуется ручная проверка",
@@ -178,12 +222,15 @@ namespace KPLN_ModelChecker_Lib.Commands
         /// Подготовка спец. класса с данными по каждому отверстию
         /// </summary>
         /// <param name="holesColl">Коллекция отверстий</param>
-        private List<CheckHolesHoleData> PrepareHoleData(IEnumerable<Element> holesColl)
+        private List<CheckHolesHoleData> PrepareHoleData(Element[] holesColl)
         {
             List<CheckHolesHoleData> result = new List<CheckHolesHoleData>();
 
+            SetProgressEvent(string.Empty);
+            ReportProgress(0, holesColl.Length, "Подготовка геометрии отверстий");
             foreach (Element hole in holesColl)
             {
+                ThrowIfCancellationRequested();
                 CheckHolesHoleData holeData = new CheckHolesHoleData(hole);
                 try
                 {
@@ -199,6 +246,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 }
 
                 result.Add(holeData);
+                ReportProgress(result.Count, holesColl.Length, "Подготовка геометрии отверстий");
             }
 
             return result;
@@ -218,6 +266,7 @@ namespace KPLN_ModelChecker_Lib.Commands
             double maxZ = double.MinValue;
             foreach (CheckHolesHoleData holeData in holesDataColl)
             {
+                ThrowIfCancellationRequested();
                 #region Получаю минимальную точку в каждой плоскости
                 XYZ bboxmim = holeData.CurrentBBox.Min;
                 double tminX = Math.Min(minX, bboxmim.X);
@@ -268,8 +317,11 @@ namespace KPLN_ModelChecker_Lib.Commands
                         || (lm.Name.ToUpper().StartsWith("AR_") || lm.Name.ToUpper().StartsWith("АР_")))
                 .Cast<RevitLinkInstance>();
 
+            SetProgressStage("Сбор элементов ИОС из связей");
             foreach (RevitLinkInstance rvtLinkInst in rvtLinkInsts)
             {
+                ThrowIfCancellationRequested();
+                SetProgressEvent(rvtLinkInst.Name);
                 Document linkDoc = rvtLinkInst.GetLinkDocument();
                 if (linkDoc != null)
                 {
@@ -282,6 +334,7 @@ namespace KPLN_ModelChecker_Lib.Commands
 
                     foreach (BuiltInCategory bic in _builtInCategories)
                     {
+                        ThrowIfCancellationRequested();
                         IEnumerable<CheckHolesMEPData> trueMEPElemEntities = new FilteredElementCollector(linkDoc)
                             .OfCategory(bic)
                             .WhereElementIsNotElementType()
@@ -293,6 +346,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                         List<CheckHolesMEPData> updateMEPElemEntities = new List<CheckHolesMEPData>(trueMEPElemEntities.Count());
                         foreach (CheckHolesMEPData mepElementEntity in trueMEPElemEntities)
                         {
+                            ThrowIfCancellationRequested();
                             #region Блок дополнительной фильтрации
                             if (mepElementEntity.CurrentElement is FamilyInstance mepFI)
                             {
@@ -312,6 +366,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                                     {
                                         foreach (Connector con in conManager.Connectors)
                                         {
+                                            ThrowIfCancellationRequested();
                                             if (con != null && con.Shape == ConnectorProfileType.Round && con.Radius * 2 < tolerance) isToleranceConCount++;
                                             if (con != null && con.Shape == ConnectorProfileType.Rectangular && con.Width < tolerance && con.Height < tolerance) isToleranceConCount++;
                                         }
@@ -383,40 +438,42 @@ namespace KPLN_ModelChecker_Lib.Commands
 
             foreach (CheckHolesHoleData holeData in holesData)
             {
+                ThrowIfCancellationRequested();
                 Element hole = holeData.CurrentElement;
+
+                int checkedCount = holeData.IntesectElementsColl.Count;
+                bool hasPipe = holeData.IntesectElementsColl.Any(hd =>
+                    hd.CurrentElement.Category.Id.Equals(new ElementId(BuiltInCategory.OST_PipeCurves)));
+                double? fillRatio = holeData.MainHoleArea.HasValue && holeData.MainHoleArea.Value > 0 && checkedCount > 0
+                    ? (double?)(holeData.SumIntersectArea / holeData.MainHoleArea.Value)
+                    : null;
+                FillClassification classification = ClassifyFill(fillRatio, checkedCount, hasPipe);
 
                 // Сохраняем результат по доступной геометрии, но не выдаём его за полный анализ.
                 if (holeData.GeometryReadErrors.Count > 0)
                 {
-                    int checkedCount = holeData.IntesectElementsColl.Count;
-                    bool criticalPartialFill = holeData.MainHoleArea.HasValue
-                        && ProjectionAreaUnion.IsBelowRatio(holeData.SumIntersectArea / holeData.MainHoleArea.Value, _criticalFillRatio);
-                    string header = "Частичная проверка отверстия";
+                    // Уже учтённая площадь выше порогов: частичный анализ не создаёт лишнее замечание.
+                    if (classification == FillClassification.WithinRange)
+                        continue;
+
+                    bool criticalPartialFill = classification == FillClassification.Critical;
+                    string header;
                     string description;
-                    if (!holeData.MainHoleArea.HasValue)
-                        description = $"Учтено пересекающихся элементов ИОС: {checkedCount}. Процент заполнения определить не удалось";
-                    else if (checkedCount == 0)
-                        description = "Среди успешно обработанных элементов ИОС пересечений не найдено. Пустота отверстия не подтверждена";
+                    if (classification == FillClassification.Unknown)
+                    {
+                        header = "Неполная проверка — заполнение не определено";
+                        description = "Процент заполнения не определён из-за ошибки геометрии. " +
+                            $"Учтено пересекающихся элементов ИОС: {checkedCount}. " +
+                            "Нельзя сделать вывод о пустоте или избыточности отверстия";
+                    }
                     else
                     {
-                        double partialPercent = holeData.SumIntersectArea / holeData.MainHoleArea.Value;
-#if Debug2020 || Revit2020
-                        bool hasPipe = holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves);
-#else
-                        bool hasPipe = holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.BuiltInCategory == BuiltInCategory.OST_PipeCurves);
-#endif
-                        bool possiblyOversized = (ProjectionAreaUnion.IsBelowRatio(partialPercent, 0.200) && !hasPipe)
-                            || (ProjectionAreaUnion.IsBelowRatio(partialPercent, 0.250) && checkedCount == 1)
-                            || ProjectionAreaUnion.IsBelowRatio(partialPercent, 0.150);
-                        if (possiblyOversized)
-                            header = "Возможно избыточное отверстие — частичная проверка";
-                        description = $"По успешно обработанным элементам ИОС заполнение: {Math.Round(partialPercent * 100, 1)}%; " +
-                            $"учтено элементов: {checkedCount}. " +
-                            (possiblyOversized ? "Возможно, размеры избыточны" : "По доступным данным признаков избыточности не выявлено");
+                        header = criticalPartialFill
+                            ? "Заполнение менее 5% по доступным данным — частичная проверка"
+                            : "Возможно избыточное отверстие — частичная проверка";
+                        description = $"По успешно обработанным элементам ИОС заполнение: {Math.Round(fillRatio.Value * 100, 3)}%; " +
+                            $"учтено элементов: {checkedCount}. Полное заполнение может быть выше";
                     }
-
-                    if (criticalPartialFill)
-                        header = "Заполнение менее 5% по доступным данным — частичная проверка";
 
                     string skipped = holeData.FailedElements.Count > 0
                         ? string.Join(Environment.NewLine, holeData.FailedElements.Select(pair =>
@@ -426,7 +483,8 @@ namespace KPLN_ModelChecker_Lib.Commands
                         hole,
                         header,
                         description,
-                        "Проверка неполная: анализ мог быть неточным. Элементы с ошибкой:" + Environment.NewLine + skipped,
+                        "Проверка неполная: анализ мог быть неточным. Элементы с ошибкой:" + Environment.NewLine + skipped
+                        + Environment.NewLine + "Причина: " + holeData.GeometryReadErrors[0],
                         true)
                         .Set_Status(criticalPartialFill ? ErrorStatus.Error : ErrorStatus.Warning)
                         .Set_ZoomData(holeData.CurrentBBox));
@@ -454,7 +512,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                 double intersectPersent = holeData.SumIntersectArea / holeData.MainHoleArea.Value;
 
                 // Критически низкое заполнение независимо от типов и количества элементов ИОС.
-                if (ProjectionAreaUnion.IsBelowRatio(intersectPersent, _criticalFillRatio))
+                if (classification == FillClassification.Critical)
                 {
                     result.Add(new CheckerEntity(
                         hole,
@@ -467,11 +525,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     continue;
                 }
 
-#if Debug2020 || Revit2020
-                if (ProjectionAreaUnion.IsBelowRatio(intersectPersent, 0.200) && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.Id.IntegerValue == (int)BuiltInCategory.OST_PipeCurves))
-#else
-                if (ProjectionAreaUnion.IsBelowRatio(intersectPersent, 0.200) && !holeData.IntesectElementsColl.Any(hd => hd.CurrentElement.Category.BuiltInCategory == BuiltInCategory.OST_PipeCurves))
-#endif
+                if (classification == FillClassification.WithoutPipes)
                 {
                     CheckerEntity errorNoPipeAreaElem = new CheckerEntity(
                         hole,
@@ -485,7 +539,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     result.Add(errorNoPipeAreaElem);
                     continue;
                 }
-                else if (ProjectionAreaUnion.IsBelowRatio(intersectPersent, 0.250) && holeData.IntesectElementsColl.Count() == 1)
+                else if (classification == FillClassification.SingleElement)
                 {
                     CheckerEntity errorOneElemAreaElem = new CheckerEntity(
                         hole,
@@ -499,7 +553,7 @@ namespace KPLN_ModelChecker_Lib.Commands
                     result.Add(errorOneElemAreaElem);
                     continue;
                 }
-                else if (ProjectionAreaUnion.IsBelowRatio(intersectPersent, 0.150))
+                else if (classification == FillClassification.General)
                 {
                     CheckerEntity warnAreaElem = new CheckerEntity(
                         hole,

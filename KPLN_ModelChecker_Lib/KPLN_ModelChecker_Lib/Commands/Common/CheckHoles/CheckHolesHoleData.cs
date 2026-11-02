@@ -1,4 +1,4 @@
-using Autodesk.Revit.DB;
+﻿using Autodesk.Revit.DB;
 using System;
 using System.Collections.Generic;
 
@@ -29,17 +29,23 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
             GeometryReadErrors.Add($"{source}; элемент ИОС: {data.CurrentElement.Id}. {error}");
         }
 
-        public void SetIntersectsData(List<CheckHolesMEPData> mepElements, Action<CheckHolesEntity, string> reportError)
+        public void SetIntersectsData(List<CheckHolesMEPData> mepElements, Action<CheckHolesEntity, string> reportError, Action checkCancellation)
         {
+            checkCancellation();
             HoleProjection projection = new HoleProjection((FamilyInstance)CurrentElement, CurrentSolid);
             MainHoleArea = projection.OpeningArea;
             foreach (CheckHolesMEPData data in mepElements)
             {
+                checkCancellation();
                 try
                 {
                     // Проверяем габарит именно этого отверстия; близость точки вставки не доказывает пересечение.
                     if (!data.MayIntersect(CurrentBBox))
                         continue;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -54,7 +60,16 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
                 }
                 try
                 {
-                    data.SetGeometryData(ViewDetailLevel.Fine);
+                    // Лотки и соединительные детали анализируем по упрощённой геометрии без перфорации.
+                    ElementId categoryId = data.CurrentElement.Category?.Id;
+                    bool isCableTray = categoryId != null &&
+                        (categoryId.Equals(new ElementId(BuiltInCategory.OST_CableTray))
+                        || categoryId.Equals(new ElementId(BuiltInCategory.OST_CableTrayFitting)));
+                    data.SetGeometryData(isCableTray ? ViewDetailLevel.Medium : ViewDetailLevel.Fine);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {
@@ -70,6 +85,7 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
                     // Обрезаем по глубине; внешний контур затем ограничивается плоскостью проёма.
                     foreach (Solid solid in data.CurrentSolids)
                     {
+                        checkCancellation();
                         Solid intersection = projection.ClipToDepth(solid);
                         if (intersection == null)
                             continue;
@@ -81,11 +97,16 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
                         }
                     }
 
+                    checkCancellation();
                     if (intersections.Count > 0 && projection.Add(intersections))
                     {
                         IntesectElementsColl.Add(data);
                         SumIntersectArea = projection.OccupiedArea;
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
                 }
                 catch (Exception ex)
                 {

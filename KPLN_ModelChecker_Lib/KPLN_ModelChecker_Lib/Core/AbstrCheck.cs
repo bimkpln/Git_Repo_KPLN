@@ -1,5 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using KPLN_Library_Forms.UI;
+using KPLN_Library_Forms.UI.ViewModels;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_ModelChecker_Lib.Common;
 using System;
@@ -33,6 +35,37 @@ namespace KPLN_ModelChecker_Lib.Core
         /// Пустой конструктор для использования дженериков
         /// </summary>
         public AbstrCheck() { }
+
+        private ProgressInfoViewModel _progress;
+
+        /// <summary>Наследник включает окно для длительного анализа; по умолчанию оно отключено.</summary>
+        protected virtual bool UseProgress => false;
+
+        /// <summary>Вызывать в длительных циклах вне обработчиков ошибок геометрии.</summary>
+        protected void ThrowIfCancellationRequested()
+        {
+            _progress?.ThrowIfCancellationRequested();
+        }
+
+        /// <summary>Этап без известного количества операций. Без окна вызов ничего не делает.</summary>
+        protected void SetProgressStage(string stage)
+        {
+            _progress?.SetStage(stage);
+        }
+
+        /// <summary>Количество завершённых операций текущего этапа.</summary>
+        protected void ReportProgress(int completed, int total, string stage)
+        {
+            _progress?.Report(completed, total, stage);
+        }
+
+        /// <summary>Текущий элемент или связь; пустая строка очищает подпись.</summary>
+        protected void SetProgressEvent(string eventName)
+        {
+            ThrowIfCancellationRequested();
+            if (_progress != null)
+                _progress.CurrentEventName = eventName;
+        }
 
         /// <summary>
         /// Ссылка на UIApplication Revit
@@ -123,8 +156,23 @@ namespace KPLN_ModelChecker_Lib.Core
                 return CheckResultStatus.NoItemsToCheck;
             }
 
+            ProgressWindow progressWindow = null;
             try
             {
+                if (UseProgress)
+                {
+                    _progress = new ProgressInfoViewModel
+                    {
+                        ProcessTitle = PluginName,
+                        IsCancellationEnabled = true,
+                        WaitForCancellationCompletion = true
+                    };
+                    _progress.SetStage("Подготовка элементов к проверке");
+
+                    // Только окно работает в отдельном потоке; весь анализ остаётся в контексте Revit.
+                    progressWindow = ProgressWindow.ShowInBackground(_progress, $"KPLN: {PluginName}");
+                }
+
                 // Проверяю элементы на критические ошибки (исключение из проверки)
                 CheckRElems_SetElemErrorColl(elemColl);
                 if (PrepareElemsErrorColl.Count() > 0)
@@ -137,8 +185,15 @@ namespace KPLN_ModelChecker_Lib.Core
 
 
                 // Запускаю генерацию элементов-ошибок CheckerEntity
+                SetProgressStage("Анализ элементов");
                 CheckResultStatus setEntitiesStatus = Set_CheckerEntitiesHeap(PreparedElemColl);
                 
+                if (setEntitiesStatus == CheckResultStatus.Cancelled)
+                    throw new OperationCanceledException();
+
+                SetProgressEvent(string.Empty);
+                SetProgressStage("Подготовка результатов проверки");
+
                 // Если в момент генерации были предупреждения - вывожу
                 if (RunElemsWarningColl.Any())
                     ShowElemntRunWarningReport();
@@ -149,7 +204,23 @@ namespace KPLN_ModelChecker_Lib.Core
                 else
                     CheckerEntitiesColl = _checkerEntitiesCollHeap.ToArray();
 
+                // После этой границы результат считается завершённым; ранее принятая отмена учитывается.
+                if (_progress != null)
+                    _progress.IsCancellationEnabled = false;
+                ThrowIfCancellationRequested();
+
+                if (_progress != null && setEntitiesStatus == CheckResultStatus.Succeeded)
+                    _progress.IsComplete = true;
+
                 return setEntitiesStatus;
+            }
+            catch (OperationCanceledException)
+            {
+                _checkerEntitiesCollHeap.Clear();
+                CheckerEntitiesColl = Array.Empty<CheckerEntity>();
+                PrepareElemsErrorColl.Clear();
+                RunElemsWarningColl.Clear();
+                return CheckResultStatus.Cancelled;
             }
             catch (Exception ex)
             {
@@ -161,6 +232,17 @@ namespace KPLN_ModelChecker_Lib.Core
                     HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Передай ошибку разработчику: {ex.Message}. StackTrace: {ex.StackTrace}", MessageType.Error);
 
                 return CheckResultStatus.Failed;
+            }
+            finally
+            {
+                try
+                {
+                    progressWindow?.CloseSafely();
+                }
+                finally
+                {
+                    _progress = null;
+                }
             }
         }
 
