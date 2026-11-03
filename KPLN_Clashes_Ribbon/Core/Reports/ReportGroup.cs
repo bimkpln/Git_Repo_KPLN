@@ -399,6 +399,19 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
             }
         }
 
+        private string _clashGroupsCountStatus = "не посчитано";
+
+        public string ClashGroupsCountStatus
+        {
+            get => _clashGroupsCountStatus;
+            set
+            {
+                _clashGroupsCountStatus = value;
+                NotifyPropertyChanged();
+                NotifyPropertyChanged(nameof(FilteredClashGroupsCountText));
+            }
+        }
+
         public bool IsClashGroupsCountLoaded
         {
             get => _isClashGroupsCountLoaded;
@@ -445,7 +458,7 @@ namespace KPLN_Clashes_Ribbon.Core.Reports
         {
             get => IsClashGroupsCountLoaded
                 ? $"Групп коллизий по фильтру: {FilteredOpenedClashGroupsCount} (открытых) из {TotalClashGroupsCount} (всего)"
-                : "Групп коллизий по фильтру: не посчитано";
+                : $"Групп коллизий по фильтру: {ClashGroupsCountStatus}";
         }
 
         public System.Windows.Visibility AdminControllsVisibility

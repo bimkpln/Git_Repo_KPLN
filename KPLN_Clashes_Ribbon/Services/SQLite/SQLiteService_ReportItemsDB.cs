@@ -1,4 +1,4 @@
-using Dapper;
+﻿using Dapper;
 using System.Data.SQLite;
 using KPLN_Clashes_Ribbon.Core;
 using KPLN_Clashes_Ribbon.Core.Reports;
@@ -224,6 +224,18 @@ namespace KPLN_Clashes_Ribbon.Services.SQLite
         /// <summary>
         /// Подготовить и Получить коллекцию всех ReportItem
         /// </summary>
+        public StatusCount[] GetRootClashStatusCounts()
+        {
+            using (var connection = SQLiteRetryPolicy.CreateConnection(_dbConnectionPath))
+            {
+                connection.Open();
+                return connection.Query<StatusCount>(
+                    $"SELECT StatusId, COUNT(*) AS ItemCount FROM {_dbTableName} " +
+                    "WHERE ParentGroupId = -1 GROUP BY StatusId").ToArray();
+            }
+        }
+
+        /// <summary>Подготовить и получить коллекцию всех ReportItem.</summary>
         public ReportItem[] GetAllReporItems()
         {
             ReportItem[] repItems = ExecuteQuery<ReportItem>($"SELECT * FROM {_dbTableName}").ToArray();

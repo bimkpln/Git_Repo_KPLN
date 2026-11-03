@@ -47,6 +47,10 @@ namespace KPLN_Clashes_Ribbon.Forms
         private readonly SemaphoreSlim _baseTaskRequests = new SemaphoreSlim(4);
         private readonly Dictionary<ReportGroup, Task> _baseTaskLoads = new Dictionary<ReportGroup, Task>();
 
+        private readonly HashSet<ReportGroup> _clashCountLoads = new HashSet<ReportGroup>();
+        private readonly SemaphoreSlim _clashCountRequests = new SemaphoreSlim(2);
+        private bool _clashCountsWindowClosed;
+
         private ExternalEvent _viewExtEv;
         private ViewActivatedHandler _viewHandler;
 
@@ -56,6 +60,7 @@ namespace KPLN_Clashes_Ribbon.Forms
 
             InitializeComponent();
             DataContext = this;
+            Closed += (sender, args) => _clashCountsWindowClosed = true;
 
             UpdateReportGroups();
 
@@ -167,42 +172,59 @@ namespace KPLN_Clashes_Ribbon.Forms
                 EnsureClashGroupsCountLoaded(reportGroup);
         }
 
-        private void EnsureClashGroupsCountLoaded(ReportGroup group)
+        private async void EnsureClashGroupsCountLoaded(ReportGroup group)
         {
-            if (group == null || group.IsClashGroupsCountLoaded)
+            if (group == null || group.IsClashGroupsCountLoaded || _clashCountsWindowClosed
+                || !_clashCountLoads.Add(group))
                 return;
 
-            foreach (Report report in group.Reports)
-            {
-                SetClashsExceptGroupCounts(report);
-            }
-
-            group.IsClashGroupsCountLoaded = true;
-            UpdateFilteredClashGroupsCount(group);
-        }
-
-        private void SetClashsExceptGroupCounts(Report report)
-        {
+            group.ClashGroupsCountStatus = "расчёт...";
+            bool entered = false;
             try
             {
-                Services.SQLite.SQLiteService_ReportItemsDB sqliteService_ReportInstanceDB = new Services.SQLite.SQLiteService_ReportItemsDB(report.PathToReportInstance);
-                var repItems = sqliteService_ReportInstanceDB.GetAllReporItems();
-                report.ClashExceptGroupsCount = repItems.Count(IsClash_ExceptGroup);
-                report.OpenedClashExceptGroupsCount = repItems.Count(IsOpenClash_ExceptGroup);
+                // В фон передаются только пути: коллекции и привязки WPF обновляются после await.
+                Report[] reports = group.Reports.ToArray();
+                string[] paths = reports.Select(report => report.PathToReportInstance).ToArray();
+                await _clashCountRequests.WaitAsync();
+                entered = true;
+                if (_clashCountsWindowClosed)
+                    return;
+
+                Tuple<int, int>[] counts = await Task.Run(() => paths.Select(path =>
+                {
+                    var service = new Services.SQLite.SQLiteService_ReportItemsDB(path);
+                    var rows = service.GetRootClashStatusCounts();
+                    int total = checked((int)rows.Sum(row => row.ItemCount));
+                    int opened = checked((int)rows.Where(row => row.StatusId == (int)KPItemStatus.New
+                        || row.StatusId == (int)KPItemStatus.Opened).Sum(row => row.ItemCount));
+                    return Tuple.Create(total, opened);
+                }).ToArray());
+
+                if (_clashCountsWindowClosed)
+                    return;
+
+                for (int index = 0; index < reports.Length; index++)
+                {
+                    reports[index].ClashExceptGroupsCount = counts[index].Item1;
+                    reports[index].OpenedClashExceptGroupsCount = counts[index].Item2;
+                }
+
+                UpdateFilteredClashGroupsCount(group);
+                group.IsClashGroupsCountLoaded = true;
             }
-            catch
+            catch (Exception ex)
             {
-                report.ClashExceptGroupsCount = -1;
-                report.OpenedClashExceptGroupsCount = -1;
+                Trace.TraceError("Clashes: подсчёт коллизий группы " + group.Id + ": " + ex);
+                if (!_clashCountsWindowClosed)
+                    group.ClashGroupsCountStatus = "ошибка расчёта — сверните и раскройте группу для повтора";
+            }
+            finally
+            {
+                if (entered)
+                    _clashCountRequests.Release();
+                _clashCountLoads.Remove(group);
             }
         }
-
-        private static bool IsClash_ExceptGroup(ReportItem item) 
-            => item?.ParentGroupId == -1;
-
-        private static bool IsOpenClash_ExceptGroup(ReportItem item)
-            => IsClash_ExceptGroup(item)
-            && (item.StatusId == (int)KPItemStatus.New || item.StatusId == (int)KPItemStatus.Opened);
 
         private void UpdateFilteredClashGroupsCount(ReportGroup group)
         {
@@ -984,35 +1006,18 @@ namespace KPLN_Clashes_Ribbon.Forms
 
         private void RecEnter(object sender, System.Windows.Input.MouseEventArgs args)
         {
-            SolidColorBrush color = new SolidColorBrush(Color.FromArgb(255, 0, 255, 115));
-            switch (sender.GetType().Name)
-            {
-                case nameof(System.Windows.Shapes.Rectangle):
-                    ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill = color;
-                    break;
-                case nameof(TextBlock):
-                    ((sender as TextBlock).DataContext as Report).Fill = color;
-                    break;
-                case nameof(Image):
-                    ((sender as Image).DataContext as Report).Fill = color;
-                    break;
-            }
+            if (!(sender is FrameworkElement element) || !(element.DataContext is Report report))
+                return;
+
+            report.Fill = new SolidColorBrush(Color.FromArgb(255, 0, 255, 115));
         }
 
         private void RecLeave(object sender, System.Windows.Input.MouseEventArgs args)
         {
-            switch (sender.GetType().Name)
-            {
-                case nameof(System.Windows.Shapes.Rectangle):
-                    ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill = ((sender as System.Windows.Shapes.Rectangle).DataContext as Report).Fill_Default;
-                    break;
-                case nameof(TextBlock):
-                    ((sender as TextBlock).DataContext as Report).Fill = ((sender as TextBlock).DataContext as Report).Fill_Default;
-                    break;
-                case nameof(Image):
-                    ((sender as Image).DataContext as Report).Fill = ((sender as Image).DataContext as Report).Fill_Default;
-                    break;
-            }
+            if (!(sender is FrameworkElement element) || !(element.DataContext is Report report))
+                return;
+
+            report.Fill = report.Fill_Default;
         }
 
         private ReportGroup GetGroupById(int groupid)
@@ -1187,7 +1192,7 @@ namespace KPLN_Clashes_Ribbon.Forms
                 {
                     try
                     {
-                        int parentId = await BitrixMessageSender.GetParentTaskId_ByTaskId(taskId);
+                        int parentId = await Task.Run(() => BitrixMessageSender.GetParentTaskId_ByTaskId(taskId));
                         if (parentId > 0)
                         {
                             group.SetBaseBitrixTask(parentId, string.Empty);
@@ -1205,7 +1210,9 @@ namespace KPLN_Clashes_Ribbon.Forms
             finally
             {
                 _baseTaskRequests.Release();
-                FilteredRepGroupColl?.Refresh();
+                // Заголовок обновляется через PropertyChanged; весь список нужен только для фильтра по ID.
+                if (!_clashCountsWindowClosed && !string.IsNullOrEmpty(_reportBitrixIdTBxData))
+                    FilteredRepGroupColl?.Refresh();
             }
         }
 
