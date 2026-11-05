@@ -57,6 +57,10 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
 
                 CheckResultStatus checkResultStatus = CommandCheck.ExecuteCheck(ElemsToCheck, onlyErrorType);
+                // Отменённый анализ не формирует отчёт и не обновляет дату завершённой проверки.
+                if (checkResultStatus == CheckResultStatus.Cancelled)
+                    return checkResultStatus;
+
                 if ((checkResultStatus == CheckResultStatus.Succeeded || checkResultStatus == CheckResultStatus.NoItemsToCheck)
                     && CommandCheck.CheckerEntitiesColl.Length > 0 
                     && showMainForm)

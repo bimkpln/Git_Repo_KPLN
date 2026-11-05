@@ -282,6 +282,7 @@
     <Compile Include="Commands\Common\CheckHoles\ProjectionAreaUnion.cs" />
     <Compile Include="Commands\Common\CheckHoles\HoleProjection.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesProjectRules.cs" />
+    <Compile Include="Commands\Common\CheckHoles\SetOpeningGeometryBuilder.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesHoleData.cs" />
     <Compile Include="Commands\Common\CheckHoles\CheckHolesMEPData.cs" />
     <Compile Include="Commands\Common\CheckMEPHeight\CheckMEPHeightARElemData.cs" />

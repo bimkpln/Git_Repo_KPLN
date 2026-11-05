@@ -441,6 +441,21 @@ namespace KPLN_ModelChecker_Lib.Commands
                 ThrowIfCancellationRequested();
                 Element hole = holeData.CurrentElement;
 
+                // Отсутствие тела отверстия не является результатом анализа заполнения.
+                if (holeData.MissingGeometryReason != null)
+                {
+                    result.Add(new CheckerEntity(
+                        hole,
+                        "Невозможно определить размеры отверстия — нет объёмной геометрии",
+                        holeData.MissingGeometryReason,
+                        "Проверка заполнения не выполнена. Наличие только пустоты или условного оформления "
+                            + "не позволяет определить размеры отверстия. Построение по модельным контурам предусмотрено только для отверстий СЕТ.",
+                        true)
+                        .Set_Status(ErrorStatus.Error)
+                        .Set_ZoomData(holeData.CurrentBBox));
+                    continue;
+                }
+
                 int checkedCount = holeData.IntesectElementsColl.Count;
                 bool hasPipe = holeData.IntesectElementsColl.Any(hd =>
                     hd.CurrentElement.Category.Id.Equals(new ElementId(BuiltInCategory.OST_PipeCurves)));

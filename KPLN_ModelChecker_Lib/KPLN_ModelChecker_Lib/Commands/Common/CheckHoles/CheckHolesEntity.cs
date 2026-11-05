@@ -58,9 +58,10 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
 
             // Собираем все тела ИОС; для основного тела отверстия сохраняем выбор по максимальному объёму.
             List<Solid> solids = new List<Solid>();
-            CollectSolids(CurrentElement.get_Geometry(new Options { DetailLevel = detailLevel }), solids, 0);
+            GeometryElement geometry = CurrentElement.get_Geometry(new Options { DetailLevel = detailLevel });
+            CollectSolids(geometry, solids, 0);
             if (solids.Count == 0)
-                throw new InvalidOperationException("У элемента нет объёмной геометрии");
+                solids.Add(CreateMissingSolid(geometry));
 
             List<Solid> transformed = new List<Solid>();
             Solid largest = null;
@@ -85,6 +86,12 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
             CurrentSolids = transformed;
             CurrentSolid = largest;
             CurrentBBox = worldBounds;
+        }
+
+        /// <summary>Вызывается только при отсутствии непустых Solid; ошибки чтения геометрии сюда не попадают.</summary>
+        protected virtual Solid CreateMissingSolid(GeometryElement geometry)
+        {
+            throw new InvalidOperationException("У элемента нет объёмной геометрии");
         }
 
         private static void CollectSolids(GeometryElement geometry, List<Solid> result, int depth)

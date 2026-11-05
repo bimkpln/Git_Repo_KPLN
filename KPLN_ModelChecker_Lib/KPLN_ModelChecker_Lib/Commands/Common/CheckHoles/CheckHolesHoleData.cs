@@ -7,6 +7,7 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
     internal sealed class CheckHolesHoleData : CheckHolesEntity
     {
         public double? MainHoleArea { get; private set; }
+        public string MissingGeometryReason { get; private set; }
         public Dictionary<string, HashSet<ElementId>> FailedElements { get; } = new Dictionary<string, HashSet<ElementId>>();
         public List<string> GeometryReadErrors { get; } = new List<string>();
         public List<CheckHolesMEPData> IntesectElementsColl { get; } = new List<CheckHolesMEPData>();
@@ -15,6 +16,37 @@ namespace KPLN_ModelChecker_Lib.Commands.Common.CheckHoles
         public double SumIntersectArea { get; private set; }
 
         public CheckHolesHoleData(Element elem) : base(elem) { }
+
+        protected override Solid CreateMissingSolid(GeometryElement geometry)
+        {
+            FamilyInstance hole = CurrentElement as FamilyInstance;
+            bool isSetOpening = hole != null && CheckHolesProjectRules.IsSetWallOpening(
+                hole.Document.Title, hole.Symbol.FamilyName,
+                hole.Category != null && hole.Category.Id.Equals(new ElementId(BuiltInCategory.OST_Windows)));
+
+            // Восстановление по линиям разрешено только отверстиям СЕТ без собственного тела.
+            if (isSetOpening)
+            {
+                try
+                {
+                    return SetOpeningGeometryBuilder.Create(hole, geometry);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    MissingGeometryReason = "Невозможно получить геометрию для определения размеров отверстия: "
+                        + "объёмное тело отсутствует, а построение по модельным линиям не удалось. " + ex.Message;
+                    throw new InvalidOperationException(MissingGeometryReason, ex);
+                }
+            }
+
+            MissingGeometryReason = "Невозможно получить геометрию для определения размеров отверстия: "
+                + "в семействе отсутствует объёмное тело. Пустота, вырезающая конструкцию, не предоставляет геометрию отверстия";
+            throw new InvalidOperationException(MissingGeometryReason);
+        }
 
         private void AddGeometryError(CheckHolesMEPData data, string error, Action<CheckHolesEntity, string> reportError)
         {

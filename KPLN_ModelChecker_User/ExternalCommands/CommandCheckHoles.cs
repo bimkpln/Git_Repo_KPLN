@@ -2,6 +2,7 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_ModelChecker_Lib.Commands;
+using KPLN_ModelChecker_Lib.Core;
 
 namespace KPLN_ModelChecker_User.ExternalCommands
 {
@@ -21,9 +22,11 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             CommandCheck = new CheckHoles().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
             ElemsToCheck = CommandCheck.GetElemsToCheck();
 
-            ExecuteByUIApp<CheckHoles>(uiapp);
+            CheckResultStatus status = ExecuteByUIApp<CheckHoles>(uiapp);
 
-            return Result.Succeeded;
+            if (status == CheckResultStatus.Cancelled)
+                return Result.Cancelled;
+            return status == CheckResultStatus.Failed ? Result.Failed : Result.Succeeded;
         }
     }
 }
