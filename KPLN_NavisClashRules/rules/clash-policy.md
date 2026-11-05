@@ -74,6 +74,19 @@ The current KPLN regulation does not provide a universal clash tolerance matrix.
 
 Many tests only contain results beyond their configured tolerance because Navisworks has already filtered smaller ones. In those tests, tolerance alone may not decide the status.
 
+## RD Model Coordination Tolerances
+
+User-confirmed on 2026-10-06 for the RD (working documentation) stage:
+
+- 15 mm is the primary tolerance for all elements: dimensions, contour and position, including holes, openings and pits.
+- 20 mm applies specifically to discrepancies in stair-flight height, measured at the underside of the flight.
+- 50 mm applies specifically to fully erected cast-in-place concrete structures within one building. Do not infer erected status merely from material, category or a model name containing "monolith".
+
+These are scoped RD model-coordination tolerances, not a universal Clash Detective matrix and not an opening-modeling size threshold. Explicit project/user instructions take precedence. Report a deviation when it is strictly greater than the applicable tolerance; equality is within tolerance.
+
+For AR/KR wall plan coordination requested per Revit level, compare XY at the level elevation plus 1200 mm. Do not assess wall height, Z offsets or aggregate other heights into that plan check. Use 15 mm unless the user explicitly selects another applicable condition. Report KR Revit element IDs together with source model names; provide grid references only when the export contains verified grid geometry and labels.
+
+
 ## Metrics To Prefer
 
 Use `get_clash_test_results` with `include_metrics=True` for classification. Prefer these computed fields over manual interpretation:
@@ -417,3 +430,29 @@ Known useful COM API details:
 
 - result group: `InwOclTestResult2.GroupPath` with a safe cast from `InwOclTestResult`;
 - properties: `ComApiBridge.ToModelItem(path)` then `ModelItem.PropertyCategories`, `PropertyCategory.Properties`, and `DataProperty.Value.ToDisplayString()`.
+
+## Cable Trays Inside Fire Protection
+
+User-confirmed reusable rule (2026-11-05): a cable tray placed inside its
+fire-protection material/enclosure is in tolerance (Approved). Apply the same
+containment reasoning to its cable-tray connection fittings. Fire protection
+is often modeled with the Revit Ducts category; that category alone neither
+proves a ventilation duct nor identifies fire protection. Establish the actual
+role from family/type/properties and the geometric relationship. Recognized
+OGK fire-protection families are candidates, not automatic approvals by name.
+
+Confirm that the tray is inside the protection volume. An intersection or
+overlapping world-axis bounding boxes alone does not prove containment.
+Adjacent protection segments may form a common enclosing volume when their
+actual geometry establishes that relationship; do not reject containment
+solely because tray and enclosure segment lengths differ. Unknown geometry
+or a tray leaving the verified protection volume remains for further analysis.
+Do not invent an additional construction tolerance to approve a protrusion.
+
+Other collision types remain for analysis with their current statuses unchanged:
+this rule does not approve tray/busbar, tray/tray, ordinary ventilation-duct
+intersections or an unidentified object merely categorized as Ducts. Preserve
+Resolved and Reviewed unless explicitly included in the authorized changes.
+This is a policy-led rule; the OV/VK self-intersection classifier does not
+implement tray/fire-protection containment. Record geometric evidence and any
+separate user override in the local review record before bridge status writes.

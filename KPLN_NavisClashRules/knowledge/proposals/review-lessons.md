@@ -108,3 +108,14 @@ Record the proposed condition, applicability, supporting human feedback,
 counterexamples and missing evidence. Once applicability is established, update
 rules/clash-policy.md and add a synthetic behavioral test if implemented in code.
 No production file paths or specific result IDs should be needed to explain it.
+
+## Cable Tray Fire-Protection Containment
+
+The user confirmed the reusable containment allowance in
+rules/clash-policy.md, section Cable Trays Inside Fire Protection. Fire
+protection can be modeled in Ducts. Do not confuse a busbar in the same
+category with fire protection or reuse historical blanket approvals.
+Checking one enclosure segment against an entire tray may leave cases
+unresolved at segment joints; verified adjacent enclosure volumes can be
+considered together. Missing neighboring geometry is uncertainty, not proof
+of a real defect. Other collision types retain their status for further review.
