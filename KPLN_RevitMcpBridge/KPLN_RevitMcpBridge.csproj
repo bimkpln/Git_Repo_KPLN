@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Revit2026Build Condition="'$(Configuration)' == 'Debug2026' OR '$(Configuration)' == 'Revit2026'">true</Revit2026Build>
@@ -28,7 +28,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2020\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2020</StartWorkingDirectory>
-    <OutputPath>bin\Debug\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2020\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
@@ -51,7 +51,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2023\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2023</StartWorkingDirectory>
-    <OutputPath>bin\Debug\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2023\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
@@ -74,7 +74,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2024\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2024</StartWorkingDirectory>
-    <OutputPath>bin\Debug\2024\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2024\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
@@ -134,6 +134,7 @@
     <Compile Include="Server\WorkItem.cs" />
     <Compile Include="Server\HttpBridgeServer.cs" />
     <Compile Include="Services\RevitService.cs" />
+    <Compile Include="Services\KRCheckService.cs" />
     <Compile Include="Services\ModelInspectionService.cs" />
     <Compile Include="Services\AnnotationReviewService.cs" />
     <Compile Include="Services\DocumentationWriteService.cs" />
@@ -166,7 +167,7 @@
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2026</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2026|x64'">
-    <OutputPath>bin\Debug\2026\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2026\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2026</DefineConstants>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>portable</DebugType>

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_ModelChecker_Lib.Common;
@@ -101,6 +101,11 @@ namespace KPLN_ModelChecker_Lib.Core
         /// </summary>
         public abstract Element[] GetElemsToCheck();
 
+        // Opt-in extension points. Defaults preserve existing checks and their diagnostics.
+        protected virtual bool ExecuteOnEmptyCollection => false;
+        protected virtual bool UseDefaultErrorReporting => true;
+        protected virtual void ResetExecutionState() { }
+
         /// <summary>
         /// Запуск проверки
         /// </summary>
@@ -109,8 +114,9 @@ namespace KPLN_ModelChecker_Lib.Core
         /// <returns>Статус результата запуска проверки</returns>
         public CheckResultStatus ExecuteCheck(Element[] elemColl, bool onlyErrorType)
         {
+            ResetExecutionState();
             // Если нет эл-в в модели - это ОШИБКА
-            if (!elemColl.Any())
+            if (!elemColl.Any() && !ExecuteOnEmptyCollection)
             {
                 CheckerEntitiesColl = new CheckerEntity[1] 
                 {
@@ -151,7 +157,7 @@ namespace KPLN_ModelChecker_Lib.Core
 
                 return setEntitiesStatus;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (UseDefaultErrorReporting)
             {
                 if (ex is CheckerException _)
                     HtmlOutput.Print($"Проверка не пройдена, работа скрипта остановлена. Исправь ошибку: {ex.Message}", MessageType.Error);

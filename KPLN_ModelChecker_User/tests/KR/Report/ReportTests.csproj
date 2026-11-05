@@ -1,0 +1,10 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"/>
+<PropertyGroup><OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><OutputPath>bin\</OutputPath><IntermediateOutputPath>obj\</IntermediateOutputPath><LangVersion>7.3</LangVersion><DefineConstants>Debug2024</DefineConstants></PropertyGroup>
+<ItemGroup><Reference Include="System"/><Reference Include="System.Core"/><Reference Include="WindowsBase"/><Reference Include="PresentationCore"/><Reference Include="PresentationFramework"/><Reference Include="System.Xaml"/>
+<Reference Include="Newtonsoft.Json"><HintPath>..\..\..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath></Reference>
+<Compile Include="ReportTests.cs"/><Compile Include="RevitDoubles.cs"/>
+<Compile Include="..\..\..\Common\KRCheckReport.cs"/>
+<Compile Include="..\..\..\Common\KRCheckAccess.cs"/>
+<Compile Include="..\..\..\Forms\KRCheckReportWindow.cs"/>
+</ItemGroup><Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/></Project>

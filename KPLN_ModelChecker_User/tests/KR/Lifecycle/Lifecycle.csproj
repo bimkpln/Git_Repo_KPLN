@@ -1,0 +1,18 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"/>
+<PropertyGroup><OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><OutputPath>bin\</OutputPath><IntermediateOutputPath>obj\</IntermediateOutputPath><LangVersion>7.3</LangVersion><DefineConstants>Debug2024</DefineConstants></PropertyGroup>
+<ItemGroup>
+<Reference Include="System"/><Reference Include="System.Core"/><Reference Include="WindowsBase"/><Reference Include="PresentationCore"/><Reference Include="PresentationFramework"/><Reference Include="System.Xaml"/>
+<Reference Include="Newtonsoft.Json"><HintPath>..\..\..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath></Reference>
+<Compile Include="Program.cs"/><Compile Include="Doubles.cs"/>
+<Compile Include="..\..\..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\Core\AbstrCheck.cs"/>
+<Compile Include="..\..\..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\Core\AbstrKRCheck.cs"/>
+<Compile Include="..\..\..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\Commands\Common\KR\KRCheckResult.cs"/>
+<Compile Include="..\..\..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\Commands\CheckIfcRebarMarks.cs"/>
+<Compile Include="..\..\..\..\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\Commands\CheckRebarConcreteClass.cs"/>
+<Compile Include="..\..\..\ExternalCommands\AbstrCommand.cs"/>
+<Compile Include="..\..\..\ExternalCommands\CommandCheckKRReinforcement.cs"/>
+<Compile Include="..\..\..\ExternalCommands\KRCheckBridgeCompatibility.cs"/>
+<Compile Include="..\..\..\Common\KRCheckAccess.cs"/>
+<Compile Include="..\..\..\Common\KRCheckReport.cs"/>
+</ItemGroup><Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/></Project>

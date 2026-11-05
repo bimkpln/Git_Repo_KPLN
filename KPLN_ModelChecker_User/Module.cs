@@ -320,6 +320,31 @@ namespace KPLN_ModelChecker_User
                 SQLiteMainService.CurrentDBUser.SubDepartmentId == 8
                 );
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023 || Debug2024 || Revit2024
+            // The same department policy is checked again by the command on execution.
+            bool krChecksVisible = Checks.KR.KRCheckAccess.IsAllowed();
+            AddPushButtonData(
+                "CheckKRIfcRebarMarks",
+                CommandCheckKRIfcMarks.PluginName,
+                "Сравнить марку IFC-арматуры с маркой бетонной основы. Проверяется загруженная текущая модель без связей.",
+                "Самостоятельная проверка КР. Модель не изменяется. Отчёт содержит ошибки, неопределённости и выбор элементов.",
+                typeof(CommandCheckKRIfcMarks).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_kr_ifc.png",
+                _mainContextualHelp,
+                krChecksVisible);
+            AddPushButtonData(
+                "CheckKRConcreteClass",
+                CommandCheckKRConcreteClass.PluginName,
+                "Сравнить Арм.КлассБетона погонной арматуры с классом материала бетонной основы.",
+                "Самостоятельная проверка КР. Системная и IFC-арматура текущей модели; связи не проверяются. Модель не изменяется.",
+                typeof(CommandCheckKRConcreteClass).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_kr_concrete.png",
+                _mainContextualHelp,
+                krChecksVisible);
+#endif
+
             return Result.Succeeded;
         }
 

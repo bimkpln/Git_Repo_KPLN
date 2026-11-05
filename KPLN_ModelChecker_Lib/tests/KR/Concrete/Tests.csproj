@@ -1,0 +1,6 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"/>
+<PropertyGroup><OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><OutputPath>bin\</OutputPath><IntermediateOutputPath>obj\</IntermediateOutputPath><LangVersion>7.3</LangVersion></PropertyGroup>
+<ItemGroup><Reference Include="System"/><Reference Include="System.Core"/>
+<Compile Include="Tests.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Concrete\HostResult.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Concrete\DirectHost.cs"/><Compile Include="RevitDoubles.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Concrete\Rules.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Concrete\Parameters.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Concrete\Materials.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Ifc\CountingTypeFilter.cs"/></ItemGroup>
+<Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/></Project>

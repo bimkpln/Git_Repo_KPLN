@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using KPLN_RevitMcpBridge.Server;
@@ -11,6 +11,8 @@ namespace KPLN_RevitMcpBridge.Services
 {
     internal sealed class RevitService
     {
+        private readonly KRCheckService _krChecks = new KRCheckService();
+
         private sealed class DocumentState { public readonly string Id = Guid.NewGuid().ToString("N"); public long Revision; }
         // Revit can return another managed Document wrapper for the same open
         // native document on a later Idling event. ConditionalWeakTable uses
@@ -102,6 +104,9 @@ namespace KPLN_RevitMcpBridge.Services
                 case "get_context":
                     result = new { document = DocumentInfo(doc), active_view = ElementInfo(uidoc.ActiveView), selection_count = uidoc.Selection.GetElementIds().Count, revit_version = app.Application.VersionNumber,
                         units = new { geometry = "mm", coordinates = "document_internal", double_parameters = "Revit internal units; see data_type/unit_type" } }; break;
+                case "get_kr_check_catalog": result = _krChecks.Catalog(); break;
+                case "run_kr_check": result = _krChecks.Run(app, input, state.Id, state.Revision); break;
+                case "get_kr_check_result": result = _krChecks.Page(input, state.Id, state.Revision); break;
                 case "get_selection":
                     result = Page(uidoc.Selection.GetElementIds().OrderBy(IdValue).Select(doc.GetElement).Where(e => e != null), input); break;
                 case "get_categories":

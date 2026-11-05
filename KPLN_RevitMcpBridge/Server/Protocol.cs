@@ -28,11 +28,11 @@ namespace KPLN_RevitMcpBridge.Server
 
         public static string Serialize(object value) => JsonSerializer.Serialize(value, SerializerOptions);
 
-        public static Dictionary<string, object> Parse(string value)
+        public static Dictionary<string, object> Parse(string value, int maxLength = 8 * 1024 * 1024)
         {
             try
             {
-                if (value == null || value.Length > 8 * 1024 * 1024) throw new FormatException();
+                if (value == null || value.Length > maxLength) throw new FormatException();
 
                 using (var document = JsonDocument.Parse(value, new JsonDocumentOptions { MaxDepth = 64 }))
                 {
@@ -71,11 +71,11 @@ namespace KPLN_RevitMcpBridge.Server
             }
         }
 #else
-        private static JavaScriptSerializer Serializer() => new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024, RecursionLimit = 64 };
+        private static JavaScriptSerializer Serializer(int maxLength = 8 * 1024 * 1024) => new JavaScriptSerializer { MaxJsonLength = maxLength, RecursionLimit = 64 };
         public static string Serialize(object value) => Serializer().Serialize(value);
-        public static Dictionary<string, object> Parse(string value)
+        public static Dictionary<string, object> Parse(string value, int maxLength = 8 * 1024 * 1024)
         {
-            try { return Serializer().Deserialize<Dictionary<string, object>>(value) ?? throw new Exception(); }
+            try { return Serializer(maxLength).Deserialize<Dictionary<string, object>>(value) ?? throw new Exception(); }
             catch { throw new BridgeException("invalid_json", "Ожидается JSON-объект."); }
         }
 #endif

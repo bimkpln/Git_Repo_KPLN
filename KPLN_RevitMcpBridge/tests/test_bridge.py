@@ -122,7 +122,7 @@ class BridgeTests(unittest.TestCase):
 
     def test_tool_schemas_and_annotations(self):
         tools = asyncio.run(server.mcp.list_tools())
-        self.assertEqual(len(tools), 50)
+        self.assertEqual(len(tools), 53)
         for tool in tools:
             self.assertIsNotNone(tool.annotations)
             self.assertFalse(tool.annotations.openWorldHint)

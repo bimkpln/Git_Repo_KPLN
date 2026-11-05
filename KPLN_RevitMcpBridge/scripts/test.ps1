@@ -4,10 +4,11 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 & $Python -B -m unittest discover -s (Join-Path $root 'tests') -v
 if ($LASTEXITCODE -ne 0) { throw 'MCP tests failed' }
-foreach ($suite in @('Dispatcher','Transport','Parameters','FamilyTypes','Lifecycle','Inspection','Publication','LinkedRooms','SheetLayout')) {
+foreach ($suite in @('Dispatcher','Transport','Parameters','FamilyTypes','Lifecycle','Inspection','Publication','LinkedRooms','SheetLayout','KRChecks')) {
     & dotnet msbuild (Join-Path $root "tests\$suite\$suite.csproj") /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "Build failed: $suite" }
     $exe = switch ($suite) { 'Dispatcher' { 'DispatcherTests.exe' }; 'Transport' { 'TransportTests.exe' }; 'Parameters' { 'ParameterTests.exe' }; 'FamilyTypes' { 'FamilyTypeTests.exe' }; 'Lifecycle' { 'LifecycleTests.exe' }; 'Inspection' { 'InspectionTests.exe' } }
+    if ($suite -eq 'KRChecks') { $exe = 'KPLN_ModelChecker_User.exe' }
     if ($suite -eq 'Publication') { $exe = 'KPLN_Publication.exe' }
     if ($suite -eq 'LinkedRooms') { $exe = 'LinkedRoomsTests.exe' }
     if ($suite -eq 'SheetLayout') { $exe = 'SheetLayoutTests.exe' }
@@ -16,7 +17,7 @@ foreach ($suite in @('Dispatcher','Transport','Parameters','FamilyTypes','Lifecy
 
     & dotnet build (Join-Path $root 'tests\Revit2026\Revit2026.csproj') "/p:Suite=$suite" /v:minimal /nologo
     if ($LASTEXITCODE -ne 0) { throw "Revit 2026 test build failed: $suite" }
-    $assembly = if ($suite -eq 'Publication') { 'KPLN_Publication' } else { 'Revit2026' }
+    $assembly = if ($suite -eq 'Publication') { 'KPLN_Publication' } elseif ($suite -eq 'KRChecks') { 'KPLN_ModelChecker_User' } else { 'Revit2026' }
     & dotnet (Join-Path $root "tests\Revit2026\bin\$suite\net8.0-windows\$assembly.dll")
     if ($LASTEXITCODE -ne 0) { throw "Revit 2026 test failed: $suite" }
 }

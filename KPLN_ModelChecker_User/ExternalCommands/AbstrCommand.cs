@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker.Core;
 using KPLN_Library_ExtensibleStorage;
@@ -57,34 +57,44 @@ namespace KPLN_ModelChecker_User.ExternalCommands
 
 
                 CheckResultStatus checkResultStatus = CommandCheck.ExecuteCheck(ElemsToCheck, onlyErrorType);
-                if ((checkResultStatus == CheckResultStatus.Succeeded || checkResultStatus == CheckResultStatus.NoItemsToCheck)
-                    && CommandCheck.CheckerEntitiesColl.Length > 0 
-                    && showMainForm)
-                {
-                    if (CommandCheck.OnlyElemsInModel)
-                        SelectElemsInModelByConfigResult<T>(uiapp, config);
-                    else if (CommandCheck.WarningIfNoElemsOnModel)
-                        ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
-                }
-                else if (showSuccsessText)
-                {
-                    // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
-                    if (showMainForm)
-                        KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
-
-                    // Выводим, что всё ок
-                    if (checkResultStatus == CheckResultStatus.Succeeded && CommandCheck.CheckerEntitiesColl.Length == 0)
-                        HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
-                }
+                PresentResult<T>(uiapp, config, checkResultStatus, showMainForm, setLastRun, showSuccsessText);
 
                 return checkResultStatus;
             }
-            catch (Exception ex) 
+            catch (Exception ex) when (UseDefaultErrorReporting)
             {
                 HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] - ошибка при проверке: {ex.Message}", MessageType.Error);
             }
 
             return CheckResultStatus.Failed;
+        }
+
+        protected virtual bool UseDefaultErrorReporting => true;
+
+        private protected virtual void PresentResult<T>(UIApplication uiapp, IJsonSerializable config,
+            CheckResultStatus checkResultStatus, bool showMainForm, bool setLastRun, bool showSuccsessText)
+            where T : AbstrCheck, new()
+        {
+            if ((checkResultStatus == CheckResultStatus.Succeeded || checkResultStatus == CheckResultStatus.NoItemsToCheck)
+                && CommandCheck.CheckerEntitiesColl.Length > 0
+                && showMainForm)
+            {
+                if (CommandCheck.OnlyElemsInModel)
+                    SelectElemsInModelByConfigResult<T>(uiapp, config);
+                else if (CommandCheck.WarningIfNoElemsOnModel)
+                    ReportCreatorAndDemonstrator<T>(uiapp, setLastRun);
+            }
+            else if (showSuccsessText)
+            {
+                // Логируем последний запуск (отдельно, если все было ОК, а потом всплыли ошибки)
+                if (showMainForm)
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new ExcCmdWPFEntity_SetTimeRunLog(CommandCheck.ESEntity.ESBuilderRun, DateTime.Now));
+
+                // Выводим, что всё ок
+                if (checkResultStatus == CheckResultStatus.Succeeded && CommandCheck.CheckerEntitiesColl.Length == 0)
+                    HtmlOutput.Print($"[{CommandCheck.ESEntity.CheckName}] Предупреждений не найдено :)", MessageType.Success);
+            }
+
         }
 
         /// <summary>

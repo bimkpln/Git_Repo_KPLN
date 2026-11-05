@@ -24,7 +24,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2020|x64'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\2020\</OutputPath>
+    <OutputPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2020\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -33,7 +33,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2023|x64'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\2023\</OutputPath>
+    <OutputPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2023\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -42,7 +42,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug2024|x64'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\2024\</OutputPath>
+    <OutputPath>X:\BIM\5_Scripts\Git_Repo_KPLN\KPLN_ModelChecker_Lib\KPLN_ModelChecker_Lib\bin\Debug\2024\</OutputPath>
     <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
@@ -265,6 +265,12 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug2020' OR '$(Configuration)' == 'Revit2020' OR '$(Configuration)' == 'Debug2023' OR '$(Configuration)' == 'Revit2023' OR '$(Configuration)' == 'Debug2024' OR '$(Configuration)' == 'Revit2024'">
+    <Compile Include="Core\AbstrKRCheck.cs" />
+    <Compile Include="Commands\CheckIfcRebarMarks.cs" />
+    <Compile Include="Commands\CheckRebarConcreteClass.cs" />
+    <Compile Include="Commands\Common\KR\**\*.cs" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="CheckCommandMsg.cs" />
     <Compile Include="CheckerEntity.cs" />

@@ -642,5 +642,50 @@ def copy_revit_plan_range(document_id: str, expected_revision: Annotated[int, Fi
     return documentation_write("copy_plan_range", document_id, expected_revision, items, dry_run, session_id)
 
 
+@mcp.tool(annotations=READ)
+def get_revit_kr_check_catalog(document_id: str, session_id: str | None = None) -> dict:
+    """Доступность двух частных проверок КР из загруженной KPLN_ModelChecker_User (КР/BIM).
+    Сначала list_revit_sessions и get_revit_context. Каталог возвращает library_module_id для запуска.
+    Мост включается кнопкой KPLN → BIM → Codex Мост; TEST-мост для этих команд не нужен."""
+    return client.command("get_kr_check_catalog", session_id, document_id=document_id)
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=False, openWorldHint=False))
+def run_revit_kr_check(
+    document_id: str,
+    expected_revision: Annotated[int, Field(ge=0)],
+    check_id: Literal["CheckIfcRebarMarks", "CheckRebarConcreteClass"],
+    library_module_id: str,
+    session_id: str | None = None,
+) -> dict:
+    """Запустить проверку марок IFC или класса бетона погонной арматуры по штатному алгоритму KPLN.
+    Текущая загруженная модель; параметры, наборы, связи не изменяются, окно отчёта не открывается.
+    Перед КАЖДЫМ запуском получить свежий get_revit_context и module_id из каталога.
+    Длительная синхронная проверка временно занимает Revit. При outcome_pending или потере ответа
+    читать get_revit_operation по operation_id, НЕ отправлять повторный запуск.
+    Результат содержит счётчики, ограничения, result_id и section_counts. completed не означает
+    отсутствие ошибок. Затем прочитать ВСЕ страницы issues, skipped_elements, run_warnings
+    через get_revit_kr_check_result до has_more=false. status/notes сохраняют исходный смысл.
+    Отчёты хранятся до 30 минут, максимум 4 / 64 млн символов на сессию, очищаются при остановке моста."""
+    return client.command("run_kr_check", session_id, document_id=document_id,
+        expected_revision=expected_revision, check_id=check_id, library_module_id=library_module_id)
+
+
+@mcp.tool(annotations=READ)
+def get_revit_kr_check_result(
+    document_id: str,
+    result_id: str,
+    section: Literal["issues", "skipped_elements", "run_warnings"] = "issues",
+    offset: Offset = 0,
+    limit: Limit = 50,
+    session_id: str | None = None,
+) -> dict:
+    """Страница сохранённого отчёта КР без повторного анализа модели.
+    Читать каждый раздел до has_more=false. is_stale означает изменение модели после проверки:
+    это исторический снимок revision_at_run, а не проверка текущего состояния."""
+    return client.command("get_kr_check_result", session_id, document_id=document_id,
+        result_id=result_id, section=section, offset=offset, limit=limit)
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

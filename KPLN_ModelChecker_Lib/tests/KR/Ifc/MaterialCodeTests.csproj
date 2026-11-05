@@ -1,0 +1,5 @@
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"/>
+<PropertyGroup><OutputType>Exe</OutputType><TargetFrameworkVersion>v4.8</TargetFrameworkVersion><OutputPath>bin\material-code\</OutputPath><IntermediateOutputPath>obj\material-code\</IntermediateOutputPath><LangVersion>7.3</LangVersion></PropertyGroup>
+<ItemGroup><Reference Include="System"/><Compile Include="MaterialCodeTests.cs"/><Compile Include="..\..\..\KPLN_ModelChecker_Lib\Commands\Common\KR\Ifc\MaterialCodeFilter.cs"/></ItemGroup>
+<Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/></Project>

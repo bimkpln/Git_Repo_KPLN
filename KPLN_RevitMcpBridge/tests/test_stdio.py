@@ -14,8 +14,14 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
                 info = await session.initialize()
                 self.assertEqual(info.serverInfo.name, "KPLN_RevitMcpBridge")
                 tools = await session.list_tools()
-                self.assertEqual(len(tools.tools), 50)
+                self.assertEqual(len(tools.tools), 53)
                 by_name = {tool.name: tool for tool in tools.tools}
+                for name in ("get_revit_kr_check_catalog", "run_revit_kr_check", "get_revit_kr_check_result"):
+                    self.assertTrue(by_name[name].annotations.readOnlyHint)
+                run_kr = by_name["run_revit_kr_check"]
+                self.assertFalse(run_kr.annotations.idempotentHint)
+                self.assertIn("expected_revision", run_kr.inputSchema["required"])
+                self.assertIn("library_module_id", run_kr.inputSchema["required"])
                 for name in ("update_revit_viewport_labels", "create_revit_sheets", "place_revit_views", "move_revit_sheet_items", "create_revit_tags", "tag_revit_linked_rooms", "create_revit_dimensions", "create_revit_plan_views", "create_revit_sections", "set_revit_plan_range"):
                     self.assertFalse(by_name[name].annotations.readOnlyHint)
                     self.assertFalse(by_name[name].annotations.idempotentHint)
@@ -49,6 +55,10 @@ class StdioTests(unittest.IsolatedAsyncioTestCase):
                     ("tag_revit_linked_rooms", {"document_id": "fake", "expected_revision": 0, "items": []}),
                     ("tag_revit_linked_rooms", {"document_id": "fake", "expected_revision": -1, "items": [{"view_unique_id": "v", "link_instance_unique_id": "l", "tag_type_unique_id": "t"}]}),
                     ("tag_revit_linked_rooms", {"document_id": "fake", "expected_revision": 0, "items": [{"view_unique_id": "v", "tag_type_unique_id": "t"}]}),
+                    ("run_revit_kr_check", {"document_id": "fake", "expected_revision": 0, "library_module_id": "m", "check_id": "arbitrary"}),
+                    ("run_revit_kr_check", {"document_id": "fake", "expected_revision": -1, "library_module_id": "m", "check_id": "CheckIfcRebarMarks"}),
+                    ("get_revit_kr_check_result", {"document_id": "fake", "result_id": "r", "section": "invalid"}),
+                    ("get_revit_kr_check_result", {"document_id": "fake", "result_id": "r", "limit": 201}),
                     ("get_revit_schedule_data", {"document_id": "fake", "schedule_unique_id": "fake", "column_limit": 51}),
                     ("get_revit_schedule_data", {"document_id": "fake", "schedule_unique_id": "fake", "section": "invalid"}),
                     ("check_revit_intersections", {"document_id": "fake", "time_budget_seconds": 61}),
