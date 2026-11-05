@@ -75,6 +75,13 @@
     </Style>
 
     <Style x:Key="CBX" TargetType="ComboBox">
+        <Style.Resources>
+            <!-- Не наследуем светлый TextBlock из ресурсов окна на светлом фоне списка. -->
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="Black" />
+            </Style>
+        </Style.Resources>
+        <Setter Property="Foreground" Value="Black" />
         <Setter Property="Margin" Value="5" />
         <Setter Property="FontSize" Value="14" />
     </Style>
@@ -145,14 +152,20 @@
     </Style>
 
     <Style x:Key="KPLN_ComboBox" TargetType="ComboBox" BasedOn="{StaticResource CBX}">
-        <Setter Property="Foreground" Value="#111827" />
+        <Style.Resources>
+            <!-- Не наследуем светлый TextBlock из ресурсов окна на светлом фоне списка. -->
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="Black" />
+            </Style>
+        </Style.Resources>
+        <Setter Property="Foreground" Value="Black" />
         <Setter Property="Background" Value="#F6F7FB" />
         <Setter Property="MinHeight" Value="34" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="ItemContainerStyle">
             <Setter.Value>
                 <Style TargetType="ComboBoxItem">
-                    <Setter Property="Foreground" Value="#111827" />
+                    <Setter Property="Foreground" Value="Black" />
                     <Setter Property="Background" Value="#F6F7FB" />
                     <Setter Property="Padding" Value="8,5" />
                     <Style.Triggers>
