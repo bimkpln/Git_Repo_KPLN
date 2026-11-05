@@ -28,11 +28,18 @@ namespace KPLN_OpeningHoleManager.Forms
 
         private void SetParamsOpenHoleByIOSElems_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            ParamsOpenHoleByIOSElemsForm paramsForm = new ParamsOpenHoleByIOSElemsForm(MainMenu_VM);
-            if ((bool)paramsForm.ShowDialog())
+            try
             {
-                MainMenu_VM = paramsForm.ParamsOpenHoleByIOSElemsForm_VM;
-                DataContext = MainMenu_VM;
+                ParamsOpenHoleByIOSElemsForm paramsForm = new ParamsOpenHoleByIOSElemsForm(MainMenu_VM);
+                if (paramsForm.ShowDialog() == true)
+                {
+                    MainMenu_VM = paramsForm.ParamsOpenHoleByIOSElemsForm_VM;
+                    DataContext = MainMenu_VM;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Windows.MessageBox.Show("Не удалось открыть настройки отверстий.\n" + ex.Message);
             }
         }
     }

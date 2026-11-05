@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
@@ -15,20 +15,24 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
     internal sealed class AR_OHE_Maker : IExecutableCommand
     {
         private readonly string _transName;
+        private readonly int _zRoundStepMm;
         private readonly AROpeningHoleEntity[] _arEntitiesToCreate;
 
         private readonly ProgressInfoViewModel _progressInfoViewModel;
+        private readonly OpeningTypeMapping _typeMapping;
 
         /// <summary>
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
         /// </summary>
         /// <param name="arEntitiesToCreate">Коллекция для создания</param>
-        public AR_OHE_Maker(AROpeningHoleEntity[] arEntitiesToCreate, string transName, ProgressInfoViewModel progressInfoViewModel)
+        public AR_OHE_Maker(AROpeningHoleEntity[] arEntitiesToCreate, string transName, ProgressInfoViewModel progressInfoViewModel, int zRoundStepMm, OpeningTypeMapping typeMapping)
         {
             _arEntitiesToCreate = arEntitiesToCreate;
             _transName = transName;
+            _zRoundStepMm = zRoundStepMm;
 
             _progressInfoViewModel = progressInfoViewModel;
+            _typeMapping = typeMapping;
         }
 
         public Result Execute(UIApplication app)
@@ -39,6 +43,15 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             Document doc = app.ActiveUIDocument.Document;
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null) return Result.Cancelled;
+
+            // Повторная проверка после очереди: тип мог быть удалён или активная модель смениться.
+            if (!_typeMapping.Validate(doc, out string mappingMessage))
+            {
+                _progressInfoViewModel.IsComplete = true;
+                _progressInfoViewModel.MaintStatus = "Настройте сопоставление типов";
+                TaskDialog.Show("Сопоставление типов отверстий", mappingMessage);
+                return Result.Cancelled;
+            }
 
             Module.CurrentUIContrApp.ControlledApplication.FailuresProcessing += RevitEventWorker.OnFailureProcessing;
 
@@ -57,7 +70,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     // Работа с элемнтами
                     foreach (AROpeningHoleEntity arEntity in _arEntitiesToCreate)
                     {
-                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc);
+                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _zRoundStepMm, _typeMapping);
 
                         ++_progressInfoViewModel.CurrentProgress;
                         _progressInfoViewModel.DoEvents();

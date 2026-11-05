@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.Services;
 using KPLN_ModelChecker_Lib.Services.GripGeom.Core;
 using KPLN_OpeningHoleManager.Core.MainEntity;
@@ -37,7 +37,7 @@ namespace KPLN_OpeningHoleManager.Core
         internal AROpeningHoleEntity(Element elem, OpenigHoleShape shape, string iosSubDepCode, Element hostElem, XYZ point) : this(elem)
         {
             OHE_Shape = shape;
-            AR_OHE_IOSDubDepCode = iosSubDepCode;
+            AR_OHE_IOSDubDepCode = OpeningTypeMapping.NormalizeDepartment(iosSubDepCode);
             AR_OHE_HostElement = hostElem;
             OHE_Point = point;
         }
@@ -348,26 +348,10 @@ namespace KPLN_OpeningHoleManager.Core
         /// </summary>
         internal AROpeningHoleEntity SetFamilyPathAndName(Document doc)
         {
-            if (doc.Title.Contains("СЕТ_1"))
-            {
-                OHE_FamilyPath_Rectangle = @"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\01_АР\Отверстия, шахты, решетки\ASML_АР_Отверстие прямоугольное.rfa";
-                OHE_FamilyPath_Circle = @"X:\BIM\3_Семейства\8_Библиотека семейств Самолета\01_АР\Отверстия, шахты, решетки\ASML_АР_Отверстие круглое.rfa";
-            }
-            else
-            {
-                OHE_FamilyPath_Rectangle = @"X:\BIM\3_Семейства\1_АР\199_Отверстия, ниши и шахты\199_Отверстие прямоугольное_(Об_Стена).rfa";
-                OHE_FamilyPath_Circle = @"X:\BIM\3_Семейства\1_АР\199_Отверстия, ниши и шахты\199_Отверстие круглое_(Об_Стена).rfa";
-            }
-
-            OHE_FamilyName_Rectangle = OHE_FamilyPath_Rectangle
-                .Split('\\')
-                .FirstOrDefault(part => part.Contains(".rfa"))
-                .TrimEnd(".rfa".ToCharArray());
-
-            OHE_FamilyName_Circle = OHE_FamilyPath_Circle
-                .Split('\\')
-                .FirstOrDefault(part => part.Contains(".rfa"))
-                .TrimEnd(".rfa".ToCharArray());
+            OHE_FamilyPath_Rectangle = OpeningTypeMapping.GetFamilyPath(doc, false);
+            OHE_FamilyPath_Circle = OpeningTypeMapping.GetFamilyPath(doc, true);
+            OHE_FamilyName_Rectangle = OpeningTypeMapping.GetFamilyName(doc, false);
+            OHE_FamilyName_Circle = OpeningTypeMapping.GetFamilyName(doc, true);
 
             return this;
         }
@@ -674,37 +658,26 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Разместить экземпляр семейства по указанным координатам и заполнить параметры в модели
         /// </summary>
-        internal void CreateIntersectFamInstAndSetRevitParamsData(Document doc)
+        internal void CreateIntersectFamInstAndSetRevitParamsData(Document doc, int zRoundStepMm, OpeningTypeMapping typeMapping)
         {
-            // Определяю ключевую часть имени для поиска нужного типа семейства
-            string famType = string.Empty;
-            if (AR_OHE_IOSDubDepCode.Equals("ОВиК"))
-                famType = "ОВ";
-            else if (AR_OHE_IOSDubDepCode.Equals("ИТП"))
-                famType = "ОВ";
-            else if (AR_OHE_IOSDubDepCode.Equals("ВК"))
-                famType = "ВК";
-            else if (AR_OHE_IOSDubDepCode.Equals("ПТ"))
-                famType = "ВК";
-            else if (AR_OHE_IOSDubDepCode.Equals("ЭОМ"))
-                famType = "ЭОМ";
-            else if (AR_OHE_IOSDubDepCode.Equals("СС"))
-                famType = "СС";
-            else if (AR_OHE_IOSDubDepCode.Equals("АВ"))
-                famType = "СС";
-            else
-                famType = "Несколько категорий";
-
-            FamilySymbol openingFamSymb;
-            if (OHE_Shape == OpenigHoleShape.Rectangular)
-                openingFamSymb = GetIntersectFamilySymbol(doc, OHE_FamilyPath_Rectangle, OHE_FamilyName_Rectangle, famType);
-            else
-                openingFamSymb = GetIntersectFamilySymbol(doc, OHE_FamilyPath_Circle, OHE_FamilyName_Circle, famType);
+            // Только явно назначенный тип: без неявного выбора первого типа семейства.
+            FamilySymbol openingFamSymb = typeMapping.Resolve(doc, OHE_Shape, AR_OHE_IOSDubDepCode);
 
             if (AR_OHE_HostElement.LevelId == null)
                 throw new Exception($"У основы с id: {AR_OHE_HostElement.Id} проблемы с привязкой к уровню. Отправь разработчику.");
 
-            Level hostLevel = doc.GetElement(AR_OHE_HostElement.LevelId) as Level;
+            Level hostLevel = doc.GetElement(AR_OHE_HostElement.LevelId) as Level ?? throw new InvalidOperationException("Не найден уровень основы отверстия.");
+
+            // ProjectElevation и координаты точки используют начало координат проекта.
+            int stepMm = zRoundStepMm == 5 ? 5 : 10;
+#if Debug2020 || Revit2020
+            double step = UnitUtils.ConvertToInternalUnits(stepMm, DisplayUnitType.DUT_MILLIMETERS);
+#else
+            double step = UnitUtils.ConvertToInternalUnits(stepMm, new ForgeTypeId("autodesk.unit.unit:millimeters-1.0.1"));
+#endif
+            double offset = OHE_Point.Z - hostLevel.ProjectElevation;
+            double roundedOffset = Math.Round(offset / step, MidpointRounding.AwayFromZero) * step;
+            OHE_Point = new XYZ(OHE_Point.X, OHE_Point.Y, hostLevel.ProjectElevation + roundedOffset);
 
             // Создание новых экземпляров
             FamilyInstance instance = doc

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_OpeningHoleManager.Core;
 using KPLN_OpeningHoleManager.ExecutableCommand;
@@ -16,6 +16,7 @@ namespace KPLN_OpeningHoleManager.Forms
         {
             ParamsOpenHoleByIOSElemsForm_VM = currentVM;
             
+            currentVM.RefreshTypeMapping();
             InitializeComponent();
             DataContext = ParamsOpenHoleByIOSElemsForm_VM;
 
@@ -32,11 +33,10 @@ namespace KPLN_OpeningHoleManager.Forms
             if (e.Key == Key.Escape)
                 Close();
 
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter && !(e.OriginalSource is System.Windows.Controls.ComboBox))
             {
-                this.DialogResult = true;
-                SetConfigData();
-                this.Close();
+                ApplySettings();
+                e.Handled = true;
             }
         }
 
@@ -59,11 +59,41 @@ namespace KPLN_OpeningHoleManager.Forms
 
         private void OnBtnApply_Click(object sender, RoutedEventArgs e)
         {
-            this.DialogResult = true;
-            SetConfigData();
-            this.Close();
+            ApplySettings();
         }
 
-        private void SetConfigData() => MainConfig.SetData_ToConfig(ParamsOpenHoleByIOSElemsForm_VM);
+        private void OnAutoDetect_Click(object sender, RoutedEventArgs e)
+        {
+            ParamsOpenHoleByIOSElemsForm_VM.RefreshTypeMapping();
+            ParamsOpenHoleByIOSElemsForm_VM.TypeMapping.AutoDetect();
+        }
+
+        private void OnAutoDetectEmpty_Click(object sender, RoutedEventArgs e)
+        {
+            // Сначала очищаем назначения, которых больше нет в текущей модели.
+            ParamsOpenHoleByIOSElemsForm_VM.RefreshTypeMapping();
+            ParamsOpenHoleByIOSElemsForm_VM.TypeMapping.AutoDetect(true);
+        }
+
+        private void OnLoadFamilies_Click(object sender, RoutedEventArgs e)
+        {
+            KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(
+                new LoadOpeningFamiliesExcCmd(ParamsOpenHoleByIOSElemsForm_VM, Module.CurrentUIApplication.ActiveUIDocument.Document));
+            Close();
+        }
+
+        private void ApplySettings()
+        {
+            try
+            {
+                MainConfig.SetData_ToConfig(ParamsOpenHoleByIOSElemsForm_VM);
+                DialogResult = true;
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show(this, "Не удалось сохранить настройки.\n" + ex.Message,
+                    "Настройки отверстий", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
     }
 }

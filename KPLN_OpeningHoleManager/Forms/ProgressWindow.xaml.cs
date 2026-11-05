@@ -1,37 +1,25 @@
-﻿using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
-using System;
-using System.Windows;
+using KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu;
 
 namespace KPLN_OpeningHoleManager.Forms
 {
-    public partial class ProgressWindow : Window
+    /// <summary>
+    /// Создаёт библиотечное окно напрямую: WPF загружает BAML из сборки типа окна.
+    /// </summary>
+    public sealed class ProgressWindow
     {
-        private System.Windows.Forms.Timer _closeTimer;
+        private readonly KPLN_Library_Forms.UI.ProgressWindow _window;
 
         public ProgressWindow(ProgressInfoViewModel progressInfo)
         {
-            InitializeComponent();
-            DataContext = progressInfo;
-
-            progressInfo.CompleteStatus += ProgressInfo_CompleteStatus;
-        }
-
-        private void ProgressInfo_CompleteStatus()
-        {
-            _closeTimer = new System.Windows.Forms.Timer
+            _window = new KPLN_Library_Forms.UI.ProgressWindow(progressInfo.LibraryProgress)
             {
-                Interval = 5000
+                Title = "KPLN: Менеджер отверстий"
             };
-            _closeTimer.Start();
-
-            _closeTimer.Tick += CloseTimer_Tick;
         }
 
-        private void CloseTimer_Tick(object sender, EventArgs e)
-        {
-            // Закрываем форму после истечения задержки.
-            _closeTimer.Stop();
-            Close();
-        }
+        public void Show() => _window.Show();
+
+        // Ранний выход из операции должен закрывать окно без запроса отмены.
+        public void Close() => _window.CloseSafely();
     }
 }

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using KPLN_ModelChecker_Lib.Services;
 using KPLN_OpeningHoleManager.Core;
 using System;
@@ -97,7 +97,7 @@ namespace KPLN_OpeningHoleManager.Services
                 && iosLinkElemLoc is LocationCurve iosLinkElemLocCurve
                 && iosLinkElemLocCurve.Curve is Line iosLinkElemLine)
             {
-                XYZ iosDir = iosLinkElemLine.Direction;
+                XYZ iosDir = iosLinkTransfrom.OfVector(iosLinkElemLine.Direction).Normalize();
                 XYZ hostDir = GeometryCurrentWorker.GetHostDirection(entity.IEDElem);
                 XYZ crossProd = iosDir.CrossProduct(hostDir);
 
@@ -136,34 +136,25 @@ namespace KPLN_OpeningHoleManager.Services
         /// Трансформ для аутлайна, в координаты линка. Возможно опракидывание координат (например Y у MIN будет больше Y у MAX) - это
         /// не допустимо для создания фильтра
         /// </summary>
-        private static Outline TransformFilterOutline_ToLink(Outline outlineToTransform, Transform linkTRansform)
+        internal static Outline TransformFilterOutline_ToLink(Outline outlineToTransform, Transform linkTransform)
         {
-            // Inverse - т.к. возвращаюсь в координаты линка
-            Outline transformOutline = new Outline(linkTRansform.Inverse.OfPoint(outlineToTransform.MinimumPoint), linkTRansform.Inverse.OfPoint(outlineToTransform.MaximumPoint));
+            // При повороте/отражении связи двух углов недостаточно: преобразуем все восемь.
+            Transform inverse = linkTransform.Inverse;
+            XYZ min = outlineToTransform.MinimumPoint;
+            XYZ max = outlineToTransform.MaximumPoint;
+            List<XYZ> corners = new List<XYZ>();
+            foreach (double x in new[] { min.X, max.X })
+            {
+                foreach (double y in new[] { min.Y, max.Y })
+                {
+                    foreach (double z in new[] { min.Z, max.Z })
+                        corners.Add(inverse.OfPoint(new XYZ(x, y, z)));
+                }
+            }
 
-            XYZ transOutlineMin = transformOutline.MinimumPoint;
-            XYZ transOutlineMax = transformOutline.MaximumPoint;
-
-            double minX = transOutlineMin.X;
-            double minY = transOutlineMin.Y;
-            double minZ = transOutlineMin.Z;
-
-            double maxX = transOutlineMax.X;
-            double maxY = transOutlineMax.Y;
-            double maxZ = transOutlineMax.Z;
-
-            double sminX = Math.Min(minX, maxX);
-            double sminY = Math.Min(minY, maxY);
-            double sminZ = Math.Min(minZ, maxZ);
-
-            double smaxX = Math.Max(minX, maxX);
-            double smaxY = Math.Max(minY, maxY);
-            double smaxZ = Math.Max(minZ, maxZ);
-
-            XYZ pntMin = new XYZ(sminX, sminY, sminZ);
-            XYZ pntMax = new XYZ(smaxX, smaxY, smaxZ);
-
-            return new Outline(pntMin, pntMax);
+            return new Outline(
+                new XYZ(corners.Min(p => p.X), corners.Min(p => p.Y), corners.Min(p => p.Z)),
+                new XYZ(corners.Max(p => p.X), corners.Max(p => p.Y), corners.Max(p => p.Z)));
         }
     }
 }

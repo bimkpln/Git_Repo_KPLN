@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
@@ -22,6 +22,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         private readonly bool _isUnionOnly;
 
         private readonly ProgressInfoViewModel _progressInfoViewModel;
+        private readonly OpeningTypeMapping _typeMapping;
 
         /// <summary>
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
@@ -32,6 +33,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             _arEntities = arEntities;
             _transName = transName;
             _viewModel = viewModel;
+            _typeMapping = viewModel.TypeMapping.Snapshot(Module.CurrentUIApplication.ActiveUIDocument.Document);
             _isUnionOnly = isUnionOnly;
 
             _progressInfoViewModel = progressInfoViewModel;
@@ -45,6 +47,15 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             Document doc = app.ActiveUIDocument.Document;
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null) return Result.Cancelled;
+
+            // Повторная проверка после очереди: тип мог быть удалён или активная модель смениться.
+            if (!_typeMapping.Validate(doc, out string mappingMessage))
+            {
+                _progressInfoViewModel.IsComplete = true;
+                _progressInfoViewModel.MaintStatus = "Настройте сопоставление типов";
+                TaskDialog.Show("Сопоставление типов отверстий", mappingMessage);
+                return Result.Cancelled;
+            }
 
             Module.CurrentUIContrApp.ControlledApplication.FailuresProcessing += RevitEventWorker.OnFailureProcessing;
 
@@ -64,7 +75,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     _progressInfoViewModel.ProcessTitle = $"Создание одиночных отверстий...";
                     foreach (AROpeningHoleEntity arEntity in _arEntities)
                     {
-                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc);
+                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _viewModel.OpenHoleZRoundStepMm, _typeMapping);
 
                         ++_progressInfoViewModel.CurrentProgress;
                         _progressInfoViewModel.DoEvents();
@@ -188,7 +199,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                             // Затем создаю новые элементы
                             foreach (AROpeningHoleEntity arEntity in arEntitiesForUnion)
                             {
-                                arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc);
+                                arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _viewModel.OpenHoleZRoundStepMm, _typeMapping);
 
                                 ++_progressInfoViewModel.CurrentProgress;
                                 _progressInfoViewModel.DoEvents();

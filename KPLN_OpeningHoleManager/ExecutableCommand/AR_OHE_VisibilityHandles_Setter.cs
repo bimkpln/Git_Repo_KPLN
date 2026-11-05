@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_Forms.UI.HtmlWindow;
 using KPLN_Loader.Common;
@@ -28,11 +28,13 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         private const double _defaultExpandValue = 1.64042;
         
         private readonly ProgressInfoViewModel _progressInfoViewModel;
+        private readonly OpeningTypeMapping _typeMapping;
 
-        public AR_OHE_VisibilityHandles_Setter(IEnumerable<AROpeningHoleEntity> arEntities, ProgressInfoViewModel progressInfoViewModel)
+        public AR_OHE_VisibilityHandles_Setter(IEnumerable<AROpeningHoleEntity> arEntities, ProgressInfoViewModel progressInfoViewModel, OpeningTypeMapping typeMapping)
         {
             _arEntities = arEntities;
             _progressInfoViewModel = progressInfoViewModel;
+            _typeMapping = typeMapping;
         }
 
         public Result Execute(UIApplication app)
@@ -43,6 +45,15 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             Document doc = app.ActiveUIDocument.Document;
             UIDocument uidoc = app.ActiveUIDocument;
             if (uidoc == null) return Result.Cancelled;
+
+            // Повторная проверка после очереди: тип мог быть удалён или активная модель смениться.
+            if (!_typeMapping.Validate(doc, out string mappingMessage))
+            {
+                _progressInfoViewModel.IsComplete = true;
+                _progressInfoViewModel.MaintStatus = "Настройте сопоставление типов";
+                TaskDialog.Show("Сопоставление типов отверстий", mappingMessage);
+                return Result.Cancelled;
+            }
 
             Module.CurrentUIContrApp.ControlledApplication.FailuresProcessing += RevitEventWorker.OnFailureProcessing;
 

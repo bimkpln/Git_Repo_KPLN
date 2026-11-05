@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Library_ConfigWorker;
 using KPLN_Library_ConfigWorker.Core;
@@ -12,7 +12,7 @@ namespace KPLN_OpeningHoleManager.Core
     public sealed class MainConfig : IJsonSerializable
     {
         private static readonly string _cofigName = "AR_OHEManagerConfig";
-        private static ConfigType _configType = ConfigType.Local;
+
 
         public MainConfig()
         {
@@ -22,6 +22,10 @@ namespace KPLN_OpeningHoleManager.Core
         /// Значение расширение отверстия при расстановке
         /// </summary>
         public double OpenHoleExpandedValue { get; set; }
+
+        public int OpenHoleZRoundStepMm { get; set; } = 10;
+
+        public OpeningTypeAssignment[] OpeningTypeAssignments { get; set; } = new OpeningTypeAssignment[0];
 
         /// <summary>
         /// АР: Значение минимальной ширины отверстия при расстановке
@@ -56,20 +60,21 @@ namespace KPLN_OpeningHoleManager.Core
 
         public static MainConfig GetData_FromConfig(DBProject dBProject)
         {
-            if (Module.CurrentUIApplication == null) return null;
+            if (Module.CurrentUIApplication?.ActiveUIDocument == null) return null;
 
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            if (dBProject != null)
-                _configType = ConfigType.Shared;
+            ConfigType configType = doc.IsWorkshared && dBProject != null ? ConfigType.Shared : ConfigType.Local;
 
-            object obj = ConfigService.ReadConfigFile<MainConfig>(int.Parse(ModuleData.Version), doc, _configType, _cofigName);
+            object obj = ConfigService.ReadConfigFile<MainConfig>(ModuleData.RevitVersion, doc, configType, _cofigName);
             if (obj is MainConfig configItem)
             {
                 return new MainConfig()
                 {
                     OpenHoleExpandedValue = configItem.OpenHoleExpandedValue,
+                    OpenHoleZRoundStepMm = configItem.OpenHoleZRoundStepMm == 5 ? 5 : 10,
+                    OpeningTypeAssignments = configItem.OpeningTypeAssignments,
 
                     AR_OpenHoleMinDistanceValue = configItem.AR_OpenHoleMinDistanceValue,
                     AR_OpenHoleMinHeightValue = configItem.AR_OpenHoleMinHeightValue,
@@ -86,20 +91,21 @@ namespace KPLN_OpeningHoleManager.Core
 
         public static void SetData_ToConfig(MainViewModel vm)
         {
-            if (Module.CurrentUIApplication == null) return;
+            if (Module.CurrentUIApplication?.ActiveUIDocument == null) return;
 
             UIDocument uidoc = Module.CurrentUIApplication.ActiveUIDocument;
             Document doc = uidoc.Document;
 
-            ModelPath docModelPath = doc.GetWorksharingCentralModelPath() ?? throw new Exception("Работает только с моделями из хранилища");
-            string strDocModelPath = ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
+            ModelPath docModelPath = doc.IsWorkshared ? doc.GetWorksharingCentralModelPath() : null;
+            string strDocModelPath = docModelPath == null ? doc.PathName : ModelPathUtils.ConvertModelPathToUserVisiblePath(docModelPath);
             DBProject dBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(strDocModelPath, ModuleData.RevitVersion);
-            if (dBProject != null)
-                _configType = ConfigType.Shared;
+            ConfigType configType = docModelPath != null && dBProject != null ? ConfigType.Shared : ConfigType.Local;
 
             MainConfig mainConfig = new MainConfig()
             {
                 OpenHoleExpandedValue = vm.OpenHoleExpandedValue,
+                OpenHoleZRoundStepMm = vm.OpenHoleZRoundStepMm,
+                OpeningTypeAssignments = vm.TypeMapping.Export(),
 
                 AR_OpenHoleMinDistanceValue = vm.AR_OpenHoleMinDistanceValue,
                 AR_OpenHoleMinHeightValue = vm.AR_OpenHoleMinHeightValue,
@@ -110,7 +116,7 @@ namespace KPLN_OpeningHoleManager.Core
                 KR_OpenHoleMinWidthValue = vm.KR_OpenHoleMinWidthValue,
             };
 
-            ConfigService.SaveConfig<MainConfig>(int.Parse(ModuleData.Version), doc, _configType, mainConfig, _cofigName);
+            ConfigService.SaveConfig<MainConfig>(ModuleData.RevitVersion, doc, configType, mainConfig, _cofigName);
         }
 
         public object ToJson()

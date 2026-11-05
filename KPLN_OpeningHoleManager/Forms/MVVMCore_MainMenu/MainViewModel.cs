@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
 using KPLN_Library_DBWorker;
@@ -25,7 +25,47 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        public OpeningTypeMapping TypeMapping { get; } = new OpeningTypeMapping();
+
+        public void RefreshTypeMapping()
+        {
+            Document doc = Module.CurrentUIApplication?.ActiveUIDocument?.Document;
+            if (doc != null)
+                TypeMapping.Refresh(doc);
+        }
+
+        private void RunConfigured(Action action)
+        {
+            try
+            {
+                Document doc = Module.CurrentUIApplication?.ActiveUIDocument?.Document;
+                if (doc == null)
+                    return;
+                if (!TypeMapping.Validate(doc, out string message))
+                {
+                    TaskDialog.Show("Сопоставление типов отверстий", message);
+                    return;
+                }
+                action();
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Менеджер отверстий", ex.Message);
+            }
+        }
+
         private double _openHoleExpandedValue = 50;
+        private int _openHoleZRoundStepMm = 10;
+
+        public int OpenHoleZRoundStepMm
+        {
+            get => _openHoleZRoundStepMm;
+            set
+            {
+                _openHoleZRoundStepMm = value == 5 ? 5 : 10;
+                OnPropertyChanged();
+            }
+        }
 
         private double _ar_openHoleMinWidthValue = 300;
         private double _ar_openHoleMinHeightValue = 300;
@@ -159,12 +199,12 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         public MainViewModel()
         {
             // Устанавливаю команды
-            CreateOpenHole_AllARElemsCommand = new RelayCommand(CreateOpenHole_AllARElems);
-            CreateOpenHole_SelectedARKRAndIOSElemsCommand = new RelayCommand(CreateOpenHole_SelectedARKRAndIOSElems);
-            CreateOpenHole_SelectedARKRAndSelectedIOSElemsCommand = new RelayCommand(CreateOpenHole_SelectedARKRAndSelectedIOSElems);
-            UnionOpenHolesCommand = new RelayCommand(UnionOpenHoles);
-            SetOpenHoleByTaskCommand = new RelayCommand(SetOpenHoleByTask);
-            SetOpenHoleExpandCommand = new RelayCommand(SetOpenHoleExpand);
+            CreateOpenHole_AllARElemsCommand = new RelayCommand(() => RunConfigured(CreateOpenHole_AllARElems));
+            CreateOpenHole_SelectedARKRAndIOSElemsCommand = new RelayCommand(() => RunConfigured(CreateOpenHole_SelectedARKRAndIOSElems));
+            CreateOpenHole_SelectedARKRAndSelectedIOSElemsCommand = new RelayCommand(() => RunConfigured(CreateOpenHole_SelectedARKRAndSelectedIOSElems));
+            UnionOpenHolesCommand = new RelayCommand(() => RunConfigured(UnionOpenHoles));
+            SetOpenHoleByTaskCommand = new RelayCommand(() => RunConfigured(SetOpenHoleByTask));
+            SetOpenHoleExpandCommand = new RelayCommand(() => RunConfigured(SetOpenHoleExpand));
         }
 
         /// <summary>
@@ -172,10 +212,35 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         /// </summary>
         public void SetDataGeomParamsData(DBProject dBProject)
         {
-            MainConfig mainConfig = MainConfig.GetData_FromConfig(dBProject);
+            // Сбрасываю значения предыдущего документа перед чтением его настроек.
+            OpenHoleExpandedValue = 50;
+            OpenHoleZRoundStepMm = 10;
+            AR_OpenHoleMinDistanceValue = 200;
+            AR_OpenHoleMinHeightValue = 300;
+            AR_OpenHoleMinWidthValue = 300;
+            KR_OpenHoleMinDistanceValue = 100;
+            KR_OpenHoleMinHeightValue = 200;
+            KR_OpenHoleMinWidthValue = 200;
+
+            MainConfig mainConfig;
+            try
+            {
+                Document doc = Module.CurrentUIApplication?.ActiveUIDocument?.Document;
+                if (doc == null)
+                    return;
+                TypeMapping.Load(doc, null);
+                mainConfig = MainConfig.GetData_FromConfig(dBProject);
+            }
+            catch (Exception ex)
+            {
+                TaskDialog.Show("Настройки отверстий", "Не удалось прочитать настройки. Используются значения по умолчанию.\n" + ex.Message);
+                return;
+            }
             if (mainConfig != null)
             {
                 OpenHoleExpandedValue = mainConfig.OpenHoleExpandedValue;
+                OpenHoleZRoundStepMm = mainConfig.OpenHoleZRoundStepMm;
+                TypeMapping.Load(Module.CurrentUIApplication.ActiveUIDocument.Document, mainConfig.OpeningTypeAssignments);
 
                 AR_OpenHoleMinDistanceValue = mainConfig.AR_OpenHoleMinDistanceValue;
                 AR_OpenHoleMinHeightValue = mainConfig.AR_OpenHoleMinHeightValue;
@@ -508,9 +573,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             Outline filterOutline = GeometryCurrentWorker.CreateOutline_ByBBoxANDExpand(filterBBox, new XYZ(2, 2, 2));
 
 
-            // Фильтры
-            BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(filterOutline, 0.1);
-            BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(filterOutline, 0.1);
+            // Фильтры создаются отдельно в системе координат каждого экземпляра связи.
 
 
             // Подготавливаю коллекцию элементов из каждого линк-файла один раз, чтобы не создавать FilteredElementCollector для каждого элемента хоста
@@ -523,6 +586,11 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 Document linkDoc = linkInst.GetLinkDocument();
                 if (linkDoc != null)
                 {
+                    // Коллектор связи работает в координатах связи, а не основной модели.
+                    Outline linkOutline = ARKRElemsCollectionCreator.TransformFilterOutline_ToLink(filterOutline, linkTransforms[linkInst]);
+                    BoundingBoxIntersectsFilter intersectsFilter = new BoundingBoxIntersectsFilter(linkOutline, 0.1);
+                    BoundingBoxIsInsideFilter insideFilter = new BoundingBoxIsInsideFilter(linkOutline, 0.1);
+
                     HashSet<Element> linkElems_FromSection = new HashSet<Element>(new ElementComparerById());
 
                     // Элементы линка, В РАМКАХ выбранных хостов АР (по пересечению)
@@ -755,7 +823,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return null;
                 }
 
-                AROpeningHoleEntity arOHE = new AROpeningHoleEntity(selectedElem, OpenigHoleShape.Rectangular, fi.Symbol.Name, hostElem, locPnt.Point);
+                AROpeningHoleEntity arOHE = new AROpeningHoleEntity(selectedElem, OpenigHoleShape.Rectangular, TypeMapping.DepartmentForSymbol(fi.Symbol), hostElem, locPnt.Point);
 
                 arOHE.SetFamilyPathAndName(doc);
                 arOHE.SetGeomParams();
@@ -791,7 +859,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 AROpeningHoleEntity[] arEntities = GetAROpeningsFromIOSTask(doc, iosTasks);
 
                 if (arEntities.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(arEntities, "KPLN: Отверстия по заданию", progressInfoViewModel));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_Maker(arEntities, "KPLN: Отверстия по заданию", progressInfoViewModel, OpenHoleZRoundStepMm, TypeMapping.Snapshot(doc)));
             }
             catch (Exception ex)
             {
@@ -1098,7 +1166,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 progressInfoViewModel.DoEvents();
 
                 KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_AddParams(arOHEEntColl.FirstOrDefault()));
-                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_VisibilityHandles_Setter(arOHEEntColl, progressInfoViewModel));
+                KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_VisibilityHandles_Setter(arOHEEntColl, progressInfoViewModel, TypeMapping.Snapshot(doc)));
             }
             catch (Exception ex)
             {

@@ -1,96 +1,62 @@
-﻿using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows.Threading;
 
 namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 {
-    public sealed class ProgressInfoViewModel : INotifyPropertyChanged
+    /// <summary>
+    /// Адаптер существующих операций менеджера к библиотечному окну прогресса.
+    /// </summary>
+    public sealed class ProgressInfoViewModel
     {
-        public delegate void RiseComplete();
-        public event RiseComplete CompleteStatus;
-        
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        public string ProgressCount => $"{CurrentProgress}/{MaxProgress}";
-
-        private string _processTitle = "<Имя процесса установится по ходу анализа>";
-        private int _currentProgress;
-        private int _maxProgress = 1;
-
-        private string _mainStatus = "Анализирую.....";
-        public bool _isComplete = false;
-
-        public ProgressInfoViewModel()
-        {
-        }
+        internal KPLN_Library_Forms.UI.ViewModels.ProgressInfoViewModel LibraryProgress { get; }
+            = new KPLN_Library_Forms.UI.ViewModels.ProgressInfoViewModel
+            {
+                IsCancellationEnabled = false
+            };
 
         public string ProcessTitle
         {
-            get => _processTitle;
-            set { _processTitle = value; OnPropertyChanged(); }
+            get => LibraryProgress.ProcessTitle;
+            set => LibraryProgress.ProcessTitle = value;
         }
 
         public int CurrentProgress
         {
-            get => _currentProgress;
-            set
-            {
-                _currentProgress = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ProgressCount));
-            }
+            get => LibraryProgress.CurrentProgress;
+            set => LibraryProgress.CurrentProgress = value;
         }
 
         public int MaxProgress
         {
-            get => _maxProgress;
-            set
-            {
-                _maxProgress = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ProgressCount));
-            }
+            get => LibraryProgress.MaxProgress;
+            set => LibraryProgress.MaxProgress = value;
         }
 
         public string MaintStatus
         {
-            get => _mainStatus;
-            set { _mainStatus = value; OnPropertyChanged(); }
+            get => LibraryProgress.MaintStatus;
+            set => LibraryProgress.MaintStatus = value;
         }
 
         public bool IsComplete
         {
-            get => _isComplete;
-            set 
-            { 
-                _isComplete = value;
-                if (_isComplete)
-                {
-                    MaintStatus = "Завершено!";
-                    CompleteStatus?.Invoke();
-                }
-
-                OnPropertyChanged(); 
-            }
+            get => LibraryProgress.IsComplete;
+            set => LibraryProgress.IsComplete = value;
         }
 
         public void DoEvents()
         {
             DispatcherFrame frame = new DispatcherFrame();
-            
+
             Dispatcher.CurrentDispatcher.BeginInvoke(
                 DispatcherPriority.Background,
                 new DispatcherOperationCallback(f =>
                 {
                     ((DispatcherFrame)f).Continue = false;
                     return null;
-                }), 
+                }),
                 frame);
-            
+
             Dispatcher.PushFrame(frame);
         }
-
-        private void OnPropertyChanged([CallerMemberName] string name = null) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 }

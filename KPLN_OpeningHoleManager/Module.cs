@@ -92,9 +92,6 @@ namespace KPLN_OpeningHoleManager
 
             CurrentFileName = openViewFileName;
             DBProject openViewDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, ModuleData.RevitVersion);
-            if (openViewDBProject == null)
-                return;
-
             CurrentDBProject = openViewDBProject;
 
             MainMenuViewer.MainMenu_VM.SetDataGeomParamsData(CurrentDBProject);
