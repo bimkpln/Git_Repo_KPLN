@@ -1,6 +1,0 @@
-{
-  "version": 2,
-  "updated": "2026-09-10",
-  "deprecated": true,
-  "comment": "MCP-сервер больше не читает этот файл. Политика, обучение и правила допусков живут в Codex skill navisworks-clash-tolerances; сервер остаётся мостом данных Navisworks."
-}
