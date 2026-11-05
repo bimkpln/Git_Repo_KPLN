@@ -58,7 +58,6 @@ namespace KPLN_Looker.Services
                 uiapp: uiapp,
                 config: null,
                 onlyErrorType: true,
-                setPluginActivity: false,
                 setLastRun: false,
                 showMainForm: false,
                 showSuccsessText: false);

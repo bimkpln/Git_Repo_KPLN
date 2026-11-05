@@ -39,7 +39,6 @@ namespace KPLN_ModelChecker_User.ExternalCommands
             UIApplication uiapp,
             IJsonSerializable config = null, 
             bool onlyErrorType = false, 
-            bool setPluginActivity = true, // Не используется; сохранён для совместимости сигнатуры.
             bool showMainForm = true, 
             bool setLastRun = true, 
             bool showSuccsessText = true) 

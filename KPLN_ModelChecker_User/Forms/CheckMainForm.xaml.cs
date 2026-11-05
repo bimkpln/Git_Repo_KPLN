@@ -239,7 +239,7 @@ namespace KPLN_ModelChecker_User.Forms
 
                 // Вызываем метод ExecuteByUIApp, передавая _uiApp как аргумент
                 if (executeMethod != null)
-                    executeMethodRef.Invoke(instance, new object[] { _application, false, false, true, false, true });
+                    executeMethodRef.Invoke(instance, new object[] { _application, null, false, true, false, true });
                 else
                     throw new Exception("Ошибка определения метода через рефлексию. Отправь это разработчику\n");
             }
