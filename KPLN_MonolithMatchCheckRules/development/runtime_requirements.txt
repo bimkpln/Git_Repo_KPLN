@@ -1,0 +1,8 @@
+# Observed Windows x64 CPython 3.12 environment. Not an automatic installer.
+numpy==2.3.5
+scipy==1.18.1
+trimesh==5.1.1
+manifold3d==3.5.4
+shapely==2.2.0
+rtree==1.4.1
+Pillow==12.3.0

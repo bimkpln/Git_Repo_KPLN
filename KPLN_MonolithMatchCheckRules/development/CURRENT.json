@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "published_at_utc": "2026-10-26T16:37:00.573894+00:00",
+  "rules_version": "0.1.26",
+  "workspace_store": "local/workspace-store",
+  "code_checkpoint": "research-code-20261026-r3",
+  "data_checkpoint": "sgm-data-20261026",
+  "research_implementation": true,
+  "complete_portable_engine": false,
+  "active_sgm_run": "runs/sochi_moskva_rd_blok1_20261026_v4",
+  "active_sgm_business_rules": "0.1.24",
+  "execute_on": "local_disk",
+  "checkpoint_manifest_sha256": {
+    "code_checkpoint": "7571b93ec10c10ee00924131c69cf63c9e8f8334cbb85db2bef57ef551fb5222",
+    "data_checkpoint": "325b313949e0cb450a643dafda91b4925fc7b4d2665e4097e22606dc213ea2af"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "PD": {
+    "name": "Проектная документация",
+    "production_scope": "documented_views",
+    "general_mm": 15,
+    "flight_underside_vertical_mm": 20,
+    "technical_hole_sum_four_mm": 100,
+    "door_window_opposite_pair_mm": 15,
+    "exclude": ["foundation_thickening", "pile", "roof_shaft_cap", "MEP_equipment_foundation"],
+    "conditional_exceptions": ["pit_outer_dimensions", "stair_finish_thickness", "AR_missing_mounting_hole", "AR_missing_expansion_joint", "AR_wall_flight_slab_junction", "AR_self_intersection_without_design_effect", "AR_door_family_threshold", "AR_shaft_blind_cut"]
+  },
+  "RD": {
+    "name": "Рабочая документация",
+    "production_scope": "full_model",
+    "general_mm": 15,
+    "flight_underside_vertical_mm": 20,
+    "technical_hole_sum_four_mm": 15,
+    "door_window_opposite_pair_mm": 15,
+    "exclude": ["foundation_thickening", "pile"],
+    "conditional_exceptions": ["pit_outer_dimensions", "stair_finish_thickness", "AR_missing_mounting_hole", "AR_missing_expansion_joint", "AR_wall_flight_slab_junction", "AR_self_intersection_without_design_effect", "AR_door_family_threshold", "AR_shaft_blind_cut"],
+    "fully_constructed_building_mm": 50,
+    "fully_constructed_default": "disabled_until_explicit_user_confirmation_for_this_check"
+  },
+  "common": {
+    "equal_tolerance_allowed": true,
+    "absence_is_issue_without_size_threshold": true,
+    "missing_hole_size_exception_mm": null,
+    "hidden_search_folder": "Скрыть",
+    "unknown_material_blocks_complete_release": true,
+    "grouping": "one_physical_discrepancy_regardless_of_XY_Z_or_element_segmentation",
+    "typical_repetitions": "same_actual_AR_and_KR_geometry_at_different_levels",
+    "primary_count": "groups_plus_standalone",
+    "secondary_count": "children_plus_standalone"
+  }
+}

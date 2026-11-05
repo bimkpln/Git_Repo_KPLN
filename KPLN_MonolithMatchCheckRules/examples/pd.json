@@ -1,0 +1,53 @@
+{
+  "project": "example",
+  "stage": "PD",
+  "building_id": "K1",
+  "section_id": "S1",
+  "fully_constructed": false,
+  "scope": "documented_views",
+  "views": [
+    {
+      "id": "REPLACE_WITH_REGISTERED_VIEW",
+      "source": "actual-plan.pdf",
+      "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "registration_evidence": "EXAMPLE ONLY: replace coordinates/depth with actual registration",
+      "volume": {
+        "type": "oriented_box",
+        "origin_mm": [
+          0,
+          0,
+          0
+        ],
+        "basis": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ],
+        "bounds_mm": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            1000,
+            1000,
+            3000
+          ]
+        ]
+      }
+    }
+  ]
+}
