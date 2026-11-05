@@ -10,8 +10,7 @@
         LoaderDescriptions_Single,
         ModuleAutostart,
         Modules,
-        PluginsActivity,
-        Projects,
+        Projects = 6, // Сохраняем значения enum после удаления устаревшего пункта.
         ProjectsAccessMatrix,
         ProjectsIOSClashMatrix,
         RevitDialogs,

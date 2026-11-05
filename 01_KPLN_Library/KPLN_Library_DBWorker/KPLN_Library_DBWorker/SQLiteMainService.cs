@@ -20,7 +20,6 @@ namespace KPLN_Library_DBWorker
         private static SQLiteRevitDialogService _revitDialogService;
         private static SQLiteModuleAutostartService _moduleAutostartService;
         private static SQLiteRevitDocExchangesService _revitDocExchangesService;
-        private static SQLitePluginActivityService _pluginActivityService;
 
 
         private static DBUser _dBUser;
@@ -138,15 +137,6 @@ namespace KPLN_Library_DBWorker
             }
         }
 
-        public static SQLitePluginActivityService SQLitePluginActivityServiceInst
-        {
-            get
-            {
-                if (_pluginActivityService == null)
-                    _pluginActivityService = (SQLitePluginActivityService)new SQLiteCreatorPluginActivityService().CreateService();
-                return _pluginActivityService;
-            }
-        }
         #endregion
 
         #region Кэширование данных из БД
