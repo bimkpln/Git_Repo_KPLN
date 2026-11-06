@@ -106,12 +106,19 @@ namespace KPLN_CoordiantorAI.ExternalAIModel.Mcp
                 new JProperty("offset", Int("Sheet offset. Default 0; use next_offset for the next page."))
             }, "list_elementIds")),
             Tool("get_schedules_info_and_columns", "Schedules", "Returns schedule structure, fields, filters and columns with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Schedule element ids.")), "list_elementIds")),
-            Tool("get_schedule_rows_and_values", "Schedules", "Reads displayed text from schedule Body cells, including calculated formula/percentage fields and totals. Read-only; preserves Revit formatting, units, blank/group/total rows. Returns items with rowIndex and cells (columnIndex, text), plus visible column metadata. Rows are not mapped to element IDs. Pages contain at most 200 rows and 204800 UTF-8 bytes of result JSON. Follow next_offset while has_more is true, keeping scheduleId and columnIndexes unchanged. Cell errors are reported individually; an oversized row requires fewer columnIndexes. Does not return formula expressions or unrounded numeric values.", Props(new[]
+            Tool("get_schedule_rows_and_values", "Schedules", "Reads displayed schedule cell text. section=body (default) includes calculated formula/percentage fields and totals. section=header reads the manual title/header cells above the schedule, not element parameters or field column headings. Header cells include isMerged and mergedRange (top, bottom, left, right; inclusive); text comes from the merged area's top-left cell and repeats for covered coordinates, so treat the same range as one logical cell. Header columns are not mapped to fields. Read-only; preserves formatting, units and blank rows. Returns items with rowIndex and cells (columnIndex, text). Rows are not mapped to element IDs. Pages contain at most 200 rows and 204800 UTF-8 bytes of result JSON. Follow next_offset while has_more is true, keeping scheduleId, section and columnIndexes unchanged. Cell errors are reported individually; an oversized row requires fewer columnIndexes. Does not return formula expressions or unrounded numeric values.", Props(new[]
             {
                 new JProperty("scheduleId", Int("ViewSchedule element ID in the current document, not a sheet placement ID.")),
-                new JProperty("columnIndexes", IntArray("Optional visible Body column indices from this tool's columns, not field IDs or indices including hidden fields. Omit or pass [] to read all visible columns.")),
+                new JProperty("section", new JObject
+                {
+                    { "type", "string" },
+                    { "enum", new JArray("body", "header") },
+                    { "default", "body" },
+                    { "description", "body: data cells; header: manual title/header cells above the data. Default body." }
+                }),
+                new JProperty("columnIndexes", IntArray("Optional physical column indices in the selected section from this tool's columns, not field IDs. Omit or pass [] to read all columns in that section.")),
                 new JProperty("limit", Int("Maximum rows per page. Positive integer; default and maximum 200.")),
-                new JProperty("offset", Int("Number of Body rows to skip. Default 0; use next_offset from the previous page."))
+                new JProperty("offset", Int("Number of rows in the selected section to skip. Default 0; use next_offset from the previous page."))
             }, "scheduleId")),
             Tool("get_schedule_sorting_info", "Schedules", "Returns schedule sorting and grouping information with pagination.", PagedProps(new JProperty("list_elementIds", IntArray("Schedule element ids.")), "list_elementIds")),
 

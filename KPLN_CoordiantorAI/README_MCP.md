@@ -719,10 +719,50 @@ Revit API 2020/2023/2024 does not expose the phase-status graphic overrides conf
 
 ## Schedule Cell Values
 
-`get_schedule_rows_and_values` reads displayed text from the Body section of one
+`get_schedule_rows_and_values` reads displayed text from the Body section (default) of one
 `ViewSchedule`, including calculated formula/percentage fields and totals. It uses
 `ViewSchedule.GetCellText`, not element parameters or `TableSectionData.GetCellText`.
 No transaction, view activation, or model changes are needed.
+
+Set `section: "header"` to read manual title/header cells above the schedule.
+Omitting `section` or using `"body"` retains the existing Body response.
+Only `body` and `header` are supported; other values return an argument error.
+For example, use these tool arguments (replace the schedule ID):
+
+```json
+{ "scheduleId": 123456, "section": "header", "limit": 200, "offset": 0 }
+```
+
+Header responses use `section: "Header"` and the same `items` / pagination shape.
+Each cell also has `isMerged` and `mergedRange`. An example merged cell:
+
+```json
+{
+  "rowIndex": 0,
+  "cells": [{
+    "columnIndex": 0,
+    "text": "Manual schedule title",
+    "isMerged": true,
+    "mergedRange": { "top": 0, "bottom": 0, "left": 0, "right": 3 }
+  }]
+}
+```
+
+Range bounds are inclusive API indices. Every covered coordinate returns the
+top-left cell's text, even if that anchor is outside the requested page or
+columns. Deduplicate by merged range when describing logical header cells.
+An unmerged cell has `isMerged: false` and `mergedRange: null`.
+If merge metadata cannot be read, these fields are null and `mergeError`
+explains the issue; reading the cell's own text is still attempted.
+Text errors use `text: null` and `error`; other cells continue to be read.
+
+Header columns use their own physical indices, not Body field mappings:
+`field_mapping_available` is false, `isItemized` and field metadata are null.
+This reads stored Header content; it does not force a hidden title to display,
+and does not return formatting, images, or unrelated text notes on a sheet.
+An empty section returns an empty page, never substitutes Body.
+Limits are 200 complete rows / 204800 UTF-8 bytes, including merge metadata.
+Keep `section`, `scheduleId` and `columnIndexes` unchanged on subsequent pages.
 
 ```json
 {
@@ -768,7 +808,7 @@ preserved: a row is not necessarily one element, and no row-to-element ID mappin
 is inferred. `firstRowIndex` and `firstColumnIndex` give the actual API bounds.
 
 Pagination uses `total_count`, `limit`, `offset`, `returned_count`, `has_more` and
-`next_offset`. A page contains at most 200 complete Body rows and 204800 UTF-8
+`next_offset`. A page contains at most 200 complete rows of the selected section and 204800 UTF-8
 bytes of the result JSON, including column metadata. The MCP response envelope
 and its text representation add transport overhead. Follow `next_offset` exactly;
 a size/time limit may produce fewer rows than requested. Keep the schedule and

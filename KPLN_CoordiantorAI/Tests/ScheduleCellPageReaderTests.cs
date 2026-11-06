@@ -21,7 +21,13 @@ internal static class ScheduleCellPageReaderTests
             EmptyPagesDoNotReadCells,
             CancellationPropagates,
             TimeBudgetKeepsOnlyCompleteRows,
-            ValidatesBounds
+            ValidatesBounds,
+            BodyCellShapeRemainsUnchanged,
+            HeaderDetailsPreserveCoordinatesAndPagination,
+            HeaderErrorsKeepAvailableText,
+            HeaderMetadataCountsTowardsByteLimit,
+            HeaderReaderExceptionsAreIsolated,
+            HeaderCancellationPropagates
         };
         try
         {
@@ -183,6 +189,101 @@ internal static class ScheduleCellPageReaderTests
     {
         Expect<ArgumentOutOfRangeException>(() => Read(1, 0, 0, (r, c) => ""));
         Expect<ArgumentOutOfRangeException>(() => Read(1, 200, -1, (r, c) => ""));
+    }
+
+    private static JObject ReadHeader(int total, int offset, Func<int, int, JObject> cell,
+        CancellationToken token = default(CancellationToken))
+    {
+        return ScheduleCellPageReader.Read(new JObject { { "section", "Header" } },
+            3, total, new[] { 2, 5 }, 1, offset,
+            (r, c) => { throw new Exception("Body reader must not be used for header"); },
+            token, readCellDetails: cell);
+    }
+
+    private static void BodyCellShapeRemainsUnchanged()
+    {
+        JObject page = Read(1, 200, 0, (r, c) => "body");
+        JObject cell = (JObject)page["items"][0]["cells"][0];
+        Check(cell.Properties().Select(p => p.Name).SequenceEqual(new[] { "columnIndex", "text" }),
+            "Body cell contract changed");
+    }
+
+    private static void HeaderDetailsPreserveCoordinatesAndPagination()
+    {
+        int calls = 0;
+        JObject details = new JObject
+        {
+            { "text", "Manual title\r\n\u0428\u0430\u043f\u043a\u0430" },
+            { "isMerged", true },
+            { "mergedRange", new JObject { { "top", 3 }, { "bottom", 5 }, { "left", 2 }, { "right", 5 } } }
+        };
+        for (int offset = 0; offset < 3; offset++)
+        {
+            JObject page = ReadHeader(3, offset, (r, c) =>
+            {
+                Check(r == 3 + offset && (c == 2 || c == 5), "Wrong header coordinates");
+                calls++;
+                return details;
+            });
+            Check((string)page["section"] == "Header", "Section lost");
+            Check((int)page["items"][0]["rowIndex"] == 3 + offset, "Row index changed");
+            Check((bool)page["has_more"] == (offset < 2), "Header continuation incorrect");
+            if (offset < 2) Check((int)page["next_offset"] == offset + 1, "Header offset incorrect");
+            foreach (JObject cell in page["items"][0]["cells"])
+            {
+                Check((string)cell["text"] == (string)details["text"], "Header text changed");
+                Check(JToken.DeepEquals(cell["mergedRange"], details["mergedRange"]), "Merge range changed");
+            }
+        }
+        Check(calls == 6 && details["columnIndex"] == null, "Unexpected reads or mutation");
+    }
+
+    private static void HeaderErrorsKeepAvailableText()
+    {
+        JObject page = ReadHeader(1, 0, (r, c) => c == 2
+            ? new JObject { { "text", "still readable" }, { "mergeError", "No merge metadata" },
+                { "isMerged", JValue.CreateNull() }, { "mergedRange", JValue.CreateNull() } }
+            : new JObject { { "text", JValue.CreateNull() }, { "error", "No text" },
+                { "mergeError", "No merge metadata" } });
+        Check((string)page["items"][0]["cells"][0]["text"] == "still readable", "Text lost on merge error");
+        Check((int)page["cell_error_count"] == 2, "Errors must count cells, not properties");
+        Check(page["items"][0]["cells"][1]["text"].Type == JTokenType.Null, "Failed text not null");
+    }
+
+    private static void HeaderMetadataCountsTowardsByteLimit()
+    {
+        JObject page = ReadHeader(1, 0, (r, c) => new JObject
+        {
+            { "text", "small" }, { "mergeError", new string('x', ScheduleCellPageReader.MaxPageBytes) }
+        });
+        Check((string)page["error_code"] == "schedule_row_too_large", "Header metadata bypassed byte cap");
+        Check((int)page["offset"] == 0, "Oversized header row skipped");
+    }
+
+    private static void HeaderReaderExceptionsAreIsolated()
+    {
+        JObject page = ReadHeader(1, 0, (r, c) =>
+        {
+            if (c == 2) throw new InvalidOperationException("Unavailable header cell");
+            return new JObject { { "text", "ok" }, { "isMerged", false }, { "mergedRange", JValue.CreateNull() } };
+        });
+        Check((int)page["cell_error_count"] == 1, "Header cell failure not counted");
+        Check((string)page["items"][0]["cells"][1]["text"] == "ok", "Other header cell lost");
+    }
+
+    private static void HeaderCancellationPropagates()
+    {
+        using (var cts = new CancellationTokenSource())
+        {
+            int reads = 0;
+            Expect<OperationCanceledException>(() => ReadHeader(1, 0, (r, c) =>
+            {
+                reads++;
+                cts.Cancel();
+                return new JObject { { "text", "value" } };
+            }, cts.Token));
+            Check(reads == 1, "Header reads continued after cancellation");
+        }
     }
 
     private static void Expect<T>(Action action) where T : Exception
