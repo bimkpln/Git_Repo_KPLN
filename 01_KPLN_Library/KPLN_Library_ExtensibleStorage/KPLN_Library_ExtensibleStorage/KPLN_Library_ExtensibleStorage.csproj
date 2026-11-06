@@ -79,9 +79,18 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2020' OR '$(Configuration)' == 'Revit2020'">
+    <RevitVer>2020</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2023' OR '$(Configuration)' == 'Revit2023'">
+    <RevitVer>2023</RevitVer>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug2024' OR '$(Configuration)' == 'Revit2024'">
+    <RevitVer>2024</RevitVer>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Condition="'$(Revit2026Build)' != 'true'" Include="RevitAPI">
-      <HintPath>C:\Program Files\Autodesk\Revit 2024\RevitAPI.dll</HintPath>
+      <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPI.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Condition="'$(Revit2026Build)' != 'true'" Include="System" />

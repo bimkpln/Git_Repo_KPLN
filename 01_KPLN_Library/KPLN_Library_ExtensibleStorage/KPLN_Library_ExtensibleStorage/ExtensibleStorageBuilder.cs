@@ -1,6 +1,7 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.ExtensibleStorage;
 using System;
+using System.Collections.Generic;
 
 namespace KPLN_Library_ExtensibleStorage
 {
@@ -135,7 +136,7 @@ namespace KPLN_Library_ExtensibleStorage
                 sch = CreateSchema();
                 entity = new Entity(sch);
             }
-            
+
             entity.Set<string>(FieldName, $"{elem.Id}{_mainDataSeparator}{userName}: {descr}");
             elem.SetEntity(entity);
         }
@@ -166,7 +167,7 @@ namespace KPLN_Library_ExtensibleStorage
 
             Entity entity = CheckStorageExists(elem);
             if (entity == null) return false;
-            
+
             string dataStream = entity.Get<string>(FieldName);
             if (dataStream == null) return false;
 
@@ -200,14 +201,44 @@ namespace KPLN_Library_ExtensibleStorage
             return false;
         }
 
-        /// <summary>
-        /// Создание Schema для данного экземпляра
-        /// </summary>
+        /// <summary>Прочитать строку без обработки разделителей. Нет записи — null.</summary>
+        public string GetStorageData_TextData(string fieldName, Element elem)
+        {
+            Entity entity = CheckStorageExists(elem);
+            if (entity == null)
+                return null;
+            Field field = entity.Schema.GetField(fieldName);
+            if (field == null || field.ValueType != typeof(string))
+                throw new InvalidOperationException("Поле Extensible Storage отсутствует или не является строкой: " + fieldName);
+            return entity.Get<string>(field);
+        }
+
+        /// <summary>Записать несколько строк в одну сущность в открытой транзакции вызывающего кода.</summary>
+        public void SetStorageData_TextData(Element elem, IDictionary<string, string> values)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            Entity entity = CheckStorageExists(elem) ?? new Entity(CreateSchema());
+            foreach (KeyValuePair<string, string> value in values)
+            {
+                Field field = entity.Schema.GetField(value.Key);
+                if (field == null || field.ValueType != typeof(string))
+                    throw new InvalidOperationException("Поле Extensible Storage отсутствует или не является строкой: " + value.Key);
+                entity.Set<string>(field, value.Value ?? string.Empty);
+            }
+            elem.SetEntity(entity);
+        }
+
+        /// <summary>Получить общую схему или создать её при первой записи.</summary>
         private Schema CreateSchema()
         {
+            // Схема общая для процесса Revit, даже когда на этом элементе ещё нет сущности.
+            Schema existing = Schema.Lookup(Guid);
+            if (existing != null)
+                return existing;
             SchemaBuilder builder = new SchemaBuilder(Guid);
             builder.SetReadAccessLevel(AccessLevel.Public);
-            
+            builder.SetWriteAccessLevel(AccessLevel.Public);
+
             if (FieldNames != null && FieldNames.Length > 0)
             {
                 foreach (string fieldName in FieldNames)
@@ -217,7 +248,7 @@ namespace KPLN_Library_ExtensibleStorage
             }
             else
                 builder.AddSimpleField(FieldName, typeof(string));
-            
+
             builder.SetSchemaName(StorageName);
 
             Schema sch = builder.Finish();
@@ -235,7 +266,7 @@ namespace KPLN_Library_ExtensibleStorage
                 return null;
 
             Entity ent = elem.GetEntity(sch);
-            if (ent.Schema != null)
+            if (ent.IsValid())
                 return ent;
 
             return null;
