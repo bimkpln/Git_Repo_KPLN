@@ -213,6 +213,33 @@ namespace KPLN_Library_ExtensibleStorage
             return entity.Get<string>(field);
         }
 
+        /// <summary>Прочитать несколько строк за одно обращение к сущности. Нет записи — значения null.</summary>
+        public IDictionary<string, string> GetStorageData_TextData(Element elem, IEnumerable<string> fieldNames)
+        {
+            if (fieldNames == null)
+                throw new ArgumentNullException(nameof(fieldNames));
+
+            Entity entity = CheckStorageExists(elem);
+            var values = new Dictionary<string, string>();
+
+            foreach (string fieldName in fieldNames)
+            {
+                if (entity == null)
+                {
+                    values[fieldName] = null;
+                    continue;
+                }
+
+                Field field = entity.Schema.GetField(fieldName);
+                if (field == null || field.ValueType != typeof(string))
+                    throw new InvalidOperationException("Поле Extensible Storage отсутствует или не является строкой: " + fieldName);
+
+                values[fieldName] = entity.Get<string>(field);
+            }
+
+            return values;
+        }
+
         /// <summary>Записать несколько строк в одну сущность в открытой транзакции вызывающего кода.</summary>
         public void SetStorageData_TextData(Element elem, IDictionary<string, string> values)
         {
