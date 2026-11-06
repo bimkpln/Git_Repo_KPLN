@@ -28,7 +28,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2020\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2020</StartWorkingDirectory>
-    <OutputPath>bin\Debug\2020\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2020\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineConstants>TRACE;DEBUG;Debug2020</DefineConstants>
@@ -51,7 +51,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2023\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2023</StartWorkingDirectory>
-    <OutputPath>bin\Debug\2023\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2023\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineConstants>TRACE;DEBUG;Debug2023</DefineConstants>
@@ -74,7 +74,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>$(RevitApiRoot)\Revit 2024\Revit.exe</StartProgram>
     <StartWorkingDirectory>$(RevitApiRoot)\Revit 2024</StartWorkingDirectory>
-    <OutputPath>bin\Debug\2024\</OutputPath>
+    <OutputPath>C:\KPLN_Debug\KPLN_RevitMcpBridge\Debug\2024\</OutputPath>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <DefineConstants>TRACE;DEBUG;Debug2024</DefineConstants>
