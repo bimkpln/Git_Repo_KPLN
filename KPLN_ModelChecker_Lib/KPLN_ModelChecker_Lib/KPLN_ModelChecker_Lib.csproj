@@ -265,6 +265,21 @@
       </ItemGroup>
     </When>
   </Choose>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug2020' OR '$(Configuration)' == 'Revit2020' OR '$(Configuration)' == 'Debug2023' OR '$(Configuration)' == 'Revit2023' OR '$(Configuration)' == 'Debug2024' OR '$(Configuration)' == 'Revit2024'">
+    <Compile Include="Commands\CheckIfcRebarMarks.cs" />
+    <Compile Include="Commands\CheckRebarConcreteClass.cs" />
+    <Compile Include="Commands\Common\CheckRebarConcreteClass\DirectHost.cs" />
+    <Compile Include="Commands\Common\CheckRebarConcreteClass\HostResult.cs" />
+    <Compile Include="Commands\Common\CheckRebarConcreteClass\Hosts.cs" />
+    <Compile Include="Commands\Common\CheckRebarConcreteClass\Materials.cs" />
+    <Compile Include="Commands\Common\CheckRebarConcreteClass\Parameters.cs" />
+    <Compile Include="Commands\Common\CheckRebarConcreteClass\Rules.cs" />
+    <Compile Include="Commands\Common\CheckIfcRebarMarks\CountingTypeFilter.cs" />
+    <Compile Include="Commands\Common\CheckIfcRebarMarks\Decision.cs" />
+    <Compile Include="Commands\Common\CheckIfcRebarMarks\Geometry.cs" />
+    <Compile Include="Commands\Common\CheckIfcRebarMarks\MarkSource.cs" />
+    <Compile Include="Commands\Common\CheckIfcRebarMarks\MaterialCodeFilter.cs" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="CheckCommandMsg.cs" />
     <Compile Include="CheckerEntity.cs" />
