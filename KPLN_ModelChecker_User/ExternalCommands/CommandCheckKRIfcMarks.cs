@@ -1,0 +1,29 @@
+using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using KPLN_ModelChecker_Lib.Commands;
+
+namespace KPLN_ModelChecker_User.ExternalCommands
+{
+    [Transaction(TransactionMode.Manual)]
+    [Regeneration(RegenerationOption.Manual)]
+    public sealed class CommandCheckKRIfcMarks : AbstrCommand, IExternalCommand
+    {
+        public CommandCheckKRIfcMarks() : base() { }
+
+        /// <summary>
+        /// Реализация IExternalCommand
+        /// </summary>
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIApplication uiapp = commandData.Application;
+
+            CommandCheck = new CheckIfcRebarMarks().Set_UIAppData(uiapp, uiapp.ActiveUIDocument.Document);
+            ElemsToCheck = CommandCheck.GetElemsToCheck();
+
+            ExecuteByUIApp<CheckIfcRebarMarks>(uiapp);
+
+            return Result.Succeeded;
+        }
+    }
+}

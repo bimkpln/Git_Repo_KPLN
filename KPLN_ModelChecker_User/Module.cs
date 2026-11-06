@@ -46,6 +46,11 @@ namespace KPLN_ModelChecker_User
             CheckMEPHeight checkMEPHeight = new CheckMEPHeight();
             CheckMirroredInstances checkMirroredInstances = new CheckMirroredInstances();
 
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023 || Debug2024 || Revit2024
+            CheckIfcRebarMarks checkIfcRebarMarks = new CheckIfcRebarMarks();
+            CheckRebarConcreteClass checkRebarConcreteClass = new CheckRebarConcreteClass();
+#endif
+
             // Запись в массив для передачи ExtensibleStorageEntity в CommandCheckLaunchDate (после инициализации статических полей)
             ExtensibleStorageEntity[] extensibleStorageEntities = new ExtensibleStorageEntity[]
             {
@@ -62,6 +67,10 @@ namespace KPLN_ModelChecker_User
                 checkLinks.ESEntity,
                 checkMEPHeight.ESEntity,
                 checkMirroredInstances.ESEntity,
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023 || Debug2024 || Revit2024
+                checkIfcRebarMarks.ESEntity,
+                checkRebarConcreteClass.ESEntity,
+#endif
                 // Сторонние плагины (добавлять из исходников)
                 new ExtensibleStorageEntity("АР_П: Фиксация площадей", "KPLN_ARArea", new Guid("720080C5-DA99-40D7-9445-E53F288AA155")),
                 new ExtensibleStorageEntity("АР: Подсчёт эл-в на этаж", "KPLN_ARDoorCount", new Guid("5884e915-072d-42ba-bd8d-2c1dfef9b6aa")),
@@ -319,6 +328,29 @@ namespace KPLN_ModelChecker_User
                 _mainContextualHelp,
                 SQLiteMainService.CurrentDBUser.SubDepartmentId == 8
                 );
+
+#if Debug2020 || Revit2020 || Debug2023 || Revit2023 || Debug2024 || Revit2024
+            AddPushButtonData(
+                "CheckKRIfcRebarMarks",
+                checkIfcRebarMarks.PluginName,
+                "Сравнить марку IFC-арматуры с маркой бетонной основы. Проверяется загруженная текущая модель без связей.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckKRIfcMarks).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_kr_ifc.png",
+                _mainContextualHelp,
+                SQLiteMainService.CurrentDBUser.SubDepartmentId == 3 || SQLiteMainService.CurrentDBUser.SubDepartmentId == 8);
+            AddPushButtonData(
+                "CheckKRConcreteClass",
+                checkRebarConcreteClass.PluginName,
+                "Сравнить Арм.КлассБетона погонной арматуры с классом материала бетонной основы.",
+                $"\nДата сборки: {ModuleData.Date}\nНомер сборки: {ModuleData.Version}\nИмя модуля: {ModuleData.ModuleName}",
+                typeof(CommandCheckKRConcreteClass).FullName,
+                pullDown,
+                "KPLN_ModelChecker_User.Source.checker_kr_concrete.png",
+                _mainContextualHelp,
+                SQLiteMainService.CurrentDBUser.SubDepartmentId == 3 || SQLiteMainService.CurrentDBUser.SubDepartmentId == 8);
+#endif
 
             return Result.Succeeded;
         }
