@@ -149,12 +149,11 @@
                         VerticalAlignment="Center"
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
-                    <TextBox
-                        Text="{Binding AR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}"
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"/>
+                    <ComboBox
+                        ItemsSource="{Binding OpenHoleMinSizeValues}"
+                        SelectedItem="{Binding AR_OpenHoleMinHeightValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEditable="False"
+                        VerticalAlignment="Center"/>
                 </DockPanel>
 
                 <DockPanel
@@ -165,12 +164,11 @@
                         VerticalAlignment="Center"
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
-                    <TextBox
-                        Text="{Binding AR_OpenHoleMinWidthValue, UpdateSourceTrigger=PropertyChanged}"
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"/>
+                    <ComboBox
+                        ItemsSource="{Binding OpenHoleMinSizeValues}"
+                        SelectedItem="{Binding AR_OpenHoleMinWidthValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEditable="False"
+                        VerticalAlignment="Center"/>
                 </DockPanel>
 
                 <DockPanel
@@ -205,12 +203,11 @@
                         VerticalAlignment="Center"
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей высотой расставлены не будут"/>
-                    <TextBox
-                        Text="{Binding KR_OpenHoleMinHeightValue, UpdateSourceTrigger=PropertyChanged}"
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"/>
+                    <ComboBox
+                        ItemsSource="{Binding OpenHoleMinSizeValues}"
+                        SelectedItem="{Binding KR_OpenHoleMinHeightValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEditable="False"
+                        VerticalAlignment="Center"/>
                 </DockPanel>
 
                 <DockPanel
@@ -221,12 +218,11 @@
                         VerticalAlignment="Center"
                         Margin="5"
                         ToolTip="В миллиметрах. Элементы с меньшей шириной расставлены не будут"/>
-                    <TextBox
-                        Text="{Binding KR_OpenHoleMinWidthValue, UpdateSourceTrigger=PropertyChanged}"
-                        TextAlignment="Left"
-                        VerticalAlignment="Center"
-                        PreviewTextInput="TextBox_PreviewTextInput"
-                        DataObject.Pasting="TextBox_Pasting"/>
+                    <ComboBox
+                        ItemsSource="{Binding OpenHoleMinSizeValues}"
+                        SelectedItem="{Binding KR_OpenHoleMinWidthValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEditable="False"
+                        VerticalAlignment="Center"/>
                 </DockPanel>
 
                  <DockPanel

@@ -26,7 +26,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         private readonly List<AROpeningHoleEntity> _warningArEntities_DownLvl = new List<AROpeningHoleEntity>();
 
         private const double _defaultExpandValue = 1.64042;
-        
+
         private readonly ProgressInfoViewModel _progressInfoViewModel;
         private readonly OpeningTypeMapping _typeMapping;
 
@@ -65,6 +65,11 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
 
                     PrepareProgress("Расширение границ видимости...", 0, _arEntities.Count());
 
+                    var previousValues = _arEntities.ToDictionary(e => e, e => new[]
+                    {
+                        GetParam(e, e.AR_OHE_VisibilityHandles_ParamNameUpExpander).AsDouble(),
+                        GetParam(e, e.AR_OHE_VisibilityHandles_ParamNameDownExpander).AsDouble(),
+                    });
                     foreach (AROpeningHoleEntity arEnt in _arEntities)
                     {
                         Parameter upParam = GetParam(arEnt, arEnt.AR_OHE_VisibilityHandles_ParamNameUpExpander);
@@ -81,8 +86,15 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     if (_msgDict_ByMsg.Any())
                         ProcessWarningsWithUserChoice();
 
+                    foreach (var previous in previousValues)
+                    {
+                        AROpeningHoleEntity element = previous.Key;
+                        if (previous.Value[0] != GetParam(element, element.AR_OHE_VisibilityHandles_ParamNameUpExpander).AsDouble()
+                            || previous.Value[1] != GetParam(element, element.AR_OHE_VisibilityHandles_ParamNameDownExpander).AsDouble())
+                            OpeningHistoryService.RecordChange(element.IEDElem, "Расширены границы видимости");
+                    }
                     trans.Commit();
-                    
+
                     _progressInfoViewModel.IsComplete = true;
                 }
 
@@ -93,7 +105,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                    MainInstruction = $"{ex.Message}",
+                    MainInstruction = $"{KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
 
                 return Result.Cancelled;

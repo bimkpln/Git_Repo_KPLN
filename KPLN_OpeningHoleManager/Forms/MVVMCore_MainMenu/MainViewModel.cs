@@ -25,6 +25,8 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        public OpeningHistoryViewModel History { get; } = new OpeningHistoryViewModel();
+
         public OpeningTypeMapping TypeMapping { get; } = new OpeningTypeMapping();
 
         public void RefreshTypeMapping()
@@ -50,7 +52,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Менеджер отверстий", ex.Message);
+                TaskDialog.Show("Менеджер отверстий", KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex));
             }
         }
 
@@ -65,6 +67,18 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 _openHoleZRoundStepMm = value == 5 ? 5 : 10;
                 OnPropertyChanged();
             }
+        }
+
+        public IReadOnlyList<double> OpenHoleMinSizeValues { get; } =
+            Array.AsReadOnly(Enumerable.Range(0, 11).Select(step => step * 50.0).ToArray());
+
+        // Старые настройки могли содержать произвольный размер; приводим его к доступному шагу.
+        private static double NormalizeOpenHoleMinSize(double value, double defaultValue)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value))
+                return defaultValue;
+
+            return Math.Max(0, Math.Min(500, Math.Round(value / 50, MidpointRounding.AwayFromZero) * 50));
         }
 
         private double _ar_openHoleMinWidthValue = 300;
@@ -126,7 +140,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             get => _ar_openHoleMinWidthValue;
             set
             {
-                _ar_openHoleMinWidthValue = value;
+                _ar_openHoleMinWidthValue = NormalizeOpenHoleMinSize(value, 300);
                 OnPropertyChanged();
             }
         }
@@ -139,7 +153,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             get => _ar_openHoleMinHeightValue;
             set
             {
-                _ar_openHoleMinHeightValue = value;
+                _ar_openHoleMinHeightValue = NormalizeOpenHoleMinSize(value, 300);
                 OnPropertyChanged();
             }
         }
@@ -165,7 +179,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             get => _kr_openHoleMinWidthValue;
             set
             {
-                _kr_openHoleMinWidthValue = value;
+                _kr_openHoleMinWidthValue = NormalizeOpenHoleMinSize(value, 200);
                 OnPropertyChanged();
             }
         }
@@ -178,7 +192,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             get => _kr_openHoleMinHeightValue;
             set
             {
-                _kr_openHoleMinHeightValue = value;
+                _kr_openHoleMinHeightValue = NormalizeOpenHoleMinSize(value, 200);
                 OnPropertyChanged();
             }
         }
@@ -233,7 +247,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Настройки отверстий", "Не удалось прочитать настройки. Используются значения по умолчанию.\n" + ex.Message);
+                TaskDialog.Show("Настройки отверстий", "Не удалось прочитать настройки. Используются значения по умолчанию.\n" + KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex));
                 return;
             }
             if (mainConfig != null)
@@ -293,14 +307,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 AROpeningHoleEntity[] elemToCreate = AROpeningHoleEntity.ClearCollectionByJoinedHosts(doc, GetAROpeningsFromARKRElems_WithoutUnion(doc, arkrEntities, progressInfoViewModel));
                 if (elemToCreate.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false, progressInfoViewModel));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false, progressInfoViewModel, "АР: по стенам на виде, все элементы ИОС"));
             }
             catch (Exception ex)
             {
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
             }
 
@@ -344,14 +358,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 AROpeningHoleEntity[] elemToCreate = AROpeningHoleEntity.ClearCollectionByJoinedHosts(doc, GetAROpeningsFromARKRElems_WithoutUnion(doc, arkrEntities, progressInfoViewModel));
                 if (elemToCreate.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false, progressInfoViewModel));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false, progressInfoViewModel, "АР/КЖ: по стене, все элементы ИОС"));
             }
             catch (Exception ex)
             {
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
             }
         }
@@ -397,14 +411,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 AROpeningHoleEntity[] elemToCreate = AROpeningHoleEntity.ClearCollectionByJoinedHosts(doc, GetAROpeningsFromARKRElems_WithoutUnion(doc, new ARKRElemEntity[] { arkrEntity }, progressInfoViewModel));
                 if (elemToCreate.Any())
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false, progressInfoViewModel));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(elemToCreate, "KPLN: Отверстия по пересечению", this, false, progressInfoViewModel, "АР/КЖ: по стене, выбранные элементы ИОС"));
             }
             catch (Exception ex)
             {
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
             }
         }
@@ -634,7 +648,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 }
                 catch (Exception ex)
                 {
-                    HtmlOutput.Print($"Ошибка: {ex.Message}", MessageType.Error);
+                    HtmlOutput.Print($"Ошибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}", MessageType.Error);
                 }
 
                 ++progressInfoViewModel.CurrentProgress;
@@ -744,14 +758,14 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
                 AROpeningHoleEntity[] unionAR_OHE = AROpeningHoleEntity.ClearCollectionByJoinedHosts(doc, AROpeningHoleEntity.CreateUnionOpeningHole(doc, arOHEColl));
                 if (unionAR_OHE != null)
-                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(unionAR_OHE, "KPLN: Объединить отверстия", this, true, progressInfoViewModel));
+                    KPLN_Loader.Application.OnIdling_CommandQueue.Enqueue(new AR_OHE_MakerWithUnion(unionAR_OHE, "KPLN: Объединить отверстия", this, true, progressInfoViewModel, "Объединить отверстия"));
             }
             catch (Exception ex)
             {
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
             }
         }
@@ -772,7 +786,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 pickedRefs = uidoc.Selection.PickObjects(
                     ObjectType.Element,
                     selectionFilter,
-                    "Выберите отверстия АР/КЖ, которые нужно объеденить в одно");
+                    "Выберите отверстия АР/КЖ, которые нужно объединить в одно");
             }
             // Отмена пользователем
             catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
@@ -866,7 +880,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
             }
 
@@ -888,7 +902,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 pickedRefs = uidoc.Selection.PickObjects(
                     ObjectType.LinkedElement,
                     selectionFilter,
-                    "Выберите задания от ИОС, которые нужно превартить в отверстия АР");
+                    "Выберите задания от ИОС, которые нужно превратить в отверстия АР");
             }
             // Отмена пользователем
             catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return null; }
@@ -1173,7 +1187,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconError,
-                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {ex.Message}",
+                    MainInstruction = $"Не удалось выполнить основную задачу. Отправь разработчику!\nОшибка: {KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
             }
 

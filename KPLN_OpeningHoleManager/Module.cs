@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.DB;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_DBWorker;
@@ -19,7 +20,8 @@ namespace KPLN_OpeningHoleManager
 {
     public class Module : IExternalModule
     {
-        internal static readonly DockablePaneId PaneId = new DockablePaneId(new Guid("71045bec-5187-420e-9a7e-93953bf2930c"));
+        // Новый постоянный ID применяет вкладку диспетчера проекта вместо сохранённого отдельного размещения.
+        internal static readonly DockablePaneId PaneId = new DockablePaneId(new Guid("943e18af-00a1-4c1b-a046-b23cb5055807"));
         internal static MainMenu MainMenuViewer;
 
         internal static UIControlledApplication CurrentUIContrApp { get; private set; }
@@ -31,14 +33,23 @@ namespace KPLN_OpeningHoleManager
         internal static DBSubDepartment CurrnetDocSubDep { get; private set; }
 
         private readonly string _assemblyPath = Assembly.GetExecutingAssembly().Location;
+        private DateTime _nextSelectionCheck = DateTime.MinValue;
+        private static Module _instance;
+        private bool _tracking;
 
         public Result Close()
         {
+            SetTracking(false);
+            CurrentUIContrApp.DockableFrameVisibilityChanged -= Application_DockableFrameVisibilityChanged;
+            _instance = null;
+
             return Result.Succeeded;
         }
 
+
         public Result Execute(UIControlledApplication application, string tabName)
         {
+            _instance = this;
             CurrentUIContrApp = application;
             ModuleData.RevitVersion = int.Parse(application.ControlledApplication.VersionNumber);
 
@@ -70,32 +81,153 @@ namespace KPLN_OpeningHoleManager
             MainMenuViewer = new MainMenu();
             CurrentUIContrApp.RegisterDockablePane(PaneId, "Менеджер отверстий", MainMenuViewer);
 
-            CurrentUIContrApp.ViewActivated += Application_ViewActivated;
+            // Постоянно слушаем только открытие/закрытие нашей панели.
+            CurrentUIContrApp.DockableFrameVisibilityChanged += Application_DockableFrameVisibilityChanged;
 
             return Result.Succeeded;
         }
 
+        internal static void OpenManager(UIApplication application)
+        {
+            _instance.SetTracking(true);
+            SetActiveDocument(application, application.ActiveUIDocument?.Document);
+            MainMenuViewer.MainMenu_VM.History.RequestRefresh(CurrentDoc, true);
+        }
+
+        private void Application_DockableFrameVisibilityChanged(object sender, DockableFrameVisibilityChangedEventArgs args)
+        {
+            if (!PaneId.Equals(args.PaneId))
+                return;
+
+            bool opening = args.DockableFrameShown && !_tracking;
+            SetTracking(args.DockableFrameShown);
+
+            if (!opening)
+                return;
+
+            UIApplication application = sender as UIApplication ?? CurrentUIApplication;
+            if (application != null)
+                OpenManager(application);
+        }
+
+        private void SetTracking(bool enabled)
+        {
+            if (_tracking == enabled)
+                return;
+
+            _tracking = enabled;
+            _nextSelectionCheck = DateTime.MinValue;
+
+            if (enabled)
+            {
+                MainMenuViewer.MainMenu_VM.History.Resume();
+
+                CurrentUIContrApp.ViewActivated += Application_ViewActivated;
+                CurrentUIContrApp.Idling += Application_Idling;
+                CurrentUIContrApp.ControlledApplication.DocumentChanged += Application_DocumentChanged;
+            }
+            else
+            {
+                CurrentUIContrApp.ViewActivated -= Application_ViewActivated;
+                CurrentUIContrApp.Idling -= Application_Idling;
+                CurrentUIContrApp.ControlledApplication.DocumentChanged -= Application_DocumentChanged;
+
+                // Отменяем уже поставленные в очередь действия и незаписанный автокэш.
+                MainMenuViewer.MainMenu_VM.History.Suspend();
+            }
+        }
+
+
+        private void Application_Idling(object sender, IdlingEventArgs args)
+        {
+            var application = sender as UIApplication;
+            if (!_tracking || application == null)
+                return;
+
+            // После закрытия последней модели ViewActivated может не прийти.
+            if (CurrentDoc != null && !CurrentDoc.IsValidObject)
+                SetActiveDocument(application, null);
+
+            var history = MainMenuViewer?.MainMenu_VM.History;
+            if (history == null || !history.OnlySelected || DateTime.UtcNow < _nextSelectionCheck)
+                return;
+
+            _nextSelectionCheck = DateTime.UtcNow.AddMilliseconds(200);
+            history.RefreshSelection(application.ActiveUIDocument);
+        }
+
         private void Application_ViewActivated(object sender, ViewActivatedEventArgs args)
         {
-            // Такое возможно при работе плагинов с открываением/сохранением моделей (модель не открылась)
-            if (args.Document == null || args.Document.IsFamilyDocument)
+            if (!_tracking || args.Document == null || !args.Document.IsValidObject)
                 return;
 
-            string openViewFileName = args.Document.IsWorkshared
-                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(args.Document.GetWorksharingCentralModelPath())
-                : args.Document.PathName;
+            bool changed = CurrentDoc == null || !CurrentDoc.IsValidObject || !args.Document.Equals(CurrentDoc);
+            SetActiveDocument(new UIApplication(args.Document.Application), args.Document);
 
-            if (openViewFileName == CurrentFileName)
+            var history = MainMenuViewer.MainMenu_VM.History;
+            if (changed)
+                history.RequestRefresh(CurrentDoc, true);
+            else if (history.OnlyActiveView)
+                history.RequestVisibilityRefresh();
+        }
+
+
+        internal static void SetActiveDocument(UIApplication application, Document document)
+        {
+            CurrentUIApplication = application;
+            if (document == null || !document.IsValidObject || document.IsFamilyDocument)
+            {
+                CurrentDoc = null;
+                CurrentFileName = null;
+                CurrentDBProject = null;
+                CurrnetDocSubDep = null;
+                MainMenuViewer.MainMenu_VM.History.SetDocument(null);
+                return;
+            }
+
+            // Equals обращается к native-объектам обоих документов, включая аргумент.
+            if (CurrentDoc != null && CurrentDoc.IsValidObject && document.Equals(CurrentDoc))
                 return;
 
-            CurrentUIApplication = new UIApplication(args.Document.Application);
+            CurrentDoc = document;
+            MainMenuViewer.MainMenu_VM.History.SetDocument(document);
+            CurrentFileName = document.IsWorkshared
+                ? ModelPathUtils.ConvertModelPathToUserVisiblePath(document.GetWorksharingCentralModelPath())
+                : document.PathName;
+            try
+            {
+                CurrentDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, ModuleData.RevitVersion);
+            }
+            catch
+            {
+                CurrentDBProject = null;
+            }
 
-            CurrentFileName = openViewFileName;
-            DBProject openViewDBProject = SQLiteMainService.SQLitePrjServiceInst.GetDBProject_ByRevitDocFileNameANDRVersion(CurrentFileName, ModuleData.RevitVersion);
-            CurrentDBProject = openViewDBProject;
 
             MainMenuViewer.MainMenu_VM.SetDataGeomParamsData(CurrentDBProject);
         }
+
+        private void Application_DocumentChanged(object sender, DocumentChangedEventArgs args)
+        {
+            // На закрытой панели обработчик отписан; флаг дополнительно защищает переходное состояние.
+            if (!_tracking)
+                return;
+
+            Document document = args.GetDocument();
+            if (document == null || !document.IsValidObject || CurrentDoc == null || !CurrentDoc.IsValidObject
+                || !document.Equals(CurrentDoc))
+                return;
+
+
+            var transactionNames = args.GetTransactionNames();
+            if (args.Operation == UndoOperation.TransactionCommitted && transactionNames.Count > 0
+                && transactionNames.All(name => name == OpeningHistoryService.CacheTransactionName))
+                return;
+
+            // Здесь только ID и отметка создания. Чтение/запись истории выполняется позже из Idling.
+            MainMenuViewer.MainMenu_VM.History.HandleDocumentChanged(document, args);
+        }
+
 
         /// <summary>
         /// Метод для добавления отдельной кнопки в панель

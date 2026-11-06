@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
@@ -13,6 +13,7 @@ namespace KPLN_OpeningHoleManager.ExternalCommands
         {
             DockablePane dockableWindow = commandData.Application.GetDockablePane(Module.PaneId);
             dockableWindow.Show();
+            Module.OpenManager(commandData.Application);
 
             return Result.Succeeded;
         }

@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
@@ -87,7 +87,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 new TaskDialog("Ошибка")
                 {
                     MainIcon = TaskDialogIcon.TaskDialogIconWarning,
-                    MainInstruction = $"{ex.Message}",
+                    MainInstruction = $"{KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex)}",
                 }.Show();
 
                 return Result.Cancelled;

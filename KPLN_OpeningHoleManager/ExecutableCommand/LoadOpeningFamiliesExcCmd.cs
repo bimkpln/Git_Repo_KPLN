@@ -46,7 +46,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
             }
             catch (Exception ex)
             {
-                TaskDialog.Show("Семейства отверстий", ex.Message);
+                TaskDialog.Show("Семейства отверстий", KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex));
                 return Result.Failed;
             }
         }

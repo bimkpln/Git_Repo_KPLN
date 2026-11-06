@@ -1,196 +1,316 @@
-﻿<Page 
+<Page
     x:Class="KPLN_OpeningHoleManager.Forms.MainMenu"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:KPLN_OpeningHoleManager.Forms"
-    mc:Ignorable="d" 
+    mc:Ignorable="d"
     MinWidth="300"
-    Height="500"
-    Background="White">
+    MinHeight="350"
+    Background="#2B2F38">
 
     <Page.Resources>
-
-        <Style x:Key="TXTBX" TargetType="TextBox">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-        </Style>
-
-        <Style x:Key="BTN" TargetType="Button">
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="5,2,5,2"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border 
-                            CornerRadius="5" 
-                            Padding="1"
-                            Background="{TemplateBinding Background}">
-                            <Grid>
-                                <ContentPresenter 
-                                    x:Name="MyContentPresenter" 
-                                    Content="{TemplateBinding Content}" 
-                                    HorizontalAlignment="Center" 
-                                    VerticalAlignment="Center"/>
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="FontWeight" Value="Bold"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/KPLN_Library_Forms;component/UI/LibStyles.xaml" />
+                <ResourceDictionary Source="OpeningCommandIcons.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="HistoryBoolToVisibility"/>
+            <Style x:Key="HistoryText" TargetType="TextBlock" BasedOn="{StaticResource KPLN_TextBlock}">
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Margin" Value="0,2"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}"/>
+            <!-- Палитра и правила отображения статусов: новые состояния добавляются здесь. -->
+            <SolidColorBrush x:Key="OpeningStatusPendingBrush" Color="#FFD166"/>
+            <SolidColorBrush x:Key="OpeningStatusConfirmedBrush" Color="#81C995"/>
+            <SolidColorBrush x:Key="OpeningStatusChangedBrush" Color="#FFD166"/>
+            <Style x:Key="HistoryStatusText" TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
+                <Setter Property="Foreground" Value="{StaticResource OpeningStatusPendingBrush}"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Status}" Value="Подтверждено">
+                        <Setter Property="Foreground" Value="{StaticResource OpeningStatusConfirmedBrush}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Status}" Value="Изменено после подтверждения">
+                        <Setter Property="Foreground" Value="{StaticResource OpeningStatusChangedBrush}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource KPLN_Button}">
+                <Setter Property="Margin" Value="4"/>
+                <Setter Property="Padding" Value="6"/>
+                <Setter Property="Height" Value="60"/>
+                <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
+            </Style>
+            <Style x:Key="HistoryButton" TargetType="Button" BasedOn="{StaticResource KPLN_Button}">
+                <Setter Property="Margin" Value="0,4,6,2"/>
+                <Setter Property="Padding" Value="6,3"/>
+                <Setter Property="FontSize" Value="12"/>
+            </Style>
+        </ResourceDictionary>
     </Page.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="30"/>
+            <RowDefinition Height="Auto" MaxHeight="360"/>
+            <RowDefinition Height="5"/>
+            <RowDefinition Height="*" MinHeight="180"/>
         </Grid.RowDefinitions>
 
-        <StackPanel>
-            <DockPanel
-                LastChildFill="True">
-                <StackPanel>
-                    <Button
-                        Style="{StaticResource BTN}"
+        <UniformGrid Grid.Row="0" Columns="4" Margin="1,2">
+            <Button
+                        Style="{StaticResource ActionButton}" AutomationProperties.Name="АР: Отв. по стенам на виде по всем эл-там ИОС"
                         Command="{Binding CreateOpenHole_AllARElemsCommand}">
-                        <TextBlock
-                            Text="АР: Отв. по стенам на виде по всем эл-там ИОС"
-                            TextWrapping="Wrap"
-                            MaxWidth="150"
-                            TextAlignment="Center"/>
+                        <Image Source="{StaticResource OpeningAllWalls}" Width="42" Height="42" Stretch="Uniform"/>
                         <Button.ToolTip>
-                            <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Поставить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР на текущем виде</TextBlock>
-                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий можно запустить на 3D-виде,
+                            <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="АР: Отв. по стенам на виде по всем эл-там ИОС" FontWeight="Bold" Margin="0,0,0,12"/>
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Поставить отверстие по пересечению ВСЕХ элементов ИОС со всеми стенами АР на текущем виде</TextBlock>
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий можно запустить на 3D-виде,
                                     который содержит весь проект, но не забывай что он НЕ работает с группами!
                                     Правильно будет запускать <Bold>на каждый типовой</Bold> этаж отдельно</TextBlock>
-                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> При запуске с плана - будет генерироваться и открываться вид, 
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> При запуске с плана - будет генерироваться и открываться вид,
                                     на котором видны все отверстия и основы</TextBlock>
-                            </StackPanel>
+                            </StackPanel></ToolTip>
                         </Button.ToolTip>
                     </Button>
-                    <Button
-                        Style="{StaticResource BTN}"
+            <Button
+                        Style="{StaticResource ActionButton}" AutomationProperties.Name="АР/КЖ: Отв. по стене по всем эл-там ИОС"
                         Command="{Binding CreateOpenHole_SelectedARKRAndIOSElemsCommand}">
-                        <TextBlock
-                            Text="АР/КЖ: Отв. по стене по всем эл-там ИОС"
-                            TextWrapping="Wrap"
-                            MaxWidth="150"
-                            TextAlignment="Center"/>
+                        <Image Source="{StaticResource OpeningOneWall}" Width="42" Height="42" Stretch="Uniform"/>
                         <Button.ToolTip>
-                            <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Потсавить отверстие по пересечению ВСЕХ элементов ИОС со стеной АР/КЖ</TextBlock>
-                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе, 
-                                    где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид, 
-                                    соответсвующий данным требованиям</TextBlock>
-                            </StackPanel>
+                            <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="АР/КЖ: Отв. по стене по всем эл-там ИОС" FontWeight="Bold" Margin="0,0,0,12"/>
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Поставить отверстие по пересечению ВСЕХ элементов ИОС со стеной АР/КЖ</TextBlock>
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе,
+                                    где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид,
+                                    соответствующий данным требованиям</TextBlock>
+                            </StackPanel></ToolTip>
                         </Button.ToolTip>
                     </Button>
-                    <Button
-                        Style="{StaticResource BTN}"
+            <Button
+                        Style="{StaticResource ActionButton}" AutomationProperties.Name="АР/КЖ: Отв. по стене по выбр. эл-там ИОС"
                         Command="{Binding CreateOpenHole_SelectedARKRAndSelectedIOSElemsCommand}">
-                        <TextBlock
-                            Text="АР/КЖ: Отв. по стене по выбр. эл-там ИОС"
-                            TextWrapping="Wrap"
-                            MaxWidth="150"
-                            TextAlignment="Center"/>
+                        <Image Source="{StaticResource OpeningSelected}" Width="42" Height="42" Stretch="Uniform"/>
                         <Button.ToolTip>
-                            <StackPanel MaxWidth="400">
-                                <TextBlock TextWrapping="Wrap">Поставить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной АР/КЖ</TextBlock>
-                                <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе, 
-                                    где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид, 
+                            <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="АР/КЖ: Отв. по стене по выбр. эл-там ИОС" FontWeight="Bold" Margin="0,0,0,12"/>
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Поставить отверстие по пересечению ВЫБРАННЫХ элементов ИОС со стеной АР/КЖ</TextBlock>
+                                <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Сценарий следует запускать на 3D-виде/разрезе,
+                                    где будет видна основа и отверстия полностью. Иначе будет генерировать и открывать вид,
                                     соответствующий  данным требованиям</TextBlock>
-                            </StackPanel>
+                            </StackPanel></ToolTip>
                         </Button.ToolTip>
                     </Button>
-                </StackPanel>
-                <Button
-                    Style="{StaticResource BTN}"
+            <Button
+                    Style="{StaticResource ActionButton}" AutomationProperties.Name="Настройки расстановки"
                     Click="SetParamsOpenHoleByIOSElems_Click">
-                    <TextBlock
-                        Text="Настройки расстановки"
-                        TextWrapping="Wrap"
-                        MaxWidth="150"
-                        TextAlignment="Center"/>
+                    <Image Source="{StaticResource OpeningSettings}" Width="42" Height="42" Stretch="Uniform"/>
                     <Button.ToolTip>
-                        <StackPanel MaxWidth="400">
-                            <TextBlock TextWrapping="Wrap">Открыть меню настроек для расстановки отверстий по пересечению
+                        <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="Настройки расстановки" FontWeight="Bold" Margin="0,0,0,12"/>
+                            <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Открыть меню настроек для расстановки отверстий по пересечению
                                 с элементами ИОС</TextBlock>
-                        </StackPanel>
+                        </StackPanel></ToolTip>
                     </Button.ToolTip>
                 </Button>
-            </DockPanel>
-
             <Button
-                Style="{StaticResource BTN}"
+                Style="{StaticResource ActionButton}" AutomationProperties.Name="Объединить отверстия"
                 Command="{Binding UnionOpenHolesCommand}">
-                <TextBlock
-                    Text="Объединить отверстия"
-                    TextWrapping="Wrap"
-                    MaxWidth="250"
-                    TextAlignment="Center"/>
+                <Image Source="{StaticResource OpeningUnion}" Width="42" Height="42" Stretch="Uniform"/>
                 <Button.ToolTip>
-                    <StackPanel MaxWidth="400">
-                        <TextBlock TextWrapping="Wrap">Объединить несколько отверстий в одно 
-                            (БЕЗ учёта правил на зазоры и max/min размеры отверстий, но соблюдая шаг в 50 мм)</TextBlock>
-                        <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Множественный выбор - только в 
+                    <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="Объединить отверстия" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Объединить несколько отверстий в одно
+                            (БЕЗ учёта правил на зазоры и максимальные/минимальные размеры отверстий, но соблюдая шаг в 50 мм)</TextBlock>
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Множественный выбор - только в
                             границах одной стены</TextBlock>
-                    </StackPanel>
+                    </StackPanel></ToolTip>
                 </Button.ToolTip>
             </Button>
-
             <Button
-                Style="{StaticResource BTN}"
+                Style="{StaticResource ActionButton}" AutomationProperties.Name="Отверстие по заданию"
                 Command="{Binding SetOpenHoleByTaskCommand}">
-                <TextBlock
-                    Text="Отверстие по заданию"
-                    TextWrapping="Wrap"
-                    MaxWidth="250"
-                    TextAlignment="Center"/>
+                <Image Source="{StaticResource OpeningTask}" Width="42" Height="42" Stretch="Uniform"/>
                 <Button.ToolTip>
-                    <StackPanel MaxWidth="400">
-                        <TextBlock TextWrapping="Wrap">Потсавить отверстие по заданию от ИОС</TextBlock>
-                        <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Множественный выбор - только в 
+                    <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="Отверстие по заданию" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Поставить отверстие по заданию от ИОС</TextBlock>
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Множественный выбор - только в
                             границах одной стены</TextBlock>
-                    </StackPanel>
+                    </StackPanel></ToolTip>
                 </Button.ToolTip>
             </Button>
-            
             <Button
-                Style="{StaticResource BTN}"
+                Style="{StaticResource ActionButton}" AutomationProperties.Name="Расширить границы"
                 Command="{Binding SetOpenHoleExpandCommand}">
-                <TextBlock
-                    Text="Расширить границы"
-                    TextWrapping="Wrap"
-                    MaxWidth="250"
-                    TextAlignment="Center"/>
+                <Image Source="{StaticResource OpeningExpand}" Width="42" Height="42" Stretch="Uniform"/>
                 <Button.ToolTip>
-                    <StackPanel MaxWidth="400">
-                        <TextBlock TextWrapping="Wrap">Задаёт значения для смещений вверх/вниз у спец. элементов семейства, 
-                            чтобы семейства были видны на плане НЕ зависимо от секущего диапазона</TextBlock>
-                        <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Анализ расстояния идёт до плит перекрытия (Жб)
+                    <ToolTip Background="#323740" BorderBrush="#59616F" Padding="12"><StackPanel MaxWidth="400">
+                                <TextBlock Foreground="#EDEDED" Text="Расширить границы" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap">Задаёт значения для смещений вверх/вниз у спец. элементов семейства,
+                            чтобы семейства были видны на плане независимо от секущего диапазона</TextBlock>
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО: </Bold> Анализ расстояния идёт до плит перекрытия (Жб)
                             моделей АР. Включая связи. Не забудь загрузить нужные связи, иначе будет установлено значение по умолчанию</TextBlock>
-                        <TextBlock TextWrapping="Wrap"><Bold>ВАЖНО2: </Bold> Работает либо на всю модель сразу, 
+                        <TextBlock Foreground="#EDEDED" TextWrapping="Wrap"><Bold>ВАЖНО2: </Bold> Работает либо на всю модель сразу,
                             либо на предварительно выбранные отверстия в модели</TextBlock>
-                    </StackPanel>
+                    </StackPanel></ToolTip>
                 </Button.ToolTip>
             </Button>
-
-            <GridSplitter 
-                Height="3"
-                HorizontalAlignment="Stretch"/>
-        </StackPanel>
-
+        </UniformGrid>
+        <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Background="#555B66"
+                      ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"/>
+        <Border Grid.Row="2" Margin="5" Padding="8" Background="#323740" CornerRadius="5" DataContext="{Binding History}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource HistoryButton}" Content="Обновить" Command="{Binding RefreshCommand}"/>
+                    <TextBlock Text="Отверстия и история" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </DockPanel>
+                <StackPanel Grid.Row="1">
+                    <Button Style="{StaticResource HistoryButton}" Content="Подтвердить все" HorizontalAlignment="Left"
+                            Command="{Binding ConfirmAllCommand}"
+                            Visibility="{Binding IsBimUser, Converter={StaticResource HistoryBoolToVisibility}}"
+                            ToolTip="Подтвердить все отверстия текущей модели, включая скрытые поиском и фильтрами. Доступно сотрудникам BIM-отдела."/>
+                    <TextBlock Text="{Binding Status}" Foreground="#FFD166" Margin="0,4"/>
+                    <TextBlock Text="{Binding ActionStatus}" Foreground="#FFD166">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActionStatus}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+                <StackPanel Grid.Row="2">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Style="{StaticResource HistoryButton}" Content="{Binding FilterButtonText}"
+                                Click="HistoryFilters_Click" ToolTip="Настроить фильтры по уровню, активному виду и статусу отверстия"/>
+                        <CheckBox x:Name="SelectedOpeningsFilter" Style="{StaticResource KPLN_CheckBox}"
+                                  Content="Выбранные" FontSize="12" Margin="8,4,0,2"
+                                  IsChecked="{Binding OnlySelected, Mode=TwoWay}"
+                                  ToolTip="Показывать только отверстия, выделенные в модели. Список обновляется при изменении выделения. Учитываются остальные фильтры и поиск."/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding SelectionFilterNote}" Foreground="#FFC849">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectionFilterNote}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="Поиск отверстий" Foreground="#BBC3D1"/>
+                    <TextBox Style="{StaticResource KPLN_TextBox}" Margin="0,4" MinHeight="28"
+                             Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3">
+                    <TextBlock Text="{Binding CountText}" Foreground="#BBC3D1"/>
+                    <TextBlock Text="{Binding UnconfirmedCountText}"
+                               ToolTip="Слева — неподтверждённые в текущем списке, справа — во всей модели. Включает изменённые после подтверждения отверстия.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
+                                <Setter Property="Foreground" Value="#BBC3D1"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasUnconfirmed}" Value="True">
+                                        <Setter Property="Foreground" Value="#FF8585"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+                <ListBox Grid.Row="4" ItemsSource="{Binding Items}" Background="Transparent" BorderThickness="0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                         VirtualizingPanel.ScrollUnit="Pixel"
+                         ScrollViewer.CanContentScroll="True">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="Margin" Value="0,4"/>
+                            <Setter Property="Template">
+                                <Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value>
+                            </Setter>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#59616F" BorderThickness="1" CornerRadius="4" Padding="8">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource HistoryText}" FontWeight="Bold" FontSize="14">
+                                        <Hyperlink Foreground="#9BC7FF" ToolTip="Выделить элемент в модели без изменения вида"
+                                                   Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                   CommandParameter="{Binding}">
+                                            <Run Text="{Binding ElementId, StringFormat=ID: {0}}"/>
+                                        </Hyperlink>
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource HistoryText}" Text="{Binding TypeName}"/>
+                                    <TextBlock Style="{StaticResource HistoryText}" Text="{Binding LevelName, StringFormat=Уровень: {0}}" Foreground="#BBC3D1"/>
+                                    <TextBlock Style="{StaticResource HistoryStatusText}" Text="{Binding Status}"/>
+                                    <WrapPanel>
+                                        <Button Style="{StaticResource HistoryButton}" Content="Показать" CommandParameter="{Binding}"
+                                                Command="{Binding DataContext.ShowCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"/>
+                                        <Button Style="{StaticResource HistoryButton}" Content="Подтвердить" CommandParameter="{Binding}"
+                                                Command="{Binding DataContext.ConfirmCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"/>
+                                    </WrapPanel>
+                                    <TextBlock Text="{Binding CacheNote}" Foreground="#FFCA9F">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
+                                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                                <Setter Property="FontSize" Value="12"/>
+                                                <Style.Triggers><DataTrigger Binding="{Binding CacheNote}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <Expander IsExpanded="{Binding IsHistoryExpanded, Mode=TwoWay}" Foreground="#EDEDED" HorizontalContentAlignment="Stretch" Margin="0,4,0,0">
+                                        <Expander.Header><TextBlock Text="Даты, авторы и история"/></Expander.Header>
+                                        <StackPanel>
+                                            <StackPanel Margin="4,6,0,8">
+                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding CreatedDateDisplay, StringFormat=Дата создания: {0}}"/>
+                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding CreatedAuthor, StringFormat=Автор создания: {0}}"/>
+                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding ConfirmedDateDisplay, StringFormat=Дата подтверждения: {0}}"
+                                                           ToolTip="Дата последнего записанного подтверждения. Текущая актуальность подтверждения показана в статусе отверстия."/>
+                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding ConfirmedAuthor, StringFormat=Автор подтверждения: {0}}"/>
+                                            </StackPanel>
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="История событий" FontWeight="SemiBold" Margin="4,2,0,4"/>
+                                        <ItemsControl ItemsSource="{Binding Entries}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="#59616F" BorderThickness="0,1,0,0" Padding="0,5" Margin="4,2,0,0">
+                                                        <StackPanel>
+                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Action}" FontWeight="SemiBold"/>
+                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding DisplayDate, StringFormat=Дата: {0}}"/>
+                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Author, StringFormat=Автор: {0}}"/>
+                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Details}" Foreground="#BBC3D1"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
     </Grid>
 </Page>

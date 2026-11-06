@@ -54,6 +54,9 @@
     <PlatformTarget>x64</PlatformTarget>
     <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
+  <PropertyGroup>
+    <StorageBuildFolder Condition="'$(Configuration)' == 'Debug$(RevitVer)'">Debug\</StorageBuildFolder>
+  </PropertyGroup>
   <!-- STATIC REFERENCES -->
   <ItemGroup>
     <Reference Include="PresentationCore" />
@@ -81,6 +84,10 @@
       <HintPath>C:\Program Files\Autodesk\Revit $(RevitVer)\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="KPLN_Library_ExtensibleStorage">
+      <HintPath>..\01_KPLN_Library\KPLN_Library_ExtensibleStorage\KPLN_Library_ExtensibleStorage\bin\$(StorageBuildFolder)$(RevitVer)\KPLN_Library_ExtensibleStorage.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="KPLN_Library_ConfigWorker">
       <HintPath>..\01_KPLN_Library\KPLN_Library_ConfigWorker\bin\$(RevitVer)\KPLN_Library_ConfigWorker.dll</HintPath>
       <Private>False</Private>
@@ -103,6 +110,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\OpeningHistoryRecord.cs" />
+    <Compile Include="Core\OpeningHistoryChanges.cs" />
+    <Compile Include="Services\OpeningHistoryChangeTracker.cs" />
+    <Compile Include="Core\OpeningHistoryFilterSettings.cs" />
+    <Compile Include="Forms\OpeningHistoryFilterWindow.xaml.cs">
+      <DependentUpon>OpeningHistoryFilterWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Core\OpeningConfirmationResult.cs" />
+    <Compile Include="Services\OpeningConfirmationService.cs" />
+    <Compile Include="Core\OpeningZoomSettings.cs" />
+    <Compile Include="Services\OpeningZoomService.cs" />
+    <Compile Include="Services\OpeningAuthorResolver.cs" />
+    <Compile Include="Services\OpeningHistoryService.cs" />
+    <Compile Include="Services\OpeningUserMessage.cs" />
+    <Compile Include="Forms\MVVMCore_MainMenu\OpeningHistoryViewModel.cs" />
     <Compile Include="Core\AROpeningHoleEntity.cs" />
     <Compile Include="Core\ARKRElemEntity.cs" />
     <Compile Include="Core\IOSElemEntity.cs" />
@@ -167,6 +189,14 @@
     <Page Include="Forms\MainMenu.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Forms\OpeningHistoryFilterWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Forms\OpeningCommandIcons.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
   <ItemGroup />

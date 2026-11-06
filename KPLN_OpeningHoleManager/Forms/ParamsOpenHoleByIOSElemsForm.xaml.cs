@@ -91,7 +91,7 @@ namespace KPLN_OpeningHoleManager.Forms
             }
             catch (System.Exception ex)
             {
-                MessageBox.Show(this, "Не удалось сохранить настройки.\n" + ex.Message,
+                MessageBox.Show(this, "Не удалось сохранить настройки.\n" + KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex),
                     "Настройки отверстий", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }

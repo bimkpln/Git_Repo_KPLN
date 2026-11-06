@@ -20,6 +20,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         private readonly AROpeningHoleEntity[] _arEntities;
         private readonly MainViewModel _viewModel;
         private readonly bool _isUnionOnly;
+        private readonly string _historyScenario;
 
         private readonly ProgressInfoViewModel _progressInfoViewModel;
         private readonly OpeningTypeMapping _typeMapping;
@@ -28,13 +29,14 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
         /// Конструктор для обработки исходной коллекции, чтобы далее использовать полученный результат
         /// </summary>
         /// <param name="arEntities">Коллекция для объединения</param>
-        public AR_OHE_MakerWithUnion(AROpeningHoleEntity[] arEntities, string transName, MainViewModel viewModel, bool isUnionOnly, ProgressInfoViewModel progressInfoViewModel)
+        public AR_OHE_MakerWithUnion(AROpeningHoleEntity[] arEntities, string transName, MainViewModel viewModel, bool isUnionOnly, ProgressInfoViewModel progressInfoViewModel, string historyScenario)
         {
             _arEntities = arEntities;
             _transName = transName;
             _viewModel = viewModel;
             _typeMapping = viewModel.TypeMapping.Snapshot(Module.CurrentUIApplication.ActiveUIDocument.Document);
             _isUnionOnly = isUnionOnly;
+            _historyScenario = historyScenario;
 
             _progressInfoViewModel = progressInfoViewModel;
         }
@@ -75,7 +77,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     _progressInfoViewModel.ProcessTitle = $"Создание одиночных отверстий...";
                     foreach (AROpeningHoleEntity arEntity in _arEntities)
                     {
-                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _viewModel.OpenHoleZRoundStepMm, _typeMapping);
+                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _viewModel.OpenHoleZRoundStepMm, _typeMapping, _historyScenario);
 
                         ++_progressInfoViewModel.CurrentProgress;
                         _progressInfoViewModel.DoEvents();
@@ -199,7 +201,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                             // Затем создаю новые элементы
                             foreach (AROpeningHoleEntity arEntity in arEntitiesForUnion)
                             {
-                                arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _viewModel.OpenHoleZRoundStepMm, _typeMapping);
+                                arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _viewModel.OpenHoleZRoundStepMm, _typeMapping, _historyScenario);
 
                                 ++_progressInfoViewModel.CurrentProgress;
                                 _progressInfoViewModel.DoEvents();
@@ -242,7 +244,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                 _progressInfoViewModel.MaintStatus = "Завершено с критической ошибкой :(";
                 _progressInfoViewModel.DoEvents();
 
-                HtmlOutput.Print(ex.Message, MessageType.Error);
+                HtmlOutput.Print(KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex), MessageType.Error);
                 throw ex; 
             }
             finally

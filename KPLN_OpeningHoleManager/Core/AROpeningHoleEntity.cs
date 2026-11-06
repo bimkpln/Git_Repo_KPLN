@@ -18,7 +18,7 @@ namespace KPLN_OpeningHoleManager.Core
         internal Transform Trans;
         internal List<Element> FloorColl;
     }
-    
+
     /// <summary>
     /// Сущность отверстия АР в модели
     /// </summary>
@@ -495,7 +495,7 @@ namespace KPLN_OpeningHoleManager.Core
             {
                 SetUpFloorBinding(this.IGDBBox.Max, this.IGDBBox.Max, floorBindings);
                 SetUpFloorBinding(this.IGDBBox.Min, this.IGDBBox.Max, floorBindings);
-            }                
+            }
             if (this.DownFloorBinding == null)
             {
                 SetDownFloorBinding(this.IGDBBox.Max, this.IGDBBox.Min, floorBindings);
@@ -549,8 +549,8 @@ namespace KPLN_OpeningHoleManager.Core
                     bbMaxPnt = inv.OfPoint(bbMaxPnt);
                 }
 
-                foreach (Element el in bind.FloorColl) 
-                { 
+                foreach (Element el in bind.FloorColl)
+                {
                     if (!(el is Floor floor)) continue;
 
                     XYZ upPrjPoint = floor.GetVerticalProjectionPoint(bbMaxPnt, FloorFace.Bottom);
@@ -658,7 +658,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// Разместить экземпляр семейства по указанным координатам и заполнить параметры в модели
         /// </summary>
-        internal void CreateIntersectFamInstAndSetRevitParamsData(Document doc, int zRoundStepMm, OpeningTypeMapping typeMapping)
+        internal void CreateIntersectFamInstAndSetRevitParamsData(Document doc, int zRoundStepMm, OpeningTypeMapping typeMapping, string historyScenario)
         {
             // Только явно назначенный тип: без неявного выбора первого типа семейства.
             FamilySymbol openingFamSymb = typeMapping.Resolve(doc, OHE_Shape, AR_OHE_IOSDubDepCode);
@@ -711,6 +711,7 @@ namespace KPLN_OpeningHoleManager.Core
                 if (expandParam != null && !expandParam.IsReadOnly)
                     IEDElem.LookupParameter(OHE_ParamNameExpander).Set(0);
             }
+            OpeningHistoryService.RecordCreated(instance, historyScenario);
         }
 
         private double RoundGeomParam(double geomParam)

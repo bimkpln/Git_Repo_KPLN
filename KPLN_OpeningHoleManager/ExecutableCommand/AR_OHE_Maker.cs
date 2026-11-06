@@ -70,7 +70,7 @@ namespace KPLN_OpeningHoleManager.ExecutableCommand
                     // Работа с элемнтами
                     foreach (AROpeningHoleEntity arEntity in _arEntitiesToCreate)
                     {
-                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _zRoundStepMm, _typeMapping);
+                        arEntity.CreateIntersectFamInstAndSetRevitParamsData(doc, _zRoundStepMm, _typeMapping, "Отверстие по заданию");
 
                         ++_progressInfoViewModel.CurrentProgress;
                         _progressInfoViewModel.DoEvents();

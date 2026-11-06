@@ -1,4 +1,4 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 
 namespace KPLN_OpeningHoleManager.Forms
 {
@@ -22,8 +22,20 @@ namespace KPLN_OpeningHoleManager.Forms
             data.FrameworkElement = this;
             data.InitialState = new DockablePaneState
             {
-                DockPosition = DockPosition.Left
+                DockPosition = DockPosition.Tabbed,
+                TabBehind = DockablePanes.BuiltInDockablePanes.ProjectBrowser
             };
+        }
+
+        private void HistoryFilters_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var history = MainMenu_VM.History;
+            var window = new OpeningHistoryFilterWindow(history.CreateFilterSettings());
+            if (Module.CurrentUIApplication != null)
+                new System.Windows.Interop.WindowInteropHelper(window).Owner = Module.CurrentUIApplication.MainWindowHandle;
+
+            if (window.ShowDialog() == true)
+                history.ApplyFilterSettings(window.Settings);
         }
 
         private void SetParamsOpenHoleByIOSElems_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -39,7 +51,7 @@ namespace KPLN_OpeningHoleManager.Forms
             }
             catch (System.Exception ex)
             {
-                System.Windows.MessageBox.Show("Не удалось открыть настройки отверстий.\n" + ex.Message);
+                System.Windows.MessageBox.Show("Не удалось открыть настройки отверстий.\n" + KPLN_OpeningHoleManager.Services.OpeningUserMessage.FromException(ex));
             }
         }
     }

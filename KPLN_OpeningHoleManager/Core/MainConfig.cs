@@ -30,12 +30,12 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// АР: Значение минимальной ширины отверстия при расстановке
         /// </summary>
-        public double AR_OpenHoleMinWidthValue { get; set; }
+        public double AR_OpenHoleMinWidthValue { get; set; } = 300;
 
         /// <summary>
         /// АР: Значение минимальной высоты отверстия при расстановке
         /// </summary>
-        public double AR_OpenHoleMinHeightValue { get; set; }
+        public double AR_OpenHoleMinHeightValue { get; set; } = 300;
 
         /// <summary>
         /// АР: Значение минимального расстояни между отверстиями для объединения (UV)
@@ -45,12 +45,12 @@ namespace KPLN_OpeningHoleManager.Core
         /// <summary>
         /// КР: Значение минимальной ширины отверстия при расстановке
         /// </summary>
-        public double KR_OpenHoleMinWidthValue { get; set; }
+        public double KR_OpenHoleMinWidthValue { get; set; } = 200;
 
         /// <summary>
         /// КР: Значение минимальной высоты отверстия при расстановке
         /// </summary>
-        public double KR_OpenHoleMinHeightValue { get; set; }
+        public double KR_OpenHoleMinHeightValue { get; set; } = 200;
 
         /// <summary>
         /// КР: Значение минимального расстояни между отверстиями для объединения (UV)
