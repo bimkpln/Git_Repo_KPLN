@@ -111,8 +111,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\OpeningHistoryRecord.cs" />
-    <Compile Include="Core\OpeningHistoryChanges.cs" />
-    <Compile Include="Services\OpeningHistoryChangeTracker.cs" />
+    <Compile Include="Services\OpeningSnapshotService.cs" />
     <Compile Include="Core\OpeningHistoryFilterSettings.cs" />
     <Compile Include="Forms\OpeningHistoryFilterWindow.xaml.cs">
       <DependentUpon>OpeningHistoryFilterWindow.xaml</DependentUpon>

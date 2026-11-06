@@ -1,5 +1,4 @@
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.Core;
@@ -21,23 +20,13 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         private Document _document;
         private int _generation;
         private bool _queued;
-        private bool _cacheMissing;
         private bool _suspended;
         private bool _fullRefresh;
-        private bool _refreshLevels;
         private bool _refreshVisibility;
-        private readonly Dictionary<string, ElementId> _pendingElements = new Dictionary<string, ElementId>();
-        private readonly OpeningHistoryChangeTracker _tracker = new OpeningHistoryChangeTracker();
         private ObservableCollection<OpeningHistoryRow> _cards = new ObservableCollection<OpeningHistoryRow>();
         private readonly Dictionary<string, OpeningHistoryRow> _cardsById = new Dictionary<string, OpeningHistoryRow>();
 
 
-        private readonly HashSet<string> _pendingCacheElementIds = new HashSet<string>();
-        private readonly List<DocumentCreations> _documentCreations = new List<DocumentCreations>();
-        private Dictionary<string, OpeningCreationInfo> _observedCreations = new Dictionary<string, OpeningCreationInfo>();
-
-
-        private bool _accessChecked;
         private bool _isBimUser;
         private bool _confirmAllQueued;
         private string _actionStatus = string.Empty;
@@ -206,15 +195,13 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 && _filterSettings.Matches((OpeningHistoryRow)item, Filter, _visibleIds);
 
 
-            RefreshCommand = new RelayCommand(() => RequestRefresh(_document, true));
+            RefreshCommand = new RelayCommand(() => RequestRefresh(_document));
             ShowCommand = new RelayCommandWithParams(row => QueueElement(row as OpeningHistoryRow, ElementAction.Show));
             SelectCommand = new RelayCommandWithParams(row => QueueElement(row as OpeningHistoryRow, ElementAction.Select));
             ConfirmCommand = new RelayCommandWithParams(row => QueueElement(row as OpeningHistoryRow, ElementAction.Confirm));
             ConfirmAllCommand = new RelayCommand(QueueConfirmAll,
                 () => !_suspended && IsBimUser && _document != null && _document.IsValidObject && _rows.Length > 0 && !_confirmAllQueued);
         }
-
-        internal bool ContainsElementId(ElementId id) => _elementIds.Contains(id.ToString());
 
         internal void SetDocument(Document document)
         {
@@ -229,10 +216,7 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
             _document = document;
             CancelPending();
-            _observedCreations = GetDocumentCreations(document);
-            _tracker.Clear();
 
-            _accessChecked = false;
             _confirmAllQueued = false;
             IsBimUser = false;
             ActionStatus = string.Empty;
@@ -268,107 +252,25 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
             ClearPendingRefresh();
         }
 
-        private Dictionary<string, OpeningCreationInfo> GetDocumentCreations(Document document)
-        {
-            // Отмена очереди не отменяет уже полученные дату и автора.
-            // Храним незаписанные сведения отдельно для каждой открытой модели.
-            _documentCreations.RemoveAll(item => !item.Document.IsValidObject || item.Entries.Count == 0);
-            if (document == null)
-                return new Dictionary<string, OpeningCreationInfo>();
-
-            DocumentCreations observations = _documentCreations.FirstOrDefault(item => item.Document.Equals(document));
-            if (observations == null)
-            {
-                observations = new DocumentCreations(document);
-                _documentCreations.Add(observations);
-            }
-
-            return observations.Entries;
-        }
-
         private void ClearPendingRefresh()
         {
-            _cacheMissing = false;
             _fullRefresh = false;
-            _refreshLevels = false;
             _refreshVisibility = false;
-            _pendingElements.Clear();
-            _pendingCacheElementIds.Clear();
         }
 
-
-        internal void HandleDocumentChanged(Document document, DocumentChangedEventArgs args)
-        {
-            if (_suspended)
-                return;
-
-            OpeningHistoryChanges changes = _tracker.Read(document, args, OnlyActiveView);
-            if (changes.CancelAutoCache)
-            {
-                // Undo/Redo отменяют запись, но сохраняют дату и автора для последующего повтора.
-                _cacheMissing = false;
-                _pendingCacheElementIds.Clear();
-            }
-
-            if (!changes.HasChanges)
-                return;
-
-
-            foreach (FamilyInstance opening in changes.Created)
-                ObserveCreation(opening);
-
-            _fullRefresh |= changes.FullRefresh;
-            _refreshLevels |= changes.RefreshLevels;
-            _refreshVisibility |= changes.RefreshVisibility;
-            RequestElements(changes.Elements.Values);
-        }
-
-        private void ObserveCreation(Element element)
-        {
-            // Фиксируем дату и автора в DocumentChanged, а не в момент выполнения очереди.
-            _pendingCacheElementIds.Add(element.Id.ToString());
-            if (!_observedCreations.ContainsKey(element.UniqueId))
-                _observedCreations.Add(element.UniqueId, OpeningHistoryService.CaptureCreation(element));
-        }
-
-        internal void RequestRefresh(Document document, bool cacheMissing, IEnumerable<ElementId> cacheElementIds = null, bool cancelAutoCache = false)
+        internal void RequestRefresh(Document document)
         {
             SetDocument(document);
             if (_suspended || document == null || !document.IsValidObject)
                 return;
 
             _fullRefresh = true;
-            _cacheMissing |= cacheMissing;
-
-            if (cancelAutoCache)
-            {
-                _cacheMissing = false;
-                _pendingCacheElementIds.Clear();
-            }
-            else if (cacheElementIds != null)
-            {
-                foreach (ElementId id in cacheElementIds)
-                {
-                    Element element = document.GetElement(id);
-                    if (OpeningHistoryService.IsOpening(element))
-                        ObserveCreation(element);
-                }
-            }
-
             EnqueueRefresh();
         }
 
-        internal void RequestVisibilityRefresh()
+        private void RequestVisibilityRefresh()
         {
             _refreshVisibility = true;
-            EnqueueRefresh();
-        }
-
-        private void RequestElements(IEnumerable<ElementId> ids)
-        {
-            foreach (ElementId id in ids.Where(OpeningHistoryService.IsValidId))
-                _pendingElements[id.ToString()] = id;
-
             EnqueueRefresh();
         }
 
@@ -387,16 +289,12 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return;
 
                 bool full = _fullRefresh;
-                bool write = _cacheMissing;
-                bool levels = _refreshLevels;
                 bool visibility = _refreshVisibility;
-                ElementId[] ids = _pendingElements.Values.ToArray();
-                var cacheIds = new HashSet<string>(_pendingCacheElementIds);
 
-                // Несколько транзакций до Idling объединяются в одно обновление.
+                // Повторные нажатия до выполнения очереди объединяем в одно обновление.
                 _queued = false;
                 ClearPendingRefresh();
-                Refresh(document, full, write, levels, visibility, ids, cacheIds);
+                Refresh(document, full, visibility);
             }, message =>
             {
                 if (generation != _generation)
@@ -409,42 +307,31 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         }
 
 
-        private void Refresh(Document document, bool full, bool cacheMissing, bool levels, bool visibility,
-            ElementId[] ids, ISet<string> cacheElementIds)
+        private void Refresh(Document document, bool full, bool visibility)
         {
-            if (!_accessChecked || cacheMissing)
+            if (full)
             {
                 IsBimUser = OpeningConfirmationService.IsBimUser();
-                _accessChecked = true;
-            }
-
-            if (full || levels)
                 RefreshLevels(document);
+            }
 
             if (full || visibility)
                 RefreshVisibleIds(document);
 
+            if (full)
+                SetRows(OpeningHistoryService.Collect(document, true));
 
-            if (full || ids.Length > 0)
-            {
-                OpeningHistoryRow[] rows = OpeningHistoryService.Collect(document, cacheMissing, cacheElementIds,
-                    _observedCreations, full ? null : ids);
-
-                if (full)
-                    SetRows(rows);
-                else
-                    ApplyRows(ids, rows);
-
-                // Убираем сведения из памяти только после чтения карточки без ошибок записи.
-                // Отсутствующее отверстие может вернуться через Undo/Redo с тем же UniqueId.
-                foreach (OpeningHistoryRow row in rows.Where(row => string.IsNullOrEmpty(row.CacheNote)))
-                    _observedCreations.Remove(row.UniqueId);
-            }
-
-            if (full || levels || visibility)
-                Items.Refresh();
-
+            Items.Refresh();
             UpdateCounts();
+            UpdateStatus();
+        }
+
+        private void ReloadConfirmedRows(IEnumerable<ElementId> elementIds)
+        {
+            // Результат явной команды подтверждения. Поколения здесь не меняем.
+            ElementId[] ids = elementIds.ToArray();
+            ApplyRows(ids, OpeningHistoryService.Collect(_document, false, ids));
+            Items.Refresh();
             UpdateStatus();
         }
 
@@ -465,7 +352,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 .OrderBy(level => level.Elevation).ThenBy(level => level.Name)
                 .Select(level => new OpeningFilterOption { Id = level.Id.ToString(), Name = level.Name }).ToArray();
 
-            _tracker.SetLevels(_levels.Select(level => level.Id));
 
             // Пустой результат не сбрасывает выбранный уровень. Сбрасываем только удалённый уровень.
             if (!string.IsNullOrEmpty(_filterSettings.LevelId) && _filterSettings.LevelId != OpeningHistoryFilterSettings.AllLevels
@@ -480,7 +366,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         {
             _visibleIds = null;
             _viewFilterNote = string.Empty;
-            _tracker.SetViewDependencies(new ElementId[0]);
 
             if (!OnlyActiveView)
                 return;
@@ -494,20 +379,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     return;
                 }
 
-                // Настройки вида/шаблона/фильтров меняют видимость, но не историю отверстий.
-                var dependencies = new List<ElementId> { view.Id, view.ViewTemplateId };
-                dependencies.AddRange(view.GetDependentElements(null));
-                if (view.AreGraphicsOverridesAllowed())
-                    dependencies.AddRange(view.GetFilters());
-
-                View template = document.GetElement(view.ViewTemplateId) as View;
-                if (template != null && template.AreGraphicsOverridesAllowed())
-                    dependencies.AddRange(template.GetFilters());
-
-                dependencies.Add(view.get_Parameter(BuiltInParameter.VIEW_PHASE)?.AsElementId());
-                dependencies.Add(view.get_Parameter(BuiltInParameter.VIEW_PHASE_FILTER)?.AsElementId());
-                _tracker.SetViewDependencies(dependencies);
-
                 _visibleIds = new HashSet<string>(new FilteredElementCollector(document, view.Id)
                     .WherePasses(OpeningHistoryService.CandidateFilter).WhereElementIsNotElementType()
                     .ToElementIds().Select(id => id.ToString()));
@@ -520,10 +391,13 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
 
         private void PrepareRow(OpeningHistoryRow row, OpeningHistoryRow previous)
         {
+            // Каждый раздел раскрывается независимо; обновление карточки сохраняет выбор пользователя.
+            row.IsDataExpanded = previous?.IsDataExpanded ?? row.IsDataExpanded;
+            row.IsGeometryExpanded = previous?.IsGeometryExpanded ?? row.IsGeometryExpanded;
             row.IsHistoryExpanded = previous?.IsHistoryExpanded ?? row.IsHistoryExpanded;
-            if (row.IsConfirmed)
-                _confirmationNotes.Remove(row.UniqueId);
 
+            // Старый снимок может быть подтверждён, хотя новая попытка записи завершилась ошибкой.
+            // Убираем ошибку только после успешной команды, а не по прежнему статусу.
             string note;
             if (_confirmationNotes.TryGetValue(row.UniqueId, out note))
                 row.CacheNote = string.IsNullOrEmpty(row.CacheNote) ? note : row.CacheNote + Environment.NewLine + note;
@@ -532,8 +406,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         private void SetRows(OpeningHistoryRow[] rows)
         {
             var previous = _cardsById.Values.ToDictionary(row => row.UniqueId);
-            foreach (string id in _cardsById.Keys)
-                _tracker.Remove(id);
 
             _cardsById.Clear();
             foreach (OpeningHistoryRow row in rows)
@@ -543,7 +415,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 PrepareRow(row, old);
 
                 _cardsById.Add(row.ElementId, row);
-                _tracker.Set(row);
             }
 
             // Полная замена только при полном сборе; ApplyRows сохраняет коллекцию и остальные карточки.
@@ -576,7 +447,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     }
 
                     _cardsById.Remove(key);
-                    _tracker.Remove(key);
                     continue;
                 }
 
@@ -594,7 +464,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                     _cards[_cards.IndexOf(previous)] = current;
 
                 _cardsById[key] = current;
-                _tracker.Set(current);
             }
 
             UpdateRowsSnapshot();
@@ -643,9 +512,9 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 {
                     OpeningConfirmationResult result = OpeningConfirmationService.ConfirmAll(document);
                     _confirmationNotes = result.Errors;
-                    // Отдельный итог не пропадёт при обновлении списка через DocumentChanged.
+                    // Итог массовой команды сохраняем отдельно от общего состояния списка.
                     ActionStatus = result.Summary;
-                    RequestElements(_rows.Select(row => row.RevitId));
+                    ReloadConfirmedRows(_rows.Select(row => row.RevitId));
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -691,13 +560,17 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
                 {
                     using (Transaction tx = new Transaction(document, "KPLN: Подтвердить отверстие"))
                     {
+                        var failures = new OpeningHistoryService.CacheFailures();
                         tx.Start();
+                        tx.SetFailureHandlingOptions(tx.GetFailureHandlingOptions()
+                            .SetFailuresPreprocessor(failures).SetClearAfterRollback(true));
+
                         OpeningHistoryService.Confirm(element);
                         if (tx.Commit() != TransactionStatus.Committed)
-                            throw new InvalidOperationException("Revit отменил запись подтверждения");
+                            throw new InvalidOperationException("Не удалось записать подтверждение: " + failures.ErrorMessage);
                     }
                     _confirmationNotes.Remove(row.UniqueId);
-                    RequestElements(new[] { element.Id });
+                    ReloadConfirmedRows(new[] { element.Id });
                 }
                 else if (action == ElementAction.Show)
                 {
@@ -718,18 +591,6 @@ namespace KPLN_OpeningHoleManager.Forms.MVVMCore_MainMenu
         }
 
         private void OnPropertyChanged([CallerMemberName] string name = null) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-        private sealed class DocumentCreations
-        {
-            internal Document Document { get; }
-            internal Dictionary<string, OpeningCreationInfo> Entries { get; } = new Dictionary<string, OpeningCreationInfo>();
-
-            internal DocumentCreations(Document document)
-            {
-                Document = document;
-            }
-        }
-
 
         private sealed class HistoryCommand : IExecutableCommand
         {

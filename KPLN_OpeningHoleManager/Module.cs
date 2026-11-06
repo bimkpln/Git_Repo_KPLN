@@ -1,5 +1,4 @@
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
 using KPLN_Library_DBWorker;
@@ -7,7 +6,6 @@ using KPLN_Library_DBWorker.Core;
 using KPLN_Loader.Common;
 using KPLN_OpeningHoleManager.ExternalCommands;
 using KPLN_OpeningHoleManager.Forms;
-using KPLN_OpeningHoleManager.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -91,7 +89,7 @@ namespace KPLN_OpeningHoleManager
         {
             _instance.SetTracking(true);
             SetActiveDocument(application, application.ActiveUIDocument?.Document);
-            MainMenuViewer.MainMenu_VM.History.RequestRefresh(CurrentDoc, true);
+            MainMenuViewer.MainMenu_VM.History.RequestRefresh(CurrentDoc);
         }
 
         private void Application_DockableFrameVisibilityChanged(object sender, DockableFrameVisibilityChangedEventArgs args)
@@ -124,15 +122,13 @@ namespace KPLN_OpeningHoleManager
 
                 CurrentUIContrApp.ViewActivated += Application_ViewActivated;
                 CurrentUIContrApp.Idling += Application_Idling;
-                CurrentUIContrApp.ControlledApplication.DocumentChanged += Application_DocumentChanged;
             }
             else
             {
                 CurrentUIContrApp.ViewActivated -= Application_ViewActivated;
                 CurrentUIContrApp.Idling -= Application_Idling;
-                CurrentUIContrApp.ControlledApplication.DocumentChanged -= Application_DocumentChanged;
 
-                // Отменяем уже поставленные в очередь действия и незаписанный автокэш.
+                // Закрытая панель не выполняет отложенные действия.
                 MainMenuViewer.MainMenu_VM.History.Suspend();
             }
         }
@@ -166,9 +162,8 @@ namespace KPLN_OpeningHoleManager
 
             var history = MainMenuViewer.MainMenu_VM.History;
             if (changed)
-                history.RequestRefresh(CurrentDoc, true);
-            else if (history.OnlyActiveView)
-                history.RequestVisibilityRefresh();
+                history.RequestRefresh(CurrentDoc);
+
         }
 
 
@@ -206,28 +201,6 @@ namespace KPLN_OpeningHoleManager
 
             MainMenuViewer.MainMenu_VM.SetDataGeomParamsData(CurrentDBProject);
         }
-
-        private void Application_DocumentChanged(object sender, DocumentChangedEventArgs args)
-        {
-            // На закрытой панели обработчик отписан; флаг дополнительно защищает переходное состояние.
-            if (!_tracking)
-                return;
-
-            Document document = args.GetDocument();
-            if (document == null || !document.IsValidObject || CurrentDoc == null || !CurrentDoc.IsValidObject
-                || !document.Equals(CurrentDoc))
-                return;
-
-
-            var transactionNames = args.GetTransactionNames();
-            if (args.Operation == UndoOperation.TransactionCommitted && transactionNames.Count > 0
-                && transactionNames.All(name => name == OpeningHistoryService.CacheTransactionName))
-                return;
-
-            // Здесь только ID и отметка создания. Чтение/запись истории выполняется позже из Idling.
-            MainMenuViewer.MainMenu_VM.History.HandleDocumentChanged(document, args);
-        }
-
 
         /// <summary>
         /// Метод для добавления отдельной кнопки в панель

@@ -23,20 +23,9 @@
                 <Setter Property="TextWrapping" Value="Wrap"/>
             </Style>
             <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}"/>
-            <!-- Палитра и правила отображения статусов: новые состояния добавляются здесь. -->
-            <SolidColorBrush x:Key="OpeningStatusPendingBrush" Color="#FFD166"/>
-            <SolidColorBrush x:Key="OpeningStatusConfirmedBrush" Color="#81C995"/>
-            <SolidColorBrush x:Key="OpeningStatusChangedBrush" Color="#FFD166"/>
+            <!-- Названия и цвета состояний определены в общем каталоге OpeningStatuses. -->
             <Style x:Key="HistoryStatusText" TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
-                <Setter Property="Foreground" Value="{StaticResource OpeningStatusPendingBrush}"/>
-                <Style.Triggers>
-                    <DataTrigger Binding="{Binding Status}" Value="Подтверждено">
-                        <Setter Property="Foreground" Value="{StaticResource OpeningStatusConfirmedBrush}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding Status}" Value="Изменено после подтверждения">
-                        <Setter Property="Foreground" Value="{StaticResource OpeningStatusChangedBrush}"/>
-                    </DataTrigger>
-                </Style.Triggers>
+                <Setter Property="Foreground" Value="{Binding StatusColor}"/>
             </Style>
             <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource KPLN_Button}">
                 <Setter Property="Margin" Value="4"/>
@@ -278,31 +267,51 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
+                                    <Expander IsExpanded="{Binding IsDataExpanded, Mode=TwoWay}" Foreground="#EDEDED" HorizontalContentAlignment="Stretch" Margin="0,4,0,0">
+                                        <Expander.Header><TextBlock Text="Данные"/></Expander.Header>
+                                        <StackPanel Margin="4,6,0,8">
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding CreatedAuthor, StringFormat=Автор создания: {0}}"/>
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding ConfirmedDateDisplay, StringFormat=Дата подтверждения: {0}}"
+                                                       ToolTip="Дата последнего записанного подтверждения. Текущая актуальность подтверждения показана в статусе отверстия."/>
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding ConfirmedAuthor, StringFormat=Автор подтверждения: {0}}"/>
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding StatusAuthor, StringFormat=Статус изменил: {0}}"/>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <Expander IsExpanded="{Binding IsGeometryExpanded, Mode=TwoWay}" Foreground="#EDEDED" HorizontalContentAlignment="Stretch" Margin="0,4,0,0">
+                                        <Expander.Header><TextBlock Text="Геометрия"/></Expander.Header>
+                                        <StackPanel Margin="4,6,0,8">
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="По последнему обновлению или подтверждению" Foreground="#BBC3D1"/>
+                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding GeometryDetails}"/>
+                                        </StackPanel>
+                                    </Expander>
+
                                     <Expander IsExpanded="{Binding IsHistoryExpanded, Mode=TwoWay}" Foreground="#EDEDED" HorizontalContentAlignment="Stretch" Margin="0,4,0,0">
-                                        <Expander.Header><TextBlock Text="Даты, авторы и история"/></Expander.Header>
-                                        <StackPanel>
-                                            <StackPanel Margin="4,6,0,8">
-                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding CreatedDateDisplay, StringFormat=Дата создания: {0}}"/>
-                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding CreatedAuthor, StringFormat=Автор создания: {0}}"/>
-                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding ConfirmedDateDisplay, StringFormat=Дата подтверждения: {0}}"
-                                                           ToolTip="Дата последнего записанного подтверждения. Текущая актуальность подтверждения показана в статусе отверстия."/>
-                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding ConfirmedAuthor, StringFormat=Автор подтверждения: {0}}"/>
-                                            </StackPanel>
-                                            <TextBlock Style="{StaticResource HistoryText}" Text="История событий" FontWeight="SemiBold" Margin="4,2,0,4"/>
-                                        <ItemsControl ItemsSource="{Binding Entries}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border BorderBrush="#59616F" BorderThickness="0,1,0,0" Padding="0,5" Margin="4,2,0,0">
-                                                        <StackPanel>
-                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Action}" FontWeight="SemiBold"/>
-                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding DisplayDate, StringFormat=Дата: {0}}"/>
-                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Author, StringFormat=Автор: {0}}"/>
-                                                            <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Details}" Foreground="#BBC3D1"/>
-                                                        </StackPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <Expander.Header><TextBlock Text="История"/></Expander.Header>
+                                        <StackPanel Margin="4,6,0,8">
+                                            <TextBlock Text="Изменений между поколениями пока нет." Foreground="#BBC3D1">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource HistoryText}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasHistory}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <ItemsControl ItemsSource="{Binding Entries}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border BorderBrush="#59616F" BorderThickness="0,1,0,0" Padding="0,5" Margin="0,2,0,0">
+                                                            <StackPanel>
+                                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Action}" FontWeight="SemiBold"/>
+                                                                <TextBlock Style="{StaticResource HistoryText}" Text="{Binding Details}" Foreground="#BBC3D1"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                         </StackPanel>
                                     </Expander>
                                 </StackPanel>

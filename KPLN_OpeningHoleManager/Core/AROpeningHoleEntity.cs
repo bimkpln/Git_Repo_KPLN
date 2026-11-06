@@ -29,6 +29,7 @@ namespace KPLN_OpeningHoleManager.Core
         /// </summary>
         internal static string AR_OHE_ParamNameCancelOverwrite = "МО_Перезаписать границы видимости";
         private bool _ar_OHE_IsHostElementKR = false;
+        private string _pendingHistoryScenario;
 
         internal AROpeningHoleEntity(Element elem) : base(elem)
         {
@@ -340,6 +341,14 @@ namespace KPLN_OpeningHoleManager.Core
             foreach (AROpeningHoleEntity ent in arEntitiesToSet)
             {
                 ent.IGDSolid = GeometryWorker.GetRevitElemUniontSolid(ent.IEDElem);
+
+                // До регенерации новый экземпляр может возвращать нулевую точку и размеры типоразмера.
+                // Первый снимок записываем один раз, после расчёта фактической геометрии.
+                if (ent._pendingHistoryScenario != null)
+                {
+                    OpeningHistoryService.RecordCreated((FamilyInstance)ent.IEDElem, ent._pendingHistoryScenario);
+                    ent._pendingHistoryScenario = null;
+                }
             }
         }
 
@@ -711,7 +720,7 @@ namespace KPLN_OpeningHoleManager.Core
                 if (expandParam != null && !expandParam.IsReadOnly)
                     IEDElem.LookupParameter(OHE_ParamNameExpander).Set(0);
             }
-            OpeningHistoryService.RecordCreated(instance, historyScenario);
+            _pendingHistoryScenario = historyScenario ?? string.Empty;
         }
 
         private double RoundGeomParam(double geomParam)

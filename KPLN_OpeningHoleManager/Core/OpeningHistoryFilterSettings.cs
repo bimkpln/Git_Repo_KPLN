@@ -1,12 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace KPLN_OpeningHoleManager.Core
 {
-    public enum OpeningHistoryStatusFilter { All, Unconfirmed, Pending, Changed, Confirmed }
-
     public sealed class OpeningFilterOption
     {
         public string Id { get; set; }
@@ -15,34 +14,33 @@ namespace KPLN_OpeningHoleManager.Core
 
     public sealed class OpeningStatusOption
     {
-        public OpeningHistoryStatusFilter Value { get; set; }
+        public string Value { get; set; }
         public string Name { get; set; }
     }
 
     public sealed class OpeningHistoryFilterSettings : INotifyPropertyChanged
     {
         public const string AllLevels = "*";
+        public const string AllStatuses = "*";
+        public const string Unconfirmed = "unconfirmed";
         private string _levelId = AllLevels;
         private bool _onlyActiveView;
-        private OpeningHistoryStatusFilter _status;
+        private string _status = AllStatuses;
 
         public event PropertyChangedEventHandler PropertyChanged;
         // * — все уровни, пустая строка — отверстия без привязки к уровню.
         public string LevelId { get => _levelId; set { _levelId = value; Changed(); } }
         public bool OnlyActiveView { get => _onlyActiveView; set { _onlyActiveView = value; Changed(); } }
-        public OpeningHistoryStatusFilter Status { get => _status; set { _status = value; Changed(); } }
+        public string Status { get => _status; set { _status = value; Changed(); } }
         public OpeningFilterOption[] Levels { get; set; } = new OpeningFilterOption[0];
         public OpeningStatusOption[] StatusOptions { get; } = new[]
         {
-            new OpeningStatusOption { Value = OpeningHistoryStatusFilter.All, Name = "Все статусы" },
-            new OpeningStatusOption { Value = OpeningHistoryStatusFilter.Unconfirmed, Name = "Все неподтверждённые" },
-            new OpeningStatusOption { Value = OpeningHistoryStatusFilter.Pending, Name = "Ожидает подтверждения" },
-            new OpeningStatusOption { Value = OpeningHistoryStatusFilter.Changed, Name = "Изменено после подтверждения" },
-            new OpeningStatusOption { Value = OpeningHistoryStatusFilter.Confirmed, Name = "Подтверждено" }
-        };
+            new OpeningStatusOption { Value = AllStatuses, Name = "Все статусы" },
+            new OpeningStatusOption { Value = Unconfirmed, Name = "Все неподтверждённые" },
+        }.Concat(OpeningStatuses.All.Select(status => new OpeningStatusOption { Value = status.Code, Name = status.Name })).ToArray();
 
         public int ActiveCount => (LevelId != AllLevels ? 1 : 0) + (OnlyActiveView ? 1 : 0)
-            + (Status != OpeningHistoryStatusFilter.All ? 1 : 0);
+            + (Status != AllStatuses ? 1 : 0);
 
         public OpeningHistoryFilterSettings Copy() => new OpeningHistoryFilterSettings
         {
@@ -53,7 +51,7 @@ namespace KPLN_OpeningHoleManager.Core
         {
             LevelId = AllLevels;
             OnlyActiveView = false;
-            Status = OpeningHistoryStatusFilter.All;
+            Status = AllStatuses;
         }
 
         internal bool Matches(OpeningHistoryRow row, string search, ISet<string> visibleIds)
@@ -63,21 +61,10 @@ namespace KPLN_OpeningHoleManager.Core
             if (OnlyActiveView && (visibleIds == null || !visibleIds.Contains(row.ElementId)))
                 return false;
 
-            switch (Status)
-            {
-                case OpeningHistoryStatusFilter.Unconfirmed:
-                    if (row.IsConfirmed) return false;
-                    break;
-                case OpeningHistoryStatusFilter.Pending:
-                    if (row.Status != "Ожидает подтверждения") return false;
-                    break;
-                case OpeningHistoryStatusFilter.Changed:
-                    if (row.Status != "Изменено после подтверждения") return false;
-                    break;
-                case OpeningHistoryStatusFilter.Confirmed:
-                    if (!row.IsConfirmed) return false;
-                    break;
-            }
+            if (Status == Unconfirmed && row.IsConfirmed)
+                return false;
+            if (Status != AllStatuses && Status != Unconfirmed && Status != row.StatusCode)
+                return false;
 
             return string.IsNullOrWhiteSpace(search)
                 || row.SearchText.IndexOf(search.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
